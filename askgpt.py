@@ -1,7 +1,7 @@
 import g4f
 import asyncio
 
-############## DO NOT RUN YET
+############## DO NOT RUN YET! NOT READY FOR DEPLOYMENT
 
 _providers = [
     g4f.Provider.Aichat,
@@ -17,7 +17,8 @@ with open("prompt.txt", "r") as file:
     prompt = file.read()
 
 
-# TODO: Find a way to deploy multiple providers
+# TODO: Find a way to deploy multiple instances of this on all the text files
+# for some reason, it always falls back to using the You provider. the moment we crack this we can start spamming requests
 async def run_provider(provider: g4f.Provider.BaseProvider):
     try:
         response = await g4f.ChatCompletion.create_async(
