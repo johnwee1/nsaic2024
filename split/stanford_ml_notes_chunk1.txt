@@ -1,6 +1,32 @@
-given by
+x(i); θ) =
+
+√
+
+1
+2πσ
+
+(cid:18)
+
+exp
+
+−
+
+(y(i) − θT x(i))2
+2σ2
+
+(cid:19)
+
+.
+
+The notation “p(y(i)|x(i); θ)� indicates that this is the distribution of y(i)
+given x(i) and parameterized by θ. Note that we should not condition on θ
+(“p(y(i)|x(i), θ)�), since θ is not a random variable. We can also write the
+distribution of y(i) as y(i) | x(i); θ ∼ N (θT x(i), σ2).
+
+Given X (the design matrix, which contains all the x(i)’s) and θ, what
+is the distribution of the y(i)’s? The probability of the data is given by
 p((cid:126)y|X; θ). This quantity is typically viewed a function of (cid:126)y (and perhaps X),
-for a ﬁxed value of θ. When we wish to explicitly view this as a function of
+for a �xed value of θ. When we wish to explicitly view this as a function of
 θ, we will instead call it the likelihood function:
 
 L(θ) = L(θ; X, (cid:126)y) = p((cid:126)y|X; θ).
@@ -140,15 +166,15 @@ i=1
 which we recognize to be J(θ), our original least-squares cost function.
 
 To summarize: Under the previous probabilistic assumptions on the data,
-least-squares regression corresponds to ﬁnding the maximum likelihood esti-
+least-squares regression corresponds to �nding the maximum likelihood esti-
 mate of θ. This is thus one set of assumptions under which least-squares re-
-gression can be justiﬁed as a very natural method that’s just doing maximum
+gression can be justi�ed as a very natural method that’s just doing maximum
 likelihood estimation. (Note however that the probabilistic assumptions are
 by no means necessary for least-squares to be a perfectly good and rational
 procedure, and there may—and indeed there are—other natural assumptions
 that can also be used to justify it.)
 
-Note also that, in our previous discussion, our ﬁnal choice of θ did not
+Note also that, in our previous discussion, our �nal choice of θ did not
 depend on what was σ2, and indeed we’d have arrived at the same result
 even if σ2 were unknown. We will use this fact again later, when we talk
 about the exponential family and generalized linear models.
@@ -157,25 +183,25 @@ about the exponential family and generalized linear models.
 
 reading)
 
-Consider the problem of predicting y from x ∈ R. The leftmost ﬁgure below
-shows the result of ﬁtting a y = θ0 + θ1x to a dataset. We see that the data
-doesn’t really lie on straight line, and so the ﬁt is not very good.
+Consider the problem of predicting y from x ∈ R. The leftmost �gure below
+shows the result of �tting a y = θ0 + θ1x to a dataset. We see that the data
+doesn’t really lie on straight line, and so the �t is not very good.
 
 18
 
-Instead, if we had added an extra feature x2, and ﬁt y = θ0 + θ1x + θ2x2,
-then we obtain a slightly better ﬁt to the data. (See middle ﬁgure) Naively, it
+Instead, if we had added an extra feature x2, and �t y = θ0 + θ1x + θ2x2,
+then we obtain a slightly better �t to the data. (See middle �gure) Naively, it
 might seem that the more features we add, the better. However, there is also
-a danger in adding too many features: The rightmost ﬁgure is the result of
-ﬁtting a 5-th order polynomial y = (cid:80)5
+a danger in adding too many features: The rightmost �gure is the result of
+�tting a 5-th order polynomial y = (cid:80)5
 j=0 θjxj. We see that even though the
-ﬁtted curve passes through the data perfectly, we would not expect this to
+�tted curve passes through the data perfectly, we would not expect this to
 be a very good predictor of, say, housing prices (y) for diﬀerent living areas
-(x). Without formally deﬁning what these terms mean, we’ll say the ﬁgure
-on the left shows an instance of underﬁtting—in which the data clearly
-shows structure not captured by the model—and the ﬁgure on the right is
-an example of overﬁtting. (Later in this class, when we talk about learning
-theory we’ll formalize some of these notions, and also deﬁne more carefully
+(x). Without formally de�ning what these terms mean, we’ll say the �gure
+on the left shows an instance of under�tting—in which the data clearly
+shows structure not captured by the model—and the �gure on the right is
+an example of over�tting. (Later in this class, when we talk about learning
+theory we’ll formalize some of these notions, and also de�ne more carefully
 just what it means for a hypothesis to be good or bad.)
 
 As discussed previously, and as shown in the example above, the choice of
@@ -212,7 +238,7 @@ i w(i)(y(i) − θT x(i))2.
 Here, the w(i)’s are non-negative valued weights. Intuitively, if w(i) is large
 for a particular value of i, then in picking θ, we’ll try hard to make (y(i) −
 θT x(i))2 small. If w(i) is small, then the (y(i) − θT x(i))2 error term will be
-pretty much ignored in the ﬁt.
+pretty much ignored in the �t.
 
 A fairly standard choice for the weights is4
 
@@ -230,7 +256,7 @@ w(i) = exp
 Note that the weights depend on the particular point x at which we’re trying
 to evaluate x. Moreover, if |x(i) − x| is small, then w(i) is close to 1; and
 if |x(i) − x| is large, then w(i) is small. Hence, θ is chosen giving a much
-higher “weight” to the (errors on) training examples close to the query point
+higher “weight� to the (errors on) training examples close to the query point
 x. (Note also that while the formula for the weights takes a form that is
 cosmetically similar to the density of a Gaussian distribution, the w(i)’s do
 not directly have anything to do with Gaussians, and in particular the w(i)
@@ -239,14 +265,14 @@ are not random variables, normally distributed or otherwise.) The parameter
 of its x(i) from the query point x; τ is called the bandwidth parameter, and
 is also something that you’ll get to experiment with in your homework.
 
-Locally weighted linear regression is the ﬁrst example we’re seeing of a
+Locally weighted linear regression is the �rst example we’re seeing of a
 non-parametric algorithm. The (unweighted) linear regression algorithm
 that we saw earlier is known as a parametric learning algorithm, because
-it has a ﬁxed, ﬁnite number of parameters (the θi’s), which are ﬁt to the
-data. Once we’ve ﬁt the θi’s and stored them away, we no longer need to
+it has a �xed, �nite number of parameters (the θi’s), which are �t to the
+data. Once we’ve �t the θi’s and stored them away, we no longer need to
 keep the training data around to make future predictions. In contrast, to
 make predictions using locally weighted linear regression, we need to keep
-the entire training set around. The term “non-parametric” (roughly) refers
+the entire training set around. The term “non-parametric� (roughly) refers
 to the fact that the amount of stuﬀ we need to keep in order to represent the
 hypothesis h grows linearly with the size of the training set.
 
@@ -256,30 +282,30 @@ or w(i) = exp(−(x(i) − x)T Σ−1(x(i) − x)/(2τ 2)), for an appropriate c
 
 Chapter 2
 
-Classiﬁcation and logistic
+Classi�cation and logistic
 regression
 
-Let’s now talk about the classiﬁcation problem. This is just like the regression
+Let’s now talk about the classi�cation problem. This is just like the regression
 problem, except that the values y we now want to predict take on only
 a small number of discrete values. For now, we will focus on the binary
-classiﬁcation problem in which y can take on only two values, 0 and 1.
+classi�cation problem in which y can take on only two values, 0 and 1.
 (Most of what we say here will also generalize to the multiple-class case.)
-For instance, if we are trying to build a spam classiﬁer for email, then x(i)
+For instance, if we are trying to build a spam classi�er for email, then x(i)
 may be some features of a piece of email, and y may be 1 if it is a piece
 of spam mail, and 0 otherwise. 0 is also called the negative class, and 1
-the positive class, and they are sometimes also denoted by the symbols “-”
-and “+.” Given x(i), the corresponding y(i) is also called the label for the
+the positive class, and they are sometimes also denoted by the symbols “-�
+and “+.� Given x(i), the corresponding y(i) is also called the label for the
 training example.
 
 2.1 Logistic regression
 
-We could approach the classiﬁcation problem ignoring the fact that y is
+We could approach the classi�cation problem ignoring the fact that y is
 discrete-valued, and use our old linear regression algorithm to try to predict
 y given x. However, it is easy to construct examples where this method
 performs very poorly. Intuitively, it also doesn’t make sense for hθ(x) to take
 values larger than 1 or smaller than 0 when we know that y ∈ {0, 1}.
 
-To ﬁx this, let’s change the form for our hypotheses hθ(x). We will choose
+To �x this, let’s change the form for our hypotheses hθ(x). We will choose
 
 where
 
@@ -346,10 +372,10 @@ dz
 1
 (1 + e−z)
 
-So, given the logistic regression model, how do we ﬁt θ for it? Following
+So, given the logistic regression model, how do we �t θ for it? Following
 how we saw least squares regression could be derived as the maximum like-
-lihood estimator under a set of assumptions, let’s endow our classiﬁcation
-model with a set of probabilistic assumptions, and then ﬁt the parameters
+lihood estimator under a set of assumptions, let’s endow our classi�cation
+model with a set of probabilistic assumptions, and then �t the parameters
 via maximum likelihood.
 
 −5−4−3−2−101234500.10.20.30.40.50.60.70.80.91zg(z)22
@@ -463,7 +489,7 @@ the stochastic gradient ascent rule
 j
 
 If we compare this to the LMS update rule, we see that it looks identical; but
-this is not the same algorithm, because hθ(x(i)) is now deﬁned as a non-linear
+this is not the same algorithm, because hθ(x(i)) is now de�ned as a non-linear
 function of θT x(i). Nonetheless, it’s a little surprising that we end up with
 the same update rule for a rather diﬀerent algorithm and learning problem.
 Is this coincidence, or is there a deeper reason behind this? We’ll answer this
@@ -471,7 +497,7 @@ when we get to GLM models.
 
 Remark 2.1.1: An alternative notational viewpoint of the same loss func-
 tion is also useful, especially for Section 7.1 where we study nonlinear models.
-Let (cid:96)logistic : R × {0, 1} → R≥0 be the logistic loss deﬁned as
+Let (cid:96)logistic : R × {0, 1} → R≥0 be the logistic loss de�ned as
 
 (cid:96)logistic(t, y) (cid:44) y log(1 + exp(−t)) + (1 − y) log(1 + exp(t)) .
 
@@ -538,16 +564,16 @@ interest, and that we will also return to later when we talk about learning
 
 24
 
-theory. Consider modifying the logistic regression method to “force” it to
+theory. Consider modifying the logistic regression method to “force� it to
 output values that are either 0 or 1 or exactly. To do so, it seems natural to
-change the deﬁnition of g to be the threshold function:
+change the de�nition of g to be the threshold function:
 
 g(z) =
 
 (cid:26) 1 if z ≥ 0
 0 if z < 0
 
-If we then let hθ(x) = g(θT x) as before but using this modiﬁed deﬁnition of
+If we then let hθ(x) = g(θT x) as before but using this modi�ed de�nition of
 g, and if we use the update rule
 
 θj := θj + α (cid:0)y(i) − hθ(x(i))(cid:1) x(i)
@@ -555,7 +581,7 @@ j .
 
 then we have the perceptron learning algorithn.
 
-In the 1960s, this “perceptron” was argued to be a rough model for how
+In the 1960s, this “perceptron� was argued to be a rough model for how
 individual neurons in the brain work. Given how simple the algorithm is, it
 will also provide a starting point for our analysis when we talk about learning
 theory later in this class. Note however that even though the perceptron may
@@ -565,72 +591,15 @@ linear regression; in particular, it is diﬃcult to endow the perceptron’s pr
 tions with meaningful probabilistic interpretations, or derive the perceptron
 as a maximum likelihood estimation algorithm.
 
-2.3 Multi-class classiﬁcation
+2.3 Multi-class classi�cation
 
-Consider a classiﬁcation problem in which the response variable y can take on
+Consider a classi�cation problem in which the response variable y can take on
 any one of k values, so y ∈ {1, 2, . . . , k}. For example, rather than classifying
 emails into the two classes spam or not-spam—which would have been a
-binary classiﬁcation problem—we might want to classify them into three
+binary classi�cation problem—we might want to classify them into three
 classes, such as spam, personal mails, and work-related mails. The label /
 response variable is still discrete, but can now take on more than two values.
 We will thus model it as distributed according to a multinomial distribution.
 In this case, p(y | x; θ) is a distribution over k possible discrete outcomes
 and is thus a multinomial distribution. Recall that a multinomial distribu-
-tion involves k numbers φ1, . . . , φk specifying the probability of each of the
-outcomes. Note that these numbers must satisfy (cid:80)k
-i=1 φi = 1. We will de-
-sign a parameterized model that outputs φ1, . . . , φk satisfying this constraint
-given the input x.
-
-We introduce k groups of parameters θ1, . . . , θk, each of them being a
-k x to represent
-
-Intuitively, we would like to use θ(cid:62)
-
-1 x, . . . , θ(cid:62)
-
-vector in Rd.
-
-25
-
-φ1, . . . , φk, the probabilities P (y = 1 | x; θ), . . . , P (y = k | x; θ). However,
-there are two issues with such a direct approach. First, θ(cid:62)
-j x is not neces-
-sarily within [0, 1]. Second, the summation of θ(cid:62)
-j x’s is not necessarily 1.
-1 x, · · · , θ(cid:62)
-Thus, instead, we will use the softmax function to turn (θ(cid:62)
-k x) into
-a probability vector with nonnegative entries that sum up to 1.
-
-Deﬁne the softmax function softmax : Rk → Rk as
-
-
-
-
-softmax(t1, . . . , tk) =
-
-
-
-
-
-.
-
-
-
-
-
-(2.9)
-
-(cid:80)k
-
-exp(t1)
-j=1 exp(tj )
-...
-
-exp(tk)
-j=1 exp(tj )
-
-(cid:80)k
-
-The inputs to the softmax fu
+tion involves k numbers φ1, . .

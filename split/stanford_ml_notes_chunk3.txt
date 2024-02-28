@@ -1,4 +1,42 @@
-g giving the distri-
+eviously, in the formulation of the
+Gaussian as an exponential family distribution, we had µ = η. So, we have
+
+hθ(x) = E[y|x; θ]
+= µ
+= η
+= θT x.
+
+The �rst equality follows from Assumption 2, above; the second equality
+follows from the fact that y|x; θ ∼ N (µ, σ2), and so its expected value is given
+
+33
+
+by µ; the third equality follows from Assumption 1 (and our earlier derivation
+showing that µ = η in the formulation of the Gaussian as an exponential
+family distribution); and the last equality follows from Assumption 3.
+
+3.2.2 Logistic regression
+
+We now consider logistic regression. Here we are interested in binary classi�-
+cation, so y ∈ {0, 1}. Given that y is binary-valued, it therefore seems natural
+to choose the Bernoulli family of distributions to model the conditional dis-
+tribution of y given x. In our formulation of the Bernoulli distribution as
+an exponential family distribution, we had φ = 1/(1 + e−η). Furthermore,
+note that if y|x; θ ∼ Bernoulli(φ), then E[y|x; θ] = φ. So, following a similar
+derivation as the one for ordinary least squares, we get:
+
+hθ(x) = E[y|x; θ]
+= φ
+= 1/(1 + e−η)
+= 1/(1 + e−θT x)
+
+So, this gives us hypothesis functions of the form hθ(x) = 1/(1 + e−θT x). If
+you are previously wondering how we came up with the form of the logistic
+function 1/(1 + e−z), this gives one answer: Once we assume that y condi-
+tioned on x is Bernoulli, it arises as a consequence of the de�nition of GLMs
+and exponential family distributions.
+
+To introduce a little more terminology, the function g giving the distri-
 bution’s mean as a function of the natural parameter (g(η) = E[T (y); η])
 is called the canonical response function. Its inverse, g−1, is called the
 canonical link function. Thus, the canonical response function for the
@@ -17,10 +55,10 @@ So far, we’ve mainly been talking about learning algorithms that model
 p(y|x; θ), the conditional distribution of y given x. For instance, logistic
 regression modeled p(y|x; θ) as hθ(x) = g(θT x) where g is the sigmoid func-
 tion. In these notes, we’ll talk about a diﬀerent type of learning algorithm.
-Consider a classiﬁcation problem in which we want to learn to distinguish
+Consider a classi�cation problem in which we want to learn to distinguish
 between elephants (y = 1) and dogs (y = 0), based on some features of
 an animal. Given a training set, an algorithm like logistic regression or
-the perceptron algorithm (basically) tries to ﬁnd a straight line—that is, a
+the perceptron algorithm (basically) tries to �nd a straight line—that is, a
 decision boundary—that separates the elephants and dogs. Then, to classify
 a new animal as either an elephant or a dog, it checks on which side of the
 decision boundary it falls, and makes its prediction accordingly.
@@ -81,7 +119,7 @@ p(x|y)p(y).
 
 4.1 Gaussian discriminant analysis
 
-The ﬁrst generative learning algorithm that we’ll look at is Gaussian discrim-
+The �rst generative learning algorithm that we’ll look at is Gaussian discrim-
 inant analysis (GDA). In this model, we’ll assume that p(x|y) is distributed
 according to a multivariate normal distribution. Let’s talk brieﬂy about the
 properties of multivariate normal distributions before moving on to the GDA
@@ -92,7 +130,7 @@ model itself.
 The multivariate normal distribution in d-dimensions, also called the multi-
 variate Gaussian distribution, is parameterized by a mean vector µ ∈ Rd
 and a covariance matrix Σ ∈ Rd×d, where Σ ≥ 0 is symmetric and positive
-semi-deﬁnite. Also written “N (µ, Σ)”, its density is given by:
+semi-de�nite. Also written “N (µ, Σ)�, its density is given by:
 
 p(x; µ, Σ) =
 
@@ -113,7 +151,7 @@ p(x; µ, Σ) =
 
 .
 
-In the equation above, “|Σ|” denotes the determinant of the matrix Σ.
+In the equation above, “|Σ|� denotes the determinant of the matrix Σ.
 
 For a random variable X distributed N (µ, Σ), the mean is (unsurpris-
 
@@ -127,15 +165,15 @@ x
 
 x p(x; µ, Σ)dx = µ
 
-The covariance of a vector-valued random variable Z is deﬁned as Cov(Z) =
+The covariance of a vector-valued random variable Z is de�ned as Cov(Z) =
 
 E[(Z − E[Z])(Z − E[Z])T ]. This generalizes the notion of the variance of a
 
 36
 
-real-valued random variable. The covariance can also be deﬁned as Cov(Z) =
+real-valued random variable. The covariance can also be de�ned as Cov(Z) =
 E[ZZ T ] − (E[Z])(E[Z])T . (You should be able to prove to yourself that these
-two deﬁnitions are equivalent.) If X ∼ N (µ, Σ), then
+two de�nitions are equivalent.) If X ∼ N (µ, Σ), then
 
 Cov(X) = Σ.
 
@@ -143,17 +181,17 @@ Here are some examples of what the density of a Gaussian distribution
 
 looks like:
 
-The left-most ﬁgure shows a Gaussian with mean zero (that is, the 2x1
+The left-most �gure shows a Gaussian with mean zero (that is, the 2x1
 zero-vector) and covariance matrix Σ = I (the 2x2 identity matrix). A Gaus-
 sian with zero mean and identity covariance is also called the standard nor-
-mal distribution. The middle ﬁgure shows the density of a Gaussian with
-zero mean and Σ = 0.6I; and in the rightmost ﬁgure shows one with , Σ = 2I.
-We see that as Σ becomes larger, the Gaussian becomes more “spread-out,”
-and as it becomes smaller, the distribution becomes more “compressed.”
+mal distribution. The middle �gure shows the density of a Gaussian with
+zero mean and Σ = 0.6I; and in the rightmost �gure shows one with , Σ = 2I.
+We see that as Σ becomes larger, the Gaussian becomes more “spread-out,�
+and as it becomes smaller, the distribution becomes more “compressed.�
 
 Let’s look at some more examples.
 
-The ﬁgures above show Gaussians with mean 0, and with covariance
+The �gures above show Gaussians with mean 0, and with covariance
 
 matrices respectively
 
@@ -189,10 +227,10 @@ matrices respectively
 0.8
 1
 
-The leftmost ﬁgure shows the familiar standard normal distribution, and we
+The leftmost �gure shows the familiar standard normal distribution, and we
 see that as we increase the oﬀ-diagonal entry in Σ, the density becomes more
 
-−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25“compressed” towards the 45◦ line (given by x1 = x2). We can see this more
+−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25“compressed� towards the 45◦ line (given by x1 = x2). We can see this more
 clearly when we look at the contours of the same three densities:
 
 37
@@ -232,19 +270,19 @@ The plots above used, respectively,
 0.8
 1
 
-From the leftmost and middle ﬁgures, we see that by decreasing the oﬀ-
+From the leftmost and middle �gures, we see that by decreasing the oﬀ-
 diagonal elements of the covariance matrix, the density now becomes “com-
-pressed” again, but in the opposite direction. Lastly, as we vary the pa-
-rameters, more generally the contours will form ellipses (the rightmost ﬁgure
+pressed� again, but in the opposite direction. Lastly, as we vary the pa-
+rameters, more generally the contours will form ellipses (the rightmost �gure
 showing an example).
 
-As our last set of examples, ﬁxing Σ = I, by varying µ, we can also move
+As our last set of examples, �xing Σ = I, by varying µ, we can also move
 
 the mean of the density around.
 
 −3−2−10123−3−2−10123−3−2−10123−3−2−10123−3−2−10123−3−2−10123−3−2−10123−3−2−10123−3−2−10123−3−2−10123−3−2−10123−3−2−10123−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.25−3−2−10123−3−2−101230.050.10.150.20.2538
 
-The ﬁgures above were generated using Σ = I, and respectively
+The �gures above were generated using Σ = I, and respectively
 
 µ =
 
@@ -271,7 +309,7 @@ The ﬁgures above were generated using Σ = I, and respectively
 
 4.1.2 The Gaussian discriminant analysis model
 
-When we have a classiﬁcation problem in which the input features x are
+When we have a classi�cation problem in which the input features x are
 continuous-valued random variables, we can then use the Gaussian Discrim-
 inant Analysis (GDA) model, which models p(x|y) using a multivariate nor-
 mal distribution. The model is:
@@ -340,7 +378,7 @@ p(x(i), y(i); φ, µ0, µ1, Σ)
 
 p(x(i)|y(i); µ0, µ1, Σ)p(y(i); φ).
 
-By maximizing (cid:96) with respect to the parameters, we ﬁnd the maximum like-
+By maximizing (cid:96) with respect to the parameters, we �nd the maximum like-
 lihood estimate of the parameters (see problem set 1) to be:
 
 39
@@ -383,11 +421,11 @@ i=1
 
 Pictorially, what the algorithm is doing can be seen in as follows:
 
-Shown in the ﬁgure are the training set, as well as the contours of the
-two Gaussian distributions that have been ﬁt to the data in each of the
+Shown in the �gure are the training set, as well as the contours of the
+two Gaussian distributions that have been �t to the data in each of the
 two classes. Note that the two Gaussians have contours that are the same
 shape and orientation, since they share a covariance matrix Σ, but they have
-diﬀerent means µ0 and µ1. Also shown in the ﬁgure is the straight line
+diﬀerent means µ0 and µ1. Also shown in the �gure is the straight line
 giving the decision boundary at which p(y = 1|x) = 0.5. On one side of
 the boundary, we’ll predict y = 1 to be the most likely outcome, and on the
 other side, we’ll predict y = 0.
@@ -397,7 +435,7 @@ other side, we’ll predict y = 0.
 4.1.3 Discussion: GDA and logistic regression
 
 The GDA model has an interesting relationship to logistic regression. If we
-view the quantity p(y = 1|x; φ, µ0, µ1, Σ) as a function of x, we’ll ﬁnd that it
+view the quantity p(y = 1|x; φ, µ0, µ1, Σ) as a function of x, we’ll �nd that it
 can be expressed in the form
 
 p(y = 1|x; φ, Σ, µ0, µ1) =
@@ -421,28 +459,28 @@ is not true; i.e., p(y|x) being a logistic function does not imply p(x|y) is
 multivariate gaussian. This shows that GDA makes stronger modeling as-
 sumptions about the data than does logistic regression.
 It turns out that
-when these modeling assumptions are correct, then GDA will ﬁnd better ﬁts
-to the data, and is a better model. Speciﬁcally, when p(x|y) is indeed gaus-
+when these modeling assumptions are correct, then GDA will �nd better �ts
+to the data, and is a better model. Speci�cally, when p(x|y) is indeed gaus-
 sian (with shared Σ), then GDA is asymptotically eﬃcient. Informally,
 this means that in the limit of very large training sets (large n), there is no
 algorithm that is strictly better than GDA (in terms of, say, how accurately
 they estimate p(y|x)). In particular, it can be shown that in this setting,
 GDA will be a better algorithm than logistic regression; and more generally,
 even for small training set sizes, we would generally expect GDA to better.
-In contrast, by making signiﬁcantly weaker assumptions, logistic regres-
+In contrast, by making signi�cantly weaker assumptions, logistic regres-
 sion is also more robust and less sensitive to incorrect modeling assumptions.
 There are many diﬀerent sets of assumptions that would lead to p(y|x) taking
 the form of a logistic function. For example, if x|y = 0 ∼ Poisson(λ0), and
 x|y = 1 ∼ Poisson(λ1), then p(y|x) will be logistic. Logistic regression will
 also work well on Poisson data like this. But if we were to use GDA on such
-data—and ﬁt Gaussian distributions to such non-Gaussian data—then the
+data—and �t Gaussian distributions to such non-Gaussian data—then the
 results will be less predictable, and GDA may (or may not) do well.
 
 To summarize: GDA makes stronger modeling assumptions, and is more
-data eﬃcient (i.e., requires less training data to learn “well”) when the mod-
+data eﬃcient (i.e., requires less training data to learn “well�) when the mod-
 eling assumptions are correct or at least approximately correct. Logistic
 
-1This uses the convention of redeﬁning the x(i)’s on the right-hand-side to be (d + 1)-
+1This uses the convention of rede�ning the x(i)’s on the right-hand-side to be (d + 1)-
 
 dimensional vectors by adding the extra coordinate x(i)
 
@@ -450,14 +488,14 @@ dimensional vectors by adding the extra coordinate x(i)
 
 41
 
-regression makes weaker assumptions, and is signiﬁcantly more robust to
-deviations from modeling assumptions. Speciﬁcally, when the data is in-
+regression makes weaker assumptions, and is signi�cantly more robust to
+deviations from modeling assumptions. Speci�cally, when the data is in-
 deed non-Gaussian, then in the limit of large datasets, logistic regression will
 almost always do better than GDA. For this reason, in practice logistic re-
 gression is used more often than GDA. (Some related considerations about
 discriminative vs. generative models also apply for the Naive Bayes algo-
 rithm that we discuss next, but the Naive Bayes algorithm is still considered
-a very good, and is certainly also a very popular, classiﬁcation algorithm.)
+a very good, and is certainly also a very popular, classi�cation algorithm.)
 
 4.2 Naive bayes (Option Reading)
 
@@ -465,20 +503,20 @@ In GDA, the feature vectors x were continuous, real-valued vectors. Let’s
 now talk about a diﬀerent learning algorithm in which the xj’s are discrete-
 valued.
 
-For our motivating example, consider building an email spam ﬁlter using
+For our motivating example, consider building an email spam �lter using
 machine learning. Here, we wish to classify messages according to whether
 they are unsolicited commercial (spam) email, or non-spam email. After
-learning to do this, we can then have our mail reader automatically ﬁlter
+learning to do this, we can then have our mail reader automatically �lter
 out the spam messages and perhaps place them in a separate mail folder.
 Classifying emails is one example of a broader set of problems called text
-classiﬁcation.
+classi�cation.
 
 Let’s say we have a training set (a set of emails labeled as spam or non-
-spam). We’ll begin our construction of our spam ﬁlter by specifying the
+spam). We’ll begin our construction of our spam �lter by specifying the
 features xj used to represent an email.
 
 We will represent an email via a feature vector whose length is equal to
-the number of words in the dictionary. Speciﬁcally, if an email contains the
+the number of words in the dictionary. Speci�cally, if an email contains the
 j-th word of the dictionary, then we will set xj = 1; otherwise, we let xj = 0.
 For instance, the vector
 
@@ -526,54 +564,4 @@ buy
 ...
 zygmurgy
 
-is used to represent an email that contains the words “a” and “buy,” but not
-
-42
-
-“aardvark,” “aardwolf” or “zygmurgy.”2 The set of words encoded into the
-feature vector is called the vocabulary, so the dimension of x is equal to
-the size of the vocabulary.
-
-Having chosen our feature vector, we now want to build a generative
-model. So, we have to model p(x|y). But if we have, say, a vocabulary of
-50000 words, then x ∈ {0, 1}50000 (x is a 50000-dimensional vector of 0’s and
-1’s), and if we were to model x explicitly with a multinomial distribution over
-the 250000 possible outcomes, then we’d end up with a (250000 −1)-dimensional
-parameter vector. This is clearly too many parameters.
-
-To model p(x|y), we will therefore make a very strong assumption. We will
-assume that the xi’s are conditionally independent given y. This assumption
-is called the Naive Bayes (NB) assumption, and the resulting algorithm is
-called the Naive Bayes classiﬁer. For instance, if y = 1 means spam email;
-“buy” is word 2087 and “price” is word 39831; then we are assuming that if
-I tell you y = 1 (that a particular piece of email is spam), then knowledge
-of x2087 (knowledge of whether “buy” appears in the message) will have no
-eﬀect on your beliefs about the value of x39831 (whether “price” appears).
-More formally, this can be written p(x2087|y) = p(x2087|y, x39831). (Note that
-this is not the same as saying that x2087 and x39831 are independent, which
-would have been written “p(x2087) = p(x2087|x39831)”; rather, we are only
-assuming that x2087 and x39831 are conditionally independent given y.)
-
-We now have:
-
-p(x1, . . . , x50000|y)
-
-= p(x1|y)p(x2|y, x1)p(x3|y, x1, x2) · · · p(x50000|y, x1, . . . , x49999)
-= p(x1|y)p(x2|y)p(x3|y) · · · p(x50000|y)
-
-=
-
-d
-(cid:89)
-
-j=1
-
-p(xj|y)
-
-The ﬁrst equality simply follows from the usual properties of probabilities,
-and the second equality used the NB assumption. We note that even though
-
-2Actually, rather than looking through an English dictionary for the list of all English
-words, in practice it is more common to look through our training set and encode in our
-feature vector only the words that occur at least once there. Apart from reducing the
-numb
+is used to represent an email that contains the words “a� 

@@ -1,4 +1,543 @@
-of
+origin (where the reward
+is higher). For example, if Ut = Id (the identity matrix) and Wt = Id, then
+Rt = −||st||2 − ||at||2, meaning that we want to take smooth actions (small
+norm of at) to go back to the origin (small norm of st). This could model a
+car trying to stay in the middle of lane without making impulsive moves...
+
+Now that we have de�ned the assumptions of our LQR model, let’s cover
+
+the 2 steps of the LQR algorithm
+
+step 1 suppose that we don’t know the matrices A, B, Σ.
+
+To esti-
+mate them, we can follow the ideas outlined in the Value Ap-
+proximation section of the RL notes.
+First, collect transitions
+from an arbitrary policy.
+Then, use linear regression to �nd
+(cid:13)
+As(i)
+(cid:13)s(i)
+(cid:13)
+
+t+1 −
+argminA,B
+nique seen in Gaussian Discriminant Analysis to learn Σ.
+
+. Finally, use a tech-
+
+t + Ba(i)
+
+(cid:80)T −1
+t=0
+
+(cid:17)(cid:13)
+2
+(cid:13)
+(cid:13)
+
+(cid:80)n
+
+i=1
+
+(cid:16)
+
+t
+
+step 2 assuming that the parameters of our model are known (given or esti-
+mated with step 1), we can derive the optimal policy using dynamic
+programming.
+
+In other words, given
+
+(cid:40)
+
+st+1
+R(t)(st, at) = −s(cid:62)
+
+= Atst + Btat + wt
+t Utst − a(cid:62)
+
+t Wtat
+
+At, Bt, Ut, Wt, Σt known
+
+we want to compute V ∗
+t .
+
+If we go back to section 16.1, we can apply
+
+dynamic programming, which yields
+
+1. Initialization step
+
+For the last time step T ,
+
+V ∗
+T (sT ) = max
+aT ∈A
+= max
+aT ∈A
+= −s(cid:62)
+
+T UtsT
+
+RT (sT , aT )
+
+−s(cid:62)
+
+T UT sT − a(cid:62)
+
+T WtaT
+
+(maximized for aT = 0)
+
+210
+
+2. Recurrence step
+
+Let t < T . Suppose we know V ∗
+t+1.
+t+1 is a quadratic function in st, then V ∗
+Fact 1: It can be shown that if V ∗
+t
+is also a quadratic function. In other words, there exists some matrix Φ
+and some scalar Ψ such that
+
+if V ∗
+then V ∗
+
+t+1(st+1) = s(cid:62)
+t (st) = s(cid:62)
+
+t+1Φt+1st+1 + Ψt+1
+t Φtst + Ψt
+
+For time step t = T , we had Φt = −UT and ΨT = 0.
+Fact 2: We can show that the optimal policy is just a linear function of
+the state.
+Knowing V ∗
+t+1 is equivalent to knowing Φt+1 and Ψt+1, so we just need
+to explain how we compute Φt and Ψt from Φt+1 and Ψt+1 and the other
+parameters of the problem.
+
+t (st) = s(cid:62)
+V ∗
+
+t Φtst + Ψt
+(cid:104)
+R(t)(st, at) + E
+(cid:2)−s(cid:62)
+
+t Utst − a(cid:62)
+
+= max
+at
+= max
+at
+
+(cid:105)
+t+1(st+1)]
+
+[V ∗
+
+st+1∼P (t)
+
+st,at
+
+t Vtat + Est+1∼N (Atst+Btat,Σt)[s(cid:62)
+
+t+1Φt+1st+1 + Ψt+1](cid:3)
+
+where the second line is just the de�nition of the optimal value function
+and the third line is obtained by plugging in the dynamics of our model
+along with the quadratic assumption. Notice that the last expression is
+a quadratic function in at and can thus be (easily) optimized1. We get
+the optimal action a∗
+t
+
+t = (cid:2)(B(cid:62)
+a∗
+= Lt · st
+
+t Φt+1Bt − Vt)−1BtΦt+1At
+
+(cid:3) · st
+
+where
+
+1Use the identity E (cid:2)w(cid:62)
+
+t Φt+1wt
+
+Lt := (cid:2)(B(cid:62)
+
+t Φt+1Bt − Wt)−1BtΦt+1At
+(cid:3) = Tr(ΣtΦt+1) with wt ∼ N (0, Σt)
+
+(cid:3)
+
+211
+
+which is an impressive result: our optimal policy is linear in st. Given
+a∗
+t we can solve for Φt and Ψt. We �nally get the Discrete Ricatti
+equations
+
+(cid:16)
+
+Φt = A(cid:62)
+t
+
+Φt+1 − Φt+1Bt
+
+(cid:0)B(cid:62)
+
+t Φt+1Bt − Wt
+
+(cid:1)−1
+
+BtΦt+1
+
+(cid:17)
+
+At − Ut
+
+Ψt = − tr (ΣtΦt+1) + Ψt+1
+
+Fact 3: we notice that Φt depends on neither Ψ nor the noise Σt! As Lt
+is a function of At, Bt and Φt+1, it implies that the optimal policy also
+does not depend on the noise! (But Ψt does depend on Σt, which
+implies that V ∗
+
+t depends on Σt.)
+
+Then, to summarize, the LQR algorithm works as follows
+
+1. (if necessary) estimate parameters At, Bt, Σt
+
+2. initialize ΦT := −UT and ΨT := 0.
+
+3. iterate from t = T − 1 . . . 0 to update Φt and Ψt using Φt+1 and Ψt+1
+using the discrete Ricatti equations. If there exists a policy that drives
+the state towards zero, then convergence is guaranteed!
+
+Using Fact 3, we can be even more clever and make our algorithm run
+(slightly) faster! As the optimal policy does not depend on Ψt, and the
+update of Φt only depends on Φt, it is suﬃcient to update only Φt!
+
+16.3 From non-linear dynamics to LQR
+
+It turns out that a lot of problems can be reduced to LQR, even if dynamics
+are non-linear. While LQR is a nice formulation because we are able to come
+up with a nice exact solution, it is far from being general. Let’s take for
+instance the case of the inverted pendulum. The transitions between states
+look like
+
+
+
+
+
+
+
+
+
+
+
+
+
+xt+1
+˙xt+1
+θt+1
+˙θt+1
+
+
+
+
+
+
+
+= F
+
+
+
+
+
+
+
+xt
+˙xt
+θt
+˙θt
+
+
+
+
+
+
+
+
+
+
+
+
+
+, at
+
+where the function F depends on the cos of the angle etc. Now, the
+
+question we may ask is
+
+Can we linearize this system?
+
+212
+
+16.3.1 Linearization of dynamics
+
+Let’s suppose that at time t, the system spends most of its time in some state
+¯st and the actions we perform are around ¯at. For the inverted pendulum, if
+we reached some kind of optimal, this is true: our actions are small and we
+don’t deviate much from the vertical.
+
+We are going to use Taylor expansion to linearize the dynamics. In the
+simple case where the state is one-dimensional and the transition function F
+does not depend on the action, we would write something like
+
+st+1 = F (st) ≈ F ( ¯st) + F (cid:48)( ¯st) · (st − ¯st)
+
+In the more general setting, the formula looks the same, with gradients
+
+instead of simple derivatives
+
+st+1 ≈ F ( ¯st, ¯at) + ∇sF ( ¯st, ¯at) · (st − ¯st) + ∇aF ( ¯st, ¯at) · (at − ¯at)
+
+(16.3)
+
+and now, st+1 is linear in st and at, because we can rewrite equation (16.3)
+
+as
+
+st+1 ≈ Ast + Bst + κ
+
+where κ is some constant and A, B are matrices. Now, this writing looks
+awfully similar to the assumptions made for LQR. We just have to get rid
+of the constant term κ! It turns out that the constant term can be absorbed
+into st by arti�cially increasing the dimension by one. This is the same trick
+that we used at the beginning of the class for linear regression...
+
+16.3.2 Diﬀerential Dynamic Programming (DDP)
+
+The previous method works well for cases where the goal is to stay around
+some state s∗ (think about the inverted pendulum, or a car having to stay
+in the middle of a lane). However, in some cases, the goal can be more
+complicated.
+
+We’ll cover a method that applies when our system has to follow some
+trajectory (think about a rocket). This method is going to discretize the
+trajectory into discrete time steps, and create intermediary goals around
+which we will be able to use the previous technique! This method is called
+Diﬀerential Dynamic Programming. The main steps are
+
+step 1 come up with a nominal trajectory using a naive controller, that approx-
+imate the trajectory we want to follow. In other words, our controller
+is able to approximate the gold trajectory with
+
+213
+
+step 2 linearize the dynamics around each trajectory point s∗
+
+t , in other words
+
+0, a∗
+s∗
+
+0 → s∗
+
+1, a∗
+
+1 → . . .
+
+st+1 ≈ F (s∗
+
+t , a∗
+
+t ) + ∇sF (s∗
+
+t , a∗
+
+t )(st − s∗
+
+t ) + ∇aF (s∗
+
+t , a∗
+
+t )(at − a∗
+t )
+
+where st, at would be our current state and action. Now that we have
+a linear approximation around each of these points, we can use the
+previous section and rewrite
+
+st+1 = At · st + Bt · at
+
+(notice that in that case, we use the non-stationary dynamics setting
+that we mentioned at the beginning of these lecture notes)
+Note We can apply a similar derivation for the reward R(t), with a
+second-order Taylor expansion.
+
+R(st, at) ≈ R(s∗
+
+t , a∗
+
+t ) + ∇sR(s∗
+
+t , a∗
+
+t )(st − s∗
+
+t ) + ∇aR(s∗
+
+t , a∗
+
+t )(at − a∗
+t )
+
++
+
++
+
+1
+2
+1
+2
+
+(st − s∗
+
+t )(cid:62)Hss(st − s∗
+
+t ) + (st − s∗
+
+t )(cid:62)Hsa(at − a∗
+t )
+
+(at − a∗
+
+t )(cid:62)Haa(at − a∗
+t )
+
+where Hxy refers to the entry of the Hessian of R with respect to x and
+y evaluated in (s∗
+t ) (omitted for readability). This expression can be
+re-written as
+
+t , a∗
+
+Rt(st, at) = −s(cid:62)
+
+t Utst − a(cid:62)
+
+t Wtat
+
+for some matrices Ut, Wt, with the same trick of adding an extra dimen-
+sion of ones. To convince yourself, notice that
+
+(cid:0)1 x(cid:1) ·
+
+(cid:19)
+
+(cid:18)a b
+c
+b
+
+(cid:19)
+
+(cid:18)1
+x
+
+·
+
+= a + 2bx + cx2
+
+214
+
+step 3 Now, you can convince yourself that our problem is strictly re-written
+in the LQR framework. Let’s just use LQR to �nd the optimal policy
+πt. As a result, our new controller will (hopefully) be better!
+Note: Some problems might arise if the LQR trajectory deviates too
+much from the linearized approximation of the trajectory, but that can
+be �xed with reward-shaping...
+
+step 4 Now that we get a new controller (our new policy πt), we use it to
+
+produce a new trajectory
+
+0, π0(s∗
+s∗
+
+0) → s∗
+
+1, π1(s∗
+
+1) → . . . → s∗
+T
+
+note that when we generate this new trajectory, we use the real F and
+not its linear approximation to compute transitions, meaning that
+
+s∗
+t+1 = F (s∗
+
+t , a∗
+t )
+
+then, go back to step 2 and repeat until some stopping criterion.
+
+16.4 Linear Quadratic Gaussian (LQG)
+
+Often, in the real word, we don’t get to observe the full state st. For example,
+an autonomous car could receive an image from a camera, which is merely
+an observation, and not the full state of the world. So far, we assumed
+that the state was available. As this might not hold true for most of the
+real-world problems, we need a new tool to model this situation: Partially
+Observable MDPs.
+
+A POMDP is an MDP with an extra observation layer. In other words,
+we introduce a new variable ot, that follows some conditional distribution
+given the current state st
+
+Formally, a �nite-horizon POMDP is given by a tuple
+
+ot|st ∼ O(o|s)
+
+(S, O, A, Psa, T, R)
+
+Within this framework, the general strategy is to maintain a belief state
+(distribution over states) based on the observation o1, . . . , ot. Then, a policy
+in a POMDP maps this belief states to actions.
+
+215
+
+In this section, we’ll present a extension of LQR to this new setting.
+
+Assume that we observe yt ∈ Rn with m < n such that
+
+(cid:40)
+
+= C · st + vt
+yt
+st+1 = A · st + B · at + wt
+
+where C ∈ Rn×d is a compression matrix and vt is the sensor noise (also
+gaussian, like wt). Note that the reward function R(t) is left unchanged, as a
+function of the state (not the observation) and action. Also, as distributions
+are gaussian, the belief state is also going to be gaussian. In this new frame-
+work, let’s give an overview of the strategy we are going to adopt to �nd the
+optimal policy:
+
+step 1 �rst, compute the distribution on the possible states (the belief state),
+based on the observations we have. In other words, we want to compute
+the mean st|t and the covariance Σt|t of
 
 st|y1, . . . , yt ∼ N (cid:0)st|t, Σt|t
 
@@ -84,9 +623,9 @@ matrices of shape t × t. Recall that inverting a matrix can be done in O(t3),
 and it would then have to be repeated over the time steps, yielding a cost in
 O(t4)!
 
-The Kalman ﬁlter algorithm provides a much better way of computing
+The Kalman �lter algorithm provides a much better way of computing
 the mean and variance, by updating them over time in constant time in
-t! The kalman ﬁlter is based on two basics steps. Assume that we know the
+t! The kalman �lter is based on two basics steps. Assume that we know the
 distribution of st|y1, . . . , yt:
 
 predict step compute st+1|y1, . . . , yt
@@ -156,7 +695,7 @@ The matrix Kt is called the Kalman gain.
 
 Now, if we have a closer look at the formulas, we notice that we don’t
 need the observations prior to time step t! The update steps only depends
-on the previous distribution. Putting it all together, the algorithm ﬁrst runs
+on the previous distribution. Putting it all together, the algorithm �rst runs
 a forward pass to compute the Kt, Σt|t and st|t (sometimes referred to as
 ˆs in the literature). Then, it runs a backward pass (the LQR updates) to
 compute the quantities Ψt, Ψt and Lt. Finally, we recover the optimal policy
@@ -171,7 +710,7 @@ Policy Gradient
 
 We will present a model-free algorithm called REINFORCE that does not
 require the notion of value functions and Q functions. It turns out to be more
-convenient to introduce REINFORCE in the ﬁnite horizon case, which will
+convenient to introduce REINFORCE in the �nite horizon case, which will
 be assumed throughout this note: we use τ = (s0, a0, . . . , sT −1, aT −1, sT ) to
 denote a trajectory, where T < ∞ is the length of the trajectory. Moreover,
 REINFORCE only applies to learning a randomized policy. We use πθ(a|s)
@@ -187,7 +726,7 @@ either.
 
 Let s0 be sampled from some distribution µ. We consider optimizing the
 
-expected total payoﬀ of the policy πθ over the parameter θ deﬁned as.
+expected total payoﬀ of the policy πθ over the parameter θ de�ned as.
 
 η(θ) (cid:44) E
 
@@ -201,433 +740,4 @@ t=0
 
 (17.1)
 
-Recall that st ∼ Pst−1at−1 and at ∼ πθ(·|st). Also note that η(θ) =
-Es0∼P [V πθ(s0)] if we ignore the diﬀerence between ﬁnite and inﬁnite hori-
-zon.
-
-1In this notes we will work with the general setting where the reward depends on both
-
-the state and the action.
-
-218
-
-219
-
-We aim to use gradient ascent to maximize η(θ). The main challenge
-we face here is to compute (or estimate) the gradient of η(θ) without the
-knowledge of the form of the reward function and the transition probabilities.
-Let Pθ(τ ) denote the distribution of τ (generated by the policy πθ), and
-
-let f (τ ) = (cid:80)T −1
-
-t=0 γtR(st, at). We can rewrite η(θ) as
-
-η(θ) = Eτ ∼Pθ [f (τ )]
-
-(17.2)
-
-We face a similar situations in the variational auto-encoder (VAE) setting
-covered in the previous lectures, where the we need to take the gradient w.r.t
-to a variable that shows up under the expectation — the distribution Pθ
-depends on θ. Recall that in VAE, we used the re-parametrization techniques
-to address this problem. However it does not apply here because we do
-know not how to compute the gradient of the function f . (We only have
-an eﬃcient way to evaluate the function f by taking a weighted sum of the
-observed rewards, but we do not necessarily know the reward function itself
-to compute the gradient.)
-
-The REINFORCE algorithm uses an another approach to estimate the
-
-gradient of η(θ). We start with the following derivation:
-
-∇θEτ ∼Pθ [f (τ )] = ∇θ
-
-(cid:90)
-
-Pθ(τ )f (τ )dτ
-
-(cid:90)
-
-(cid:90)
-
-(cid:90)
-
-=
-
-=
-
-=
-
-∇θ(Pθ(τ )f (τ ))dτ
-
-(swap integration with gradient)
-
-(∇θPθ(τ ))f (τ )dτ
-
-(becaue f does not depend on θ)
-
-Pθ(τ )(∇θ log Pθ(τ ))f (τ )dτ
-
-= Eτ ∼Pθ [(∇θ log Pθ(τ ))f (τ )]
-
-(because ∇ log Pθ(τ ) = ∇Pθ(τ )
-Pθ(τ ) )
-(17.3)
-
-Now we have a sample-based estimator for ∇θEτ ∼Pθ [f (τ )]. Let τ (1), . . . , τ (n)
-be n empirical samples from Pθ (which are obtained by running the policy
-πθ for n times, with T steps for each run). We can estimate the gradient of
-η(θ) by
-
-∇θEτ ∼Pθ [f (τ )] = Eτ ∼Pθ [(∇θ log Pθ(τ ))f (τ )]
-n
-(cid:88)
-
-(∇θ log Pθ(τ (i)))f (τ (i))
-
-≈
-
-1
-n
-
-i=1
-
-(17.4)
-
-(17.5)
-
-220
-
-The next question is how to compute log Pθ(τ ). We derive an analyt-
-ical formula for log Pθ(τ ) and compute its gradient w.r.t θ (using auto-
-diﬀerentiation). Using the deﬁnition of τ , we have
-
-Pθ(τ ) = µ(s0)πθ(a0|s0)Ps0a0(s1)πθ(a1|s1)Ps1a1(s2) · · · PsT −1aT −1(sT )
-
-(17.6)
-
-Here recall that µ to used to denote the density of the distribution of s0. It
-follows that
-
-log Pθ(τ ) = log µ(s0) + log πθ(a0|s0) + log Ps0a0(s1) + log πθ(a1|s1)
-
-+ log Ps1a1(s2) + · · · + log PsT −1aT −1(sT )
-
-(17.7)
-
-Taking gradient w.r.t to θ, we obtain
-
-∇θ log Pθ(τ ) = ∇θ log πθ(a0|s0) + ∇θ log πθ(a1|s1) + · · · + ∇θ log πθ(aT −1|sT −1)
-
-Note that many of the terms disappear because they don’t depend on θ and
-thus have zero gradients. (This is somewhat important — we don’t know how
-to evaluate those terms such as log Ps0a0(s1) because we don’t have access to
-the transition probabilities, but luckily those terms have zero gradients!)
-Plugging the equation above into equation (17.4), we conclude that
-
-∇θη(θ) = ∇θEτ ∼Pθ [f (τ )] = Eτ ∼Pθ
-
-= Eτ ∼Pθ
-
-(cid:34)(cid:32)T −1
-(cid:88)
-
-t=0
-(cid:34)(cid:32)T −1
-(cid:88)
-
-t=0
-
-(cid:33)
-
-(cid:35)
-
-∇θ log πθ(at|st)
-
-· f (τ )
-
-(cid:33)
-
-∇θ log πθ(at|st)
-
-·
-
-(cid:33)(cid:35)
-
-γtR(st, at)
-
-(cid:32)T −1
-(cid:88)
-
-t=0
-
-(17.8)
-
-We estimate the RHS of the equation above by empirical sample trajectories,
-and the estimate is unbiased. The vanilla REINFORCE algorithm iteratively
-updates the parameter by gradient ascent using the estimated gradients.
-
-The quantity
-Interpretation of the policy gradient formula (17.8).
-∇θPθ(τ ) = (cid:80)T −1
-t=0 ∇θ log πθ(at|st) is intuitively the direction of the change
-of θ that will make the trajectory τ more likely to occur (or increase the
-probability of choosing action a0, . . . , at−1), and f (τ ) is the total payoﬀ of
-this trajectory. Thus, by taking a gradient step, intuitively we are trying to
-improve the likelihood of all the trajectories, but with a diﬀerent emphasis
-or weight for each τ (or for each set of actions a0, a1, . . . , at−1). If τ is very
-rewarding (that is, f (τ ) is large), we try very hard to move in the direction
-
-221
-
-that can increase the probability of the trajectory τ (or the direction that
-increases the probability of choosing a0, . . . , at−1), and if τ has low payoﬀ,
-we try less hard with a smaller weight.
-
-An interesting fact that follows from formula (17.3) is that
-
-Eτ ∼Pθ
-
-(cid:34)T −1
-(cid:88)
-
-t=0
-
-(cid:35)
-
-∇θ log πθ(at|st)
-
-= 0
-
-(17.9)
-
-To see this, we take f (τ ) = 1 (that is, the reward is always a constant),
-then the LHS of (17.8) is zero because the payoﬀ is always a ﬁxed constant
-(cid:80)T
-
-t=0 γt. Thus the RHS of (17.8) is also zero, which implies (17.9).
-In fact, one can verify that Eat∼πθ(·|st)∇θ log πθ(at|st) = 0 for any ﬁxed t
-and st.2 This fact has two consequences. First, we can simplify formula (17.8)
-to
-
-∇θη(θ) =
-
-=
-
-T −1
-(cid:88)
-
-t=0
-
-T −1
-(cid:88)
-
-t=0
-
-Eτ ∼Pθ
-
-(cid:34)
-
-(cid:34)
-
-∇θ log πθ(at|st) ·
-
-Eτ ∼Pθ
-
-∇θ log πθ(at|st) ·
-
-where the second equality follows from
-
-(cid:33)(cid:35)
-
-γjR(sj, aj)
-
-(cid:33)(cid:35)
-
-γjR(sj, aj)
-
-(17.10)
-
-(cid:32)T −1
-(cid:88)
-
-j=0
-(cid:32)T −1
-(cid:88)
-
-j≥t
-
-(cid:33)(cid:35)
-
-(cid:34)
-
-Eτ ∼Pθ
-
-∇θ log πθ(at|st) ·
-
-(cid:32)
-
-(cid:88)
-
-0≤j<t
-
-(cid:34)
-
-γjR(sj, aj)
-
-= E
-
-E [∇θ log πθ(at|st)|s0, a0, . . . , st−1, at−1, st] ·
-
-(cid:33)(cid:35)
-
-γjR(sj, aj)
-
-(cid:32)
-
-(cid:88)
-
-0≤j<t
-
-= 0
-
-(because E [∇θ log πθ(at|st)|s0, a0, . . . , st−1, at−1, st] = 0)
-
-Note that here we used the law of total expectation. The outer expecta-
-tion in the second line above is over the randomness of s0, a0, . . . , at−1, st,
-whereas the inner expectation is over the randomness of at (conditioned on
-s0, a0, . . . , at−1, st.) We see that we’ve made the estimator slightly simpler.
-The second consequence of Eat∼πθ(·|st)∇θ log πθ(at|st) = 0 is the following: for
-any value B(st) that only depends on st, it holds that
-
-Eτ ∼Pθ [∇θ log πθ(at|st) · B(st)]
-= E [E [∇θ log πθ(at|st)|s0, a0, . . . , st−1, at−1, st] B(st)]
-= 0
-
-(because E [∇θ log πθ(at|st)|s0, a0, . . . , st−1, at−1, st] = 0)
-
-2In general, it’s true that Ex∼pθ [∇ log pθ(x)] = 0.
-
-222
-
-Again here we used the law of total expectation. The outer expecta-
-tion in the second line above is over the randomness of s0, a0, . . . , at−1, st,
-whereas the inner expectation is over the randomness of at (conditioned on
-s0, a0, . . . , at−1, st.) It follows from equation (17.10) and the equation above
-that
-
-Eτ ∼Pθ
-
-(cid:34)
-
-(cid:34)
-
-∇θη(θ) =
-
-=
-
-T −1
-(cid:88)
-
-t=0
-
-T −1
-(cid:88)
-
-t=0
-
-∇θ log πθ(at|st) ·
-
-(cid:32)T −1
-(cid:88)
-
-γjR(sj, aj) − γtB(st)
-
-(cid:33)(cid:35)
-
-(cid:33)(cid:35)
-
-j≥t
-(cid:32)T −1
-(cid:88)
-
-j≥t
-
-γj−tR(sj, aj) − B(st)
-
-(17.11)
-
-Eτ ∼Pθ
-
-∇θ log πθ(at|st) · γt
-
-(cid:104)(cid:80)T −1
-
-Therefore, we will get a diﬀerent estimator for estimating the ∇η(θ) with a
-diﬀerence choice of B(·). The beneﬁt of introducing a proper B(·) — which
-is often referred to as a baseline — is that it helps reduce the variance of the
-estimator.3 It turns out that a near optimal estimator would be the expected
-(cid:105)
-, which is pretty much the same as the
-future payoﬀ E
-value function V πθ(st) (if we ignore the diﬀerence between ﬁnite and inﬁnite
-horizon.) Here one could estimate the value function V πθ(·) in a crude way,
-because its precise value doesn’t inﬂuence the mean of the estimator but only
-the variance. This leads to a policy gradient algorithm with baselines stated
-in Algorithm 7.4
-
-j≥t γj−tR(sj, aj)|st
-
-3As a heuristic but illustrating example, suppose for a ﬁxed t, the future reward
-(cid:80)T −1
-j≥t γj−tR(sj, aj) randomly takes two values 1000 + 1 and 1000 − 2 with equal proba-
-bility, and the corresponding values for ∇θ log πθ(at|st) are vector z and −z. (Note that
-because E [∇θ log πθ(at|st)] = 0, if ∇θ log πθ(at|st) can only take two values uniformly,
-then the two values have to two vectors in an opposite direction.) In this case, without
-subtracting the baseline, the estimators take two values (1000 + 1)z and −(1000 − 2)z,
-whereas after subtracting a baseline of 1000, the estimator has two values z and 2z. The
-latter estimator has much lower variance compared to the original estimator.
-
-4We note that the estimator of the gradient in the algorithm does not exactly match
-the equation 17.11. If we multiply γt in the summand of equation (17.13), then they will
-exactly match. Removing such discount factors empirically works well because it gives a
-large update.
-
-223
-
-Algorithm 7 Vanilla policy gradient with baseline
-
-for i = 1, · · · do
-
-Collect a set of trajectories by executing the current policy. Use R≥t
-
-as a shorthand for (cid:80)T −1
-
-j≥t γj−tR(sj, aj)
-Fit the baseline by ﬁnding a function B that minimizes
-
-(cid:88)
-
-(cid:88)
-
-(R≥t − B(st))2
-
-τ
-
-t
-
-(17.12)
-
-Update the policy parameter θ with the gradient estimator
-
-(cid:88)
-
-(cid:88)
-
-τ
-
-t
-
-∇θ log πθ(at|st) · (R≥t − B(st))
-
-(17.13)
+Recall that st ∼ Pst−1at−1 and at ∼ πθ(·|st). Also note that 

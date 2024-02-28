@@ -12,10 +12,10 @@ long_text_splitter.text_spliter("stanford_ml_notes")
 
 TEST_FILEPATH = Path("split") / "stanford_ml_notes_chunk0.txt"
 
-with open("prompt.txt", "r") as f:
+with open("prompt.txt", "r", errors='ignore') as f:
     prompt = f.read()
 
-with open(TEST_FILEPATH, "r") as f:
+with open(TEST_FILEPATH, "r", errors='ignore') as f:
     text = f.read()
 
 
@@ -27,5 +27,5 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 
 # Log response in test.log
-with open(f"{__name__}.log", "w+") as f:
+with open(f"test_ask.log", "w+") as f:
     f.write(response.choices[0].message.content)

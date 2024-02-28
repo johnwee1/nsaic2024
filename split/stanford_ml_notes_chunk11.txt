@@ -1,4 +1,299 @@
-i−1] but not any ∂J
+n(z)).
+Then, the standard chain rule gives us that
+
+∀i ∈ {1, . . . , m},
+
+∂J
+∂zi
+
+=
+
+n
+(cid:88)
+
+j=1
+
+∂J
+∂uj
+
+·
+
+∂gj
+∂zi
+
+.
+
+(7.53)
+
+Alternatively, when z and u are both vectors, in a vectorized notation:
+
+∂J
+∂z
+
+=
+
+
+
+
+
+
+∂g1
+∂z1
+
+...
+
+∂g1
+∂zm
+
+· · ·
+. . .
+· · ·
+
+
+
+
+ ·
+
+∂gn
+∂z1
+
+...
+
+∂gn
+∂zm
+
+∂J
+∂u
+
+.
+
+(7.54)
+
+In other words, the backward function is always a linear map from ∂J
+∂u to
+∂J
+∂z , though note that the mapping itself can depend on z in complex ways.
+The matrix on the RHS of (7.54) is actually the transpose of the Jacobian
+matrix of the function g. However, we do not discuss in-depth about Jacobian
+matrices to avoid complications. Part of the reason is that when z is a matrix
+(or tensor), to write an analog of equation (7.54), one has to either ﬂatten z
+into a vector or introduce additional notations on tensor-matrix product. In
+this sense, equation (7.53) is more convenient and eﬀective to use in all cases.
+For example, when z ∈ Rr×s is a matrix, we can easily rewrite equation (7.53)
+
+to
+
+∀i, k,
+
+∂J
+∂zik
+
+=
+
+n
+(cid:88)
+
+j=1
+
+∂J
+∂uj
+
+·
+
+∂gj
+∂zik
+
+.
+
+101
+
+(7.55)
+
+which will indeed be used in some of the derivations in Section 7.4.3.
+
+Key interpretation of the chain rule. We can view the formula above (equa-
+tion (7.53) or (7.54)) as a way to compute ∂J
+∂u . Consider the following
+abstract problem. Suppose J depends on z via u as de�ned in equation (7.52).
+However, suppose the function f is not given or the function f is complex,
+but we are given the value of ∂J
+∂u . Then, the formula in equation (7.54) gives
+∂z from ∂J
+us a way to compute ∂J
+∂u .
+
+∂z from ∂J
+
+∂J
+∂u
+
+chain rule, formula (7.54)
+====================⇒
+only requires info about g(·) and z
+
+∂J
+∂z
+
+.
+
+(7.56)
+
+Moreover, this formula only involves knowledge about g (more precisely ∂gj
+).
+∂zi
+We will repeatedly use this fact in situations where g is a building blocks of
+a complex network f .
+
+Empirically, it’s often useful to modularized the mapping in (7.53) or
+(7.54) into a black-box, and mathematically it’s also convenient to de�ne a
+∂u to ∂J
+notation for it.6 We use B[g, z] to de�ne the function that maps ∂J
+∂z ,
+and write
+
+∂J
+∂z
+
+= B[g, z]
+
+(cid:19)
+
+(cid:18)∂J
+∂u
+
+.
+
+(7.57)
+
+We call B[g, z] the backward function for the module g. Note that when z
+is �xed, B[g, z] is merely a linear map from Rn to Rm. Using equation (7.53),
+we have
+
+(B[g, z](v))i =
+
+m
+(cid:88)
+
+j=1
+
+∂gj
+∂zi
+
+· vj .
+
+Or in vectorized notation, using (7.54), we have
+
+B[g, z](v) =
+
+
+
+
+
+
+∂g1
+∂z1
+
+...
+
+∂g1
+∂zm
+
+· · ·
+. . .
+· · ·
+
+
+
+
+ · v .
+
+∂gn
+∂z1
+
+...
+
+∂gn
+∂zm
+
+6e.g., the function is the .backward() method of the module in pytorch.
+
+(7.58)
+
+(7.59)
+
+102
+
+and therefore B[g, z] can be viewed as a matrix. However, in reality, z will be
+changing and thus the backward mapping has to be recomputed for diﬀerent
+z’s while g is often �xed. Thus, empirically, the backward function B[g, z](v)
+is often viewed as a function which takes in z (=the input to g) and v (=a
+vector that is supposed to be the gradient of some variable J w.r.t to the
+output of g) as the inputs, and outputs a vector that is supposed to be the
+gradient of J w.r.t to z.
+
+7.4.2 General strategy of backpropagation
+
+We discuss the general strategy of auto-diﬀerentiation in this section to build
+a high-level understanding. Then, we will instantiate the approach to con-
+crete neural networks. We take the viewpoint that neural networks are com-
+plex compositions of small building blocks such as MM, σ, Conv2D, LN,
+etc., de�ned in Section 7.3. Note that the losses (e.g., mean-squared loss, or
+the cross-entropy loss) can also be abstractly viewed as additional modules.
+Thus, we can abstractly write the loss function J (on a single example (x, y))
+as a composition of many modules:7
+
+J = Mk(Mk−1(· · · M1(x))) .
+
+(7.60)
+
+For example, for a binary classi�cation problem with a MLP ¯hθ(x) (de-
+�ned in equation (7.36) and (7.37)), the loss function has ber written in the
+form of equation (7.60) with M1 = MMW [1],b[1], M2 = σ, M3 = MMW [2],b[2],
+. . . , and Mk−1 = MMW [r],b[r] and Mk = (cid:96)logistic.
+
+We can see from this example that some modules involve parameters, and
+other modules might only involve a �xed set of operations. For generality,
+we assume that eachj Mi involves a set of parameters θ[i], though θ[i] could
+possibly be an empty set when Mi is a �xed operation such as the nonlinear
+activations. We will discuss more on the granularity of the modularization,
+but so far we assume all the modules Mi’s are simple enough.
+
+We introduce the intermediate variables for the computation in (7.60).
+
+7Technically, we should write J = Mk(Mk−1(· · · M1(x)), y). However, y is treated as a
+constant for the purpose of computing the derivatives w.r.t to the parameters, and thus
+we can view it as part of Mk for the sake of simplicity of notations.
+
+103
+
+Let
+
+u[0] = x
+u[1] = M1(u[0])
+u[2] = M2(u[1])
+
+...
+
+J = u[k] = Mk(u[k−1]) .
+
+(F)
+
+Backpropgation consists of two passes, the forward pass and backward
+pass. In the forward pass, the algorithm simply computes u[1], . . . , u[k] from
+i = 1, . . . , k, sequentially using the de�nition in (F), and save all the in-
+termediate variables u[i]’s in the memory.
+
+In the backward pass, we �rst compute the derivatives w.r.t to the
+intermediate variables, that is,
+∂u[1] , sequentially in this backward
+order, and then compute the derivatives of the parameters ∂J
+∂u[i] and
+u[i−1]. These two type of computations can be also interleaved with each
+other because ∂J
+∂u[k] with
+k < i.
+
+∂u[i] and u[i−1] but not any ∂J
 
 ∂θ[i] only depends on ∂J
 
@@ -10,7 +305,7 @@ i−1] but not any ∂J
 
 ∂J
 
-We ﬁrst see why
+We �rst see why
 
 ∂u[i−1] can be computed eﬃciently from ∂J
 
@@ -81,7 +376,7 @@ layernorm, etc. As we will see, naive implementation of these operations’
 backward functions also have the same runtime as the evaluation of these
 functions.
 
-𝑥...𝑀!𝐽...𝑀"𝑢[!]𝑢["%!]𝜕𝐽𝜕𝐽ℬ[𝑀",𝑢["%!]]𝜕𝐽𝜕𝑢!"#𝑢[&]𝑀&𝑢[&%!]ℬ[𝑀&,𝑢[&%!]]𝜕𝐽𝜕𝑢$"#𝜕𝐽𝜕𝑢$...𝜕𝐽𝜕𝑢#...Forward passBackward passℬ[𝑀!,𝜃!]𝜕𝐽𝜕𝜃#ℬ[𝑀&,𝜃&]𝜕𝐽𝜕𝜃$ℬ[𝑀",𝜃"]𝜕𝐽𝜕𝜃!105
+�...�!�...�"�[!]�["%!]����ℬ[�",�["%!]]����!"#�[&]�&�[&%!]ℬ[�&,�[&%!]]����$"#����$...����#...Forward passBackward passℬ[�!,�!]����#ℬ[�&,�&]����$ℬ[�",�"]����!105
 
 7.4.3 Backward functions for basic modules
 
@@ -285,7 +580,7 @@ the diagonal matrix with λ1, . . . , λm on the diagonal, and (cid:12) denotes 
 element-wise product of two vectors with the same dimension, and σ(cid:48)(·) is
 the element-wise application of the derivative of the activation function σ.
 
-Regarding computation eﬃciency, we note that at the ﬁrst sight, equa-
+Regarding computation eﬃciency, we note that at the �rst sight, equa-
 tion (7.67) appears to indicate the backward function takes O(m2) time, but
 equation (7.69) shows that it’s implementable in O(m) time (which is the
 same as the time for evaluating of the function.) We are not supposed to be
@@ -569,212 +864,4 @@ of the neural network and the backward pass (backpropagation) for multiple
 training examples in matrix notation.
 
 The basic idea.
-The basic idea is simple. Suppose you have a training
-set with three examples x(1), x(2), x(3). The ﬁrst-layer activations for each
-example are as follows:
-
-z[1](1) = W [1]x(1) + b[1]
-z[1](2) = W [1]x(2) + b[1]
-z[1](3) = W [1]x(3) + b[1]
-
-Note the diﬀerence between square brackets [·], which refer to the layer num-
-ber, and parenthesis (·), which refer to the training example number.
-In-
-tuitively, one would implement this using a for loop. It turns out, we can
-vectorize these operations as well. First, deﬁne:
-
-
-
-
-
-X =
-
-|
-
-|
-
-|
-x(1) x(2) x(3)
-|
-
-|
-
-|
-
-
- ∈ Rd×3
-
-(7.81)
-
-Note that we are stacking training examples in columns and not rows. We
-can then combine this into a single uniﬁed formulation:
-
-
-
-
-
-Z [1] =
-
-|
-
-|
-
-|
-z[1](1) z[1](2) z[1](3)
-|
-
-|
-
-|
-
-
- = W [1]X + b[1]
-
-(7.82)
-
-You may notice that we are attempting to add b[1] ∈ R4×1 to W [1]X ∈
-R4×3. Strictly following the rules of linear algebra, this is not allowed. In
-practice however, this addition is performed using broadcasting. We create
-an intermediate ˜b[1] ∈ R4×3:
-
-˜b[1] =
-
-
-
-
-
-|
-b[1]
-|
-
-|
-b[1]
-|
-
-
-
-
-
-|
-b[1]
-|
-
-(7.83)
-
-We can then perform the computation: Z [1] = W [1]X + ˜b[1]. Often times, it
-is not necessary to explicitly construct ˜b[1]. By inspecting the dimensions in
-(7.82), you can assume b[1] ∈ R4×1 is correctly broadcast to W [1]X ∈ R4×3.
-
-The matricization approach as above can easily generalize to multiple
-
-layers, with one subtlety though, as discussed below.
-
-111
-
-Complications/Subtlety in the Implementation. All the deep learn-
-ing packages or implementations put the data points in the rows of a data
-matrix. (If the data point itself is a matrix or tensor, then the data are con-
-centrated along the zero-th dimension.) However, most of the deep learning
-papers use a similar notation to these notes where the data points are treated
-as column vectors.8 There is a simple conversion to deal with the mismatch:
-in the implementation, all the columns become row vectors, row vectors be-
-come column vectors, all the matrices are transposed, and the orders of the
-matrix multiplications are ﬂipped. In the example above, using the row ma-
-jor convention, the data matrix is X ∈ R3×d, the ﬁrst layer weight matrix
-has dimensionality d × m (instead of m × d as in the two layer neural net
-section), and the bias vector b[1] ∈ R1×m. The computation for the hidden
-activation becomes
-
-Z [1] = XW [1] + b[1] ∈ R3×m
-
-(7.84)
-
-8The instructor suspects that this is mostly because in mathematics we naturally mul-
-
-tiply a matrix to a vector on the left hand side.
-
-Part III
-
-Generalization and
-regularization
-
-112
-
-Chapter 8
-
-Generalization
-
-This chapter discusses tools to analyze and understand the generaliza-
-i.e, their performances on unseen test
-tion of machine learning models,
-examples. Recall that for supervised learning problems, given a train-
-ing dataset {(x(i), y(i))}n
-i=1, we typically learn a model hθ by minimizing a
-loss/cost function J(θ), which encourages hθ to ﬁt the data. E.g., when
-the loss function is the least square loss (aka mean squared error), we have
-J(θ) = 1
-i=1(y(i) − hθ(x(i)))2. This loss function for training purposes is
-n
-oftentimes referred to as the training loss/error/cost.
-
-(cid:80)n
-
-However, minimizing the training loss is not our ultimate goal—it is
-merely our approach towards the goal of learning a predictive model. The
-most important evaluation metric of a model is the loss on unseen test exam-
-ples, which is oftentimes referred to as the test error. Formally, we sample a
-test example (x, y) from the so-called test distribution D, and measure the
-model’s error on it, by, e.g., the mean squared error, (hθ(x) − y)2. The ex-
-pected loss/error over the randomness of the test example is called the test
-loss/error,1
-
-L(θ) = E(x,y)∼D[(y − hθ(x))2]
-
-(8.1)
-
-Note that the measurement of the error involves computing the expectation,
-and in practice, it can be approximated by the average error on many sampled
-test examples, which are referred to as the test dataset. Note that the key
-diﬀerence here between training and test datasets is that the test examples
-
-1In theoretical and statistical literature, we oftentimes call the uniform distribution
-over the training set {(x(i), y(i))}n
-i=1, denoted by (cid:98)D, an empirical distribution, and call
-D the population distribution. Partly because of this, the training loss is also referred
-to as the empirical loss/risk/error, and the test loss is also referred to as the population
-loss/risk/error.
-
-113
-
-114
-
-are unseen, in the sense that the training procedure has not used the test
-examples. In classical statistical learning settings, the training examples are
-also drawn from the same distribution as the test distribution D, but still
-the test examples are unseen by the learning procedure whereas the training
-examples are seen.2
-
-Because of this key diﬀerence between training and test datasets, even
-if they are both drawn from the same distribution D, the test error is not
-necessarily always close to the training error.3 As a result, successfully min-
-imizing the training error may not always lead to a small test error. We
-typically say the model overﬁts the data if the model predicts accurately on
-the training dataset but doesn’t generalize well to other test examples, that
-is, if the training error is small but the test error is large. We say the model
-underﬁts the data if the training error is relatively large4 (and in this case,
-typically the test error is also relatively large.)
-
-This chapter studies how the test error is inﬂuenced by the learning pro-
-cedure, especially the choice of model parameterizations. We will decompose
-the test error into “bias” and “variance” terms and study how each of them is
-aﬀected by the choice of model parameterizations and their tradeoﬀs. Using
-the bias-variance tradeoﬀ, we will discuss when overﬁtting and underﬁtting
-will occur and be avoided. We will also discuss the double descent phe-
-nomenon in Section 8.2 and some classical theoretical results in Section 8.3.
-
-2These days, researchers have increasingly been more interested in the setting with
-
-“domain shift”, that is, the training distribution and test distribution are diﬀerent.
-
-3the diﬀerence between test error and training error is often referred to as the gener-
-alization gap. The term generalization error in some literature means the test erro
+The basic idea is simple. Suppose

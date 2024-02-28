@@ -1,8 +1,58 @@
-er of words modeled and hence reducing our computational and space requirements,
+and “buy,� but not
+
+42
+
+“aardvark,� “aardwolf� or “zygmurgy.�2 The set of words encoded into the
+feature vector is called the vocabulary, so the dimension of x is equal to
+the size of the vocabulary.
+
+Having chosen our feature vector, we now want to build a generative
+model. So, we have to model p(x|y). But if we have, say, a vocabulary of
+50000 words, then x ∈ {0, 1}50000 (x is a 50000-dimensional vector of 0’s and
+1’s), and if we were to model x explicitly with a multinomial distribution over
+the 250000 possible outcomes, then we’d end up with a (250000 −1)-dimensional
+parameter vector. This is clearly too many parameters.
+
+To model p(x|y), we will therefore make a very strong assumption. We will
+assume that the xi’s are conditionally independent given y. This assumption
+is called the Naive Bayes (NB) assumption, and the resulting algorithm is
+called the Naive Bayes classi�er. For instance, if y = 1 means spam email;
+“buy� is word 2087 and “price� is word 39831; then we are assuming that if
+I tell you y = 1 (that a particular piece of email is spam), then knowledge
+of x2087 (knowledge of whether “buy� appears in the message) will have no
+eﬀect on your beliefs about the value of x39831 (whether “price� appears).
+More formally, this can be written p(x2087|y) = p(x2087|y, x39831). (Note that
+this is not the same as saying that x2087 and x39831 are independent, which
+would have been written “p(x2087) = p(x2087|x39831)�; rather, we are only
+assuming that x2087 and x39831 are conditionally independent given y.)
+
+We now have:
+
+p(x1, . . . , x50000|y)
+
+= p(x1|y)p(x2|y, x1)p(x3|y, x1, x2) · · · p(x50000|y, x1, . . . , x49999)
+= p(x1|y)p(x2|y)p(x3|y) · · · p(x50000|y)
+
+=
+
+d
+(cid:89)
+
+j=1
+
+p(xj|y)
+
+The �rst equality simply follows from the usual properties of probabilities,
+and the second equality used the NB assumption. We note that even though
+
+2Actually, rather than looking through an English dictionary for the list of all English
+words, in practice it is more common to look through our training set and encode in our
+feature vector only the words that occur at least once there. Apart from reducing the
+number of words modeled and hence reducing our computational and space requirements,
 this also has the advantage of allowing us to model/include as a feature many words
-that may appear in your email (such as “cs229”) but that you won’t ﬁnd in a dictionary.
+that may appear in your email (such as “cs229�) but that you won’t �nd in a dictionary.
 Sometimes (as in the homework), we also exclude the very high frequency words (which
-will be words like “the,” “of,” “and”; these high frequency, “content free” words are called
+will be words like “the,� “of,� “and�; these high frequency, “content free� words are called
 stop words) since they occur in so many documents and do little to indicate whether an
 email is spam or non-spam.
 
@@ -56,11 +106,11 @@ i=1 1{y(i) = 0}
 i=1 1{y(i) = 1}
 n
 
-In the equations above, the “∧” symbol means “and.” The parameters have
+In the equations above, the “∧� symbol means “and.� The parameters have
 a very natural interpretation. For instance, φj|y=1 is just the fraction of the
 spam (y = 1) emails in which word j does appear.
 
-Having ﬁt all these parameters, to make a prediction on a new example
+Having �t all these parameters, to make a prediction on a new example
 
 with features x, we then simply calculate
 
@@ -125,7 +175,7 @@ of the corresponding feature xj to 3. We can then apply the Naive Bayes
 algorithm, and model p(xj|y) with a multinomial distribution, as described
 previously. When the original, continuous-valued attributes are not well-
 modeled by a multivariate normal distribution, discretizing the features and
-using Naive Bayes (instead of GDA) will often result in a better classiﬁer.
+using Naive Bayes (instead of GDA) will often result in a better classi�er.
 
 5
 
@@ -135,19 +185,19 @@ using Naive Bayes (instead of GDA) will often result in a better classiﬁer.
 
 The Naive Bayes algorithm as we have described it will work fairly well
 for many problems, but there is a simple change that makes it work much
-better, especially for text classiﬁcation. Let’s brieﬂy discuss a problem with
-the algorithm in its current form, and then talk about how we can ﬁx it.
+better, especially for text classi�cation. Let’s brieﬂy discuss a problem with
+the algorithm in its current form, and then talk about how we can �x it.
 
-Consider spam/email classiﬁcation, and let’s suppose that, we are in the
+Consider spam/email classi�cation, and let’s suppose that, we are in the
 year of 20xx, after completing CS229 and having done excellent work on the
 project, you decide around May 20xx to submit work you did to the NeurIPS
 conference for publication.3 Because you end up discussing the conference
-in your emails, you also start getting messages with the word “neurips”
-in it. But this is your ﬁrst NeurIPS paper, and until this time, you had
-not previously seen any emails containing the word “neurips”; in particular
-“neurips” did not ever appear in your training set of spam/non-spam emails.
-Assuming that “neurips” was the 35000th word in the dictionary, your Naive
-Bayes spam ﬁlter therefore had picked its maximum likelihood estimates of
+in your emails, you also start getting messages with the word “neurips�
+in it. But this is your �rst NeurIPS paper, and until this time, you had
+not previously seen any emails containing the word “neurips�; in particular
+“neurips� did not ever appear in your training set of spam/non-spam emails.
+Assuming that “neurips� was the 35000th word in the dictionary, your Naive
+Bayes spam �lter therefore had picked its maximum likelihood estimates of
 the parameters φ35000|y to be
 
 φ35000|y=1 =
@@ -173,7 +223,7 @@ i=1 1{y(i) = 0}
 
 = 0
 
-I.e., because it has never seen “neurips” before in either spam or non-spam
+I.e., because it has never seen “neurips� before in either spam or non-spam
 training examples, it thinks the probability of seeing it in either type of email
 is zero. Hence, when trying to decide if one of these messages containing
 
@@ -181,7 +231,7 @@ is zero. Hence, when trying to decide if one of these messages containing
 
 a paper is typically in May-June.
 
-“neurips” is spam, it calculates the class posterior probabilities, and obtains
+“neurips� is spam, it calculates the class posterior probabilities, and obtains
 
 45
 
@@ -204,13 +254,13 @@ j=1 p(xj|y = 0)p(y = 0)
 .
 
 This is because each of the terms “(cid:81)d
-j=1 p(xj|y)” includes a term p(x35000|y) =
+j=1 p(xj|y)� includes a term p(x35000|y) =
 0 that is multiplied into it. Hence, our algorithm obtains 0/0, and doesn’t
 know how to make a prediction.
 
 Stating the problem more broadly, it is statistically a bad idea to esti-
 mate the probability of some event to be zero just because you haven’t seen
-it before in your ﬁnite training set. Take the problem of estimating the mean
+it before in your �nite training set. Take the problem of estimating the mean
 of a multinomial random variable z taking values in {1, . . . , k}. We can pa-
 rameterize our multinomial with φj = p(z = j). Given a set of n independent
 observations {z(1), . . . , z(n)}, the maximum likelihood estimates are given by
@@ -247,7 +297,7 @@ estimated as zero. Under certain (arguably quite strong) conditions, it can
 be shown that the Laplace smoothing actually gives the optimal estimator
 of the φj’s.
 
-Returning to our Naive Bayes classiﬁer, with Laplace smoothing, we
+Returning to our Naive Bayes classi�er, with Laplace smoothing, we
 
 therefore obtain the following estimates of the parameters:
 
@@ -279,17 +329,17 @@ ing to φy or not, since we will typically have a fair fraction each of spam and
 non-spam messages, so φy will be a reasonable estimate of p(y = 1) and will
 be quite far from 0 anyway.)
 
-4.2.2 Event models for text classiﬁcation
+4.2.2 Event models for text classi�cation
 
 To close oﬀ our discussion of generative learning algorithms, let’s talk about
-one more model that is speciﬁcally for text classiﬁcation. While Naive Bayes
-as we’ve presented it will work well for many classiﬁcation problems, for text
-classiﬁcation, there is a related model that does even better.
+one more model that is speci�cally for text classi�cation. While Naive Bayes
+as we’ve presented it will work well for many classi�cation problems, for text
+classi�cation, there is a related model that does even better.
 
-In the speciﬁc context of text classiﬁcation, Naive Bayes as presented uses
+In the speci�c context of text classi�cation, Naive Bayes as presented uses
 the what’s called the Bernoulli event model (or sometimes multi-variate
 Bernoulli event model). In this model, we assumed that the way an email
-is generated is that ﬁrst it is randomly determined (according to the class
+is generated is that �rst it is randomly determined (according to the class
 priors p(y)) whether a spammer or non-spammer will send you your next
 message. Then, the person sending the email runs through the dictionary,
 deciding whether to include each word j in that email independently and
@@ -304,14 +354,14 @@ representing emails. We let xj denote the identity of the j-th word in the
 email. Thus, xj is now an integer taking values in {1, . . . , |V |}, where |V |
 is the size of our vocabulary (dictionary). An email of d words is now rep-
 resented by a vector (x1, x2, . . . , xd) of length d; note that d can vary for
-diﬀerent documents. For instance, if an email starts with “A NeurIPS . . . ,”
-then x1 = 1 (“a” is the ﬁrst word in the dictionary), and x2 = 35000 (if
-“neurips” is the 35000th word in the dictionary).
+diﬀerent documents. For instance, if an email starts with “A NeurIPS . . . ,�
+then x1 = 1 (“a� is the �rst word in the dictionary), and x2 = 35000 (if
+“neurips� is the 35000th word in the dictionary).
 
 In the multinomial event model, we assume that the way an email is
-generated is via a random process in which spam/non-spam is ﬁrst deter-
+generated is via a random process in which spam/non-spam is �rst deter-
 mined (according to p(y)) as before. Then, the sender of the email writes the
-email by ﬁrst generating x1 from some multinomial distribution over words
+email by �rst generating x1 from some multinomial distribution over words
 (p(x1|y)). Next, the second word x2 is chosen independently of x1 but from
 the same multinomial distribution, and similarly for x3, x4, and so on, until
 all d words of the email have been generated. Thus, the overall probability of
@@ -438,9 +488,9 @@ i=1
 
 i=1
 
-While not necessarily the very best classiﬁcation algorithm, the Naive Bayes
-classiﬁer often works surprisingly well. It is often also a very good “ﬁrst thing
-to try,” given its simplicity and ease of implementation.
+While not necessarily the very best classi�cation algorithm, the Naive Bayes
+classi�er often works surprisingly well. It is often also a very good “�rst thing
+to try,� given its simplicity and ease of implementation.
 
 Chapter 5
 
@@ -450,15 +500,15 @@ Kernel methods
 
 Recall that in our discussion about linear regression, we considered the prob-
 lem of predicting the price of a house (denoted by y) from the living area of
-the house (denoted by x), and we ﬁt a linear function of x to the training
+the house (denoted by x), and we �t a linear function of x to the training
 data. What if the price y can be more accurately represented as a non-linear
 function of x? In this case, we need a more expressive family of models than
 linear models.
 
-We start by considering ﬁtting cubic functions y = θ3x3 + θ2x2 + θ1x + θ0.
+We start by considering �tting cubic functions y = θ3x3 + θ2x2 + θ1x + θ0.
 It turns out that we can view the cubic function as a linear function over
-the a diﬀerent set of feature variables (deﬁned below). Concretely, let the
-function φ : R → R4 be deﬁned as
+the a diﬀerent set of feature variables (de�ned below). Concretely, let the
+function φ : R → R4 be de�ned as
 
 φ(x) =
 
@@ -491,7 +541,7 @@ rewrite the cubic function in x as:
 
 Thus, a cubic function of the variable x can be viewed as a linear function
 over the variables φ(x). To distinguish between these two sets of variables,
-in the context of kernel methods, we will call the “original” input value the
+in the context of kernel methods, we will call the “original� input value the
 input attributes of a problem (in this case, x, the living area). When the
 
 48
@@ -505,9 +555,9 @@ call φ a feature map, which maps the attributes to the features.
 
 5.2 LMS (least mean squares) with features
 
-We will derive the gradient descent algorithm for ﬁtting the model θT φ(x).
-First recall that for ordinary least square problem where we were to ﬁt θT x,
-the batch gradient descent update is (see the ﬁrst lecture note for its deriva-
+We will derive the gradient descent algorithm for �tting the model θT φ(x).
+First recall that for ordinary least square problem where we were to �t θT x,
+the batch gradient descent update is (see the �rst lecture note for its deriva-
 tion):
 
 θ := θ + α
@@ -530,157 +580,4 @@ i=1
 (5.2)
 
 Let φ : Rd → Rp be a feature map that maps attribute x (in Rd) to the
-features φ(x) in Rp. (In the motivating example in the previous subsection,
-we have d = 1 and p = 4.) Now our goal is to ﬁt the function θT φ(x), with
-θ being a vector in Rp instead of Rd. We can replace all the occurrences of
-x(i) in the algorithm above by φ(x(i)) to obtain the new update:
-
-θ := θ + α
-
-n
-(cid:88)
-
-i=1
-
-(cid:0)y(i) − θT φ(x(i))(cid:1) φ(x(i))
-
-Similarly, the corresponding stochastic gradient descent update rule is
-
-θ := θ + α (cid:0)y(i) − θT φ(x(i))(cid:1) φ(x(i))
-
-(5.3)
-
-(5.4)
-
-5.3 LMS with the kernel trick
-
-The gradient descent update, or stochastic gradient update above becomes
-computationally expensive when the features φ(x) is high-dimensional. For
-example, consider the direct extension of the feature map in equation (5.1)
-to high-dimensional input x: suppose x ∈ Rd, and let φ(x) be the vector that
-
-50
-
-(5.5)
-
-contains all the monomials of x with degree ≤ 3
-
-φ(x) =
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1
-x1
-x2
-...
-x2
-1
-x1x2
-x1x3
-...
-x2x1
-...
-x3
-1
-x2
-1x2
-...
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-.
-
-The dimension of the features φ(x) is on the order of d3.1 This is a pro-
-hibitively long vector for computational purpose — when d = 1000, each
-update requires at least computing and storing a 10003 = 109 dimensional
-vector, which is 106 times slower than the update rule for for ordinary least
-squares updates (5.2).
-
-It may appear at ﬁrst that such d3 runtime per update and memory usage
-are inevitable, because the vector θ itself is of dimension p ≈ d3, and we may
-need to update every entry of θ and store it. However, we will introduce the
-kernel trick with which we will not need to store θ explicitly, and the runtime
-can be signiﬁcantly improved.
-
-For simplicity, we assume the initialize the value θ = 0, and we focus
-on the iterative update (5.3). The main observation is that at any time, θ
-can be represented as a linear combination of the vectors φ(x(1)), . . . , φ(x(n)).
-Indeed, we can show this inductively as follows. At initialization, θ = 0 =
-(cid:80)n
-
-i=1 0 · φ(x(i)). Assume at some point, θ can be represented as
-
-θ =
-
-n
-(cid:88)
-
-i=1
-
-βiφ(x(i))
-
-(5.6)
-
-1Here, for simplicity, we include all the monomials with repetitions (so that, e.g., x1x2x3
-and x2x3x1 both appear in φ(x)). Therefore, there are totally 1 + d + d2 + d3 entries in
-φ(x).
-
-51
-
-for some β1, . . . , βn ∈ R. Then we claim that in the next round, θ is still a
-linear combination of φ(x(1)), . . . , φ(x(n)) because
-
-θ := θ + α
-
-n
-(cid
+features φ(x) in Rp. (In the motivating

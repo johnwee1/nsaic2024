@@ -1,5 +1,62 @@
-nction, the vector t here, are often called log-
-its. Note that by deﬁnition, the output of the softmax function is always a
+ . , φk specifying the probability of each of the
+outcomes. Note that these numbers must satisfy (cid:80)k
+i=1 φi = 1. We will de-
+sign a parameterized model that outputs φ1, . . . , φk satisfying this constraint
+given the input x.
+
+We introduce k groups of parameters θ1, . . . , θk, each of them being a
+k x to represent
+
+Intuitively, we would like to use θ(cid:62)
+
+1 x, . . . , θ(cid:62)
+
+vector in Rd.
+
+25
+
+φ1, . . . , φk, the probabilities P (y = 1 | x; θ), . . . , P (y = k | x; θ). However,
+there are two issues with such a direct approach. First, θ(cid:62)
+j x is not neces-
+sarily within [0, 1]. Second, the summation of θ(cid:62)
+j x’s is not necessarily 1.
+1 x, · · · , θ(cid:62)
+Thus, instead, we will use the softmax function to turn (θ(cid:62)
+k x) into
+a probability vector with nonnegative entries that sum up to 1.
+
+De�ne the softmax function softmax : Rk → Rk as
+
+
+
+
+softmax(t1, . . . , tk) =
+
+
+
+
+
+.
+
+
+
+
+
+(2.9)
+
+(cid:80)k
+
+exp(t1)
+j=1 exp(tj )
+...
+
+exp(tk)
+j=1 exp(tj )
+
+(cid:80)k
+
+The inputs to the softmax function, the vector t here, are often called log-
+its. Note that by de�nition, the output of the softmax function is always a
 probability vector whose entries are nonnegative and sum up to 1.
 
 Let (t1, . . . , tk) = (θ(cid:62)
@@ -146,7 +203,7 @@ j x(i))
 
 (2.13)
 
-It’s convenient to deﬁne the cross-entropy loss (cid:96)ce : Rk × {1, . . . , k} → R≥0,
+It’s convenient to de�ne the cross-entropy loss (cid:96)ce : Rk × {1, . . . , k} → R≥0,
 which modularizes in the complex equation above:1
 
 26
@@ -268,7 +325,7 @@ s x(j))
 
 1There are some ambiguity in the naming here. Some people call the cross-entropy loss
 the function that maps the probability vector (the φ in our language) and label y to the
-ﬁnal real number, and call our version of cross-entropy loss softmax-cross-entropy loss.
+�nal real number, and call our version of cross-entropy loss softmax-cross-entropy loss.
 We choose our current naming convention because it’s consistent with the naming of most
 modern deep learning library such as PyTorch and Jax.
 
@@ -279,9 +336,9 @@ modern deep learning library such as PyTorch and Jax.
 Returning to logistic regression with g(z) being the sigmoid function, let’s
 now talk about a diﬀerent algorithm for maximizing (cid:96)(θ).
 
-To get us started, let’s consider Newton’s method for ﬁnding a zero of a
-function. Speciﬁcally, suppose we have some function f : R (cid:55)→ R, and we
-wish to ﬁnd a value of θ so that f (θ) = 0. Here, θ ∈ R is a real number.
+To get us started, let’s consider Newton’s method for �nding a zero of a
+function. Speci�cally, suppose we have some function f : R (cid:55)→ R, and we
+wish to �nd a value of θ so that f (θ) = 0. Here, θ ∈ R is a real number.
 Newton’s method performs the following update:
 
 θ := θ −
@@ -297,18 +354,18 @@ the current guess θ, solving for where that linear function equals to zero, and
 letting the next guess for θ be where that linear function is zero.
 
 Here’s a picture of the Newton’s method in action:
-In the leftmost ﬁgure, we see the function f plotted along with the line
-y = 0. We’re trying to ﬁnd θ so that f (θ) = 0; the value of θ that achieves this
+In the leftmost �gure, we see the function f plotted along with the line
+y = 0. We’re trying to �nd θ so that f (θ) = 0; the value of θ that achieves this
 is about 1.3. Suppose we initialized the algorithm with θ = 4.5. Newton’s
-method then ﬁts a straight line tangent to f at θ = 4.5, and solves for the
-where that line evaluates to 0. (Middle ﬁgure.) This give us the next guess
-for θ, which is about 2.8. The rightmost ﬁgure shows the result of running
+method then �ts a straight line tangent to f at θ = 4.5, and solves for the
+where that line evaluates to 0. (Middle �gure.) This give us the next guess
+for θ, which is about 2.8. The rightmost �gure shows the result of running
 one more iteration, which the updates θ to about 1.8. After a few more
 iterations, we rapidly approach θ = 1.3.
 
 Newton’s method gives a way of getting to f (θ) = 0. What if we want to
 use it to maximize some function (cid:96)? The maxima of (cid:96) correspond to points
-where its ﬁrst derivative (cid:96)(cid:48)(θ) is zero. So, by letting f (θ) = (cid:96)(cid:48)(θ), we can use
+where its �rst derivative (cid:96)(cid:48)(θ) is zero. So, by letting f (θ) = (cid:96)(cid:48)(θ), we can use
 the same algorithm to maximize (cid:96), and we obtain update rule:
 
 θ := θ −
@@ -345,7 +402,7 @@ Hij =
 Newton’s method typically enjoys faster convergence than (batch) gra-
 dient descent, and requires many fewer iterations to get very close to the
 minimum. One iteration of Newton’s can, however, be more expensive than
-one iteration of gradient descent, since it requires ﬁnding and inverting an
+one iteration of gradient descent, since it requires �nding and inverting an
 d-by-d Hessian; but so long as d is not too large, it is usually much faster
 overall. When Newton’s method is applied to maximize the logistic regres-
 sion log likelihood function (cid:96)(θ), the resulting method is also called Fisher
@@ -355,18 +412,18 @@ scoring.
 
 Generalized linear models
 
-So far, we’ve seen a regression example, and a classiﬁcation example. In the
-regression example, we had y|x; θ ∼ N (µ, σ2), and in the classiﬁcation one,
-y|x; θ ∼ Bernoulli(φ), for some appropriate deﬁnitions of µ and φ as functions
+So far, we’ve seen a regression example, and a classi�cation example. In the
+regression example, we had y|x; θ ∼ N (µ, σ2), and in the classi�cation one,
+y|x; θ ∼ Bernoulli(φ), for some appropriate de�nitions of µ and φ as functions
 of x and θ.
 In this section, we will show that both of these methods are
 special cases of a broader family of models, called Generalized Linear Models
 (GLMs).1 We will also show how other models in the GLM family can be
-derived and applied to other classiﬁcation and regression problems.
+derived and applied to other classi�cation and regression problems.
 
 3.1 The exponential family
 
-To work our way up to GLMs, we will begin by deﬁning exponential family
+To work our way up to GLMs, we will begin by de�ning exponential family
 distributions. We say that a class of distributions is in the exponential family
 if it can be written in the form
 
@@ -381,7 +438,7 @@ partition function. The quantity e−a(η) essentially plays the role of a nor-
 malization constant, that makes sure the distribution p(y; η) sums/integrates
 over y to 1.
 
-A ﬁxed choice of T , a and b deﬁnes a family (or set) of distributions that
+A �xed choice of T , a and b de�nes a family (or set) of distributions that
 is parameterized by η; as we vary η, we then get diﬀerent distributions within
 this family.
 
@@ -395,7 +452,7 @@ Nelder, Generalized Linear Models (2nd ed.).
 
 We now show that the Bernoulli and the Gaussian distributions are ex-
 amples of exponential family distributions. The Bernoulli distribution with
-mean φ, written Bernoulli(φ), speciﬁes a distribution over y ∈ {0, 1}, so that
+mean φ, written Bernoulli(φ), speci�es a distribution over y ∈ {0, 1}, so that
 p(y = 1; φ) = φ; p(y = 0; φ) = 1 − φ. As we vary φ, we obtain Bernoulli
 distributions with diﬀerent means. We now show that this class of Bernoulli
 distributions, ones obtained by varying φ, is in the exponential family; i.e.,
@@ -426,7 +483,7 @@ y + log(1 − φ)
 1 − φ
 
 Thus, the natural parameter is given by η = log(φ/(1 − φ)). Interestingly, if
-we invert this deﬁnition for η by solving for φ in terms of η, we obtain φ =
+we invert this de�nition for η by solving for φ in terms of η, we obtain φ =
 1/(1 + e−η). This is the familiar sigmoid function! This will come up again
 when we derive logistic regression as a GLM. To complete the formulation
 of the Bernoulli distribution as an exponential family distribution, we also
@@ -443,16 +500,16 @@ This shows that the Bernoulli distribution can be written in the form of
 Equation (3.1), using an appropriate choice of T , a and b.
 
 Let’s now move on to consider the Gaussian distribution. Recall that,
-when deriving linear regression, the value of σ2 had no eﬀect on our ﬁnal
+when deriving linear regression, the value of σ2 had no eﬀect on our �nal
 choice of θ and hθ(x). Thus, we can choose an arbitrary value for σ2 without
 changing anything. To simplify the derivation below, let’s set σ2 = 1.2 We
 
 2If we leave σ2 as a variable, the Gaussian distribution can also be shown to be in the
 exponential family, where η ∈ R2 is now a 2-dimension vector that depends on both µ and
 σ. For the purposes of GLMs, however, the σ2 parameter can also be treated by considering
-a more general deﬁnition of the exponential family: p(y; η, τ ) = b(a, τ ) exp((ηT T (y) −
+a more general de�nition of the exponential family: p(y; η, τ ) = b(a, τ ) exp((ηT T (y) −
 a(η))/c(τ )). Here, τ is called the dispersion parameter, and for the Gaussian, c(τ ) = σ2;
-but given our simpliﬁcation above, we won’t need the more general deﬁnition for the
+but given our simpli�cation above, we won’t need the more general de�nition for the
 examples we will consider here.
 
 then have:
@@ -525,7 +582,7 @@ elling count-data; also see the problem set); the gamma and the exponen-
 tial (for modelling continuous, non-negative random variables, such as time-
 intervals); the beta and the Dirichlet (for distributions over probabilities);
 and many more.
-In the next section, we will describe a general “recipe”
+In the next section, we will describe a general “recipe�
 for constructing models in which y (given x and θ) comes from any of these
 distributions.
 
@@ -541,7 +598,7 @@ exponential family distribution, so we can apply a Generalized Linear Model
 (GLM). In this section, we will we will describe a method for constructing
 GLM models for problems such as these.
 
-More generally, consider a classiﬁcation or regression problem where we
+More generally, consider a classi�cation or regression problem where we
 would like to predict the value of some random variable y as a function of
 x. To derive a GLM for this problem, we will make the following three
 assumptions about the conditional distribution of y given x and about our
@@ -557,7 +614,7 @@ y follows some exponential family distribution, with parameter η.
 In most of our examples, we will have T (y) = y, so this means we
 would like the prediction h(x) output by our learned hypothesis h to
 satisfy h(x) = E[y|x].
-(Note that this assumption is satisﬁed in the
+(Note that this assumption is satis�ed in the
 choices for hθ(x) for both logistic regression and linear regression. For
 instance, in logistic regression, we had hθ(x) = p(y = 1|x; θ) = 0 · p(y =
 0|x; θ) + 1 · p(y = 1|x; θ) = E[y|x; θ].)
@@ -568,8 +625,8 @@ instance, in logistic regression, we had hθ(x) = p(y = 1|x; θ) = 0 · p(y =
 
 i x.)
 
-The third of these assumptions might seem the least well justiﬁed of
-the above, and it might be better thought of as a “design choice” in our
+The third of these assumptions might seem the least well justi�ed of
+the above, and it might be better thought of as a “design choice� in our
 recipe for designing GLMs, rather than as an assumption per se. These
 three assumptions/design choices will allow us to derive a very elegant class
 of learning algorithms, namely GLMs, that have many desirable properties
@@ -585,42 +642,4 @@ of models, consider the setting where the target variable y (also called the
 response variable in GLM terminology) is continuous, and we model the
 conditional distribution of y given x as a Gaussian N (µ, σ2). (Here, µ may
 depend x.) So, we let the ExponentialF amily(η) distribution above be
-the Gaussian distribution. As we saw previously, in the formulation of the
-Gaussian as an exponential family distribution, we had µ = η. So, we have
-
-hθ(x) = E[y|x; θ]
-= µ
-= η
-= θT x.
-
-The ﬁrst equality follows from Assumption 2, above; the second equality
-follows from the fact that y|x; θ ∼ N (µ, σ2), and so its expected value is given
-
-33
-
-by µ; the third equality follows from Assumption 1 (and our earlier derivation
-showing that µ = η in the formulation of the Gaussian as an exponential
-family distribution); and the last equality follows from Assumption 3.
-
-3.2.2 Logistic regression
-
-We now consider logistic regression. Here we are interested in binary classiﬁ-
-cation, so y ∈ {0, 1}. Given that y is binary-valued, it therefore seems natural
-to choose the Bernoulli family of distributions to model the conditional dis-
-tribution of y given x. In our formulation of the Bernoulli distribution as
-an exponential family distribution, we had φ = 1/(1 + e−η). Furthermore,
-note that if y|x; θ ∼ Bernoulli(φ), then E[y|x; θ] = φ. So, following a similar
-derivation as the one for ordinary least squares, we get:
-
-hθ(x) = E[y|x; θ]
-= φ
-= 1/(1 + e−η)
-= 1/(1 + e−θT x)
-
-So, this gives us hypothesis functions of the form hθ(x) = 1/(1 + e−θT x). If
-you are previously wondering how we came up with the form of the logistic
-function 1/(1 + e−z), this gives one answer: Once we assume that y condi-
-tioned on x is Bernoulli, it arises as a consequence of the deﬁnition of GLMs
-and exponential family distributions.
-
-To introduce a little more terminology, the function 
+the Gaussian distribution. As we saw pr
