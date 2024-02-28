@@ -1,0 +1,700 @@
+Supervised learning
+
+
+Let’s start by talking about a few examples of supervised learning prob-
+lems. Suppose we have a dataset giving the living areas and prices of 47
+houses from Portland, Oregon:
+
+Living area (feet2) Price (1000$s)
+
+6
+
+2104
+1600
+2400
+1416
+3000
+...
+
+400
+330
+369
+232
+540
+...
+
+We can plot this data:
+
+Given data like this, how can we learn to predict the prices of other houses
+
+in Portland, as a function of the size of their living areas?
+
+To establish notation for future use, we’ll use x(i) to denote the “input”
+variables (living area in this example), also called input features, and y(i)
+to denote the “output” or target variable that we are trying to predict
+(price). A pair (x(i), y(i)) is called a training example, and the dataset
+that we’ll be using to learn—a list of n training examples {(x(i), y(i)); i =
+1, . . . , n}—is called a training set. Note that the superscript “(i)” in the
+notation is simply an index into the training set, and has nothing to do with
+exponentiation. We will also use X denote the space of input values, and Y
+the space of output values. In this example, X = Y = R.
+
+To describe the supervised learning problem slightly more formally, our
+goal is, given a training set, to learn a function h : X (cid:55)→ Y so that h(x) is a
+“good” predictor for the corresponding value of y. For historical reasons, this
+
+50010001500200025003000350040004500500001002003004005006007008009001000housing pricessquare feetprice (in $1000)function h is called a hypothesis. Seen pictorially, the process is therefore
+like this:
+
+7
+
+When the target variable that we’re trying to predict is continuous, such
+as in our housing example, we call the learning problem a regression prob-
+lem. When y can take on only a small number of discrete values (such as
+if, given the living area, we wanted to predict if a dwelling is a house or an
+apartment, say), we call it a classiﬁcation problem.
+
+Training     set house.)(living area ofLearning algorithmhpredicted yx(predicted price)of house)Chapter 1
+
+Linear regression
+
+To make our housing example more interesting, let’s consider a slightly richer
+dataset in which we also know the number of bedrooms in each house:
+
+Living area (feet2) #bedrooms Price (1000$s)
+
+2104
+1600
+2400
+1416
+3000
+...
+
+3
+3
+3
+2
+4
+...
+
+400
+330
+369
+232
+540
+...
+
+Here, the x’s are two-dimensional vectors in R2. For instance, x(i)
+is the
+1
+living area of the i-th house in the training set, and x(i)
+is its number of
+2
+bedrooms. (In general, when designing a learning problem, it will be up to
+you to decide what features to choose, so if you are out in Portland gathering
+housing data, you might also decide to include other features such as whether
+each house has a ﬁreplace, the number of bathrooms, and so on. We’ll say
+more about feature selection later, but for now let’s take the features as
+given.)
+
+To perform supervised learning, we must decide how we’re going to rep-
+resent functions/hypotheses h in a computer. As an initial choice, let’s say
+we decide to approximate y as a linear function of x:
+
+hθ(x) = θ0 + θ1x1 + θ2x2
+
+Here, the θi’s are the parameters (also called weights) parameterizing the
+space of linear functions mapping from X to Y. When there is no risk of
+
+8
+
+confusion, we will drop the θ subscript in hθ(x), and write it more simply as
+h(x). To simplify our notation, we also introduce the convention of letting
+x0 = 1 (this is the intercept term), so that
+
+9
+
+h(x) =
+
+d
+(cid:88)
+
+i=0
+
+θixi = θT x,
+
+where on the right-hand side above we are viewing θ and x both as vectors,
+and here d is the number of input variables (not counting x0).
+
+Now, given a training set, how do we pick, or learn, the parameters θ?
+One reasonable method seems to be to make h(x) close to y, at least for
+the training examples we have. To formalize this, we will deﬁne a function
+that measures, for each value of the θ’s, how close the h(x(i))’s are to the
+corresponding y(i)’s. We deﬁne the cost function:
+
+J(θ) =
+
+1
+2
+
+n
+(cid:88)
+
+i=1
+
+(hθ(x(i)) − y(i))2.
+
+If you’ve seen linear regression before, you may recognize this as the familiar
+least-squares cost function that gives rise to the ordinary least squares
+regression model. Whether or not you have seen it previously, let’s keep
+going, and we’ll eventually show this to be a special case of a much broader
+family of algorithms.
+
+1.1 LMS algorithm
+
+We want to choose θ so as to minimize J(θ). To do so, let’s use a search
+algorithm that starts with some “initial guess” for θ, and that repeatedly
+changes θ to make J(θ) smaller, until hopefully we converge to a value of
+θ that minimizes J(θ). Speciﬁcally, let’s consider the gradient descent
+algorithm, which starts with some initial θ, and repeatedly performs the
+update:
+
+θj := θj − α
+
+J(θ).
+
+∂
+∂θj
+
+(This update is simultaneously performed for all values of j = 0, . . . , d.)
+Here, α is called the learning rate. This is a very natural algorithm that
+repeatedly takes a step in the direction of steepest decrease of J.
+
+In order to implement this algorithm, we have to work out what is the
+partial derivative term on the right hand side. Let’s ﬁrst work it out for the
+
+case of if we have only one training example (x, y), so that we can neglect
+the sum in the deﬁnition of J. We have:
+
+10
+
+∂
+∂θj
+
+J(θ) =
+
+(hθ(x) − y)2
+
+1
+∂
+∂θj
+2
+1
+2
+
+= 2 ·
+
+(hθ(x) − y) ·
+
+(hθ(x) − y)
+
+∂
+∂θj
+(cid:32) d
+
+(cid:88)
+
+i=0
+
+(cid:33)
+
+θixi − y
+
+= (hθ(x) − y) ·
+
+∂
+∂θj
+
+= (hθ(x) − y) xj
+
+For a single training example, this gives the update rule:1
+
+θj := θj + α (cid:0)y(i) − hθ(x(i))(cid:1) x(i)
+j .
+
+The rule is called the LMS update rule (LMS stands for “least mean squares”),
+and is also known as the Widrow-Hoﬀ learning rule. This rule has several
+properties that seem natural and intuitive. For instance, the magnitude of
+the update is proportional to the error term (y(i) − hθ(x(i))); thus, for in-
+stance, if we are encountering a training example on which our prediction
+nearly matches the actual value of y(i), then we ﬁnd that there is little need
+to change the parameters; in contrast, a larger change to the parameters will
+be made if our prediction hθ(x(i)) has a large error (i.e., if it is very far from
+y(i)).
+
+We’d derived the LMS rule for when there was only a single training
+example. There are two ways to modify this method for a training set of
+more than one example. The ﬁrst is replace it with the following algorithm:
+
+Repeat until convergence {
+
+θj := θj + α
+
+n
+(cid:88)
+
+i=1
+
+(cid:0)y(i) − hθ(x(i))(cid:1) x(i)
+
+j , (for every j)
+
+(1.1)
+
+}
+
+1We use the notation “a := b” to denote an operation (in a computer program) in
+which we set the value of a variable a to be equal to the value of b. In other words, this
+operation overwrites a with the value of b. In contrast, we will write “a = b” when we are
+asserting a statement of fact, that the value of a is equal to the value of b.
+
+11
+
+By grouping the updates of the coordinates into an update of the vector
+
+θ, we can rewrite update (1.1) in a slightly more succinct way:
+
+θ := θ + α
+
+n
+(cid:88)
+
+i=1
+
+(cid:0)y(i) − hθ(x(i))(cid:1) x(i)
+
+The reader can easily verify that the quantity in the summation in the
+update rule above is just ∂J(θ)/∂θj (for the original deﬁnition of J). So, this
+is simply gradient descent on the original cost function J. This method looks
+at every example in the entire training set on every step, and is called batch
+gradient descent. Note that, while gradient descent can be susceptible
+to local minima in general, the optimization problem we have posed here
+for linear regression has only one global, and no other local, optima; thus
+gradient descent always converges (assuming the learning rate α is not too
+Indeed, J is a convex quadratic function.
+large) to the global minimum.
+Here is an example of gradient descent as it is run to minimize a quadratic
+function.
+
+The ellipses shown above are the contours of a quadratic function. Also
+shown is the trajectory taken by gradient descent, which was initialized at
+(48,30). The x’s in the ﬁgure (joined by straight lines) mark the successive
+values of θ that gradient descent went through.
+
+When we run batch gradient descent to ﬁt θ on our previous dataset,
+to learn to predict housing price as a function of living area, we obtain
+θ0 = 71.27, θ1 = 0.1345. If we plot hθ(x) as a function of x (area), along
+with the training data, we obtain the following ﬁgure:
+
+5101520253035404550510152025303540455012
+
+If the number of bedrooms were included as one of the input features as well,
+we get θ0 = 89.60, θ1 = 0.1392, θ2 = −8.738.
+
+The above results were obtained with batch gradient descent. There is
+an alternative to batch gradient descent that also works very well. Consider
+the following algorithm:
+
+Loop {
+
+for i = 1 to n, {
+
+θj := θj + α (cid:0)y(i) − hθ(x(i))(cid:1) x(i)
+j ,
+
+(for every j)
+
+(1.2)
+
+}
+
+}
+
+By grouping the updates of the coordinates into an update of the vector
+
+θ, we can rewrite update (1.2) in a slightly more succinct way:
+
+θ := θ + α (cid:0)y(i) − hθ(x(i))(cid:1) x(i)
+
+In this algorithm, we repeatedly run through the training set, and each
+time we encounter a training example, we update the parameters according
+to the gradient of the error with respect to that single training example only.
+This algorithm is called stochastic gradient descent (also incremental
+gradient descent). Whereas batch gradient descent has to scan through
+the entire training set before taking a single step—a costly operation if n is
+large—stochastic gradient descent can start making progress right away, and
+
+50010001500200025003000350040004500500001002003004005006007008009001000housing pricessquare feetprice (in $1000)13
+
+continues to make progress with each example it looks at. Often, stochastic
+gradient descent gets θ “close” to the minimum much faster than batch gra-
+dient descent. (Note however that it may never “converge” to the minimum,
+and the parameters θ will keep oscillating around the minimum of J(θ); but
+in practice most of the values near the minimum will be reasonably good
+approximations to the true minimum.2) For these reasons, particularly when
+the training set is large, stochastic gradient descent is often preferred over
+batch gradient descent.
+
+1.2 The normal equations
+
+Gradient descent gives one way of minimizing J. Let’s discuss a second way
+of doing so, this time performing the minimization explicitly and without
+resorting to an iterative algorithm. In this method, we will minimize J by
+explicitly taking its derivatives with respect to the θj’s, and setting them to
+zero. To enable us to do this without having to write reams of algebra and
+pages full of matrices of derivatives, let’s introduce some notation for doing
+calculus with matrices.
+
+1.2.1 Matrix derivatives
+
+For a function f : Rn×d (cid:55)→ R mapping from n-by-d matrices to the real
+numbers, we deﬁne the derivative of f with respect to A to be:
+
+∇Af (A) =
+
+
+
+
+
+
+∂f
+∂A11
+
+...
+
+∂f
+∂An1
+
+· · ·
+. . .
+· · ·
+
+
+
+
+
+
+∂f
+∂A1d
+
+...
+
+∂f
+∂And
+
+Thus, the gradient ∇Af (A) is itself an n-by-d matrix, whose (i, j)-element is
+
+(cid:20) A11 A12
+A21 A22
+
+(cid:21)
+
+is a 2-by-2 matrix, and
+
+∂f /∂Aij. For example, suppose A =
+the function f : R2×2 (cid:55)→ R is given by
+
+f (A) =
+
+3
+2
+
+A11 + 5A2
+
+12 + A21A22.
+
+2By slowly letting the learning rate α decrease to zero as the algorithm runs, it is also
+possible to ensure that the parameters will converge to the global minimum rather than
+merely oscillate around the minimum.
+
+14
+
+Here, Aij denotes the (i, j) entry of the matrix A. We then have
+
+∇Af (A) =
+
+(cid:20)
+
+3
+2
+A22
+
+(cid:21)
+
+.
+
+10A12
+A21
+
+1.2.2 Least squares revisited
+
+Armed with the tools of matrix derivatives, let us now proceed to ﬁnd in
+closed-form the value of θ that minimizes J(θ). We begin by re-writing J in
+matrix-vectorial notation.
+
+Given a training set, deﬁne the design matrix X to be the n-by-d matrix
+(actually n-by-d + 1, if we include the intercept term) that contains the
+training examples’ input values in its rows:
+
+X =
+
+
+
+
+
+
+
+
+— (x(1))T —
+— (x(2))T —
+...
+— (x(n))T —
+
+
+
+
+
+
+
+
+.
+
+Also, let (cid:126)y be the n-dimensional vector containing all the target values from
+the training set:
+
+
+
+(cid:126)y =
+
+
+
+
+
+
+
+
+.
+
+
+
+
+
+
+y(1)
+y(2)
+...
+y(n)
+
+Now, since hθ(x(i)) = (x(i))T θ, we can easily verify that
+
+Xθ − (cid:126)y =
+
+=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ −
+
+(x(1))T θ
+...
+(x(n))T θ
+hθ(x(1)) − y(1)
+...
+hθ(x(n)) − y(n)
+
+
+
+
+
+
+y(1)
+...
+y(n)
+
+
+
+ .
+
+Thus, using the fact that for a vector z, we have that zT z = (cid:80)
+
+i z2
+i :
+
+1
+2
+
+(Xθ − (cid:126)y)T (Xθ − (cid:126)y) =
+
+n
+(cid:88)
+
+(hθ(x(i)) − y(i))2
+
+1
+2
+
+i=1
+= J(θ)
+
+Finally, to minimize J, let’s ﬁnd its derivatives with respect to θ. Hence,
+
+15
+
+∇θJ(θ) = ∇θ
+
+1
+2
+
+(Xθ − (cid:126)y)T (Xθ − (cid:126)y)
+
+=
+
+=
+
+=
+
+=
+
+1
+2
+1
+2
+1
+2
+1
+2
+
+∇θ
+
+∇θ
+
+∇θ
+
+(cid:0)(Xθ)T Xθ − (Xθ)T (cid:126)y − (cid:126)yT (Xθ) + (cid:126)yT (cid:126)y(cid:1)
+
+(cid:0)θT (X T X)θ − (cid:126)yT (Xθ) − (cid:126)yT (Xθ)(cid:1)
+
+(cid:0)θT (X T X)θ − 2(X T (cid:126)y)T θ(cid:1)
+
+(cid:0)2X T Xθ − 2X T (cid:126)y(cid:1)
+
+= X T Xθ − X T (cid:126)y
+
+In the third step, we used the fact that aT b = bT a, and in the ﬁfth step
+used the facts ∇xbT x = b and ∇xxT Ax = 2Ax for symmetric matrix A (for
+more details, see Section 4.3 of “Linear Algebra Review and Reference”). To
+minimize J, we set its derivatives to zero, and obtain the normal equations:
+
+X T Xθ = X T (cid:126)y
+
+Thus, the value of θ that minimizes J(θ) is given in closed form by the
+equation
+
+θ = (X T X)−1X T (cid:126)y.3
+
+1.3 Probabilistic interpretation
+
+When faced with a regression problem, why might linear regression, and
+speciﬁcally why might the least-squares cost function J, be a reasonable
+choice? In this section, we will give a set of probabilistic assumptions, under
+which least-squares regression is derived as a very natural algorithm.
+
+Let us assume that the target variables and the inputs are related via the
+
+equation
+
+y(i) = θT x(i) + (cid:15)(i),
+
+3Note that in the above step, we are implicitly assuming that X T X is an invertible
+matrix. This can be checked before calculating the inverse.
+If either the number of
+linearly independent examples is fewer than the number of features, or if the features
+are not linearly independent, then X T X will not be invertible. Even in such cases, it is
+possible to “ﬁx” the situation with additional techniques, which we skip here for the sake
+of simplicty.
+
+16
+
+where (cid:15)(i) is an error term that captures either unmodeled eﬀects (such as
+if there are some features very pertinent to predicting housing price, but
+that we’d left out of the regression), or random noise. Let us further assume
+that the (cid:15)(i) are distributed IID (independently and identically distributed)
+according to a Gaussian distribution (also called a Normal distribution) with
+mean zero and some variance σ2. We can write this assumption as “(cid:15)(i) ∼
+N (0, σ2).” I.e., the density of (cid:15)(i) is given by
+
+p((cid:15)(i)) =
+
+√
+
+1
+2πσ
+
+(cid:18)
+
+exp
+
+−
+
+(cid:19)
+
+.
+
+((cid:15)(i))2
+2σ2
+
+This implies that
+
+p(y(i)|x(i); θ) =
+
+√
+
+1
+2πσ
+
+(cid:18)
+
+exp
+
+−
+
+(y(i) − θT x(i))2
+2σ2
+
+(cid:19)
+
+.
+
+The notation “p(y(i)|x(i); θ)” indicates that this is the distribution of y(i)
+given x(i) and parameterized by θ. Note that we should not condition on θ
+(“p(y(i)|x(i), θ)”), since θ is not a random variable. We can also write the
+distribution of y(i) as y(i) | x(i); θ ∼ N (θT x(i), σ2).
+
+Given X (the design matrix, which contains all the x(i)’s) and θ, what
+is the distribution of the y(i)’s? The probability of the data is 

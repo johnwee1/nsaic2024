@@ -1,0 +1,458 @@
+tion of a state S only, in which case we would have
+R : S (cid:55)→ R).
+
+The dynamics of an MDP proceeds as follows: We start in some state s0,
+and get to choose some action a0 ∈ A to take in the MDP. As a result of our
+choice, the state of the MDP randomly transitions to some successor state
+s1, drawn according to s1 ∼ Ps0a0. Then, we get to pick another action a1.
+As a result of this action, the state transitions again, now to some s2 ∼ Ps1a1.
+We then pick a2, and so on. . . . Pictorially, we can represent this process as
+follows:
+
+s0
+
+a0−→ s1
+
+a1−→ s2
+
+a2−→ s3
+
+a3−→ . . .
+
+Upon visiting the sequence of states s0, s1, . . . with actions a0, a1, . . ., our
+
+total payoﬀ is given by
+
+R(s0, a0) + γR(s1, a1) + γ2R(s2, a2) + · · · .
+
+Or, when we are writing rewards as a function of the states only, this becomes
+
+R(s0) + γR(s1) + γ2R(s2) + · · · .
+
+For most of our development, we will use the simpler state-rewards R(s),
+though the generalization to state-action rewards R(s, a) oﬀers no special
+diﬃculties.
+
+189
+
+Our goal in reinforcement learning is to choose actions over time so as to
+
+maximize the expected value of the total payoﬀ:
+
+E (cid:2)R(s0) + γR(s1) + γ2R(s2) + · · · (cid:3)
+
+Note that the reward at timestep t is discounted by a factor of γt. Thus, to
+make this expectation large, we would like to accrue positive rewards as soon
+as possible (and postpone negative rewards as long as possible). In economic
+applications where R(·) is the amount of money made, γ also has a natural
+interpretation in terms of the interest rate (where a dollar today is worth
+more than a dollar tomorrow).
+
+A policy is any function π : S (cid:55)→ A mapping from the states to the
+actions. We say that we are executing some policy π if, whenever we are
+in state s, we take action a = π(s). We also deﬁne the value function for
+a policy π according to
+
+V π(s) = E (cid:2)R(s0) + γR(s1) + γ2R(s2) + · · · (cid:12)
+
+(cid:12) s0 = s, π].
+
+V π(s) is simply the expected sum of discounted rewards upon starting in
+state s, and taking actions according to π.1
+
+Given a ﬁxed policy π, its value function V π satisﬁes the Bellman equa-
+
+tions:
+
+V π(s) = R(s) + γ
+
+(cid:88)
+
+Psπ(s)(s(cid:48))V π(s(cid:48)).
+
+s(cid:48)∈S
+This says that the expected sum of discounted rewards V π(s) for starting
+in s consists of two terms: First, the immediate reward R(s) that we get
+right away simply for starting in state s, and second, the expected sum of
+future discounted rewards. Examining the second term in more detail, we
+see that the summation term above can be rewritten Es(cid:48)∼Psπ(s)[V π(s(cid:48))]. This
+is the expected sum of discounted rewards for starting in state s(cid:48), where s(cid:48)
+is distributed according Psπ(s), which is the distribution over where we will
+end up after taking the ﬁrst action π(s) in the MDP from state s. Thus, the
+second term above gives the expected sum of discounted rewards obtained
+after the ﬁrst step in the MDP.
+
+Bellman’s equations can be used to eﬃciently solve for V π. Speciﬁcally,
+in a ﬁnite-state MDP (|S| < ∞), we can write down one such equation for
+V π(s) for every state s. This gives us a set of |S| linear equations in |S|
+variables (the unknown V π(s)’s, one for each state), which can be eﬃciently
+solved for the V π(s)’s.
+
+1This notation in which we condition on π isn’t technically correct because π isn’t a
+
+random variable, but this is quite standard in the literature.
+
+We also deﬁne the optimal value function according to
+
+V ∗(s) = max
+
+π
+
+V π(s).
+
+190
+
+(15.1)
+
+In other words, this is the best possible expected sum of discounted rewards
+that can be attained using any policy. There is also a version of Bellman’s
+equations for the optimal value function:
+
+V ∗(s) = R(s) + max
+a∈A
+
+γ
+
+(cid:88)
+
+s(cid:48)∈S
+
+Psa(s(cid:48))V ∗(s(cid:48)).
+
+(15.2)
+
+The ﬁrst term above is the immediate reward as before. The second term
+is the maximum over all actions a of the expected future sum of discounted
+rewards we’ll get upon after action a. You should make sure you understand
+this equation and see why it makes sense.
+
+We also deﬁne a policy π∗ : S (cid:55)→ A as follows:
+
+π∗(s) = arg max
+a∈A
+
+(cid:88)
+
+s(cid:48)∈S
+
+Psa(s(cid:48))V ∗(s(cid:48)).
+
+(15.3)
+
+Note that π∗(s) gives the action a that attains the maximum in the “max”
+in Equation (15.2).
+
+It is a fact that for every state s and every policy π, we have
+
+V ∗(s) = V π∗(s) ≥ V π(s).
+
+The ﬁrst equality says that the V π∗, the value function for π∗, is equal to the
+optimal value function V ∗ for every state s. Further, the inequality above
+says that π∗’s value is at least a large as the value of any other other policy.
+In other words, π∗ as deﬁned in Equation (15.3) is the optimal policy.
+
+Note that π∗ has the interesting property that it is the optimal policy
+for all states s. Speciﬁcally, it is not the case that if we were starting in
+some state s then there’d be some optimal policy for that state, and if we
+were starting in some other state s(cid:48) then there’d be some other policy that’s
+optimal policy for s(cid:48). The same policy π∗ attains the maximum in Equa-
+tion (15.1) for all states s. This means that we can use the same policy π∗
+no matter what the initial state of our MDP is.
+
+15.2 Value iteration and policy iteration
+
+We now describe two eﬃcient algorithms for solving ﬁnite-state MDPs. For
+now, we will consider only MDPs with ﬁnite state and action spaces (|S| <
+
+∞, |A| < ∞). In this section, we will also assume that we know the state
+transition probabilities {Psa} and the reward function R.
+The ﬁrst algorithm, value iteration, is as follows:
+
+191
+
+Algorithm 4 Value Iteration
+
+1: For each state s, initialize V (s) := 0.
+2: for until convergence do
+3:
+
+For every state, update
+
+V (s) := R(s) + max
+a∈A
+
+γ
+
+(cid:88)
+
+s(cid:48)
+
+Psa(s(cid:48))V (s(cid:48)).
+
+(15.4)
+
+This algorithm can be thought of as repeatedly trying to update the
+
+estimated value function using Bellman Equations (15.2).
+
+There are two possible ways of performing the updates in the inner loop of
+the algorithm. In the ﬁrst, we can ﬁrst compute the new values for V (s) for
+every state s, and then overwrite all the old values with the new values. This
+is called a synchronous update. In this case, the algorithm can be viewed as
+implementing a “Bellman backup operator” that takes a current estimate of
+the value function, and maps it to a new estimate. (See homework problem
+for details.) Alternatively, we can also perform asynchronous updates.
+Here, we would loop over the states (in some order), updating the values one
+at a time.
+
+Under either synchronous or asynchronous updates, it can be shown that
+value iteration will cause V to converge to V ∗. Having found V ∗, we can
+then use Equation (15.3) to ﬁnd the optimal policy.
+
+Apart from value iteration, there is a second standard algorithm for ﬁnd-
+ing an optimal policy for an MDP. The policy iteration algorithm proceeds
+as follows:
+
+Thus, the inner-loop repeatedly computes the value function for the cur-
+rent policy, and then updates the policy using the current value function.
+(The policy π found in step (b) is also called the policy that is greedy with
+respect to V .) Note that step (a) can be done via solving Bellman’s equa-
+tions as described earlier, which in the case of a ﬁxed policy, is just a set of
+|S| linear equations in |S| variables.
+
+After at most a ﬁnite number of iterations of this algorithm, V will con-
+
+verge to V ∗, and π will converge to π∗.2
+
+2Note that value iteration cannot reach the exact V ∗ in a ﬁnite number of iterations,
+
+192
+
+Algorithm 5 Policy Iteration
+
+1: Initialize π randomly.
+2: for until convergence do
+Let V := V π.
+3:
+For each state s, let
+4:
+
+(cid:46) typically by linear system solver
+
+π(s) := arg max
+a∈A
+
+(cid:88)
+
+s(cid:48)
+
+Psa(s(cid:48))V (s(cid:48)).
+
+Both value iteration and policy iteration are standard algorithms for solv-
+ing MDPs, and there isn’t currently universal agreement over which algo-
+rithm is better. For small MDPs, policy iteration is often very fats and
+converges with very few iterations. However, for MDPs with large state
+spaces, solving for V π explicitly would involve solving a large system of lin-
+ear equations, and could be diﬃcult (and note that one has to solve the
+linear system multiple times in policy iteration). In these problems, value
+iteration may be preferred. For this reason, in practice value iteration seems
+to be used more often than policy iteration. For some more discussions on
+the comparison and connection of value iteration and policy iteration, please
+see Section 15.5.
+
+15.3 Learning a model for an MDP
+
+So far, we have discussed MDPs and algorithms for MDPs assuming that the
+state transition probabilities and rewards are known. In many realistic prob-
+lems, we are not given state transition probabilities and rewards explicitly,
+but must instead estimate them from data. (Usually, S, A and γ are known.)
+For example, suppose that, for the inverted pendulum problem (see prob-
+
+whereas policy iteration with an exact linear system solver, can. This is because when
+the actions space and policy space are discrete and ﬁnite, and once the policy reaches the
+optimal policy in policy iteration, then it will not change at all. On the other hand, even
+though value iteration will converge to the V ∗, but there is always some non-zero error in
+the learned value function.
+
+lem set 4), we had a number of trials in the MDP, that proceeded as follows:
+
+193
+
+a(1)
+0−→ s(1)
+1
+a(2)
+0−→ s(2)
+1
+
+a(1)
+1−→ s(1)
+2
+a(2)
+1−→ s(2)
+2
+
+a(1)
+2−→ s(1)
+3
+a(2)
+2−→ s(2)
+3
+
+a(1)
+3−→ . . .
+a(2)
+3−→ . . .
+
+s(1)
+0
+
+s(2)
+0
+. . .
+
+i
+
+Here, s(j)
+
+is the state we were at time i of trial j, and a(j)
+is the cor-
+responding action that was taken from that state. In practice, each of the
+trials above might be run until the MDP terminates (such as if the pole falls
+over in the inverted pendulum problem), or it might be run for some large
+but ﬁnite number of timesteps.
+
+i
+
+Given this “experience” in the MDP consisting of a number of trials,
+we can then easily derive the maximum likelihood estimates for the state
+transition probabilities:
+
+Psa(s(cid:48)) =
+
+#times took we action a in state s and got to s(cid:48)
+#times we took action a in state s
+
+(15.5)
+
+Or, if the ratio above is “0/0”—corresponding to the case of never having
+taken action a in state s before—the we might simply estimate Psa(s(cid:48)) to be
+1/|S|. (I.e., estimate Psa to be the uniform distribution over all states.)
+
+Note that, if we gain more experience (observe more trials) in the MDP,
+there is an eﬃcient way to update our estimated state transition probabilities
+using the new experience. Speciﬁcally, if we keep around the counts for both
+the numerator and denominator terms of (15.5), then as we observe more
+trials, we can simply keep accumulating those counts. Computing the ratio
+of these counts then given our estimate of Psa.
+
+Using a similar procedure, if R is unknown, we can also pick our estimate
+of the expected immediate reward R(s) in state s to be the average reward
+observed in state s.
+
+Having learned a model for the MDP, we can then use either value it-
+eration or policy iteration to solve the MDP using the estimated transition
+probabilities and rewards. For example, putting together model learning and
+value iteration, here is one possible algorithm for learning in an MDP with
+unknown state transition probabilities:
+
+1. Initialize π randomly.
+
+2. Repeat {
+
+(a) Execute π in the MDP for some number of trials.
+
+194
+
+(b) Using the accumulated experience in the MDP, update our esti-
+
+mates for Psa (and R, if applicable).
+
+(c) Apply value iteration with the estimated state transition probabil-
+
+ities and rewards to get a new estimated value function V .
+
+(d) Update π to be the greedy policy with respect to V .
+
+}
+
+We note that, for this particular algorithm, there is one simple optimiza-
+tion that can make it run much more quickly. Speciﬁcally, in the inner loop
+of the algorithm where we apply value iteration, if instead of initializing value
+iteration with V = 0, we initialize it with the solution found during the pre-
+vious iteration of our algorithm, then that will provide value iteration with
+a much better initial starting point and make it converge more quickly.
+
+15.4 Continuous state MDPs
+
+So far, we’ve focused our attention on MDPs with a ﬁnite number of states.
+We now discuss algorithms for MDPs that may have an inﬁnite number of
+states. For example, for a car, we might represent the state as (x, y, θ, ˙x, ˙y, ˙θ),
+comprising its position (x, y); orientation θ; velocity in the x and y directions
+˙x and ˙y; and angular velocity ˙θ. Hence, S = R6 is an inﬁnite set of states,
+because there is an inﬁnite number of possible positions and orientations
+for the car.3 Similarly, the inverted pendulum you saw in PS4 has states
+(x, θ, ˙x, ˙θ), where θ is the angle of the pole. And, a helicopter ﬂying in 3d
+space has states of the form (x, y, z, φ, θ, ψ, ˙x, ˙y, ˙z, ˙φ, ˙θ, ˙ψ), where here the roll
+φ, pitch θ, and yaw ψ angles specify the 3d orientation of the helicopter.
+
+In this section, we will consider settings where the state space is S = Rd,
+
+and describe ways for solving such MDPs.
+
+15.4.1 Discretization
+
+Perhaps the simplest way to solve a continuous-state MDP is to discretize
+the state space, and then to use an algorithm like value iteration or policy
+iteration, as described previously.
+
+For example, if we have 2d states (s1, s2), we can use a grid to discretize
+
+the state space:
+
+3Technically, θ is an orientation and so the range of θ is better written θ ∈ [−π, π) than
+
+θ ∈ R; but for our purposes, this distinction is not important.
+
+195
+
+[t]
+
+Here, each grid cell represents a separate discrete state ¯s. We can
+then approximate the continuous-state MDP via a discrete-state one
+( ¯S, A, {P¯sa}, γ, R), where ¯S is the set of discrete states, {P¯sa} are our state
+transition probabilities over the discrete states, and so on. We can then use
+value iteration or policy iteration to solve for the V ∗(¯s) and π∗(¯s) in the
+discrete state MDP ( ¯S, A, {P¯sa}, γ, R). When our actual system is in some
+continuous-valued state s ∈ S and we need to pick an action to execute, we
+compute the corresponding discretized state ¯s, and execute action π∗(¯s).
+
+This discretization approach can work well for many problems. However,
+there are two downsides. First, it uses a fairly naive representation for V ∗
+(and π∗). Speciﬁcally, it assumes that the value function is takes a constant
+value over each of the discretization intervals (i.e., that the value function is
+piecewise constant in each of the gridcells).
+
+To better understand the limitations of such a representation, consider a
+
+supervised learning problem of ﬁtting a function to this dataset:
+
+[t]
+
+123456781.522.533.544.555.5xyClearly, linear regression would do ﬁne on this problem. However, if we
+instead discretize the x-axis, and then use a representation that is piecewise
+constant in each of the discretization intervals, then our ﬁt to the data would
+look like this:
+
+196
+
+[t]
+
+This piecewise constant representation just isn’t a good representation for
+many smooth functions. It results in little smoothing over the inputs, and no
+generalization over the diﬀerent grid cells. Using this sort of representation,
+we would also need a very ﬁne discretization (very small grid cells) to get a
+good approximation.
+
+A second downside of this representation is called the curse of dimen-
+sionality. Suppose S = Rd, and we discretize each of the d d

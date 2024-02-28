@@ -1,14 +1,16 @@
 # A synchronous version of the askgpt.py file that tests API responses
 
+from pathlib import Path
 from g4f.client import Client
 import g4f.debug
-import text_splitter
+import long_text_splitter
 
 g4f.debug.logging = True
 
-text_splitter.text_spliter("stanford_ml_notes")
+long_text_splitter.text_spliter("stanford_ml_notes")
 
-TEST_FILEPATH = "split/stanford_ml_notes_chunk0.txt"
+
+TEST_FILEPATH = Path("split") / "stanford_ml_notes_chunk0.txt"
 
 with open("prompt.txt", "r") as f:
     prompt = f.read()
@@ -25,5 +27,5 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 
 # Log response in test.log
-with open("test.log", "w+") as f:
+with open(f"{__name__}.log", "w+") as f:
     f.write(response.choices[0].message.content)

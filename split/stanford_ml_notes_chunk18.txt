@@ -1,0 +1,212 @@
+ion σj rescales each coor-
+dinate to have unit variance, which ensures that diﬀerent attributes are all
+treated on the same “scale.” For instance, if x1 was cars’ maximum speed in
+mph (taking values in the high tens or low hundreds) and x2 were the num-
+ber of seats (taking values around 2-4), then this renormalization rescales
+the diﬀerent attributes to make them more comparable. This rescaling may
+be omitted if we had a priori knowledge that the diﬀerent attributes are all
+on the same scale. One example of this is if each data point represented a
+grayscale image, and each x(i)
+took a value in {0, 1, . . . , 255} corresponding
+j
+to the intensity value of pixel j in image i.
+
+Now, having normalized our data, how do we compute the “major axis
+of variation” u—that is, the direction on which the data approximately lies?
+One way is to pose this problem as ﬁnding the unit vector u so that when
+
+x1x2(enjoyment)(skill)1uu2167
+
+the data is projected onto the direction corresponding to u, the variance of
+the projected data is maximized. Intuitively, the data starts oﬀ with some
+amount of variance/information in it. We would like to choose a direction u
+so that if we were to approximate the data as lying in the direction/subspace
+corresponding to u, as much as possible of this variance is still retained.
+
+Consider the following dataset, on which we have already carried out the
+
+normalization steps:
+
+Now, suppose we pick u to correspond the the direction shown in the
+ﬁgure below. The circles denote the projections of the original data onto this
+line.
+
+168
+
+We see that the projected data still has a fairly large variance, and the
+points tend to be far from zero. In contrast, suppose had instead picked the
+following direction:
+
+Here, the projections have a signiﬁcantly smaller variance, and are much
+
+closer to the origin.
+
+We would like to automatically select the direction u corresponding to
+the ﬁrst of the two ﬁgures shown above. To formalize this, note that given a
+
+(cid:0)(cid:0)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:0)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:0)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:0)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)(cid:1)169
+
+unit vector u and a point x, the length of the projection of x onto u is given
+by xT u. I.e., if x(i) is a point in our dataset (one of the crosses in the plot),
+then its projection onto u (the corresponding circle in the ﬁgure) is distance
+xT u from the origin. Hence, to maximize the variance of the projections, we
+would like to choose a unit-length u so as to maximize:
+
+1
+n
+
+n
+(cid:88)
+
+i=1
+
+(x(i)T
+
+u)2 =
+
+1
+n
+
+n
+(cid:88)
+
+uT x(i)x(i)T
+
+u
+
+= uT
+
+i=1
+(cid:32)
+
+1
+n
+
+n
+(cid:88)
+
+i=1
+
+x(i)x(i)T
+
+(cid:33)
+
+u.
+
+We easily recognize that the maximizing this subject to (cid:107)u(cid:107)2 = 1 gives the
+i=1 x(i)x(i)T , which is just the empirical
+principal eigenvector of Σ = 1
+n
+covariance matrix of the data (assuming it has zero mean).1
+
+(cid:80)n
+
+To summarize, we have found that if we wish to ﬁnd a 1-dimensional
+subspace with with to approximate the data, we should choose u to be the
+principal eigenvector of Σ. More generally, if we wish to project our data
+into a k-dimensional subspace (k < d), we should choose u1, . . . , uk to be the
+top k eigenvectors of Σ. The ui’s now form a new, orthogonal basis for the
+data.2
+
+Then, to represent x(i) in this basis, we need only compute the corre-
+
+sponding vector
+
+
+
+
+
+
+
+
+
+
+y(i) =
+
+uT
+1 x(i)
+2 x(i)
+uT
+...
+k x(i)
+uT
+Thus, whereas x(i) ∈ Rd, the vector y(i) now gives a lower, k-dimensional,
+approximation/representation for x(i). PCA is therefore also referred to as
+a dimensionality reduction algorithm. The vectors u1, . . . , uk are called
+the ﬁrst k principal components of the data.
+
+∈ Rk.
+
+
+
+
+
+
+Remark. Although we have shown it formally only for the case of k = 1,
+using well-known properties of eigenvectors it is straightforward to show that
+
+1If you haven’t seen this before, try using the method of Lagrange multipliers to max-
+imize uT Σu subject to that uT u = 1. You should be able to show that Σu = λu, for some
+λ, which implies u is an eigenvector of Σ, with eigenvalue λ.
+
+2Because Σ is symmetric, the ui’s will (or always can be chosen to be) orthogonal to
+
+each other.
+
+170
+
+of all possible orthogonal bases u1, . . . , uk, the one that we have chosen max-
+imizes (cid:80)
+2. Thus, our choice of a basis preserves as much variability
+as possible in the original data.
+
+i (cid:107)y(i)(cid:107)2
+
+PCA can also be derived by picking the basis that minimizes the ap-
+proximation error arising from projecting the data onto the k-dimensional
+subspace spanned by them. (See more in homework.)
+
+PCA has many applications; we will close our discussion with a few exam-
+ples. First, compression—representing x(i)’s with lower dimension y(i)’s—is
+an obvious application. If we reduce high dimensional data to k = 2 or 3 di-
+mensions, then we can also plot the y(i)’s to visualize the data. For instance,
+if we were to reduce our automobiles data to 2 dimensions, then we can plot
+it (one point in our plot would correspond to one car type, say) to see what
+cars are similar to each other and what groups of cars may cluster together.
+Another standard application is to preprocess a dataset to reduce its
+dimension before running a supervised learning learning algorithm with the
+x(i)’s as inputs. Apart from computational beneﬁts, reducing the data’s
+dimension can also reduce the complexity of the hypothesis class considered
+and help avoid overﬁtting (e.g., linear classiﬁers over lower dimensional input
+spaces will have smaller VC dimension).
+
+Lastly, as in our RC pilot example, we can also view PCA as a noise
+In our example it, estimates the intrinsic “piloting
+reduction algorithm.
+karma” from the noisy measures of piloting skill and enjoyment. In class, we
+also saw the application of this idea to face images, resulting in eigenfaces
+method. Here, each point x(i) ∈ R100×100 was a 10000 dimensional vector,
+with each coordinate corresponding to a pixel intensity value in a 100x100
+image of a face. Using PCA, we represent each image x(i) with a much lower-
+dimensional y(i).
+In doing so, we hope that the principal components we
+found retain the interesting, systematic variations between faces that capture
+what a person really looks like, but not the “noise” in the images introduced
+by minor lighting variations, slightly diﬀerent imaging conditions, and so on.
+We then measure distances between faces i and j by working in the reduced
+dimension, and computing (cid:107)y(i) − y(j)(cid:107)2. This resulted in a surprisingly good
+face-matching and retrieval algorithm.
+
+Chapter 13
+
+Independent components
+analysis
+
+Our next topic is Independent Components Analysis (ICA). Similar to PCA,
+this will ﬁnd a new basis in which to represent our data. However, the goal
+is very diﬀerent.
+
+As a motivating example, consider the “cocktail party problem.” Here, d
+speakers are speaking simultaneously at a party, and any microphone placed
+in the room records only an overlapping combination of the d speakers’ voices.
+But lets say we have d diﬀerent microphones plac

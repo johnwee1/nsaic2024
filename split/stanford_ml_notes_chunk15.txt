@@ -1,0 +1,420 @@
+ formally is still a challenging
+open research question.
+
+9.3 Model selection via cross validation
+
+Suppose we are trying select among several diﬀerent models for a learning
+problem. For instance, we might be using a polynomial regression model
+hθ(x) = g(θ0 + θ1x + θ2x2 + · · · + θkxk), and wish to decide if k should be
+0, 1, . . . , or 10. How can we automatically select a model that represents
+a good tradeoﬀ between the twin evils of bias and variance5? Alternatively,
+suppose we want to automatically choose the bandwidth parameter τ for
+locally weighted regression, or the parameter C for our (cid:96)1-regularized SVM.
+How can we do that?
+
+For the sake of concreteness, in these notes we assume we have some
+ﬁnite set of models M = {M1, . . . , Md} that we’re trying to select among.
+For instance, in our ﬁrst example above, the model Mi would be an i-th
+degree polynomial regression model.
+(The generalization to inﬁnite M is
+not hard.6) Alternatively, if we are trying to decide between using an SVM,
+a neural network or logistic regression, then M may contain these models.
+
+5Given that we said in the previous set of notes that bias and variance are two very
+diﬀerent beasts, some readers may be wondering if we should be calling them “twin” evils
+here. Perhaps it’d be better to think of them as non-identical twins. The phrase “the
+fraternal twin evils of bias and variance” doesn’t have the same ring to it, though.
+
+6If we are trying to choose from an inﬁnite set of models, say corresponding to the
+possible values of the bandwidth τ ∈ R+, we may discretize τ and consider only a ﬁnite
+number of possible values for it. More generally, most of the algorithms described here
+can all be viewed as performing optimization search in the space of models, and we can
+perform this search over inﬁnite model classes as well.
+
+140
+
+Cross validation. Lets suppose we are, as usual, given a training set S.
+Given what we know about empirical risk minimization, here’s what might
+initially seem like a algorithm, resulting from using empirical risk minimiza-
+tion for model selection:
+
+1. Train each model Mi on S, to get some hypothesis hi.
+
+2. Pick the hypotheses with the smallest training error.
+
+This algorithm does not work. Consider choosing the degree of a poly-
+nomial. The higher the degree of the polynomial, the better it will ﬁt the
+training set S, and thus the lower the training error. Hence, this method will
+always select a high-variance, high-degree polynomial model, which we saw
+previously is often poor choice.
+
+Here’s an algorithm that works better. In hold-out cross validation
+
+(also called simple cross validation), we do the following:
+
+1. Randomly split S into Strain (say, 70% of the data) and Scv (the remain-
+
+ing 30%). Here, Scv is called the hold-out cross validation set.
+
+2. Train each model Mi on Strain only, to get some hypothesis hi.
+
+3. Select and output the hypothesis hi that had the smallest error ˆεScv(hi)
+on the hold out cross validation set. (Here ˆεScv(h) denotes the average
+error of h on the set of examples in Scv.) The error on the hold out
+validation set is also referred to as the validation error.
+
+By testing/validating on a set of examples Scv that the models were not
+trained on, we obtain a better estimate of each hypothesis hi’s true general-
+ization/test error. Thus, this approach is essentially picking the model with
+the smallest estimated generalization/test error. The size of the validation
+set depends on the total number of available examples. Usually, somewhere
+between 1/4−1/3 of the data is used in the hold out cross validation set, and
+30% is a typical choice. However, when the total dataset is huge, validation
+set can be a smaller fraction of the total examples as long as the absolute
+number of validation examples is decent. For example, for the ImageNet
+dataset that has about 1M training images, the validation set is sometimes
+set to be 50K images, which is only about 5% of the total examples.
+
+Optionally, step 3 in the algorithm may also be replaced with selecting
+the model Mi according to arg mini ˆεScv(hi), and then retraining Mi on the
+entire training set S. (This is often a good idea, with one exception being
+learning algorithms that are be very sensitive to perturbations of the initial
+
+141
+
+conditions and/or data. For these methods, Mi doing well on Strain does not
+necessarily mean it will also do well on Scv, and it might be better to forgo
+this retraining step.)
+
+The disadvantage of using hold out cross validation is that it “wastes”
+about 30% of the data. Even if we were to take the optional step of retraining
+the model on the entire training set, it’s still as if we’re trying to ﬁnd a good
+model for a learning problem in which we had 0.7n training examples, rather
+than n training examples, since we’re testing models that were trained on
+only 0.7n examples each time. While this is ﬁne if data is abundant and/or
+cheap, in learning problems in which data is scarce (consider a problem with
+n = 20, say), we’d like to do something better.
+
+Here is a method, called k-fold cross validation, that holds out less
+
+data each time:
+
+1. Randomly split S into k disjoint subsets of m/k training examples each.
+
+Lets call these subsets S1, . . . , Sk.
+
+2. For each model Mi, we evaluate it as follows:
+
+For j = 1, . . . , k
+
+Train the model Mi on S1 ∪ · · · ∪ Sj−1 ∪ Sj+1 ∪ · · · Sk (i.e., train
+on all the data except Sj) to get some hypothesis hij.
+Test the hypothesis hij on Sj, to get ˆεSj (hij).
+
+The estimated generalization error of model Mi is then calculated
+as the average of the ˆεSj (hij)’s (averaged over j).
+
+3. Pick the model Mi with the lowest estimated generalization error, and
+retrain that model on the entire training set S. The resulting hypothesis
+is then output as our ﬁnal answer.
+
+A typical choice for the number of folds to use here would be k = 10.
+While the fraction of data held out each time is now 1/k—much smaller
+than before—this procedure may also be more computationally expensive
+than hold-out cross validation, since we now need train to each model k
+times.
+
+While k = 10 is a commonly used choice, in problems in which data is
+really scarce, sometimes we will use the extreme choice of k = m in order
+to leave out as little data as possible each time. In this setting, we would
+repeatedly train on all but one of the training examples in S, and test on that
+held-out example. The resulting m = k errors are then averaged together to
+obtain our estimate of the generalization error of a model. This method has
+
+142
+
+its own name; since we’re holding out one training example at a time, this
+method is called leave-one-out cross validation.
+
+Finally, even though we have described the diﬀerent versions of cross vali-
+dation as methods for selecting a model, they can also be used more simply to
+evaluate a single model or algorithm. For example, if you have implemented
+some learning algorithm and want to estimate how well it performs for your
+application (or if you have invented a novel learning algorithm and want to
+report in a technical paper how well it performs on various test sets), cross
+validation would give a reasonable way of doing so.
+
+9.4 Bayesian statistics and regularization
+
+In this section, we will talk about one more tool in our arsenal for our battle
+against overﬁtting.
+
+At the beginning of the quarter, we talked about parameter ﬁtting using
+maximum likelihood estimation (MLE), and chose our parameters according
+to
+
+θMLE = arg max
+
+θ
+
+p(y(i)|x(i); θ).
+
+n
+(cid:89)
+
+i=1
+
+Throughout our subsequent discussions, we viewed θ as an unknown param-
+eter of the world. This view of the θ as being constant-valued but unknown
+is taken in frequentist statistics. In the frequentist this view of the world, θ
+is not random—it just happens to be unknown—and it’s our job to come up
+with statistical procedures (such as maximum likelihood) to try to estimate
+this parameter.
+
+An alternative way to approach our parameter estimation problems is to
+take the Bayesian view of the world, and think of θ as being a random
+variable whose value is unknown.
+In this approach, we would specify a
+prior distribution p(θ) on θ that expresses our “prior beliefs” about the
+parameters. Given a training set S = {(x(i), y(i))}n
+i=1, when we are asked to
+make a prediction on a new value of x, we can then compute the posterior
+distribution on the parameters
+
+p(θ|S) =
+
+=
+
+p(S|θ)p(θ)
+p(S)
+(cid:0)(cid:81)n
+θ ((cid:81)n
+
+(cid:82)
+
+i=1 p(y(i)|x(i), θ)(cid:1) p(θ)
+i=1 p(y(i)|x(i), θ)p(θ)) dθ
+
+(9.3)
+
+In the equation above, p(y(i)|x(i), θ) comes from whatever model you’re using
+
+143
+
+for your learning problem. For example, if you are using Bayesian logistic re-
+gression, then you might choose p(y(i)|x(i), θ) = hθ(x(i))y(i)(1−hθ(x(i)))(1−y(i)),
+where hθ(x(i)) = 1/(1 + exp(−θT x(i))).7
+
+When we are given a new test example x and asked to make it prediction
+on it, we can compute our posterior distribution on the class label using the
+posterior distribution on θ:
+
+p(y|x, S) =
+
+(cid:90)
+
+θ
+
+p(y|x, θ)p(θ|S)dθ
+
+(9.4)
+
+In the equation above, p(θ|S) comes from Equation (9.3). Thus, for example,
+if the goal is to the predict the expected value of y given x, then we would
+output8
+
+(cid:90)
+
+E[y|x, S] =
+
+yp(y|x, S)dy
+
+y
+
+The procedure that we’ve outlined here can be thought of as doing “fully
+Bayesian” prediction, where our prediction is computed by taking an average
+with respect to the posterior p(θ|S) over θ. Unfortunately, in general it is
+computationally very diﬃcult to compute this posterior distribution. This is
+because it requires taking integrals over the (usually high-dimensional) θ as
+in Equation (9.3), and this typically cannot be done in closed-form.
+
+Thus, in practice we will instead approximate the posterior distribution
+for θ. One common approximation is to replace our posterior distribution for
+θ (as in Equation 9.4) with a single point estimate. The MAP (maximum
+a posteriori) estimate for θ is given by
+
+θMAP = arg max
+
+θ
+
+n
+(cid:89)
+
+i=1
+
+p(y(i)|x(i), θ)p(θ).
+
+(9.5)
+
+Note that this is the same formulas as for the MLE (maximum likelihood)
+estimate for θ, except for the prior p(θ) term at the end.
+
+In practical applications, a common choice for the prior p(θ) is to assume
+that θ ∼ N (0, τ 2I). Using this choice of prior, the ﬁtted parameters θMAP will
+have smaller norm than that selected by maximum likelihood. In practice,
+this causes the Bayesian MAP estimate to be less susceptible to overﬁtting
+than the ML estimate of the parameters. For example, Bayesian logistic
+regression turns out to be an eﬀective algorithm for text classiﬁcation, even
+though in text classiﬁcation we usually have d (cid:29) n.
+
+7Since we are now viewing θ as a random variable, it is okay to condition on it value,
+
+and write “p(y|x, θ)” instead of “p(y|x; θ).”
+
+8The integral below would be replaced by a summation if y is discrete-valued.
+
+Part IV
+
+Unsupervised learning
+
+144
+
+Chapter 10
+
+Clustering and the k-means
+algorithm
+
+In the clustering problem, we are given a training set {x(1), . . . , x(n)}, and
+want to group the data into a few cohesive “clusters.” Here, x(i) ∈ Rd
+as usual; but no labels y(i) are given. So, this is an unsupervised learning
+problem.
+
+The k-means clustering algorithm is as follows:
+
+1. Initialize cluster centroids µ1, µ2, . . . , µk ∈ Rd randomly.
+
+2. Repeat until convergence: {
+
+For every i, set
+
+For each j, set
+
+}
+
+c(i) := arg min
+
+j
+
+||x(i) − µj||2.
+
+µj :=
+
+(cid:80)n
+
+i=1 1{c(i) = j}x(i)
+(cid:80)n
+i=1 1{c(i) = j}
+
+.
+
+In the algorithm above, k (a parameter of the algorithm) is the number
+of clusters we want to ﬁnd; and the cluster centroids µj represent our current
+guesses for the positions of the centers of the clusters. To initialize the cluster
+centroids (in step 1 of the algorithm above), we could choose k training
+examples randomly, and set the cluster centroids to be equal to the values of
+these k examples. (Other initialization methods are also possible.)
+
+The inner-loop of the algorithm repeatedly carries out two steps: (i)
+“Assigning” each training example x(i) to the closest cluster centroid µj, and
+
+145
+
+146
+
+Figure 10.1: K-means algorithm. Training examples are shown as dots, and
+cluster centroids are shown as crosses. (a) Original dataset. (b) Random ini-
+tial cluster centroids (in this instance, not chosen to be equal to two training
+examples). (c-f) Illustration of running two iterations of k-means. In each
+iteration, we assign each training example to the closest cluster centroid
+(shown by “painting” the training examples the same color as the cluster
+centroid to which is assigned); then we move each cluster centroid to the
+mean of the points assigned to it. (Best viewed in color.) Images courtesy
+Michael Jordan.
+
+(ii) Moving each cluster centroid µj to the mean of the points assigned to it.
+Figure 10.1 shows an illustration of running k-means.
+
+Is the k-means algorithm guaranteed to converge? Yes it is, in a certain
+
+sense. In particular, let us deﬁne the distortion function to be:
+
+J(c, µ) =
+
+n
+(cid:88)
+
+i=1
+
+||x(i) − µc(i)||2
+
+Thus, J measures the sum of squared distances between each training exam-
+ple x(i) and the cluster centroid µc(i) to which it has been assigned. It can
+be shown that k-means is exactly coordinate descent on J. Speciﬁcally, the
+inner-loop of k-means repeatedly minimizes J with respect to c while holding
+µ ﬁxed, and then minimizes J with respect to µ while holding c ﬁxed. Thus,
+
+147
+
+J must monotonically decrease, and the value of J must converge. (Usu-
+ally, this implies that c and µ will converge too. In theory, it is possible for
+k-means to oscillate between a few diﬀerent clusterings—i.e., a few diﬀerent
+values for c and/or µ—that have exactly the same value of J, but this almost
+never happens in practice.)
+
+The distortion function J is a non-convex function, and so coordinate
+descent on J is not guaranteed to converge to the global minimum. In other
+words, k-means can be susceptible to local optima. Very often k-means will
+work ﬁne and come up with very good clusterings despite this. But if you
+are worried about getting stuck in bad local minima, one common thing to
+do is run k-means many times (using diﬀerent random initial values for the
+cluster centroids µj). Then, out of all the diﬀerent clusterings found, pick
+the one that gives the lowest distortion J(c, µ).
+
+Chapter 11
+
+EM algorithms
+
+In this set of notes, we discuss the EM (Expectation-Maximization) algorithm
+for density estimation.
+
+11.1 EM for mixture of Gaussians
+
+Suppose that we are given a training set {x(1), . . . , x(n)} as usual. Since we
+are in the unsupervised learning setting, these points do not come with any
+labels.
+
+We wish to model the data by specifying a joint distribution p(x(i), z(i)) =
+p(x(i)|z(i))p(z(i)). Here, z(i) ∼ Multinomial(φ) (where φj ≥ 0, (cid:80)k
+j=1 φj = 1,
+and the parameter φj gives p(z(i) = j)), and x(i)|z(i) = j ∼ N (µj, Σj). We
+let k denote the number of values that the z(i)’s can take on. Thus, our
+model posits that each x(i) was generated by randomly choosing z(i) from
+{1, . . . , k}, and then x(i) was drawn from one of k Gaussians depending on
+z(i). This is called the mixture of Gaussians model. Also, note that the
+z(i)’s are latent random variables, meaning that they’re hidden/unobserved.
+This is what will make our estimation problem diﬃcult.
+
+The parameters of our model are thus φ, µ and Σ. To estimate them, we
+
+can write down the likelihood of our data:
+
+(cid:96)(φ, µ, Σ) =
+
+=
+
+n
+(cid:88)
+
+i=1
+n
+(ci

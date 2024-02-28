@@ -1,0 +1,743 @@
+ll-deﬁned.
+bounded by a constant ¯R, the payoﬀ is indeed bounded by
+
+∞
+(cid:88)
+
+|
+
+t=0
+
+R(st)γt| ≤ ¯R
+
+∞
+(cid:88)
+
+t=0
+
+γt
+
+and we recognize a geometric sum! Here, as the payoﬀ is a ﬁnite sum,
+the discount factor γ is not necessary anymore.
+
+206
+
+In this new setting, things behave quite diﬀerently. First, the optimal
+policy π∗ might be non-stationary, meaning that it changes over time.
+In other words, now we have
+
+π(t) : S → A
+
+where the superscript (t) denotes the policy at time step t. The dynam-
+ics of the ﬁnite horizon MDP following policy π(t) proceeds as follows:
+we start in some state s0, take some action a0 := π(0)(s0) according to
+our policy at time step 0. The MDP transitions to a successor s1, drawn
+according to Ps0a0. Then, we get to pick another action a1 := π(1)(s1)
+following our new policy at time step 1 and so on...
+
+Why does the optimal policy happen to be non-stationary in the ﬁnite-
+horizon setting? Intuitively, as we have a ﬁnite numbers of actions to
+take, we might want to adopt diﬀerent strategies depending on where
+we are in the environment and how much time we have left. Imagine
+a grid with 2 goals with rewards +1 and +10. At the beginning, we
+might want to take actions to aim for the +10 goal. But if after some
+steps, dynamics somehow pushed us closer to the +1 goal and we don’t
+have enough steps left to be able to reach the +10 goal, then a better
+strategy would be to aim for the +1 goal...
+
+4. This observation allows us to use time dependent dynamics
+
+st+1 ∼ P (t)
+st,at
+
+meaning that the transition’s distribution P (t)
+st,at changes over time. The
+same thing can be said about R(t). Note that this setting is a better
+In a car, the gas tank empties, traﬃc changes,
+model for real life.
+etc. Combining the previous remarks, we’ll use the following general
+formulation for our ﬁnite horizon MDP
+
+(cid:0)S, A, P (t)
+
+sa , T, R(t)(cid:1)
+
+Remark: notice that the above formulation would be equivalent to
+adding the time into the state.
+
+207
+
+The value function at time t for a policy π is then deﬁned in the same
+way as before, as an expectation over trajectories generated following
+policy π starting in state s.
+
+Vt(s) = E (cid:2)R(t)(st, at) + · · · + R(T )(sT , aT )|st = s, π(cid:3)
+
+Now, the question is
+
+In this ﬁnite-horizon setting, how do we ﬁnd the optimal value function
+
+V ∗
+t (s) = max
+
+π
+
+V π
+t (s)
+
+It turns out that Bellman’s equation for Value Iteration is made for Dy-
+namic Programming. This may come as no surprise as Bellman is one of
+the fathers of dynamic programming and the Bellman equation is strongly
+related to the ﬁeld. To understand how we can simplify the problem by
+adopting an iteration-based approach, we make the following observations:
+
+1. Notice that at the end of the game (for time step T ), the optimal value
+
+is obvious
+
+∀s ∈ S : V ∗
+
+T (s) := max
+a∈A
+
+R(T )(s, a)
+
+(16.1)
+
+2. For another time step 0 ≤ t < T , if we suppose that we know the
+
+optimal value function for the next time step V ∗
+
+t+1, then we have
+
+∀t < T, s ∈ S : V ∗
+
+t (s) := max
+a∈A
+
+(cid:104)
+
+R(t)(s, a) + E
+
+s(cid:48)∼P (t)
+sa
+
+(cid:2)V ∗
+
+t+1(s(cid:48))(cid:3)(cid:105)
+
+(16.2)
+
+With these observations in mind, we can come up with a clever algorithm
+
+to solve for the optimal value function:
+
+1. compute V ∗
+
+T using equation (16.1).
+
+2. for t = T − 1, . . . , 0:
+
+compute V ∗
+
+t using V ∗
+
+t+1 using equation (16.2)
+
+208
+
+Side note We can interpret standard value iteration as a special case
+of this general case, but without keeping track of time.
+It turns out that
+in the standard setting, if we run value iteration for T steps, we get a γT
+approximation of the optimal value iteration (geometric convergence). See
+problem set 4 for a proof of the following result:
+
+Theorem Let B denote the Bellman update and ||f (x)||∞ := supx |f (x)|.
+
+If Vt denotes the value function at the t-th step, then
+
+||Vt+1 − V ∗||∞ = ||B(Vt) − V ∗||∞
+
+≤ γ||Vt − V ∗||∞
+≤ γt||V1 − V ∗||∞
+
+In other words, the Bellman operator B is a γ-contracting operator.
+
+16.2 Linear Quadratic Regulation (LQR)
+
+In this section, we’ll cover a special case of the ﬁnite-horizon setting described
+in Section 16.1, for which the exact solution is (easily) tractable. This
+model is widely used in robotics, and a common technique in many problems
+is to reduce the formulation to this framework.
+
+First, let’s describe the model’s assumptions. We place ourselves in the
+
+continuous setting, with
+
+and we’ll assume linear transitions (with noise)
+
+S = Rd, A = Rd
+
+st+1 = Atst + Btat + wt
+
+where At ∈ Rd×d, Bt ∈ Rd×d are matrices and wt ∼ N (0, Σt) is some
+gaussian noise (with zero mean). As we’ll show in the following paragraphs,
+it turns out that the noise, as long as it has zero mean, does not impact the
+optimal policy!
+
+We’ll also assume quadratic rewards
+
+R(t)(st, at) = −s(cid:62)
+
+t Utst − a(cid:62)
+
+t Wtat
+
+209
+
+where Ut ∈ Rd×n, Wt ∈ Rd×d are positive deﬁnite matrices (meaning that
+
+the reward is always negative).
+
+Remark Note that the quadratic formulation of the reward is equivalent
+to saying that we want our state to be close to the origin (where the reward
+is higher). For example, if Ut = Id (the identity matrix) and Wt = Id, then
+Rt = −||st||2 − ||at||2, meaning that we want to take smooth actions (small
+norm of at) to go back to the origin (small norm of st). This could model a
+car trying to stay in the middle of lane without making impulsive moves...
+
+Now that we have deﬁned the assumptions of our LQR model, let’s cover
+
+the 2 steps of the LQR algorithm
+
+step 1 suppose that we don’t know the matrices A, B, Σ.
+
+To esti-
+mate them, we can follow the ideas outlined in the Value Ap-
+proximation section of the RL notes.
+First, collect transitions
+from an arbitrary policy.
+Then, use linear regression to ﬁnd
+(cid:13)
+As(i)
+(cid:13)s(i)
+(cid:13)
+
+t+1 −
+argminA,B
+nique seen in Gaussian Discriminant Analysis to learn Σ.
+
+. Finally, use a tech-
+
+t + Ba(i)
+
+(cid:80)T −1
+t=0
+
+(cid:17)(cid:13)
+2
+(cid:13)
+(cid:13)
+
+(cid:80)n
+
+i=1
+
+(cid:16)
+
+t
+
+step 2 assuming that the parameters of our model are known (given or esti-
+mated with step 1), we can derive the optimal policy using dynamic
+programming.
+
+In other words, given
+
+(cid:40)
+
+st+1
+R(t)(st, at) = −s(cid:62)
+
+= Atst + Btat + wt
+t Utst − a(cid:62)
+
+t Wtat
+
+At, Bt, Ut, Wt, Σt known
+
+we want to compute V ∗
+t .
+
+If we go back to section 16.1, we can apply
+
+dynamic programming, which yields
+
+1. Initialization step
+
+For the last time step T ,
+
+V ∗
+T (sT ) = max
+aT ∈A
+= max
+aT ∈A
+= −s(cid:62)
+
+T UtsT
+
+RT (sT , aT )
+
+−s(cid:62)
+
+T UT sT − a(cid:62)
+
+T WtaT
+
+(maximized for aT = 0)
+
+210
+
+2. Recurrence step
+
+Let t < T . Suppose we know V ∗
+t+1.
+t+1 is a quadratic function in st, then V ∗
+Fact 1: It can be shown that if V ∗
+t
+is also a quadratic function. In other words, there exists some matrix Φ
+and some scalar Ψ such that
+
+if V ∗
+then V ∗
+
+t+1(st+1) = s(cid:62)
+t (st) = s(cid:62)
+
+t+1Φt+1st+1 + Ψt+1
+t Φtst + Ψt
+
+For time step t = T , we had Φt = −UT and ΨT = 0.
+Fact 2: We can show that the optimal policy is just a linear function of
+the state.
+Knowing V ∗
+t+1 is equivalent to knowing Φt+1 and Ψt+1, so we just need
+to explain how we compute Φt and Ψt from Φt+1 and Ψt+1 and the other
+parameters of the problem.
+
+t (st) = s(cid:62)
+V ∗
+
+t Φtst + Ψt
+(cid:104)
+R(t)(st, at) + E
+(cid:2)−s(cid:62)
+
+t Utst − a(cid:62)
+
+= max
+at
+= max
+at
+
+(cid:105)
+t+1(st+1)]
+
+[V ∗
+
+st+1∼P (t)
+
+st,at
+
+t Vtat + Est+1∼N (Atst+Btat,Σt)[s(cid:62)
+
+t+1Φt+1st+1 + Ψt+1](cid:3)
+
+where the second line is just the deﬁnition of the optimal value function
+and the third line is obtained by plugging in the dynamics of our model
+along with the quadratic assumption. Notice that the last expression is
+a quadratic function in at and can thus be (easily) optimized1. We get
+the optimal action a∗
+t
+
+t = (cid:2)(B(cid:62)
+a∗
+= Lt · st
+
+t Φt+1Bt − Vt)−1BtΦt+1At
+
+(cid:3) · st
+
+where
+
+1Use the identity E (cid:2)w(cid:62)
+
+t Φt+1wt
+
+Lt := (cid:2)(B(cid:62)
+
+t Φt+1Bt − Wt)−1BtΦt+1At
+(cid:3) = Tr(ΣtΦt+1) with wt ∼ N (0, Σt)
+
+(cid:3)
+
+211
+
+which is an impressive result: our optimal policy is linear in st. Given
+a∗
+t we can solve for Φt and Ψt. We ﬁnally get the Discrete Ricatti
+equations
+
+(cid:16)
+
+Φt = A(cid:62)
+t
+
+Φt+1 − Φt+1Bt
+
+(cid:0)B(cid:62)
+
+t Φt+1Bt − Wt
+
+(cid:1)−1
+
+BtΦt+1
+
+(cid:17)
+
+At − Ut
+
+Ψt = − tr (ΣtΦt+1) + Ψt+1
+
+Fact 3: we notice that Φt depends on neither Ψ nor the noise Σt! As Lt
+is a function of At, Bt and Φt+1, it implies that the optimal policy also
+does not depend on the noise! (But Ψt does depend on Σt, which
+implies that V ∗
+
+t depends on Σt.)
+
+Then, to summarize, the LQR algorithm works as follows
+
+1. (if necessary) estimate parameters At, Bt, Σt
+
+2. initialize ΦT := −UT and ΨT := 0.
+
+3. iterate from t = T − 1 . . . 0 to update Φt and Ψt using Φt+1 and Ψt+1
+using the discrete Ricatti equations. If there exists a policy that drives
+the state towards zero, then convergence is guaranteed!
+
+Using Fact 3, we can be even more clever and make our algorithm run
+(slightly) faster! As the optimal policy does not depend on Ψt, and the
+update of Φt only depends on Φt, it is suﬃcient to update only Φt!
+
+16.3 From non-linear dynamics to LQR
+
+It turns out that a lot of problems can be reduced to LQR, even if dynamics
+are non-linear. While LQR is a nice formulation because we are able to come
+up with a nice exact solution, it is far from being general. Let’s take for
+instance the case of the inverted pendulum. The transitions between states
+look like
+
+
+
+
+
+
+
+
+
+
+
+
+
+xt+1
+˙xt+1
+θt+1
+˙θt+1
+
+
+
+
+
+
+
+= F
+
+
+
+
+
+
+
+xt
+˙xt
+θt
+˙θt
+
+
+
+
+
+
+
+
+
+
+
+
+
+, at
+
+where the function F depends on the cos of the angle etc. Now, the
+
+question we may ask is
+
+Can we linearize this system?
+
+212
+
+16.3.1 Linearization of dynamics
+
+Let’s suppose that at time t, the system spends most of its time in some state
+¯st and the actions we perform are around ¯at. For the inverted pendulum, if
+we reached some kind of optimal, this is true: our actions are small and we
+don’t deviate much from the vertical.
+
+We are going to use Taylor expansion to linearize the dynamics. In the
+simple case where the state is one-dimensional and the transition function F
+does not depend on the action, we would write something like
+
+st+1 = F (st) ≈ F ( ¯st) + F (cid:48)( ¯st) · (st − ¯st)
+
+In the more general setting, the formula looks the same, with gradients
+
+instead of simple derivatives
+
+st+1 ≈ F ( ¯st, ¯at) + ∇sF ( ¯st, ¯at) · (st − ¯st) + ∇aF ( ¯st, ¯at) · (at − ¯at)
+
+(16.3)
+
+and now, st+1 is linear in st and at, because we can rewrite equation (16.3)
+
+as
+
+st+1 ≈ Ast + Bst + κ
+
+where κ is some constant and A, B are matrices. Now, this writing looks
+awfully similar to the assumptions made for LQR. We just have to get rid
+of the constant term κ! It turns out that the constant term can be absorbed
+into st by artiﬁcially increasing the dimension by one. This is the same trick
+that we used at the beginning of the class for linear regression...
+
+16.3.2 Diﬀerential Dynamic Programming (DDP)
+
+The previous method works well for cases where the goal is to stay around
+some state s∗ (think about the inverted pendulum, or a car having to stay
+in the middle of a lane). However, in some cases, the goal can be more
+complicated.
+
+We’ll cover a method that applies when our system has to follow some
+trajectory (think about a rocket). This method is going to discretize the
+trajectory into discrete time steps, and create intermediary goals around
+which we will be able to use the previous technique! This method is called
+Diﬀerential Dynamic Programming. The main steps are
+
+step 1 come up with a nominal trajectory using a naive controller, that approx-
+imate the trajectory we want to follow. In other words, our controller
+is able to approximate the gold trajectory with
+
+213
+
+step 2 linearize the dynamics around each trajectory point s∗
+
+t , in other words
+
+0, a∗
+s∗
+
+0 → s∗
+
+1, a∗
+
+1 → . . .
+
+st+1 ≈ F (s∗
+
+t , a∗
+
+t ) + ∇sF (s∗
+
+t , a∗
+
+t )(st − s∗
+
+t ) + ∇aF (s∗
+
+t , a∗
+
+t )(at − a∗
+t )
+
+where st, at would be our current state and action. Now that we have
+a linear approximation around each of these points, we can use the
+previous section and rewrite
+
+st+1 = At · st + Bt · at
+
+(notice that in that case, we use the non-stationary dynamics setting
+that we mentioned at the beginning of these lecture notes)
+Note We can apply a similar derivation for the reward R(t), with a
+second-order Taylor expansion.
+
+R(st, at) ≈ R(s∗
+
+t , a∗
+
+t ) + ∇sR(s∗
+
+t , a∗
+
+t )(st − s∗
+
+t ) + ∇aR(s∗
+
+t , a∗
+
+t )(at − a∗
+t )
+
++
+
++
+
+1
+2
+1
+2
+
+(st − s∗
+
+t )(cid:62)Hss(st − s∗
+
+t ) + (st − s∗
+
+t )(cid:62)Hsa(at − a∗
+t )
+
+(at − a∗
+
+t )(cid:62)Haa(at − a∗
+t )
+
+where Hxy refers to the entry of the Hessian of R with respect to x and
+y evaluated in (s∗
+t ) (omitted for readability). This expression can be
+re-written as
+
+t , a∗
+
+Rt(st, at) = −s(cid:62)
+
+t Utst − a(cid:62)
+
+t Wtat
+
+for some matrices Ut, Wt, with the same trick of adding an extra dimen-
+sion of ones. To convince yourself, notice that
+
+(cid:0)1 x(cid:1) ·
+
+(cid:19)
+
+(cid:18)a b
+c
+b
+
+(cid:19)
+
+(cid:18)1
+x
+
+·
+
+= a + 2bx + cx2
+
+214
+
+step 3 Now, you can convince yourself that our problem is strictly re-written
+in the LQR framework. Let’s just use LQR to ﬁnd the optimal policy
+πt. As a result, our new controller will (hopefully) be better!
+Note: Some problems might arise if the LQR trajectory deviates too
+much from the linearized approximation of the trajectory, but that can
+be ﬁxed with reward-shaping...
+
+step 4 Now that we get a new controller (our new policy πt), we use it to
+
+produce a new trajectory
+
+0, π0(s∗
+s∗
+
+0) → s∗
+
+1, π1(s∗
+
+1) → . . . → s∗
+T
+
+note that when we generate this new trajectory, we use the real F and
+not its linear approximation to compute transitions, meaning that
+
+s∗
+t+1 = F (s∗
+
+t , a∗
+t )
+
+then, go back to step 2 and repeat until some stopping criterion.
+
+16.4 Linear Quadratic Gaussian (LQG)
+
+Often, in the real word, we don’t get to observe the full state st. For example,
+an autonomous car could receive an image from a camera, which is merely
+an observation, and not the full state of the world. So far, we assumed
+that the state was available. As this might not hold true for most of the
+real-world problems, we need a new tool to model this situation: Partially
+Observable MDPs.
+
+A POMDP is an MDP with an extra observation layer. In other words,
+we introduce a new variable ot, that follows some conditional distribution
+given the current state st
+
+Formally, a ﬁnite-horizon POMDP is given by a tuple
+
+ot|st ∼ O(o|s)
+
+(S, O, A, Psa, T, R)
+
+Within this framework, the general strategy is to maintain a belief state
+(distribution over states) based on the observation o1, . . . , ot. Then, a policy
+in a POMDP maps this belief states to actions.
+
+215
+
+In this section, we’ll present a extension of LQR to this new setting.
+
+Assume that we observe yt ∈ Rn with m < n such that
+
+(cid:40)
+
+= C · st + vt
+yt
+st+1 = A · st + B · at + wt
+
+where C ∈ Rn×d is a compression matrix and vt is the sensor noise (also
+gaussian, like wt). Note that the reward function R(t) is left unchanged, as a
+function of the state (not the observation) and action. Also, as distributions
+are gaussian, the belief state is also going to be gaussian. In this new frame-
+work, let’s give an overview of the strategy we are going to adopt to ﬁnd the
+optimal policy:
+
+step 1 ﬁrst, compute the distribution on the possible states (the belief state),
+based on the observations we have. In other words, we want to compute
+the mean st|t and the covariance Σt|t 

@@ -1,0 +1,570 @@
+imensions of the
+state into k values. Then the total number of discrete states we have is kd.
+This grows exponentially quickly in the dimension of the state space d, and
+thus does not scale well to large problems. For example, with a 10d state, if
+we discretize each state variable into 100 values, we would have 10010 = 1020
+discrete states, which is far too many to represent even on a modern desktop
+computer.
+
+As a rule of thumb, discretization usually works extremely well for 1d
+and 2d problems (and has the advantage of being simple and quick to im-
+plement). Perhaps with a little bit of cleverness and some care in choosing
+the discretization method, it often works well for problems with up to 4d
+states. If you’re extremely clever, and somewhat lucky, you may even get it
+to work for some 6d problems. But it very rarely works for problems any
+higher dimensional than that.
+
+123456781.522.533.544.555.5xy197
+
+15.4.2 Value function approximation
+
+We now describe an alternative method for ﬁnding policies in continuous-
+state MDPs, in which we approximate V ∗ directly, without resorting to dis-
+cretization. This approach, called value function approximation, has been
+successfully applied to many RL problems.
+
+Using a model or simulator
+
+To develop a value function approximation algorithm, we will assume that
+we have a model, or simulator, for the MDP. Informally, a simulator is
+a black-box that takes as input any (continuous-valued) state st and action
+at, and outputs a next-state st+1 sampled according to the state transition
+probabilities Pstat:
+
+[t]
+
+There are several ways that one can get such a model. One is to use
+physics simulation. For example, the simulator for the inverted pendulum
+in PS4 was obtained by using the laws of physics to calculate what position
+and orientation the cart/pole will be in at time t + 1, given the current state
+at time t and the action a taken, assuming that we know all the parameters
+of the system such as the length of the pole, the mass of the pole, and so
+on. Alternatively, one can also use an oﬀ-the-shelf physics simulation software
+package which takes as input a complete physical description of a mechanical
+system, the current state st and action at, and computes the state st+1 of the
+system a small fraction of a second into the future.4
+
+An alternative way to get a model is to learn one from data collected in
+the MDP. For example, suppose we execute n trials in which we repeatedly
+take actions in an MDP, each trial for T timesteps. This can be done picking
+actions at random, executing some speciﬁc policy, or via some other way of
+
+4Open Dynamics Engine (http://www.ode.com) is one example of a free/open-source
+physics simulator that can be used to simulate systems like the inverted pendulum, and
+that has been a reasonably popular choice among RL researchers.
+
+choosing actions. We would then observe n state sequences like the following:
+
+198
+
+a(1)
+0−→ s(1)
+1
+a(2)
+0−→ s(2)
+1
+
+a(1)
+1−→ s(1)
+2
+a(2)
+1−→ s(2)
+2
+
+a(1)
+2−→ · · ·
+
+a(2)
+2−→ · · ·
+
+a(1)
+T −1−→ s(1)
+T
+a(2)
+T −1−→ s(2)
+T
+
+s(1)
+0
+
+s(2)
+0
+· · ·
+
+s(n)
+0
+
+a(n)
+0−→ s(n)
+
+1
+
+a(n)
+1−→ s(n)
+
+2
+
+a(n)
+2−→ · · ·
+
+a(n)
+T −1−→ s(n)
+T
+
+We can then apply a learning algorithm to predict st+1 as a function of st
+and at.
+
+For example, one may choose to learn a linear model of the form
+
+st+1 = Ast + Bat,
+
+(15.6)
+
+using an algorithm similar to linear regression. Here, the parameters of the
+model are the matrices A and B, and we can estimate them using the data
+collected from our n trials, by picking
+
+arg min
+A,B
+
+n
+(cid:88)
+
+T −1
+(cid:88)
+
+i=1
+
+t=0
+
+(cid:13)
+(cid:13)s(i)
+(cid:13)
+
+t+1 −
+
+(cid:16)
+
+As(i)
+
+t + Ba(i)
+
+t
+
+(cid:17)(cid:13)
+2
+(cid:13)
+(cid:13)
+2
+
+.
+
+We could also potentially use other loss functions for learning the model.
+For example, it has been found in recent work Luo et al. [2018] that using
+(cid:107) · (cid:107)2 norm (without the square) may be helpful in certain cases.
+
+Having learned A and B, one option is to build a deterministic model,
+in which given an input st and at, the output st+1 is exactly determined.
+Speciﬁcally, we always compute st+1 according to Equation (15.6). Alter-
+natively, we may also build a stochastic model, in which st+1 is a random
+function of the inputs, by modeling it as
+
+st+1 = Ast + Bat + (cid:15)t,
+
+where here (cid:15)t is a noise term, usually modeled as (cid:15)t ∼ N (0, Σ). (The covari-
+ance matrix Σ can also be estimated from data in a straightforward way.)
+
+Here, we’ve written the next-state st+1 as a linear function of the current
+state and action; but of course, non-linear functions are also possible. Specif-
+ically, one can learn a model st+1 = Aφs(st) + Bφa(at), where φs and φa are
+some non-linear feature mappings of the states and actions. Alternatively,
+one can also use non-linear learning algorithms, such as locally weighted lin-
+ear regression, to learn to estimate st+1 as a function of st and at. These
+approaches can also be used to build either deterministic or stochastic sim-
+ulators of an MDP.
+
+199
+
+Fitted value iteration
+
+We now describe the ﬁtted value iteration algorithm for approximating
+the value function of a continuous state MDP. In the sequel, we will assume
+that the problem has a continuous state space S = Rd, but that the action
+space A is small and discrete.5
+
+Recall that in value iteration, we would like to perform the update
+
+V (s)
+
+:= R(s) + γ max
+
+a
+
+= R(s) + γ max
+
+a
+
+(cid:90)
+
+Psa(s(cid:48))V (s(cid:48))ds(cid:48)
+
+s(cid:48)
+Es(cid:48)∼Psa[V (s(cid:48))]
+
+(15.7)
+
+(15.8)
+
+(In Section 15.2, we had written the value iteration update with a summation
+s(cid:48) Psa(s(cid:48))V (s(cid:48)) rather than an integral over states;
+V (s) := R(s) + γ maxa
+the new notation reﬂects that we are now working in continuous states rather
+than discrete states.)
+
+(cid:80)
+
+The main idea of ﬁtted value iteration is that we are going to approxi-
+mately carry out this step, over a ﬁnite sample of states s(1), . . . , s(n). Specif-
+ically, we will use a supervised learning algorithm—linear regression in our
+description below—to approximate the value function as a linear or non-linear
+function of the states:
+
+V (s) = θT φ(s).
+
+Here, φ is some appropriate feature mapping of the states.
+
+For each state s in our ﬁnite sample of n states, ﬁtted value iteration
+will ﬁrst compute a quantity y(i), which will be our approximation to R(s) +
+γ maxa Es(cid:48)∼Psa[V (s(cid:48))] (the right hand side of Equation 15.8). Then, it will
+apply a supervised learning algorithm to try to get V (s) close to R(s) +
+γ maxa Es(cid:48)∼Psa[V (s(cid:48))] (or, in other words, to try to get V (s) close to y(i)).
+
+In detail, the algorithm is as follows:
+
+1. Randomly sample n states s(1), s(2), . . . s(n) ∈ S.
+
+2. Initialize θ := 0.
+
+3. Repeat {
+
+For i = 1, . . . , n {
+
+5In practice, most MDPs have much smaller action spaces than state spaces. E.g., a car
+has a 6d state space, and a 2d action space (steering and velocity controls); the inverted
+pendulum has a 4d state space, and a 1d action space; a helicopter has a 12d state space,
+and a 4d action space. So, discretizing this set of actions is usually less of a problem than
+discretizing the state space would have been.
+
+For each action a ∈ A {
+
+200
+
+1, . . . , s(cid:48)
+(cid:80)k
+
+Sample s(cid:48)
+Set q(a) = 1
+k
+// Hence, q(a) is an estimate of R(s(i)) +
+
+k ∼ Ps(i)a (using a model of the MDP).
+j=1 R(s(i)) + γV (s(cid:48)
+j)
+
+γEs(cid:48)∼P
+
+s(i)a
+
+[V (s(cid:48))].
+
+}
+Set y(i) = maxa q(a).
+
+// Hence, y(i)
+
+is an estimate of R(s(i)) +
+
+γ maxa Es(cid:48)∼P
+
+s(i)a
+
+[V (s(cid:48))].
+
+}
+
+// In the original value iteration algorithm (over discrete states)
+// we updated the value function according to V (s(i)) := y(i).
+// In this algorithm, we want V (s(i)) ≈ y(i), which we’ll achieve
+
+// using supervised learning (linear regression).
+
+Set θ := arg minθ
+
+(cid:80)n
+
+i=1
+
+1
+2
+
+(cid:0)θT φ(s(i)) − y(i)(cid:1)2
+
+}
+
+Above, we had written out ﬁtted value iteration using linear regression
+as the algorithm to try to make V (s(i)) close to y(i). That step of the algo-
+rithm is completely analogous to a standard supervised learning (regression)
+problem in which we have a training set (x(1), y(1)), (x(2), y(2)), . . . , (x(n), y(n)),
+and want to learn a function mapping from x to y; the only diﬀerence is that
+here s plays the role of x. Even though our description above used linear re-
+gression, clearly other regression algorithms (such as locally weighted linear
+regression) can also be used.
+
+Unlike value iteration over a discrete set of states, ﬁtted value iteration
+cannot be proved to always to converge. However, in practice, it often does
+converge (or approximately converge), and works well for many problems.
+Note also that if we are using a deterministic simulator/model of the MDP,
+then ﬁtted value iteration can be simpliﬁed by setting k = 1 in the algorithm.
+This is because the expectation in Equation (15.8) becomes an expectation
+over a deterministic distribution, and so a single example is suﬃcient to
+exactly compute that expectation. Otherwise, in the algorithm above, we
+had to draw k samples, and average to try to approximate that expectation
+(see the deﬁnition of q(a), in the algorithm pseudo-code).
+
+201
+
+Finally, ﬁtted value iteration outputs V , which is an approximation to
+V ∗. This implicitly deﬁnes our policy. Speciﬁcally, when our system is in
+some state s, and we need to choose an action, we would like to choose the
+action
+
+arg max
+
+a
+
+Es(cid:48)∼Psa[V (s(cid:48))]
+
+(15.9)
+
+The process for computing/approximating this is similar to the inner-loop of
+ﬁtted value iteration, where for each action, we sample s(cid:48)
+k ∼ Psa to
+approximate the expectation. (And again, if the simulator is deterministic,
+we can set k = 1.)
+
+1, . . . , s(cid:48)
+
+In practice, there are often other ways to approximate this step as well.
+For example, one very common case is if the simulator is of the form st+1 =
+f (st, at) + (cid:15)t, where f is some deterministic function of the states (such as
+f (st, at) = Ast + Bat), and (cid:15) is zero-mean Gaussian noise. In this case, we
+can pick the action given by
+
+arg max
+
+a
+
+V (f (s, a)).
+
+In other words, here we are just setting (cid:15)t = 0 (i.e., ignoring the noise in
+the simulator), and setting k = 1. Equivalent, this can be derived from
+Equation (15.9) using the approximation
+
+Es(cid:48)[V (s(cid:48))] ≈ V (Es(cid:48)[s(cid:48)])
+= V (f (s, a)),
+
+(15.10)
+(15.11)
+
+where here the expectation is over the random s(cid:48) ∼ Psa. So long as the noise
+terms (cid:15)t are small, this will usually be a reasonable approximation.
+
+However, for problems that don’t lend themselves to such approximations,
+having to sample k|A| states using the model, in order to approximate the
+expectation above, can be computationally expensive.
+
+15.5 Connections between Policy and Value
+
+Iteration (Optional)
+
+In the policy iteration, line 3 of Algorithm 5, we typically use linear system
+solver to compute V π. Alternatively, one can also the iterative Bellman
+updates, similarly to the value iteration, to evaluate V π, as in the Procedure
+VE(·) in Line 1 of Algorithm 6 below. Here if we take option 1 in Line 2 of
+the Procedure VE, then the diﬀerence between the Procedure VE from the
+
+202
+
+Algorithm 6 Variant of Policy Iteration
+1: procedure VE(π, k)
+2:
+
+(cid:46) To evaluate V π
+Option 1: initialize V (s) := 0; Option 2: Initialize from the current
+
+V in the main algorithm.
+for i = 0 to k − 1 do
+
+For every state s, update
+
+V (s) := R(s) + γ
+
+(cid:88)
+
+s(cid:48)
+
+Psπ(s)(s(cid:48))V (s(cid:48)).
+
+(15.12)
+
+return V
+
+3:
+4:
+
+5:
+
+Require: hyperparameter k.
+
+6: Initialize π randomly.
+7: for until convergence do
+8:
+9:
+
+Let V = VE(π, k).
+For each state s, let
+
+π(s) := arg max
+a∈A
+
+(cid:88)
+
+s(cid:48)
+
+Psa(s(cid:48))V (s(cid:48)).
+
+(15.13)
+
+203
+
+value iteration (Algorithm 4) is that on line 4, the procedure is using the
+action from π instead of the greedy action.
+
+Using the Procedure VE, we can build Algorithm 6, which is a variant
+of policy iteration that serves an intermediate algorithm that connects pol-
+icy iteration and value iteration. Here we are going to use option 2 in VE
+to maximize the re-use of knowledge learned before. One can verify indeed
+that if we take k = 1 and use option 2 in Line 2 in Algorithm 6, then Algo-
+rithm 6 is semantically equivalent to value iteration (Algorithm 4). In other
+words, both Algorithm 6 and value iteration interleave the updates in (15.13)
+and (15.12). Algorithm 6 alternate between k steps of update (15.12) and
+one step of (15.13), whereas value iteration alternates between 1 steps of up-
+date (15.12) and one step of (15.13). Therefore generally Algorithm 6 should
+not be faster than value iteration, because assuming that update (15.12)
+and (15.13) are equally useful and time-consuming, then the optimal balance
+of the update frequencies could be just k = 1 or k ≈ 1.
+
+On the other hand, if k steps of update (15.12) can be done much faster
+than k times a single step of (15.12), then taking additional steps of equa-
+tion (15.12) in group might be useful. This is what policy iteration is lever-
+aging — the linear system solver can give us the result of Procedure VE with
+k = ∞ much faster than using the Procedure VE for a large k. On the ﬂip
+side, when such a speeding-up eﬀect no longer exists, e.g.,, when the state
+space is large and linear system solver is also not fast, then value iteration is
+more preferable.
+
+Chapter 16
+
+LQR, DDP and LQG
+
+16.1 Finite-horizon MDPs
+
+In Chapter 15, we deﬁned Markov Decision Processes (MDPs) and covered
+Value Iteration / Policy Iteration in a simpliﬁed setting. More speciﬁcally we
+introduced the optimal Bellman equation that deﬁnes the optimal value
+function V π∗ of the optimal policy π∗.
+
+V π∗(s) = R(s) + max
+a∈A
+
+γ
+
+Psa(s(cid:48))V π∗(s(cid:48))
+
+(cid:88)
+
+s(cid:48)∈S
+
+Recall that from the optimal value function, we were able to recover the
+
+optimal policy π∗ with
+
+π∗(s) = argmaxa∈A
+
+Psa(s(cid:48))V ∗(s(cid:48))
+
+(cid:88)
+
+s(cid:48)∈S
+
+In this chapter, we’ll place ourselves in a more general setting:
+
+1. We want to write equations that make sense for both the discrete and
+
+the continuous case. We’ll therefore write
+
+Es(cid:48)∼Psa
+(cid:88)
+
+(cid:2)V π∗(s(cid:48))(cid:3)
+Psa(s(cid:48))V π∗(s(cid:48))
+
+s(cid:48)∈S
+
+instead of
+
+meaning that we take the expectation of the value function at the next
+state. In the ﬁnite case, we can rewrite the expectation as a sum over
+
+204
+
+205
+
+In the continuous case, we can rewrite the expectation as an
+states.
+integral. The notation s(cid:48) ∼ Psa means that the state s(cid:48) is sampled from
+the distribution Psa.
+
+2. We’ll assume that the rewards depend on both states and actions. In
+other words, R : S × A → R. This implies that the previous mechanism
+for computing the optimal action is changed into
+
+π∗(s) = argmaxa∈A R(s, a) + γEs(cid:48)∼Psa
+
+(cid:2)V π∗(s(cid:48))(cid:3)
+
+3. Instead of considering an inﬁnite horizon MDP, we’ll assume that we
+
+have a ﬁnite horizon MDP that will be deﬁned as a tuple
+
+(S, A, Psa, T, R)
+
+with T > 0 the time horizon (for instance T = 100). In this setting,
+our deﬁnition of payoﬀ is going to be (slightly) diﬀerent:
+
+R(s0, a0) + R(s1, a1) + · · · + R(sT , aT )
+
+instead of (inﬁnite horizon case)
+
+R(s0, a0) + γR(s1, a1) + γ2R(s2, a2) + . . .
+∞
+(cid:88)
+
+R(st, at)γt
+
+t=0
+
+What happened to the discount factor γ? Remember that the intro-
+duction of γ was (partly) justiﬁed by the necessity of making sure that
+If the rewards are
+the inﬁnite sum would be ﬁnite and we

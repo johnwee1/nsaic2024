@@ -1,0 +1,680 @@
+o a more
+ﬁxed and controllable scaling, such as batch-normalization [?], and group
+normalization [?]. Batch normalization and group normalization are more
+often used in computer vision applications whereas layer norm is used more
+often in language applications.
+
+Convolutional Layers. Convolutional Neural Networks are neural net-
+works that consist of convolution layers (and many other modules), and are
+particularly useful for computer vision applications. For the simplicity of
+exposition, we focus on 1-D convolution in this text and only brieﬂy mention
+2-D convolution informally at the end of this subsection. (2-D convolution
+is more suitable for images which have two dimensions. 1-D convolution is
+also used in natural language processing.)
+
+We start by introducing a simpliﬁed version of the 1-D convolution layer,
+denoted by Conv1D-S(·) which is a type of matrix multiplication layer with
+a special structure. The parameters of Conv1D-S are a ﬁlter vector w ∈ Rk
+where k is called the ﬁlter size (oftentimes k (cid:28) m), and a bias scalar b.
+Oftentimes the ﬁlter is also called a kernel (but it does not have much to do
+with the kernel in kernel method.) For simplicity, we assume k = 2(cid:96) + 1 is
+an odd number. We ﬁrst pad zeros to the input vector z in the sense that we
+let z1−(cid:96) = z1−(cid:96)+1 = .. = z0 = 0 and zm+1 = zm+2 = .. = zm+(cid:96) = 0, and treat
+z as an (m + 2(cid:96))-dimension vector. Conv1D-S outputs a vector of dimension
+Rm where each output dimension is a linear combination of subsets of zj’s
+with coeﬃcients from w,
+
+Conv1D-S(z)i = w1zi−(cid:96) + w2zi−(cid:96)+1 + · · · + w2(cid:96)+1zi+(cid:96) =
+
+2(cid:96)+1
+(cid:88)
+
+j=1
+
+wjzi−(cid:96)+(j−1).
+
+(7.48)
+
+Therefore, one can view Conv1D-S as a matrix multiplication with shared
+
+parameters: Conv1D-S(z) = Qz, where
+
+Q =
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+w(cid:96)+1
+w(cid:96)
+...
+w1
+0
+...
+...
+0
+...
+0
+
+· · · w2(cid:96)+1
+· · ·
+
+w2(cid:96)
+
+0
+w2(cid:96)+1
+
+0
+0
+
+· · ·
+· · ·
+
+· · ·
+· · ·
+
+· · ·
+· · ·
+
+· · ·
+w1
+
+w(cid:96)+1
+· · ·
+
+· · ·
+· · ·
+
+· · ·
+· · ·
+
+· · · w2(cid:96)+1
+· · ·
+
+w2(cid:96)
+
+0
+w2(cid:96)+1
+
+· · ·
+· · ·
+
+· · ·
+0
+
+· · ·
+· · ·
+
+· · ·
+· · ·
+
+· · ·
+· · ·
+
+· · ·
+· · ·
+
+0
+0
+
+0
+0
+
+· · ·
+
+· · ·
+
+· · ·
+
+· · ·
+
+· · ·
+
+0
+
+w1
+
+· · ·
+
+· · · w2(cid:96)+1
+
+· · ·
+
+· · ·
+
+· · ·
+
+· · ·
+
+· · ·
+
+· · ·
+
+· · ·
+
+0
+
+w1
+
+· · ·
+
+w(cid:96)+1
+
+97
+
+.
+
+(7.49)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Note that Qi,j = Qi−1,j−1 for all i, j ∈ {2, . . . , m}, and thus convoluation is a
+matrix multiplication with parameter sharing. We also note that computing
+the convolution only takes O(km) times but computing a generic matrix
+multiplication takes O(m2) time. Convolution has k parameters but generic
+matrix multiplication will have m2 parameters. Thus convolution is supposed
+to be much more eﬃcient than a generic matrix multiplication (as long as
+the additional structure imposed does not hurt the ﬂexibility of the model
+to ﬁt the data).
+
+We also note that in practice there are many variants of the convolutional
+layers that we deﬁne here, e.g., there are other ways to pad zeros or sometimes
+the dimension of the output of the convolutional layers could be diﬀerent from
+the input. We omit some of this subtleties here for simplicity.
+
+The convolutional layers used in practice have also many “channels” and
+the simpliﬁed version above corresponds to the 1-channel version. Formally,
+Conv1D takes in C vectors z1, . . . , zC ∈ Rm as inputs, where C is referred
+to as the number of channels.
+In other words, the more general version,
+denoted by Conv1D, takes in a matrix as input, which is the concatenation
+of z1, . . . , zC and has dimension m×C. It can output C (cid:48) vectors of dimension
+m, denoted by Conv1D(z)1, . . . , Conv1D(z)C(cid:48), where C (cid:48) is referred to as the
+output channel, or equivalently a matrix of dimension m × C (cid:48). Each of the
+output is a sum of the simpliﬁed convolutions applied on various channels.
+
+∀i ∈ [C (cid:48)], Conv1D(z)i =
+
+C
+(cid:88)
+
+j=1
+
+Conv1D-Si,j(zj).
+
+(7.50)
+
+Note that each Conv1D-Si,j are modules with diﬀerent parameters, and
+thus the total number of parameters is k (the number of parameters in a
+Conv1D-S) ×CC (cid:48) (the number of Conv1D-Si.j’s) = kCC (cid:48).
+In contrast, a
+generic linear mapping from Rm×C and Rm×C(cid:48) has m2CC (cid:48) parameters. The
+
+98
+
+parameters can also be represented as a three-dimensional tensor of dimen-
+sion k × C × C (cid:48).
+
+2-D convolution (brief ). A 2-D convolution with one channel, denoted by
+Conv2D-S, is analogous to the Conv1D-S, but takes a 2-dimensional input
+z ∈ Rm×m and applies a ﬁlter of size k × k, and outputs Conv2D-S(z) ∈
+Rm×m. The full 2-D convolutional layer, denoted by Conv2D, takes in
+a sequence of matrices z1, . . . , zC ∈ Rm×m, or equivalently a 3-D ten-
+sor z = (z1, . . . , zC) ∈ Rm×m×C and outputs a sequence of matrices,
+Conv2D(z)1, . . . , Conv2D(z)C(cid:48) ∈ Rm×m, which can also be viewed as a 3D
+tensor in Rm×m×C(cid:48). Each channel of the output is sum of the outcomes of
+applying Conv2D-S layers on all the input channels.
+
+∀i ∈ [C (cid:48)], Conv2D(z)i =
+
+C
+(cid:88)
+
+j=1
+
+Conv2D-Si,j(zj).
+
+(7.51)
+
+Because there are CC (cid:48) number of Conv2D-S modules and each of the
+Conv2D-S module has k2 parameters, the total number of parameters is
+CC (cid:48)k2. The parameters can also be viewed as a 4D tensor of dimension
+C × C (cid:48) × k × k.
+
+7.4 Backpropagation
+
+In this section, we introduce backpropgation or auto-diﬀerentiation, which
+computes the gradient of the loss ∇J(θ) eﬃciently. We will start with an
+informal theorem that states that as long as a real-valued function f can be
+eﬃciently computed/evaluated by a diﬀerentiable network or circuit, then its
+gradient can be eﬃciently computed in a similar time. We will then show
+how to do this concretely for neural networks.
+
+Because the formality of the general theorem is not the main focus here,
+we will introduce the terms with informal deﬁnitions. By a diﬀerentiable
+circuit or a diﬀerentiable network, we mean a composition of a sequence of
+diﬀerentiable arithmetic operations (additions, subtraction, multiplication,
+divisions, etc) and elementary diﬀerentiable functions (ReLU, exp, log, sin,
+cos, etc.). Let the size of the circuit be the total number of such operations
+and elementary functions. We assume that each of the operations and func-
+tions, and their derivatives or partial derivatives ecan be computed in O(1)
+time.
+
+Theorem 7.4.1: [backpropagation or auto-diﬀerentiation, informally stated]
+Suppose a diﬀerentiable circuit of size N computes a real-valued function
+
+99
+
+f : R(cid:96) → R. Then, the gradient ∇f can be computed in time O(N ), by a
+circuit of size O(N ).5
+
+We note that the loss function J (j)(θ) for j-th example can be indeed
+computed by a sequence of operations and functions involving additions,
+subtraction, multiplications, and non-linear activations. Thus the theorem
+suggests that we should be able to compute the ∇J (j)(θ) in a similar time
+to that for computing J (j)(θ) itself. This does not only apply to the fully-
+connected neural network introduced in the Section 7.2, but also many other
+types of neural networks that uses more advance modules.
+
+We remark that auto-diﬀerentiation or backpropagation is already imple-
+mented in all the deep learning packages such as tensorﬂow and pytorch, and
+thus in practice, in most of cases a researcher does not need to write their
+backpropagation algorithms. However, understanding it is very helpful for
+gaining insights into the working of deep learning.
+
+Organization of the rest of the section. In Section 7.4.1, we will start review-
+ing the basic Chain rule with a new perspective that is particularly useful
+for understanding backpropgation. Section 7.4.2 will introduce the general
+strategy for backpropagation. Section 7.4.2 will discuss how to compute the
+so-called backward function for basic modules used in neural networks, and
+Section 7.4.4 will put everything together to get a concrete backprop algo-
+rithm for MLPs.
+
+7.4.1 Preliminaries on partial derivatives
+
+Suppose a scalar variable J depend on some variables z (which could be a
+scalar, matrix, or high-order tensor), we write ∂J
+∂z as the partial derivatives
+of J w.r.t to the variable z. We stress that the convention here is that ∂J
+∂z
+has exactly the same dimension as z itself. For example, if z ∈ Rm×n, then
+∂z ∈ Rm×n, and the (i, j)-entry of ∂J
+∂J
+
+∂z is equal to ∂J
+∂zij
+
+.
+
+Remark 7.4.2: When both J and z are not scalars, the partial derivatives of
+J w.r.t z becomes either a matrix or tensor and the notation becomes some-
+what tricky. Besides the mathematical or notational challenges in dealing
+
+5We note if the output of the function f does not depend on some of the input co-
+ordinates, then we set by default the gradient w.r.t that coordinate to zero. Setting to
+zero does not count towards the total runtime here in our accounting scheme. This is why
+when N ≤ (cid:96), we can compute the gradient in O(N ) time, which might be potentially even
+less than (cid:96).
+
+100
+
+with these partial derivatives of multi-variate functions, they are also expen-
+sive to compute and store, and thus rarely explicitly constructed empirically.
+The experience of authors of this note is that it’s generally more productive
+to think only about derivatives of scalar function w.r.t to vector, matrices,
+or tensors. For example, in this note, we will not deal with derivatives of
+multi-variate functions.
+
+Chain rule. We review the chain rule in calculus but with a perspective
+and notions that are more relevant for auto-diﬀerentiation.
+
+Consider a scalar variable J which is obtained by the composition of f
+
+and g on some variable z,
+
+z ∈ Rm
+u = g(z) ∈ Rn
+J = f (u) ∈ R .
+
+(7.52)
+
+The same derivations below can be easily extend to the cases when z and u
+are matrices or tensors; but we insist that the ﬁnal variable J is a scalar. (See
+also Remark 7.4.2.) Let u = (u1, . . . , un) and let g(z) = (g1(z), · · · , gn(z)).
+Then, the standard chain rule gives us that
+
+∀i ∈ {1, . . . , m},
+
+∂J
+∂zi
+
+=
+
+n
+(cid:88)
+
+j=1
+
+∂J
+∂uj
+
+·
+
+∂gj
+∂zi
+
+.
+
+(7.53)
+
+Alternatively, when z and u are both vectors, in a vectorized notation:
+
+∂J
+∂z
+
+=
+
+
+
+
+
+
+∂g1
+∂z1
+
+...
+
+∂g1
+∂zm
+
+· · ·
+. . .
+· · ·
+
+
+
+
+ ·
+
+∂gn
+∂z1
+
+...
+
+∂gn
+∂zm
+
+∂J
+∂u
+
+.
+
+(7.54)
+
+In other words, the backward function is always a linear map from ∂J
+∂u to
+∂J
+∂z , though note that the mapping itself can depend on z in complex ways.
+The matrix on the RHS of (7.54) is actually the transpose of the Jacobian
+matrix of the function g. However, we do not discuss in-depth about Jacobian
+matrices to avoid complications. Part of the reason is that when z is a matrix
+(or tensor), to write an analog of equation (7.54), one has to either ﬂatten z
+into a vector or introduce additional notations on tensor-matrix product. In
+this sense, equation (7.53) is more convenient and eﬀective to use in all cases.
+For example, when z ∈ Rr×s is a matrix, we can easily rewrite equation (7.53)
+
+to
+
+∀i, k,
+
+∂J
+∂zik
+
+=
+
+n
+(cid:88)
+
+j=1
+
+∂J
+∂uj
+
+·
+
+∂gj
+∂zik
+
+.
+
+101
+
+(7.55)
+
+which will indeed be used in some of the derivations in Section 7.4.3.
+
+Key interpretation of the chain rule. We can view the formula above (equa-
+tion (7.53) or (7.54)) as a way to compute ∂J
+∂u . Consider the following
+abstract problem. Suppose J depends on z via u as deﬁned in equation (7.52).
+However, suppose the function f is not given or the function f is complex,
+but we are given the value of ∂J
+∂u . Then, the formula in equation (7.54) gives
+∂z from ∂J
+us a way to compute ∂J
+∂u .
+
+∂z from ∂J
+
+∂J
+∂u
+
+chain rule, formula (7.54)
+====================⇒
+only requires info about g(·) and z
+
+∂J
+∂z
+
+.
+
+(7.56)
+
+Moreover, this formula only involves knowledge about g (more precisely ∂gj
+).
+∂zi
+We will repeatedly use this fact in situations where g is a building blocks of
+a complex network f .
+
+Empirically, it’s often useful to modularized the mapping in (7.53) or
+(7.54) into a black-box, and mathematically it’s also convenient to deﬁne a
+∂u to ∂J
+notation for it.6 We use B[g, z] to deﬁne the function that maps ∂J
+∂z ,
+and write
+
+∂J
+∂z
+
+= B[g, z]
+
+(cid:19)
+
+(cid:18)∂J
+∂u
+
+.
+
+(7.57)
+
+We call B[g, z] the backward function for the module g. Note that when z
+is ﬁxed, B[g, z] is merely a linear map from Rn to Rm. Using equation (7.53),
+we have
+
+(B[g, z](v))i =
+
+m
+(cid:88)
+
+j=1
+
+∂gj
+∂zi
+
+· vj .
+
+Or in vectorized notation, using (7.54), we have
+
+B[g, z](v) =
+
+
+
+
+
+
+∂g1
+∂z1
+
+...
+
+∂g1
+∂zm
+
+· · ·
+. . .
+· · ·
+
+
+
+
+ · v .
+
+∂gn
+∂z1
+
+...
+
+∂gn
+∂zm
+
+6e.g., the function is the .backward() method of the module in pytorch.
+
+(7.58)
+
+(7.59)
+
+102
+
+and therefore B[g, z] can be viewed as a matrix. However, in reality, z will be
+changing and thus the backward mapping has to be recomputed for diﬀerent
+z’s while g is often ﬁxed. Thus, empirically, the backward function B[g, z](v)
+is often viewed as a function which takes in z (=the input to g) and v (=a
+vector that is supposed to be the gradient of some variable J w.r.t to the
+output of g) as the inputs, and outputs a vector that is supposed to be the
+gradient of J w.r.t to z.
+
+7.4.2 General strategy of backpropagation
+
+We discuss the general strategy of auto-diﬀerentiation in this section to build
+a high-level understanding. Then, we will instantiate the approach to con-
+crete neural networks. We take the viewpoint that neural networks are com-
+plex compositions of small building blocks such as MM, σ, Conv2D, LN,
+etc., deﬁned in Section 7.3. Note that the losses (e.g., mean-squared loss, or
+the cross-entropy loss) can also be abstractly viewed as additional modules.
+Thus, we can abstractly write the loss function J (on a single example (x, y))
+as a composition of many modules:7
+
+J = Mk(Mk−1(· · · M1(x))) .
+
+(7.60)
+
+For example, for a binary classiﬁcation problem with a MLP ¯hθ(x) (de-
+ﬁned in equation (7.36) and (7.37)), the loss function has ber written in the
+form of equation (7.60) with M1 = MMW [1],b[1], M2 = σ, M3 = MMW [2],b[2],
+. . . , and Mk−1 = MMW [r],b[r] and Mk = (cid:96)logistic.
+
+We can see from this example that some modules involve parameters, and
+other modules might only involve a ﬁxed set of operations. For generality,
+we assume that eachj Mi involves a set of parameters θ[i], though θ[i] could
+possibly be an empty set when Mi is a ﬁxed operation such as the nonlinear
+activations. We will discuss more on the granularity of the modularization,
+but so far we assume all the modules Mi’s are simple enough.
+
+We introduce the intermediate variables for the computation in (7.60).
+
+7Technically, we should write J = Mk(Mk−1(· · · M1(x)), y). However, y is treated as a
+constant for the purpose of computing the derivatives w.r.t to the parameters, and thus
+we can view it as part of Mk for the sake of simplicity of notations.
+
+103
+
+Let
+
+u[0] = x
+u[1] = M1(u[0])
+u[2] = M2(u[1])
+
+...
+
+J = u[k] = Mk(u[k−1]) .
+
+(F)
+
+Backpropgation consists of two passes, the forward pass and backward
+pass. In the forward pass, the algorithm simply computes u[1], . . . , u[k] from
+i = 1, . . . , k, sequentially using the deﬁnition in (F), and save all the in-
+termediate variables u[i]’s in the memory.
+
+In the backward pass, we ﬁrst compute the derivatives w.r.t to the
+intermediate variables, that is,
+∂u[1] , sequentially in this backward
+order, and then compute the derivatives of the parameters ∂J
+∂u[i] and
+u[i−1]. These two type of computations can be also interleaved with each
+other because ∂J
+∂u[k] with
+k < i.
+
+∂u[i] and u[

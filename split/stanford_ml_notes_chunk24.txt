@@ -1,0 +1,633 @@
+of
+
+st|y1, . . . , yt ∼ N (cid:0)st|t, Σt|t
+
+(cid:1)
+
+to perform the computation eﬃciently over time, we’ll use the Kalman
+Filter algorithm (used on-board Apollo Lunar Module!).
+
+step 2 now that we have the distribution, we’ll use the mean st|t as the best
+
+approximation for st
+
+step 3 then set the action at := Ltst|t where Lt comes from the regular LQR
+
+algorithm.
+
+Intuitively, to understand why this works, notice that st|t is a noisy ap-
+proximation of st (equivalent to adding more noise to LQR) but we proved
+that LQR is independent of the noise!
+
+Step 1 needs to be explicated. We’ll cover a simple case where there is
+no action dependence in our dynamics (but the general case follows the same
+idea). Suppose that
+
+(cid:40)
+
+st+1 = A · st + wt, wt ∼ N (0, Σs)
+vt ∼ N (0, Σy)
+yt
+
+= C · st + vt,
+
+As noises are Gaussians, we can easily prove that the joint distribution is
+
+also Gaussian
+
+216
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+s1
+...
+st
+y1
+...
+yt
+
+∼ N (µ, Σ)
+
+for some µ, Σ
+
+then, using the marginal formulas of gaussians (see Factor Analysis notes),
+
+we would get
+
+st|y1, . . . , yt ∼ N (cid:0)st|t, Σt|t
+
+(cid:1)
+
+However, computing the marginal distribution parameters using these
+formulas would be computationally expensive! It would require manipulating
+matrices of shape t × t. Recall that inverting a matrix can be done in O(t3),
+and it would then have to be repeated over the time steps, yielding a cost in
+O(t4)!
+
+The Kalman ﬁlter algorithm provides a much better way of computing
+the mean and variance, by updating them over time in constant time in
+t! The kalman ﬁlter is based on two basics steps. Assume that we know the
+distribution of st|y1, . . . , yt:
+
+predict step compute st+1|y1, . . . , yt
+
+update step compute st+1|y1, . . . , yt+1
+
+and iterate over time steps! The combination of the predict and update
+
+steps updates our belief states. In other words, the process looks like
+
+(st|y1, . . . , yt)
+
+predict
+−−−−→ (st+1|y1, . . . , yt)
+
+update
+−−−−→ (st+1|y1, . . . , yt+1)
+
+predict
+−−−−→ . . .
+
+predict step Suppose that we know the distribution of
+
+st|y1, . . . , yt ∼ N (cid:0)st|t, Σt|t
+
+(cid:1)
+
+then, the distribution over the next state is also a gaussian distribution
+
+st+1|y1, . . . , yt ∼ N (cid:0)st+1|t, Σt+1|t
+
+(cid:1)
+
+where
+
+217
+
+(cid:40)
+
+st+1|t = A · st|t
+Σt+1|t = A · Σt|t · A(cid:62) + Σs
+
+update step given st+1|t and Σt+1|t such that
+
+st+1|y1, . . . , yt ∼ N (cid:0)st+1|t, Σt+1|t
+
+(cid:1)
+
+we can prove that
+
+st+1|y1, . . . , yt+1 ∼ N (cid:0)st+1|t+1, Σt+1|t+1
+
+(cid:1)
+
+where
+
+with
+
+(cid:40)
+
+st+1|t+1 = st+1|t + Kt(yt+1 − Cst+1|t)
+Σt+1|t+1 = Σt+1|t − Kt · C · Σt+1|t
+
+Kt := Σt+1|tC (cid:62)(CΣt+1|tC (cid:62) + Σy)−1
+
+The matrix Kt is called the Kalman gain.
+
+Now, if we have a closer look at the formulas, we notice that we don’t
+need the observations prior to time step t! The update steps only depends
+on the previous distribution. Putting it all together, the algorithm ﬁrst runs
+a forward pass to compute the Kt, Σt|t and st|t (sometimes referred to as
+ˆs in the literature). Then, it runs a backward pass (the LQR updates) to
+compute the quantities Ψt, Ψt and Lt. Finally, we recover the optimal policy
+with a∗
+
+t = Ltst|t.
+
+Chapter 17
+
+Policy Gradient
+(REINFORCE)
+
+We will present a model-free algorithm called REINFORCE that does not
+require the notion of value functions and Q functions. It turns out to be more
+convenient to introduce REINFORCE in the ﬁnite horizon case, which will
+be assumed throughout this note: we use τ = (s0, a0, . . . , sT −1, aT −1, sT ) to
+denote a trajectory, where T < ∞ is the length of the trajectory. Moreover,
+REINFORCE only applies to learning a randomized policy. We use πθ(a|s)
+to denote the probability of the policy πθ outputting the action a at state s.
+The other notations will be the same as in previous lecture notes.
+
+The advantage of applying REINFORCE is that we only need to assume
+that we can sample from the transition probabilities {Psa} and can query the
+reward function R(s, a) at state s and action a,1 but we do not need to know
+the analytical form of the transition probabilities or the reward function.
+We do not explicitly learn the transition probabilities or the reward function
+either.
+
+Let s0 be sampled from some distribution µ. We consider optimizing the
+
+expected total payoﬀ of the policy πθ over the parameter θ deﬁned as.
+
+η(θ) (cid:44) E
+
+(cid:34)T −1
+(cid:88)
+
+(cid:35)
+γtR(st, at)
+
+t=0
+
+(17.1)
+
+Recall that st ∼ Pst−1at−1 and at ∼ πθ(·|st). Also note that η(θ) =
+Es0∼P [V πθ(s0)] if we ignore the diﬀerence between ﬁnite and inﬁnite hori-
+zon.
+
+1In this notes we will work with the general setting where the reward depends on both
+
+the state and the action.
+
+218
+
+219
+
+We aim to use gradient ascent to maximize η(θ). The main challenge
+we face here is to compute (or estimate) the gradient of η(θ) without the
+knowledge of the form of the reward function and the transition probabilities.
+Let Pθ(τ ) denote the distribution of τ (generated by the policy πθ), and
+
+let f (τ ) = (cid:80)T −1
+
+t=0 γtR(st, at). We can rewrite η(θ) as
+
+η(θ) = Eτ ∼Pθ [f (τ )]
+
+(17.2)
+
+We face a similar situations in the variational auto-encoder (VAE) setting
+covered in the previous lectures, where the we need to take the gradient w.r.t
+to a variable that shows up under the expectation — the distribution Pθ
+depends on θ. Recall that in VAE, we used the re-parametrization techniques
+to address this problem. However it does not apply here because we do
+know not how to compute the gradient of the function f . (We only have
+an eﬃcient way to evaluate the function f by taking a weighted sum of the
+observed rewards, but we do not necessarily know the reward function itself
+to compute the gradient.)
+
+The REINFORCE algorithm uses an another approach to estimate the
+
+gradient of η(θ). We start with the following derivation:
+
+∇θEτ ∼Pθ [f (τ )] = ∇θ
+
+(cid:90)
+
+Pθ(τ )f (τ )dτ
+
+(cid:90)
+
+(cid:90)
+
+(cid:90)
+
+=
+
+=
+
+=
+
+∇θ(Pθ(τ )f (τ ))dτ
+
+(swap integration with gradient)
+
+(∇θPθ(τ ))f (τ )dτ
+
+(becaue f does not depend on θ)
+
+Pθ(τ )(∇θ log Pθ(τ ))f (τ )dτ
+
+= Eτ ∼Pθ [(∇θ log Pθ(τ ))f (τ )]
+
+(because ∇ log Pθ(τ ) = ∇Pθ(τ )
+Pθ(τ ) )
+(17.3)
+
+Now we have a sample-based estimator for ∇θEτ ∼Pθ [f (τ )]. Let τ (1), . . . , τ (n)
+be n empirical samples from Pθ (which are obtained by running the policy
+πθ for n times, with T steps for each run). We can estimate the gradient of
+η(θ) by
+
+∇θEτ ∼Pθ [f (τ )] = Eτ ∼Pθ [(∇θ log Pθ(τ ))f (τ )]
+n
+(cid:88)
+
+(∇θ log Pθ(τ (i)))f (τ (i))
+
+≈
+
+1
+n
+
+i=1
+
+(17.4)
+
+(17.5)
+
+220
+
+The next question is how to compute log Pθ(τ ). We derive an analyt-
+ical formula for log Pθ(τ ) and compute its gradient w.r.t θ (using auto-
+diﬀerentiation). Using the deﬁnition of τ , we have
+
+Pθ(τ ) = µ(s0)πθ(a0|s0)Ps0a0(s1)πθ(a1|s1)Ps1a1(s2) · · · PsT −1aT −1(sT )
+
+(17.6)
+
+Here recall that µ to used to denote the density of the distribution of s0. It
+follows that
+
+log Pθ(τ ) = log µ(s0) + log πθ(a0|s0) + log Ps0a0(s1) + log πθ(a1|s1)
+
++ log Ps1a1(s2) + · · · + log PsT −1aT −1(sT )
+
+(17.7)
+
+Taking gradient w.r.t to θ, we obtain
+
+∇θ log Pθ(τ ) = ∇θ log πθ(a0|s0) + ∇θ log πθ(a1|s1) + · · · + ∇θ log πθ(aT −1|sT −1)
+
+Note that many of the terms disappear because they don’t depend on θ and
+thus have zero gradients. (This is somewhat important — we don’t know how
+to evaluate those terms such as log Ps0a0(s1) because we don’t have access to
+the transition probabilities, but luckily those terms have zero gradients!)
+Plugging the equation above into equation (17.4), we conclude that
+
+∇θη(θ) = ∇θEτ ∼Pθ [f (τ )] = Eτ ∼Pθ
+
+= Eτ ∼Pθ
+
+(cid:34)(cid:32)T −1
+(cid:88)
+
+t=0
+(cid:34)(cid:32)T −1
+(cid:88)
+
+t=0
+
+(cid:33)
+
+(cid:35)
+
+∇θ log πθ(at|st)
+
+· f (τ )
+
+(cid:33)
+
+∇θ log πθ(at|st)
+
+·
+
+(cid:33)(cid:35)
+
+γtR(st, at)
+
+(cid:32)T −1
+(cid:88)
+
+t=0
+
+(17.8)
+
+We estimate the RHS of the equation above by empirical sample trajectories,
+and the estimate is unbiased. The vanilla REINFORCE algorithm iteratively
+updates the parameter by gradient ascent using the estimated gradients.
+
+The quantity
+Interpretation of the policy gradient formula (17.8).
+∇θPθ(τ ) = (cid:80)T −1
+t=0 ∇θ log πθ(at|st) is intuitively the direction of the change
+of θ that will make the trajectory τ more likely to occur (or increase the
+probability of choosing action a0, . . . , at−1), and f (τ ) is the total payoﬀ of
+this trajectory. Thus, by taking a gradient step, intuitively we are trying to
+improve the likelihood of all the trajectories, but with a diﬀerent emphasis
+or weight for each τ (or for each set of actions a0, a1, . . . , at−1). If τ is very
+rewarding (that is, f (τ ) is large), we try very hard to move in the direction
+
+221
+
+that can increase the probability of the trajectory τ (or the direction that
+increases the probability of choosing a0, . . . , at−1), and if τ has low payoﬀ,
+we try less hard with a smaller weight.
+
+An interesting fact that follows from formula (17.3) is that
+
+Eτ ∼Pθ
+
+(cid:34)T −1
+(cid:88)
+
+t=0
+
+(cid:35)
+
+∇θ log πθ(at|st)
+
+= 0
+
+(17.9)
+
+To see this, we take f (τ ) = 1 (that is, the reward is always a constant),
+then the LHS of (17.8) is zero because the payoﬀ is always a ﬁxed constant
+(cid:80)T
+
+t=0 γt. Thus the RHS of (17.8) is also zero, which implies (17.9).
+In fact, one can verify that Eat∼πθ(·|st)∇θ log πθ(at|st) = 0 for any ﬁxed t
+and st.2 This fact has two consequences. First, we can simplify formula (17.8)
+to
+
+∇θη(θ) =
+
+=
+
+T −1
+(cid:88)
+
+t=0
+
+T −1
+(cid:88)
+
+t=0
+
+Eτ ∼Pθ
+
+(cid:34)
+
+(cid:34)
+
+∇θ log πθ(at|st) ·
+
+Eτ ∼Pθ
+
+∇θ log πθ(at|st) ·
+
+where the second equality follows from
+
+(cid:33)(cid:35)
+
+γjR(sj, aj)
+
+(cid:33)(cid:35)
+
+γjR(sj, aj)
+
+(17.10)
+
+(cid:32)T −1
+(cid:88)
+
+j=0
+(cid:32)T −1
+(cid:88)
+
+j≥t
+
+(cid:33)(cid:35)
+
+(cid:34)
+
+Eτ ∼Pθ
+
+∇θ log πθ(at|st) ·
+
+(cid:32)
+
+(cid:88)
+
+0≤j<t
+
+(cid:34)
+
+γjR(sj, aj)
+
+= E
+
+E [∇θ log πθ(at|st)|s0, a0, . . . , st−1, at−1, st] ·
+
+(cid:33)(cid:35)
+
+γjR(sj, aj)
+
+(cid:32)
+
+(cid:88)
+
+0≤j<t
+
+= 0
+
+(because E [∇θ log πθ(at|st)|s0, a0, . . . , st−1, at−1, st] = 0)
+
+Note that here we used the law of total expectation. The outer expecta-
+tion in the second line above is over the randomness of s0, a0, . . . , at−1, st,
+whereas the inner expectation is over the randomness of at (conditioned on
+s0, a0, . . . , at−1, st.) We see that we’ve made the estimator slightly simpler.
+The second consequence of Eat∼πθ(·|st)∇θ log πθ(at|st) = 0 is the following: for
+any value B(st) that only depends on st, it holds that
+
+Eτ ∼Pθ [∇θ log πθ(at|st) · B(st)]
+= E [E [∇θ log πθ(at|st)|s0, a0, . . . , st−1, at−1, st] B(st)]
+= 0
+
+(because E [∇θ log πθ(at|st)|s0, a0, . . . , st−1, at−1, st] = 0)
+
+2In general, it’s true that Ex∼pθ [∇ log pθ(x)] = 0.
+
+222
+
+Again here we used the law of total expectation. The outer expecta-
+tion in the second line above is over the randomness of s0, a0, . . . , at−1, st,
+whereas the inner expectation is over the randomness of at (conditioned on
+s0, a0, . . . , at−1, st.) It follows from equation (17.10) and the equation above
+that
+
+Eτ ∼Pθ
+
+(cid:34)
+
+(cid:34)
+
+∇θη(θ) =
+
+=
+
+T −1
+(cid:88)
+
+t=0
+
+T −1
+(cid:88)
+
+t=0
+
+∇θ log πθ(at|st) ·
+
+(cid:32)T −1
+(cid:88)
+
+γjR(sj, aj) − γtB(st)
+
+(cid:33)(cid:35)
+
+(cid:33)(cid:35)
+
+j≥t
+(cid:32)T −1
+(cid:88)
+
+j≥t
+
+γj−tR(sj, aj) − B(st)
+
+(17.11)
+
+Eτ ∼Pθ
+
+∇θ log πθ(at|st) · γt
+
+(cid:104)(cid:80)T −1
+
+Therefore, we will get a diﬀerent estimator for estimating the ∇η(θ) with a
+diﬀerence choice of B(·). The beneﬁt of introducing a proper B(·) — which
+is often referred to as a baseline — is that it helps reduce the variance of the
+estimator.3 It turns out that a near optimal estimator would be the expected
+(cid:105)
+, which is pretty much the same as the
+future payoﬀ E
+value function V πθ(st) (if we ignore the diﬀerence between ﬁnite and inﬁnite
+horizon.) Here one could estimate the value function V πθ(·) in a crude way,
+because its precise value doesn’t inﬂuence the mean of the estimator but only
+the variance. This leads to a policy gradient algorithm with baselines stated
+in Algorithm 7.4
+
+j≥t γj−tR(sj, aj)|st
+
+3As a heuristic but illustrating example, suppose for a ﬁxed t, the future reward
+(cid:80)T −1
+j≥t γj−tR(sj, aj) randomly takes two values 1000 + 1 and 1000 − 2 with equal proba-
+bility, and the corresponding values for ∇θ log πθ(at|st) are vector z and −z. (Note that
+because E [∇θ log πθ(at|st)] = 0, if ∇θ log πθ(at|st) can only take two values uniformly,
+then the two values have to two vectors in an opposite direction.) In this case, without
+subtracting the baseline, the estimators take two values (1000 + 1)z and −(1000 − 2)z,
+whereas after subtracting a baseline of 1000, the estimator has two values z and 2z. The
+latter estimator has much lower variance compared to the original estimator.
+
+4We note that the estimator of the gradient in the algorithm does not exactly match
+the equation 17.11. If we multiply γt in the summand of equation (17.13), then they will
+exactly match. Removing such discount factors empirically works well because it gives a
+large update.
+
+223
+
+Algorithm 7 Vanilla policy gradient with baseline
+
+for i = 1, · · · do
+
+Collect a set of trajectories by executing the current policy. Use R≥t
+
+as a shorthand for (cid:80)T −1
+
+j≥t γj−tR(sj, aj)
+Fit the baseline by ﬁnding a function B that minimizes
+
+(cid:88)
+
+(cid:88)
+
+(R≥t − B(st))2
+
+τ
+
+t
+
+(17.12)
+
+Update the policy parameter θ with the gradient estimator
+
+(cid:88)
+
+(cid:88)
+
+τ
+
+t
+
+∇θ log πθ(at|st) · (R≥t − B(st))
+
+(17.13)

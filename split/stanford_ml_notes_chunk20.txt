@@ -1,0 +1,462 @@
+
+
+E.g.,
+(cid:96)task(ytask, w(cid:62)φˆθ(xtask)) = (ytask − w(cid:62)φˆθ(xtask))2.
+
+The ﬁnetuning algorithm uses a similar structure for the downstream
+prediction model, but also further ﬁnetunes the pretrained model (instead
+of keeping it ﬁxed). Concretely, the prediction model is w(cid:62)φθ(x) with pa-
+rameters w and θ. We optimize both w and θ to ﬁt the downstream data,
+but initialize θ with the pretrained model ˆθ. The linear head w is usually
+initialized randomly.
+
+minimize
+w,θ
+
+1
+ntask
+
+ntask(cid:88)
+
+i=1
+
+(cid:96)task(y(i)
+
+task, w(cid:62)φθ(x(i)
+
+task))
+
+with initialization w ← random vector
+
+θ ← ˆθ
+
+(14.2)
+
+(14.3)
+
+(14.4)
+
+Various other adaptation methods exists and are sometimes specialized
+to the particular pretraining methods. We will discuss one of them in Sec-
+tion 14.3.2.
+
+14.2 Pretraining methods in computer vision
+
+This section introduces two concrete pretraining methods for computer vi-
+sion: supervised pretraining and contrastive learning.
+
+Supervised pretraining. Here, the pretraining dataset is a large-scale
+labeled dataset (e.g., ImageNet), and the pretrained models are simply a
+neural network trained with vanilla supervised learning (with the last layer
+being removed). Concretely, suppose we write the learned neural network as
+U φˆθ(x), where U is the last (fully-connected) layer parameters, ˆθ corresponds
+to the parameters of all the other layers, and φˆθ(x) are the penultimate
+activations layer (which serves as the representation). We simply discard U
+and use φˆθ(x) as the pretrained model.
+Contrastive learning. Contrastive learning is a self-supervised pretraining
+method that uses only unlabeled data. The main intuition is that a good
+representation function φθ(·) should map semantically similar images to sim-
+ilar representations, and that random pair of images should generally have
+
+180
+
+distinct representations. E.g., we may want to map images of two huskies to
+similar representations, but a husky and an elephant should have diﬀerent
+representations. One deﬁnition of similarity is that images from the same
+class are similar. Using this deﬁnition will result in the so-called supervised
+contrastive algorithms that work well when labeled pretraining datasets are
+available.
+
+Without labeled data, we can use data augmentation to generate a pair
+of “similar” augmented images given an original image x. Data augmenta-
+tion typically means that we apply random cropping, ﬂipping, and/or color
+transformation on the original image x to generate a variant. We can take
+two random augmentations, denoted by ˆx and ˜x, of the same original image
+x, and call them a positive pair. We observe that positive pairs of images
+are often semantically related because they are augmentations of the same
+image. We will design a loss function for θ such that the representations of
+a positive pair, φθ(ˆx), φθ(˜x), as close to each other as possible.
+
+On the other hand, we can also take another random image z from the
+pretraining dataset and generate an augmentation ˆz from z. Note that (ˆx, ˆz)
+are from diﬀerent images; therefore, with a good chance, they are not seman-
+tically related. We call (ˆx, ˆz) a negative or random pair.2 We will design a
+loss to push the representation of random pairs, φθ(ˆx), φθ(ˆz), far away from
+each other.
+
+There are many recent algorithms based on the contrastive learning prin-
+ciple, and here we introduce SIMCLR [Chen et al., 2020] as an concrete
+example. The loss function is deﬁned on a batch of examples (x1, · · · , x(B))
+with batch size B. The algorithm computes two random augmentations for
+each example x(i) in the batch, denoted by ˆx(i) and ˜x(i). As a result, we
+have the augmented batch of 2B examples: ˆx1, · · · , ˆx(B), ˜x1, · · · , ˜x(B). The
+SIMCLR loss is deﬁned as3
+
+Lpre(θ) = −
+
+B
+(cid:88)
+
+i=1
+
+log
+
+exp (cid:0)φθ(ˆx(i))(cid:62)φθ(˜x(i))(cid:1)
+
+exp (φθ(ˆx(i))(cid:62)φθ(˜x(i))) + (cid:80)
+
+j(cid:54)=i exp (φθ(ˆx(i))(cid:62)φθ(˜x(j)))
+
+.
+
+The intuition is as follows. The loss is increasing in φθ(ˆx(i))(cid:62)φθ(˜x(j)), and
+thus minimizing the loss encourages φθ(ˆx(i))(cid:62)φθ(˜x(j)) to be small, making
+φθ(ˆx(i)) far away from φθ(˜x(j)). On the other hand, the loss is decreasing in
+
+2Random pair may be a more accurate term because it’s still possible (though not
+likely) that x and z are semantically related, so are ˆx and ˆz. But in the literature, the
+term negative pair seems to be also common.
+
+3This is a variant and simpliﬁcation of the original loss that does not change the essence
+
+(but may change the eﬃciency slightly).
+
+181
+
+φθ(ˆx(i))(cid:62)φθ(˜x(i)), and thus minimizing the loss encourages φθ(ˆx(i))(cid:62)φθ(˜x(i))
+to be large, resulting in φθ(ˆx(i)) and φθ(˜x(i)) to be close.4
+
+14.3 Pretrained large language models
+
+Natural language processing is another area where pretraining models are
+In language problems, an example typically corre-
+particularly successful.
+sponds to a document or generally a sequence/trunk of words,5 denoted
+by x = (x1, · · · , xT ) where T is the length of the document/sequence,
+xi ∈ {1, · · · , V } are words in the document, and V is the vocabulary size.6
+A language model is a probabilistic model representing the probability of
+a document, denoted by p(x1, · · · , xT ). This probability distribution is very
+complex because its support size is V T — exponential in the length of the
+document. Instead of modeling the distribution of a document itself, we can
+apply the chain rule of conditional probability to decompose it as follows:
+
+p(x1, · · · , xT ) = p(x1)p(x2|x1) · · · p(xT |x1, · · · , xT −1).
+
+(14.5)
+
+Now the support size of each of the conditional probability p(xt|x1, · · · , xt−1)
+is V .
+
+We will model the conditional probability p(xt|x1, · · · , xt−1) as a function
+
+of x1, . . . , xt−1 parameterized by some parameter θ.
+
+A parameterized model takes in numerical inputs and therefore we ﬁrst
+introduce embeddings or representations fo the words. Let ei ∈ Rd be the
+embedding of the word i ∈ {1, 2, · · · , V }. We call [e1, · · · , eV ] ∈ Rd×V the
+embedding matrix.
+
+The most commonly used model is Transformer [Vaswani et al., 2017]. In
+this subsection, we will introduce the input-output interface of a Transformer,
+but treat the intermediate computation in the Transformer as a blackbox. We
+refer the students to the transformer paper or more advanced courses for more
+details. As shown in Figure 14.1, given a document (x1, · · · , xT ), we ﬁrst
+translate the sequence of discrete variables into a sequence of corresponding
+
+4To see this, you can verify that the function − log p
+
+p+q is decreasing in p, and increasing
+
+in q when p, q > 0.
+
+5In the practical implementations, typically all the data are concatenated into a single
+sequence in some order, and each example typically corresponds a sub-sequence of consec-
+utive words which may corresponds to a subset of a document or may span across multiple
+documents.
+
+6Technically, words may be decomposed into tokens which could be words or sub-words
+(combinations of letters), but this note omits this technicality. In fact most commons words
+are a single token themselves.
+
+182
+
+word embeddings (ex1, · · · , exT ). We also introduce a ﬁxed special token
+x0 = ⊥ in the vocabulary with corresponding embedding ex0 to mark the
+beginning of a document. Then, the word embeddings are passed into a
+Transformer model, which takes in a sequence of vectors (ex0, ex1, · · · , exT )
+and outputs a sequence of vectors (u1, u2, · · · , uT +1), where ut ∈ RV will be
+interpreted as the logits for the probability distribution of the next word.
+Here we use the autoregressive version of the Transformers which by design
+ensures ut only depends on x1, · · · , xt−1 (note that this property does not
+hold in masked language models [Devlin et al., 2019] where the losses are
+also diﬀerent.) We view the whole mapping from x’s to u’s a blackbox in
+this subsection and call it a Transformer, denoted it by fθ, where θ include
+both the parameters in the Transformer and the input embeddings. We write
+ut = fθ(x0, x1, . . . , xt−1) where fθ denotes the mapping from the input to the
+outputs.
+
+Figure 14.1: The inputs and outputs of a Transformer model.
+
+The conditional probability p(xt|x1, · · · , xt−1) is the softtmax of the logits:
+
+
+
+
+
+
+
+
+p(xt = 1|x1 · · · , xt−1)
+p(xt = 2|x1 · · · , xt−1)
+...
+p(xt = V |x1 · · · , xt−1)
+
+
+
+
+
+
+
+
+= softmax(ut) ∈ RV
+
+(14.6)
+
+= softmax(fθ(x0, . . . , xt−1))
+
+(14.7)
+
+We train the Transformer parameter θ by minimizing the negative log-
+likelihood of seeing the data under the probabilistic model deﬁned by θ,
+
+𝑥!𝑥"𝑥#𝑒$!𝑒$"𝑒$#…Transformer 𝑓%(𝑥)𝑥&𝑒$$𝑢"𝑢’𝑢#(!𝑢!…183
+
+which is the cross-entropy loss on the logitis.
+
+loss(θ) =
+
+=
+
+=
+
+1
+T
+
+1
+T
+
+1
+T
+
+T
+(cid:88)
+
+t=1
+T
+(cid:88)
+
+t=1
+T
+(cid:88)
+
+t=1
+
+− log(pθ(xt|x1, . . . , xt−1))
+
+(14.8)
+
+(cid:96)ce(fθ(x0, x1, · · · , xt−1), xt)
+
+− log(softmax(fθ(x0, x1, · · · , xt−1))xt) .
+
+Autoregressive text decoding / generation. Given a autoregressive
+Transformer, we can simply sample text from it sequentially. Given a pre-
+ﬁx x1, . . . xt, we generate text completion xt+1, . . . xT sequentially using the
+conditional distribution.
+
+xt+1 ∼ softmax(fθ(x0, x1, · · · , xt))
+xt+2 ∼ softmax(fθ(x0, x1, · · · , xt+1))
+
+. . .
+
+xT ∼ softmax(fθ(x0, x1, · · · , xT −1)) .
+
+(14.9)
+(14.10)
+(14.11)
+(14.12)
+
+Note that each generated token is used as the input to the model when gen-
+erating the following tokens. In practice, people often introduce a parameter
+τ > 0 named temperature to further adjust the entropy/sharpness of the
+generated distribution,
+
+xt+1 ∼ softmax(fθ(x0, x1, · · · , xt)/τ )
+xt+2 ∼ softmax(fθ(x0, x1, · · · , xt+1)/τ )
+
+. . .
+
+xT ∼ softmax(fθ(x0, x1, · · · , xT −1)/τ ) .
+
+(14.13)
+(14.14)
+(14.15)
+(14.16)
+
+When τ = 1, the text is sampled from the original conditional probability
+deﬁned by the model. With a decreasing τ , the generated text gradually
+becomes more “deterministic”. τ → 0 reduces to greedy decoding, where we
+generate the most probable next token from the conditional probability.
+
+14.3.1 Zero-shot learning and in-context learning
+
+For language models, there are many ways to adapt a pretrained model to
+downstream tasks. In this notes, we discuss three of them: ﬁnetuning, zero-
+shot learning, and in-context learning.
+
+184
+
+Finetuning is not very common for the autoregressive language models that
+we introduced in Section 14.3 but much more common for other variants
+such as masked language models which has similar input-output interfaces
+but are pretrained diﬀerently [Devlin et al., 2019]. The ﬁnetuning method is
+the same as introduced generally in Section 14.1—the only question is how
+we deﬁne the prediction task with an additional linear head. One option
+is to treat cT +1 = φθ(x1, · · · , xT ) as the representation and use w(cid:62)cT +1 =
+w(cid:62)φθ(x1, · · · , xT ) to predict task label. As described in Section 14.1, we
+initialize θ to the pretrained model ˆθ and then optimize both w and θ.
+
+Zero-shot adaptation or zero-shot learning is the setting where there is no
+input-output pairs from the downstream tasks. For language problems tasks,
+typically the task is formatted as a question or a cloze test form via natural
+language. For example, we can format an example as a question:
+
+xtask = (xtask,1, · · · , xtask,T ) = “Is the speed of light a universal constant?”
+
+Then, we compute the most likely next word predicted by the lan-
+p(xT +1 |
+guage model given this question, that is, computing argmaxxT +1
+xtask,1, · · · , xtask,T ). In this case, if the most likely next word xT +1 is “No”,
+then we solve the task. (The speed of light is only a constant in vacuum).
+We note that there are many ways to decode the answer from the language
+models, e.g., instead of computing the argmax, we may use the language
+model to generate a few words word. It is an active research question to ﬁnd
+the best way to utilize the language models.
+
+In-context learning is mostly used for few-shot settings where we have a
+few labeled examples (x(1)
+task), · · · , (x(ntask)
+). Given a test example
+xtest, we construct a document (x1, · · · , xT ), which is more commonly called
+a “prompt” in this context, by concatenating the labeled examples and the
+text example in some format. For example, we may construct the prompt as
+follows
+
+task, y(1)
+
+, y(ntask)
+task
+
+task
+
+x1, · · · , xT = “Q: 2 ∼ 3 = ?
+
+A: 5
+
+Q: 6 ∼ 7 = ?
+
+A: 13
+
+· · ·
+
+Q: 15 ∼ 2 = ?”
+
+x(1)
+task
+y(1)
+task
+x(2)
+task
+y(2)
+task
+
+xtest
+
+185
+
+Then, we let the pretrained model generate the most likely xT +1, xT +2, · · · .
+In this case, if the model can “learn” that the symbol ∼ means addition from
+the few examples, we will obtain the following which suggests the answer is
+17.
+
+xT +1, xT +2, · · · = “A: 17”.
+
+The area of foundation models is very new and quickly growing. The notes
+here only attempt to introduce these models on a conceptual level with a
+signiﬁcant amount of simpliﬁcation. We refer the readers to other materials,
+e.g., Bommasani et al. [2021], for more details.
+
+Part V
+
+Reinforcement Learning and
+Control
+
+186
+
+Chapter 15
+
+Reinforcement learning
+
+We now begin our study of reinforcement learning and adaptive control.
+
+In supervised learning, we saw algorithms that tried to make their outputs
+mimic the labels y given in the training set. In that setting, the labels gave
+an unambiguous “right answer” for each of the inputs x.
+In contrast, for
+many sequential decision making and control problems, it is very diﬃcult to
+provide this type of explicit supervision to a learning algorithm. For example,
+if we have just built a four-legged robot and are trying to program it to walk,
+then initially we have no idea what the “correct” actions to take are to make
+it walk, and so do not know how to provide explicit supervision for a learning
+algorithm to try to mimic.
+
+In the reinforcement learning framework, we will instead provide our al-
+gorithms only a reward function, which indicates to the learning agent when
+it is doing well, and when it is doing poorly. In the four-legged walking ex-
+ample, the reward function might give the robot positive rewards for moving
+forwards, and negative rewards for either moving backwards or falling over.
+It will then be the learning algorithm’s job to ﬁgure out how to choose actions
+over time so as to obtain large rewards.
+
+Reinforcement learning has been successful in applications as diverse as
+autonomous helicopter ﬂight, robot legged locomotion, cell-phone network
+routing, marketing strategy selection, factory control, and eﬃcient web-page
+indexing. Our study of reinforcement learning will begin with a deﬁnition of
+the Markov decision processes (MDP), which provides the formalism in
+which RL problems are usually posed.
+
+187
+
+188
+
+15.1 Markov decision processes
+
+A Markov decision process is a tuple (S, A, {Psa}, γ, R), where:
+
+• S is a set of states. (For example, in autonomous helicopter ﬂight, S
+might be the set of all possible positions and orientations of the heli-
+copter.)
+
+• A is a set of actions. (For example, the set of all possible directions in
+
+which you can push the helicopter’s control sticks.)
+
+• Psa are the state transition probabilities. For each state s ∈ S and
+action a ∈ A, Psa is a distribution over the state space. We’ll say more
+about this later, but brieﬂy, Psa gives the distribution over what states
+we will transition to if we take action a in state s.
+
+• γ ∈ [0, 1) is called the discount factor.
+
+• R : S × A (cid:55)→ R is the reward function. (Rewards are sometimes also
+written as a func

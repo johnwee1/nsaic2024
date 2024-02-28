@@ -1,0 +1,700 @@
+:88)
+
+i=1
+
+(cid:0)y(i) − θT φ(x(i))(cid:1) φ(x(i))
+
+=
+
+=
+
+n
+(cid:88)
+
+i=1
+n
+(cid:88)
+
+i=1
+
+βiφ(x(i)) + α
+
+n
+(cid:88)
+
+i=1
+
+(cid:0)y(i) − θT φ(x(i))(cid:1) φ(x(i))
+
+(βi + α (cid:0)y(i) − θT φ(x(i))(cid:1))
+(cid:123)(cid:122)
+(cid:125)
+(cid:124)
+new βi
+
+φ(x(i))
+
+(5.7)
+
+You may realize that our general strategy is to implicitly represent the p-
+dimensional vector θ by a set of coeﬃcients β1, . . . , βn. Towards doing this,
+we derive the update rule of the coeﬃcients β1, . . . , βn. Using the equation
+above, we see that the new βi depends on the old one via
+
+βi := βi + α (cid:0)y(i) − θT φ(x(i))(cid:1)
+
+(5.8)
+
+Here we still have the old θ on the RHS of the equation. Replacing θ by
+θ = (cid:80)n
+
+j=1 βjφ(x(j)) gives
+
+∀i ∈ {1, . . . , n}, βi := βi + α
+
+y(i) −
+
+(cid:32)
+
+βjφ(x(j))
+
+T
+
+φ(x(i))
+
+(cid:33)
+
+n
+(cid:88)
+
+j=1
+
+We often rewrite φ(x(j))T φ(x(i)) as (cid:104)φ(x(j)), φ(x(i))(cid:105) to emphasize that it’s the
+inner product of the two feature vectors. Viewing βi’s as the new representa-
+tion of θ, we have successfully translated the batch gradient descent algorithm
+into an algorithm that updates the value of β iteratively. It may appear that
+at every iteration, we still need to compute the values of (cid:104)φ(x(j)), φ(x(i))(cid:105) for
+all pairs of i, j, each of which may take roughly O(p) operation. However,
+two important properties come to rescue:
+
+1. We can pre-compute the pairwise inner products (cid:104)φ(x(j)), φ(x(i))(cid:105) for all
+
+pairs of i, j before the loop starts.
+
+2. For the feature map φ deﬁned in (5.5) (or many other interesting fea-
+ture maps), computing (cid:104)φ(x(j)), φ(x(i))(cid:105) can be eﬃcient and does not
+
+necessarily require computing φ(x(i)) explicitly. This is because:
+
+52
+
+(cid:104)φ(x), φ(z)(cid:105) = 1 +
+
+= 1 +
+
+d
+(cid:88)
+
+i=1
+
+d
+(cid:88)
+
+i=1
+
+xizi +
+
+(cid:88)
+
+xixjzizj +
+
+(cid:88)
+
+xixjxkzizjzk
+
+i,j∈{1,...,d}
+(cid:32) d
+
+(cid:88)
+
+(cid:33)2
+
+i,j,k∈{1,...,d}
+(cid:33)3
+
+(cid:32) d
+
+(cid:88)
+
+xizi +
+
+xizi
+
++
+
+xizi
+
+i=1
+
+i=1
+
+= 1 + (cid:104)x, z(cid:105) + (cid:104)x, z(cid:105)2 + (cid:104)x, z(cid:105)3
+
+(5.9)
+
+Therefore, to compute (cid:104)φ(x), φ(z)(cid:105), we can ﬁrst compute (cid:104)x, z(cid:105) with
+O(d) time and then take another constant number of operations to com-
+pute 1 + (cid:104)x, z(cid:105) + (cid:104)x, z(cid:105)2 + (cid:104)x, z(cid:105)3.
+
+As you will see, the inner products between the features (cid:104)φ(x), φ(z)(cid:105) are
+essential here. We deﬁne the Kernel corresponding to the feature map φ as
+a function that maps X × X → R satisfying: 2
+
+K(x, z) (cid:44) (cid:104)φ(x), φ(z)(cid:105)
+
+(5.10)
+
+To wrap up the discussion, we write the down the ﬁnal algorithm as
+
+follows:
+
+1. Compute all the values K(x(i), x(j)) (cid:44) (cid:104)φ(x(i)), φ(x(j))(cid:105) using equa-
+
+tion (5.9) for all i, j ∈ {1, . . . , n}. Set β := 0.
+
+2. Loop:
+
+∀i ∈ {1, . . . , n}, βi := βi + α
+
+y(i) −
+
+(cid:32)
+
+(cid:33)
+
+βjK(x(i), x(j))
+
+(5.11)
+
+n
+(cid:88)
+
+j=1
+
+Or in vector notation, letting K be the n × n matrix with Kij =
+
+K(x(i), x(j)), we have
+
+β := β + α((cid:126)y − Kβ)
+
+With the algorithm above, we can update the representation β of the
+vector θ eﬃciently with O(n) time per update. Finally, we need to show that
+
+2Recall that X is the space of the input x. In our running example, X = Rd
+
+53
+
+the knowledge of the representation β suﬃces to compute the prediction
+θT φ(x). Indeed, we have
+
+θT φ(x) =
+
+n
+(cid:88)
+
+i=1
+
+T
+βiφ(x(i))
+
+φ(x) =
+
+n
+(cid:88)
+
+i=1
+
+βiK(x(i), x)
+
+(5.12)
+
+You may realize that fundamentally all we need to know about the feature
+map φ(·) is encapsulated in the corresponding kernel function K(·, ·). We
+will expand on this in the next section.
+
+5.4 Properties of kernels
+
+In the last subsection, we started with an explicitly deﬁned feature map φ,
+which induces the kernel function K(x, z) (cid:44) (cid:104)φ(x), φ(z)(cid:105). Then we saw that
+the kernel function is so intrinsic so that as long as the kernel function is
+deﬁned, the whole training algorithm can be written entirely in the language
+of the kernel without referring to the feature map φ, so can the prediction of
+a test example x (equation (5.12).)
+
+Therefore, it would be tempted to deﬁne other kernel function K(·, ·) and
+run the algorithm (5.11). Note that the algorithm (5.11) does not need to
+explicitly access the feature map φ, and therefore we only need to ensure the
+existence of the feature map φ, but do not necessarily need to be able to
+explicitly write φ down.
+
+What kinds of functions K(·, ·) can correspond to some feature map φ? In
+other words, can we tell if there is some feature mapping φ so that K(x, z) =
+φ(x)T φ(z) for all x, z?
+
+If we can answer this question by giving a precise characterization of valid
+kernel functions, then we can completely change the interface of selecting
+feature maps φ to the interface of selecting kernel function K. Concretely,
+we can pick a function K, verify that it satisﬁes the characterization (so
+that there exists a feature map φ that K corresponds to), and then we can
+run update rule (5.11). The beneﬁt here is that we don’t have to be able
+to compute φ or write it down analytically, and we only need to know its
+existence. We will answer this question at the end of this subsection after
+we go through several concrete examples of kernels.
+
+Suppose x, z ∈ Rd, and let’s ﬁrst consider the function K(·, ·) deﬁned as:
+
+K(x, z) = (xT z)2.
+
+54
+
+We can also write this as
+
+K(x, z) =
+
+(cid:32) d
+
+(cid:88)
+
+(cid:33) (cid:32) d
+
+(cid:88)
+
+(cid:33)
+
+xjzj
+
+xizi
+
+i=1
+
+j=1
+
+=
+
+=
+
+d
+(cid:88)
+
+d
+(cid:88)
+
+i=1
+
+j=1
+
+xixjzizj
+
+d
+(cid:88)
+
+(xixj)(zizj)
+
+i,j=1
+
+Thus, we see that K(x, z) = (cid:104)φ(x), φ(z)(cid:105) is the kernel function that corre-
+sponds to the the feature mapping φ given (shown here for the case of d = 3)
+by
+
+
+
+φ(x) =
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+x1x1
+x1x2
+x1x3
+x2x1
+x2x2
+x2x3
+x3x1
+x3x2
+x3x3
+
+Revisiting the computational eﬃciency perspective of kernel, note that whereas
+calculating the high-dimensional φ(x) requires O(d2) time, ﬁnding K(x, z)
+takes only O(d) time—linear in the dimension of the input attributes.
+
+For another related example, also consider K(·, ·) deﬁned by
+
+K(x, z) = (xT z + c)2
+
+d
+(cid:88)
+
+=
+
+(xixj)(zizj) +
+
+i,j=1
+
+d
+(cid:88)
+
+√
+(
+
+i=1
+
+√
+
+2cxi)(
+
+2czi) + c2.
+
+(Check this yourself.) This function K is a kernel function that corresponds
+
+to the feature mapping (again shown for d = 3)
+
+55
+
+φ(x) =
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+x1x1
+x1x2
+x1x3
+x2x1
+x2x2
+x2x3
+x3x1
+x3x2
+x3x3√
+2cx1√
+2cx2√
+2cx3
+c
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+,
+
+and the parameter c controls the relative weighting between the xi (ﬁrst
+order) and the xixj (second order) terms.
+
+k
+
+More broadly, the kernel K(x, z) = (xT z + c)k corresponds to a feature
+mapping to an (cid:0)d+k
+(cid:1) feature space, corresponding of all monomials of the
+form xi1xi2 . . . xik that are up to order k. However, despite working in this
+O(dk)-dimensional space, computing K(x, z) still takes only O(d) time, and
+hence we never need to explicitly represent feature vectors in this very high
+dimensional feature space.
+
+Kernels as similarity metrics. Now, let’s talk about a slightly diﬀerent
+view of kernels. Intuitively, (and there are things wrong with this intuition,
+but nevermind), if φ(x) and φ(z) are close together, then we might expect
+K(x, z) = φ(x)T φ(z) to be large. Conversely, if φ(x) and φ(z) are far apart—
+say nearly orthogonal to each other—then K(x, z) = φ(x)T φ(z) will be small.
+So, we can think of K(x, z) as some measurement of how similar are φ(x)
+and φ(z), or of how similar are x and z.
+
+Given this intuition, suppose that for some learning problem that you’re
+working on, you’ve come up with some function K(x, z) that you think might
+be a reasonable measure of how similar x and z are. For instance, perhaps
+you chose
+
+K(x, z) = exp
+
+−
+
+(cid:18)
+
+||x − z||2
+2σ2
+
+(cid:19)
+
+.
+
+This is a reasonable measure of x and z’s similarity, and is close to 1 when
+x and z are close, and near 0 when x and z are far apart. Does there exist
+
+56
+
+a feature map φ such that the kernel K deﬁned above satisﬁes K(x, z) =
+φ(x)T φ(z)? In this particular example, the answer is yes. This kernel is called
+the Gaussian kernel, and corresponds to an inﬁnite dimensional feature
+mapping φ. We will give a precise characterization about what properties
+a function K needs to satisfy so that it can be a valid kernel function that
+corresponds to some feature map φ.
+
+Necessary conditions for valid kernels. Suppose for now that K is
+indeed a valid kernel corresponding to some feature mapping φ, and we will
+ﬁrst see what properties it satisﬁes. Now, consider some ﬁnite set of n points
+(not necessarily the training set) {x(1), . . . , x(n)}, and let a square, n-by-n
+matrix K be deﬁned so that its (i, j)-entry is given by Kij = K(x(i), x(j)).
+This matrix is called the kernel matrix. Note that we’ve overloaded the
+notation and used K to denote both the kernel function K(x, z) and the
+kernel matrix K, due to their obvious close relationship.
+
+Now, if K is a valid kernel, then Kij = K(x(i), x(j)) = φ(x(i))T φ(x(j)) =
+φ(x(j))T φ(x(i)) = K(x(j), x(i)) = Kji, and hence K must be symmetric. More-
+over, letting φk(x) denote the k-th coordinate of the vector φ(x), we ﬁnd that
+for any vector z, we have
+
+zT Kz =
+
+=
+
+=
+
+=
+
+=
+
+(cid:88)
+
+(cid:88)
+
+i
+(cid:88)
+
+j
+(cid:88)
+
+i
+(cid:88)
+
+j
+(cid:88)
+
+ziKijzj
+
+ziφ(x(i))T φ(x(j))zj
+
+(cid:88)
+
+zi
+
+φk(x(i))φk(x(j))zj
+
+i
+(cid:88)
+
+j
+(cid:88)
+
+k
+(cid:88)
+ziφk(x(i))φk(x(j))zj
+
+j
+
+i
+(cid:32)
+
+k
+
+(cid:88)
+
+(cid:88)
+
+(cid:33)2
+
+ziφk(x(i))
+
+k
+≥ 0.
+
+i
+
+The second-to-last step uses the fact that (cid:80)
+i ai)2 for ai =
+ziφk(x(i)). Since z was arbitrary, this shows that K is positive semi-deﬁnite
+(K ≥ 0).
+
+i,j aiaj = ((cid:80)
+
+Hence, we’ve shown that if K is a valid kernel (i.e., if it corresponds to
+some feature mapping φ), then the corresponding kernel matrix K ∈ Rn×n
+is symmetric positive semideﬁnite.
+
+57
+
+Suﬃcient conditions for valid kernels. More generally, the condition
+above turns out to be not only a necessary, but also a suﬃcient, condition
+for K to be a valid kernel (also called a Mercer kernel). The following result
+is due to Mercer.3
+
+Theorem (Mercer). Let K : Rd × Rd (cid:55)→ R be given. Then for K
+to be a valid (Mercer) kernel, it is necessary and suﬃcient that for any
+{x(1), . . . , x(n)}, (n < ∞), the corresponding kernel matrix is symmetric pos-
+itive semi-deﬁnite.
+
+Given a function K, apart from trying to ﬁnd a feature mapping φ that
+corresponds to it, this theorem therefore gives another way of testing if it is
+a valid kernel. You’ll also have a chance to play with these ideas more in
+problem set 2.
+
+In class, we also brieﬂy talked about a couple of other examples of ker-
+nels. For instance, consider the digit recognition problem, in which given
+an image (16x16 pixels) of a handwritten digit (0-9), we have to ﬁgure out
+which digit it was. Using either a simple polynomial kernel K(x, z) = (xT z)k
+or the Gaussian kernel, SVMs were able to obtain extremely good perfor-
+mance on this problem. This was particularly surprising since the input
+attributes x were just 256-dimensional vectors of the image pixel intensity
+values, and the system had no prior knowledge about vision, or even about
+which pixels are adjacent to which other ones. Another example that we
+brieﬂy talked about in lecture was that if the objects x that we are trying
+to classify are strings (say, x is a list of amino acids, which strung together
+form a protein), then it seems hard to construct a reasonable, “small” set of
+features for most learning algorithms, especially if diﬀerent strings have dif-
+ferent lengths. However, consider letting φ(x) be a feature vector that counts
+the number of occurrences of each length-k substring in x. If we’re consid-
+ering strings of English letters, then there are 26k such strings. Hence, φ(x)
+is a 26k dimensional vector; even for moderate values of k, this is probably
+too big for us to eﬃciently work with. (e.g., 264 ≈ 460000.) However, using
+(dynamic programming-ish) string matching algorithms, it is possible to ef-
+ﬁciently compute K(x, z) = φ(x)T φ(z), so that we can now implicitly work
+in this 26k-dimensional feature space, but without ever explicitly computing
+feature vectors in this space.
+
+3Many texts present Mercer’s theorem in a slightly more complicated form involving
+L2 functions, but when the input attributes take values in Rd, the version given here is
+equivalent.
+
+58
+
+Application of kernel methods: We’ve seen the application of kernels
+to linear regression. In the next part, we will introduce the support vector
+machines to which kernels can be directly applied. dwell too much longer on
+it here. In fact, the idea of kernels has signiﬁcantly broader applicability than
+linear regression and SVMs. Speciﬁcally, if you have any learning algorithm
+that you can write in terms of only inner products (cid:104)x, z(cid:105) between input
+attribute vectors, then by replacing this with K(x, z) where K is a kernel,
+you can “magically” allow your algorithm to work eﬃciently in the high
+dimensional feature space corresponding to K. For instance, this kernel trick
+can be applied with the perceptron to derive a kernel perceptron algorithm.
+Many of the algorithms that we’ll see later in this class will also be amenable
+to this method, which has come to be known as the “kernel trick.”
+
+Chapter 6
+
+Support vector machines
+
+This set of notes presents the Support Vector Machine (SVM) learning al-
+gorithm. SVMs are among the best (and many believe are indeed the best)
+“oﬀ-the-shelf” supervised learning algorithms. To tell the SVM story, we’ll
+need to ﬁrst talk about margins and the idea of separating data with a large
+“gap.” Next, we’ll talk about the optimal margin classiﬁer, which will lead
+us into a digression on Lagrange duality. We’ll also see kernels, which give
+a way to apply SVMs eﬃciently in very high dimensional (such as inﬁnite-
+dimensional) feature spaces, and ﬁnally, we’ll close oﬀ the story with the
+SMO algorithm, which gives an eﬃcient implementation of SVMs.
+
+6.1 Margins: intuition
+
+We’ll start our story on SVMs by talking about margins. This section will
+give the intuitions about margins and about the “conﬁdence” of our predic-
+tions; these ideas will be made formal in Section 6.3.
+
+Consider logistic regression, where the probability p(y = 1|x; θ) is mod-
+eled by hθ(x) = g(θT x). We then predict “1” on an input x if and only if
+hθ(x) ≥ 0.5, or equivalently, if and only if θT x ≥ 0. Consider a positive
+training example (y = 1). The larger θT x is, the larger also is hθ(x) = p(y =
+1|x; θ), and thus also the higher our degree of “conﬁdence” that the label is 1.
+Thus, informally we can think of our prediction as being very conﬁdent that
+y = 1 if θT x (cid:29) 0. Similarly, we think of logistic regression as conﬁdently
+predicting y = 0, if θT x (cid:28) 0. Given a training set, again informally it seems
+that we’d have found a good ﬁt to the training data if we can ﬁnd θ so that
+θT x(i) (cid:29) 0 whenever y(i) = 1, and θT x(i) (cid:28) 0 whenever y(i) = 0, since this
+would reﬂect a very conﬁdent (and correct) set of classiﬁcations for all the
+
+59
+
+60
+
+training examples. This seems to be a nice goal to aim for, and we’ll soon
+formalize this idea using the notion of functional margins.
+
+For a diﬀerent type of intuition, consider the following ﬁgure, in which x’s
+represent positive training examples, o’s denote negative training examples,
+a decis

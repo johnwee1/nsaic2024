@@ -1,0 +1,774 @@
+d:88)
+
+i=1
+
+log p(x(i); φ, µ, Σ)
+
+log
+
+k
+(cid:88)
+
+z(i)=1
+
+p(x(i)|z(i); µ, Σ)p(z(i); φ).
+
+However, if we set to zero the derivatives of this formula with respect to
+
+148
+
+149
+
+the parameters and try to solve, we’ll ﬁnd that it is not possible to ﬁnd the
+maximum likelihood estimates of the parameters in closed form. (Try this
+yourself at home.)
+
+The random variables z(i) indicate which of the k Gaussians each x(i)
+had come from. Note that if we knew what the z(i)’s were, the maximum
+likelihood problem would have been easy. Speciﬁcally, we could then write
+down the likelihood as
+
+(cid:96)(φ, µ, Σ) =
+
+n
+(cid:88)
+
+i=1
+
+log p(x(i)|z(i); µ, Σ) + log p(z(i); φ).
+
+Maximizing this with respect to φ, µ and Σ gives the parameters:
+
+φj =
+
+µj =
+
+Σj =
+
+n
+(cid:88)
+
+1
+n
+(cid:80)n
+
+(cid:80)n
+
+1{z(i) = j},
+
+i=1
+i=1 1{z(i) = j}x(i)
+(cid:80)n
+i=1 1{z(i) = j}
+
+,
+
+i=1 1{z(i) = j}(x(i) − µj)(x(i) − µj)T
+i=1 1{z(i) = j}
+
+(cid:80)n
+
+.
+
+Indeed, we see that if the z(i)’s were known, then maximum likelihood
+estimation becomes nearly identical to what we had when estimating the
+parameters of the Gaussian discriminant analysis model, except that here
+the z(i)’s playing the role of the class labels.1
+
+However, in our density estimation problem, the z(i)’s are not known.
+
+What can we do?
+
+The EM algorithm is an iterative algorithm that has two main steps.
+Applied to our problem, in the E-step, it tries to “guess” the values of the
+z(i)’s. In the M-step, it updates the parameters of our model based on our
+guesses. Since in the M-step we are pretending that the guesses in the ﬁrst
+part were correct, the maximization becomes easy. Here’s the algorithm:
+
+Repeat until convergence: {
+
+(E-step) For each i, j, set
+
+w(i)
+j
+
+:= p(z(i) = j|x(i); φ, µ, Σ)
+
+1There are other minor diﬀerences in the formulas here from what we’d obtained in
+PS1 with Gaussian discriminant analysis, ﬁrst because we’ve generalized the z(i)’s to be
+multinomial rather than Bernoulli, and second because here we are using a diﬀerent Σj
+for each Gaussian.
+
+(M-step) Update the parameters:
+
+150
+
+φj
+
+:=
+
+µj
+
+:=
+
+Σj
+
+:=
+
+1
+n
+
+n
+(cid:88)
+
+i=1
+
+w(i)
+j
+
+,
+
+(cid:80)n
+
+,
+
+i=1 w(i)
+j x(i)
+(cid:80)n
+i=1 w(i)
+i=1 w(i)
+
+j
+
+(cid:80)n
+
+j (x(i) − µj)(x(i) − µj)T
+
+(cid:80)n
+
+i=1 w(i)
+
+j
+
+}
+
+In the E-step, we calculate the posterior probability of our parameters
+the z(i)’s, given the x(i) and using the current setting of our parameters. I.e.,
+using Bayes rule, we obtain:
+
+p(z(i) = j|x(i); φ, µ, Σ) =
+
+p(x(i)|z(i) = j; µ, Σ)p(z(i) = j; φ)
+l=1 p(x(i)|z(i) = l; µ, Σ)p(z(i) = l; φ)
+
+(cid:80)k
+
+Here, p(x(i)|z(i) = j; µ, Σ) is given by evaluating the density of a Gaussian
+with mean µj and covariance Σj at x(i); p(z(i) = j; φ) is given by φj, and so
+on. The values w(i)
+j calculated in the E-step represent our “soft” guesses2 for
+the values of z(i).
+
+Also, you should contrast the updates in the M-step with the formulas we
+had when the z(i)’s were known exactly. They are identical, except that in-
+stead of the indicator functions “1{z(i) = j}” indicating from which Gaussian
+each datapoint had come, we now instead have the w(i)
+j
+
+’s.
+
+The EM-algorithm is also reminiscent of the K-means clustering algo-
+rithm, except that instead of the “hard” cluster assignments c(i), we instead
+have the “soft” assignments w(i)
+. Similar to K-means, it is also susceptible
+j
+to local optima, so reinitializing at several diﬀerent initial parameters may
+be a good idea.
+
+It’s clear that the EM algorithm has a very natural interpretation of
+repeatedly trying to guess the unknown z(i)’s; but how did it come about,
+and can we make any guarantees about it, such as regarding its convergence?
+In the next set of notes, we will describe a more general view of EM, one
+
+2The term “soft” refers to our guesses being probabilities and taking values in [0, 1]; in
+contrast, a “hard” guess is one that represents a single best guess (such as taking values
+in {0, 1} or {1, . . . , k}).
+
+151
+
+that will allow us to easily apply it to other estimation problems in which
+there are also latent variables, and which will allow us to give a convergence
+guarantee.
+
+11.2 Jensen’s inequality
+
+We begin our discussion with a very useful result called Jensen’s inequality
+Let f be a function whose domain is the set of real numbers. Recall that
+f is a convex function if f (cid:48)(cid:48)(x) ≥ 0 (for all x ∈ R). In the case of f taking
+vector-valued inputs, this is generalized to the condition that its hessian H
+is positive semi-deﬁnite (H ≥ 0). If f (cid:48)(cid:48)(x) > 0 for all x, then we say f is
+strictly convex (in the vector-valued case, the corresponding statement is
+that H must be positive deﬁnite, written H > 0). Jensen’s inequality can
+then be stated as follows:
+
+Theorem. Let f be a convex function, and let X be a random variable.
+Then:
+
+E[f (X)] ≥ f (EX).
+
+Moreover, if f is strictly convex, then E[f (X)] = f (EX) holds true if and
+only if X = E[X] with probability 1 (i.e., if X is a constant).
+
+Recall our convention of occasionally dropping the parentheses when writ-
+
+ing expectations, so in the theorem above, f (EX) = f (E[X]).
+
+For an interpretation of the theorem, consider the ﬁgure below.
+
+Here, f is a convex function shown by the solid line. Also, X is a random
+variable that has a 0.5 chance of taking the value a, and a 0.5 chance of
+
+aE[X]bf(a)f(b)f(EX)E[f(X)]f152
+
+taking the value b (indicated on the x-axis). Thus, the expected value of X
+is given by the midpoint between a and b.
+
+We also see the values f (a), f (b) and f (E[X]) indicated on the y-axis.
+Moreover, the value E[f (X)] is now the midpoint on the y-axis between f (a)
+and f (b). From our example, we see that because f is convex, it must be the
+case that E[f (X)] ≥ f (EX).
+
+Incidentally, quite a lot of people have trouble remembering which way
+the inequality goes, and remembering a picture like this is a good way to
+quickly ﬁgure out the answer.
+Remark. Recall that f is [strictly] concave if and only if −f is [strictly]
+convex (i.e., f (cid:48)(cid:48)(x) ≤ 0 or H ≤ 0). Jensen’s inequality also holds for concave
+functions f , but with the direction of all the inequalities reversed (E[f (X)] ≤
+f (EX), etc.).
+
+11.3 General EM algorithms
+
+Suppose we have an estimation problem in which we have a training set
+{x(1), . . . , x(n)} consisting of n independent examples. We have a latent vari-
+able model p(x, z; θ) with z being the latent variable (which for simplicity is
+assumed to take ﬁnite number of values). The density for x can be obtained
+by marginalized over the latent variable z:
+
+p(x; θ) =
+
+p(x, z; θ)
+
+(cid:88)
+
+z
+
+(11.1)
+
+We wish to ﬁt the parameters θ by maximizing the log-likelihood of the
+
+data, deﬁned by
+
+(cid:96)(θ) =
+
+n
+(cid:88)
+
+i=1
+
+log p(x(i); θ)
+
+(11.2)
+
+We can rewrite the objective in terms of the joint density p(x, z; θ) by
+
+(cid:96)(θ) =
+
+=
+
+n
+(cid:88)
+
+i=1
+n
+(cid:88)
+
+i=1
+
+log p(x(i); θ)
+
+(cid:88)
+
+log
+
+p(x(i), z(i); θ).
+
+z(i)
+
+(11.3)
+
+(11.4)
+
+But, explicitly ﬁnding the maximum likelihood estimates of the parameters
+θ may be hard since it will result in diﬃcult non-convex optimization prob-
+
+lems.3 Here, the z(i)’s are the latent random variables; and it is often the case
+that if the z(i)’s were observed, then maximum likelihood estimation would
+be easy.
+
+153
+
+In such a setting, the EM algorithm gives an eﬃcient method for max-
+imum likelihood estimation. Maximizing (cid:96)(θ) explicitly might be diﬃcult,
+and our strategy will be to instead repeatedly construct a lower-bound on (cid:96)
+(E-step), and then optimize that lower-bound (M-step).4
+
+It turns out that the summation (cid:80)n
+
+i=1 is not essential here, and towards a
+simpler exposition of the EM algorithm, we will ﬁrst consider optimizing the
+the likelihood log p(x) for a single example x. After we derive the algorithm
+for optimizing log p(x), we will convert it to an algorithm that works for n
+examples by adding back the sum to each of the relevant equations. Thus,
+now we aim to optimize log p(x; θ) which can be rewritten as
+
+log p(x; θ) = log
+
+p(x, z; θ)
+
+(cid:88)
+
+z
+
+(11.5)
+
+Let Q be a distribution over the possible values of z. That is, (cid:80)
+Q(z) ≥ 0).
+
+z Q(z) = 1,
+
+Consider the following:5
+
+log p(x; θ) = log
+
+= log
+
+(cid:88)
+
+z
+(cid:88)
+
+z
+
+p(x, z; θ)
+
+Q(z)
+
+p(x, z; θ)
+Q(z)
+
+≥
+
+(cid:88)
+
+z
+
+Q(z) log
+
+p(x, z; θ)
+Q(z)
+
+(11.6)
+
+(11.7)
+
+The last step of this derivation used Jensen’s inequality. Speciﬁcally,
+f (x) = log x is a concave function, since f (cid:48)(cid:48)(x) = −1/x2 < 0 over its domain
+
+3It’s mostly an empirical observation that the optimization problem is diﬃcult to op-
+
+timize.
+
+4Empirically, the E-step and M-step can often be computed more eﬃciently than op-
+timizing the function (cid:96)(·) directly. However, it doesn’t necessarily mean that alternating
+the two steps can always converge to the global optimum of (cid:96)(·). Even for mixture of
+Gaussians, the EM algorithm can either converge to a global optimum or get stuck, de-
+pending on the properties of the training data. Empirically, for real-world data, often EM
+can converge to a solution with relatively high likelihood (if not the optimum), and the
+theory behind it is still largely not understood.
+
+5If z were continuous, then Q would be a density, and the summations over z in our
+
+discussion are replaced with integrals over z.
+
+154
+
+x ∈ R+. Also, the term
+
+Q(z)
+
+(cid:88)
+
+z
+
+(cid:21)
+
+(cid:20)p(x, z; θ)
+Q(z)
+
+in the summation is just an expectation of the quantity [p(x, z; θ)/Q(z)] with
+respect to z drawn according to the distribution given by Q.6 By Jensen’s
+inequality, we have
+
+(cid:18)
+
+f
+
+Ez∼Q
+
+(cid:21)(cid:19)
+
+(cid:20)p(x, z; θ)
+Q(z)
+
+≥ Ez∼Q
+
+(cid:20)
+f
+
+(cid:18) p(x, z; θ)
+Q(z)
+
+(cid:19)(cid:21)
+
+,
+
+where the “z ∼ Q” subscripts above indicate that the expectations are with
+respect to z drawn from Q. This allowed us to go from Equation (11.6) to
+Equation (11.7).
+
+Now, for any distribution Q, the formula (11.7) gives a lower-bound on
+log p(x; θ). There are many possible choices for the Q’s. Which should we
+choose? Well, if we have some current guess θ of the parameters, it seems
+natural to try to make the lower-bound tight at that value of θ. I.e., we will
+make the inequality above hold with equality at our particular value of θ.
+
+To make the bound tight for a particular value of θ, we need for the step
+involving Jensen’s inequality in our derivation above to hold with equality.
+For this to be true, we know it is suﬃcient that the expectation be taken
+over a “constant”-valued random variable. I.e., we require that
+
+p(x, z; θ)
+Q(z)
+
+= c
+
+for some constant c that does not depend on z. This is easily accomplished
+by choosing
+
+Q(z) ∝ p(x, z; θ).
+
+Actually, since we know (cid:80)
+further tells us that
+
+z Q(z) = 1 (because it is a distribution), this
+
+Q(z) =
+
+p(x, z; θ)
+z p(x, z; θ)
+
+(cid:80)
+
+=
+
+p(x, z; θ)
+p(x; θ)
+= p(z|x; θ)
+
+(11.8)
+
+6We note that the notion p(x,z;θ)
+
+Q(z) only makes sense if Q(z) (cid:54)= 0 whenever p(x, z; θ) (cid:54)= 0.
+
+Here we implicitly assume that we only consider those Q with such a property.
+
+155
+
+Thus, we simply set the Q’s to be the posterior distribution of the z’s given
+x and the setting of the parameters θ.
+
+Indeed, we can directly verify that when Q(z) = p(z|x; θ), then equa-
+
+tion (11.7) is an equality because
+
+(cid:88)
+
+z
+
+Q(z) log
+
+p(x, z; θ)
+Q(z)
+
+p(z|x; θ) log
+
+p(x, z; θ)
+p(z|x; θ)
+
+p(z|x; θ) log
+
+p(z|x; θ)p(x; θ)
+p(z|x; θ)
+
+p(z|x; θ) log p(x; θ)
+
+=
+
+=
+
+=
+
+(cid:88)
+
+z
+(cid:88)
+
+z
+(cid:88)
+
+z
+
+= log p(x; θ)
+
+(cid:88)
+
+z
+
+p(z|x; θ)
+
+z p(z|x; θ) = 1)
+For convenience, we call the expression in Equation (11.7) the evidence
+
+= log p(x; θ)
+
+(because (cid:80)
+
+lower bound (ELBO) and we denote it by
+
+ELBO(x; Q, θ) =
+
+(cid:88)
+
+z
+
+Q(z) log
+
+p(x, z; θ)
+Q(z)
+
+(11.9)
+
+With this equation, we can re-write equation (11.7) as
+
+∀Q, θ, x,
+
+log p(x; θ) ≥ ELBO(x; Q, θ)
+
+(11.10)
+
+Intuitively, the EM algorithm alternatively updates Q and θ by a) set-
+ting Q(z) = p(z|x; θ) following Equation (11.8) so that ELBO(x; Q, θ) =
+log p(x; θ) for x and the current θ, and b) maximizing ELBO(x; Q, θ) w.r.t θ
+while ﬁxing the choice of Q.
+
+Recall that all the discussion above was under the assumption that we
+aim to optimize the log-likelihood log p(x; θ) for a single example x. It turns
+out that with multiple training examples, the basic idea is the same and we
+only needs to take a sum over examples at relevant places. Next, we will
+build the evidence lower bound for multiple training examples and make the
+EM algorithm formal.
+
+Recall we have a training set {x(1), . . . , x(n)}. Note that the optimal choice
+of Q is p(z|x; θ), and it depends on the particular example x. Therefore here
+we will introduce n distributions Q1, . . . , Qn, one for each example x(i). For
+each example x(i), we can build the evidence lower bound
+
+log p(x(i); θ) ≥ ELBO(x(i); Qi, θ) =
+
+Qi(z(i)) log
+
+p(x(i), z(i); θ)
+Qi(z(i))
+
+(cid:88)
+
+z(i)
+
+Taking sum over all the examples, we obtain a lower bound for the log-
+likelihood
+
+156
+
+ELBO(x(i); Qi, θ)
+
+(11.11)
+
+(cid:88)
+
+i
+(cid:88)
+
+(cid:96)(θ) ≥
+
+=
+
+(cid:88)
+
+Qi(z(i)) log
+
+p(x(i), z(i); θ)
+Qi(z(i))
+
+i
+
+z(i)
+
+For any set of distributions Q1, . . . , Qn, the formula (11.11) gives a lower-
+bound on (cid:96)(θ), and analogous to the argument around equation (11.8), the
+Qi that attains equality satisﬁes
+
+Qi(z(i)) = p(z(i)|x(i); θ)
+
+Thus, we simply set the Qi’s to be the posterior distribution of the z(i)’s
+given x(i) with the current setting of the parameters θ.
+
+Now, for this choice of the Qi’s, Equation (11.11) gives a lower-bound on
+the loglikelihood (cid:96) that we’re trying to maximize. This is the E-step. In the
+M-step of the algorithm, we then maximize our formula in Equation (11.11)
+with respect to the parameters to obtain a new setting of the θ’s. Repeatedly
+carrying out these two steps gives us the EM algorithm, which is as follows:
+
+Repeat until convergence {
+
+(E-step) For each i, set
+
+Qi(z(i)) := p(z(i)|x(i); θ).
+
+n
+(cid:88)
+
+ELBO(x(i); Qi, θ)
+
+i=1
+(cid:88)
+
+(cid:88)
+
+i
+
+z(i)
+
+Qi(z(i)) log
+
+p(x(i), z(i); θ)
+Qi(z(i))
+
+.
+
+(11.12)
+
+(M-step) Set
+
+θ := arg max
+
+θ
+
+= arg max
+
+θ
+
+}
+
+How do we know if this algorithm will converge? Well, suppose θ(t) and
+θ(t+1) are the parameters from two successive iterations of EM. We will now
+prove that (cid:96)(θ(t)) ≤ (cid:96)(θ(t+1)), which shows EM always monotonically im-
+proves the log-likelihood. The key to showing this result lies in our choice of
+
+157
+
+the Qi’s. Speciﬁcally, on the iteration of EM in which the parameters had
+started out as θ(t), we would have chosen Q(t)
+i (z(i)) := p(z(i)|x(i); θ(t)). We
+saw earlier that this choice ensures that Jensen’s inequality, as applied to get
+Equation (11.11), holds with equality, and hence
+
+(cid:96)(θ(t)) =
+
+n
+(cid:88)
+
+i=1
+
+ELBO(x(i); Q(t)
+i
+
+, θ(t))
+
+(11.13)
+
+The parameters θ(t+1) are then obtained by maximizing the right hand side
+of the equation above. Thus,
+
+(cid:96)(θ(t+1)) ≥
+
+≥
+
+n
+(cid:88)
+
+i=1
+
+n
+(cid:88)
+
+ELBO(x(i); Q(t)
+i
+
+, θ(t+1))
+
+(because ineqaulity (11.11) holds for all Q and θ)
+
+ELBO(x(i); Q(t)
+i
+
+, θ(t))
+
+(see reason below)
+
+i=1
+= (cid:96)(θ(t))
+
+(by equation (11.13))
+
+where the last inequality follows from that θ(t+1) is chosen explicitly to be
+
+arg max
+
+θ
+
+n
+(cid:88)
+
+i=1
+
+ELBO(x(i); Q(t)
+i
+
+, θ)
+
+Hence, EM causes the likelihood to converge monotonically. In our de-
+scription of the EM algorithm, we said we’d run it until convergence. Given
+the result that we just showed, one reasonable convergence test would be
+to check if the increase in (cid:96)(θ) between successive iterations is smaller than
+some tolerance parameter

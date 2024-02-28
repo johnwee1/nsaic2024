@@ -1,0 +1,501 @@
+aximize W with
+respect to α2 but subject to the box constraint, then we can ﬁnd the resulting
+value optimal simply by taking αnew,unclipped
+and “clipping” it to lie in the
+
+2
+
+α2α1α1α2CC(1)+(2)yy=ζHL[L, H] interval, to get
+
+αnew
+2
+
+=
+
+
+
+
+
+
+H
+αnew,unclipped
+2
+L
+
+2
+
+if αnew,unclipped
+> H
+if L ≤ αnew,unclipped
+2
+if αnew,unclipped
+< L
+
+2
+
+78
+
+≤ H
+
+Finally, having found the αnew
+ﬁnd the optimal value of αnew
+.
+
+2
+
+1
+
+, we can use Equation (6.22) to go back and
+
+There’re a couple more details that are quite easy but that we’ll leave you
+to read about yourself in Platt’s paper: One is the choice of the heuristics
+used to select the next αi, αj to update; the other is how to update b as the
+SMO algorithm is run.
+
+Part II
+
+Deep learning
+
+79
+
+Chapter 7
+
+Deep learning
+
+We now begin our study of deep learning. In this set of notes, we give an
+overview of neural networks, discuss vectorization and discuss training neural
+networks with backpropagation.
+
+7.1 Supervised learning with non-linear mod-
+
+els
+
+In the supervised learning setting (predicting y from the input x), suppose
+our model/hypothesis is hθ(x). In the past lectures, we have considered the
+cases when hθ(x) = θ(cid:62)x (in linear regression) or hθ(x) = θ(cid:62)φ(x) (where φ(x)
+is the feature map). A commonality of these two models is that they are
+linear in the parameters θ. Next we will consider learning general family of
+models that are non-linear in both the parameters θ and the inputs x. The
+most common non-linear models are neural networks, which we will deﬁne
+staring from the next section. For this section, it suﬃces to think hθ(x) as
+an abstract non-linear model.1
+Suppose {(x(i), y(i))}n
+
+i=1 are the training examples. We will deﬁne the
+
+nonlinear model and the loss/cost function for learning it.
+
+Regression problems. For simplicity, we start with the case where the
+output is a real number, that is, y(i) ∈ R, and thus the model hθ also outputs
+a real number hθ(x) ∈ R. We deﬁne the least square cost function for the
+
+1If a concrete example is helpful, perhaps think about the model hθ(x) = θ2
+
+1x2
+
+1 + θ2
+
+2x2
+
+2 +
+
+· · · + θ2
+
+dx2
+
+d in this subsection, even though it’s not a neural network.
+
+80
+
+i-th example (x(i), y(i)) as
+
+J (i)(θ) =
+
+1
+2
+
+(hθ(x(i)) − y(i))2 ,
+
+and deﬁne the mean-square cost function for the dataset as
+
+J(θ) =
+
+1
+n
+
+n
+(cid:88)
+
+i=1
+
+J (i)(θ) ,
+
+81
+
+(7.1)
+
+(7.2)
+
+which is same as in linear regression except that we introduce a constant
+1/n in front of the cost function to be consistent with the convention. Note
+that multiplying the cost function with a scalar will not change the local
+minima or global minima of the cost function. Also note that the underlying
+parameterization for hθ(x) is diﬀerent from the case of linear regression,
+even though the form of the cost function is the same mean-squared loss.
+Throughout the notes, we use the words “loss” and “cost” interchangeably.
+
+Binary classiﬁcation. Next we deﬁne the model and loss function for
+binary classiﬁcation. Suppose the inputs x ∈ Rd. Let ¯hθ : Rd → R be a
+parameterized model (the analog of θ(cid:62)x in logistic linear regression). We
+call the output ¯hθ(x) ∈ R the logit. Analogous to Section 2.1, we use the
+logistic function g(·) to turn the logit ¯hθ(x) to a probability hθ(x) ∈ [0, 1]:
+
+hθ(x) = g(¯hθ(x)) = 1/(1 + exp(−¯hθ(x)) .
+
+(7.3)
+
+We model the conditional distribution of y given x and θ by
+
+P (y = 1 | x; θ) = hθ(x)
+P (y = 0 | x; θ) = 1 − hθ(x)
+
+Following the same derivation in Section 2.1 and using the derivation in
+Remark 2.1.1, the negative likelihood loss function is equal to:
+
+J (i)(θ) = − log p(y(i) | x(i); θ) = (cid:96)logistic(¯hθ(x(i)), y(i))
+
+(7.4)
+
+As done in equation (7.2), the total loss function is also deﬁned as the average
+of the loss function over individual training examples, J(θ) = 1
+i=1 J (i)(θ).
+n
+
+(cid:80)n
+
+82
+
+Multi-class classiﬁcation. Following Section 2.3, we consider a classiﬁca-
+tion problem where the response variable y can take on any one of k values,
+i.e. y ∈ {1, 2, . . . , k}. Let ¯hθ : Rd → Rk be a parameterized model. We
+call the outputs ¯hθ(x) ∈ Rk the logits. Each logit corresponds to the predic-
+tion for one of the k classes. Analogous to Section 2.3, we use the softmax
+function to turn the logits ¯hθ(x) into a probability vector with non-negative
+entries that sum up to 1:
+
+P (y = j | x; θ) =
+
+exp(¯hθ(x)j)
+s=1 exp(¯hθ(x)s)
+
+(cid:80)k
+
+,
+
+(7.5)
+
+where ¯hθ(x)s denotes the s-th coordinate of ¯hθ(x).
+
+Similarly to Section 2.3, the loss function for a single training example
+
+(x(i), y(i)) is its negative log-likelihood:
+
+J (i)(θ) = − log p(y(i) | x(i); θ) = − log
+
+(cid:32) exp(¯hθ(x(i))y(i))
+s=1 exp(¯hθ(x(i))s)
+
+(cid:80)k
+
+(cid:33)
+
+.
+
+(7.6)
+
+Using the notations of Section 2.3, we can simply write in an abstract way:
+J (i)(θ) = (cid:96)ce(¯hθ(x(i)), y(i)).
+
+(7.7)
+
+The loss function is also deﬁned as the average of the loss function of indi-
+(cid:80)n
+vidual training examples, J(θ) = 1
+n
+
+i=1 J (i)(θ).
+
+We also note that the approach above can also be generated to any con-
+ditional probabilistic model where we have an exponential distribution for
+y, Exponential-family(y; η), where η = ¯hθ(x) is a parameterized nonlinear
+function of x. However, the most widely used situations are the three cases
+discussed above.
+
+Optimizers (SGD). Commonly, people use gradient descent (GD), stochas-
+tic gradient (SGD), or their variants to optimize the loss function J(θ). GD’s
+update rule can be written as2
+
+θ := θ − α∇θJ(θ)
+
+(7.8)
+
+where α > 0 is often referred to as the learning rate or step size. Next, we
+introduce a version of the SGD (Algorithm 1), which is lightly diﬀerent from
+that in the ﬁrst lecture notes.
+
+2Recall that, as deﬁned in the previous lecture notes, we use the notation “a := b” to
+denote an operation (in a computer program) in which we set the value of a variable a to
+be equal to the value of b. In other words, this operation overwrites a with the value of
+b. In contrast, we will write “a = b” when we are asserting a statement of fact, that the
+value of a is equal to the value of b.
+
+83
+
+Algorithm 1 Stochastic Gradient Descent
+1: Hyperparameter: learning rate α, number of total iteration niter.
+2: Initialize θ randomly.
+3: for i = 1 to niter do
+4:
+
+Sample j uniformly from {1, . . . , n}, and update θ by
+
+θ := θ − α∇θJ (j)(θ)
+
+(7.9)
+
+Oftentimes computing the gradient of B examples simultaneously for the
+parameter θ can be faster than computing B gradients separately due to
+hardware parallelization. Therefore, a mini-batch version of SGD is most
+commonly used in deep learning, as shown in Algorithm 2. There are also
+other variants of the SGD or mini-batch SGD with slightly diﬀerent sampling
+schemes.
+
+Algorithm 2 Mini-batch Stochastic Gradient Descent
+1: Hyperparameters: learning rate α, batch size B, # iterations niter.
+2: Initialize θ randomly
+3: for i = 1 to niter do
+4:
+
+Sample B examples j1, . . . , jB (without replacement) uniformly from
+
+{1, . . . , n}, and update θ by
+
+θ := θ −
+
+α
+B
+
+B
+(cid:88)
+
+k=1
+
+∇θJ (jk)(θ)
+
+(7.10)
+
+With these generic algorithms, a typical deep learning model is learned
+with the following steps. 1. Deﬁne a neural network parametrization hθ(x),
+which we will introduce in Section 7.2, and 2. write the backpropagation
+algorithm to compute the gradient of the loss function J (j)(θ) eﬃciently,
+which will be covered in Section 7.4, and 3. run SGD or mini-batch SGD (or
+other gradient-based optimizers) with the loss function J(θ).
+
+84
+
+7.2 Neural networks
+
+Neural networks refer to a broad type of non-linear models/parametrizations
+¯hθ(x) that involve combinations of matrix multiplications and other entry-
+wise non-linear operations. To have a uniﬁed treatment for regression prob-
+lem and classiﬁcation problem, here we consider ¯hθ(x) as the output of the
+neural network. For regression problem, the ﬁnal prediction hθ(x) = ¯hθ(x),
+and for classiﬁcation problem, ¯hθ(x) is the logits and the predicted probability
+will be hθ(x) = 1/(1+exp(−¯hθ(x)) (see equation 7.3) for binary classiﬁcation
+or hθ(x) = softmax(¯hθ(x)) for multi-class classiﬁcation (see equation 7.5).
+We will start small and slowly build up a neural network, step by step.
+
+A Neural Network with a Single Neuron.
+Recall the housing price
+prediction problem from before: given the size of the house, we want to
+predict the price. We will use it as a running example in this subsection.
+
+Previously, we ﬁt a straight line to the graph of size vs. housing price.
+Now, instead of ﬁtting a straight line, we wish to prevent negative housing
+prices by setting the absolute minimum price as zero. This produces a “kink”
+in the graph as shown in Figure 7.1. How do we represent such a function
+with a single kink as ¯hθ(x) with unknown parameter? (After doing so, we
+can invoke the machinery in Section 7.1.)
+
+We deﬁne a parameterized function ¯hθ(x) with input x, parameterized by
+θ, which outputs the price of the house y. Formally, ¯hθ : x → y. Perhaps
+one of the simplest parametrization would be
+
+¯hθ(x) = max(wx + b, 0), where θ = (w, b) ∈ R2
+
+(7.11)
+
+Here ¯hθ(x) returns a single value: (wx+b) or zero, whichever is greater. In
+the context of neural networks, the function max{t, 0} is called a ReLU (pro-
+nounced “ray-lu”), or rectiﬁed linear unit, and often denoted by ReLU(t) (cid:44)
+max{t, 0}.
+
+Generally, a one-dimensional non-linear function that maps R to R such as
+ReLU is often referred to as an activation function. The model ¯hθ(x) is said
+to have a single neuron partly because it has a single non-linear activation
+function. (We will discuss more about why a non-linear activation is called
+neuron.)
+
+When the input x ∈ Rd has multiple dimensions, a neural network with
+
+a single neuron can be written as
+
+¯hθ(x) = ReLU(w(cid:62)x + b), where w ∈ Rd, b ∈ R, and θ = (w, b)
+
+(7.12)
+
+85
+
+Figure 7.1: Housing prices with a “kink” in the graph.
+
+The term b is often referred to as the “bias”, and the vector w is referred
+to as the weight vector. Such a neural network has 1 layer. (We will deﬁne
+what multiple layers mean in the sequel.)
+
+Stacking Neurons. A more complex neural network may take the single
+neuron described above and “stack” them together such that one neuron
+passes its output as input into the next neuron, resulting in a more complex
+function.
+
+Let us now deepen the housing prediction example. In addition to the size
+of the house, suppose that you know the number of bedrooms, the zip code
+and the wealth of the neighborhood. Building neural networks is analogous
+to Lego bricks: you take individual bricks and stack them together to build
+complex structures. The same applies to neural networks: we take individual
+neurons and stack them together to create complex neural networks.
+
+Given these features (size, number of bedrooms, zip code, and wealth),
+we might then decide that the price of the house depends on the maximum
+family size it can accommodate. Suppose the family size is a function of the
+size of the house and number of bedrooms (see Figure 7.2). The zip code
+may provide additional information such as how walkable the neighborhood
+is (i.e., can you walk to the grocery store or do you need to drive everywhere).
+Combining the zip code with the wealth of the neighborhood may predict
+the quality of the local elementary school. Given these three derived features
+(family size, walkable, school quality), we may conclude that the price of the
+
+50010001500200025003000350040004500500001002003004005006007008009001000housing pricessquare feetprice (in $1000)home ultimately depends on these three features.
+
+86
+
+Figure 7.2: Diagram of a small neural network for predicting housing prices.
+
+Formally, the input to a neural network is a set of input features
+x1, x2, x3, x4. We denote the intermediate variables for “family size”, “walk-
+able”, and “school quality” by a1, a2, a3 (these ai’s are often referred to as
+“hidden units” or “hidden neurons”). We represent each of the ai’s as a neu-
+ral network with a single neuron with a subset of x1, . . . , x4 as inputs. Then
+as in Figure 7.1, we will have the parameterization:
+
+a1 = ReLU(θ1x1 + θ2x2 + θ3)
+a2 = ReLU(θ4x3 + θ5)
+a3 = ReLU(θ6x3 + θ7x4 + θ8)
+
+where (θ1, · · · , θ8) are parameters. Now we represent the ﬁnal output ¯hθ(x)
+as another linear function with a1, a2, a3 as inputs, and we get3
+
+¯hθ(x) = θ9a1 + θ10a2 + θ11a3 + θ12
+
+(7.13)
+
+where θ contains all the parameters (θ1, · · · , θ12).
+
+Now we represent the output as a quite complex function of x with pa-
+rameters θ. Then you can use this parametrization ¯hθ with the machinery of
+Section 7.1 to learn the parameters θ.
+
+Inspiration from Biological Neural Networks. As the name suggests,
+artiﬁcial neural networks were inspired by biological neural networks. The
+hidden units a1, . . . , am correspond to the neurons in a biological neural net-
+work, and the parameters θi’s correspond to the synapses. However, it’s
+unclear how similar the modern deep artiﬁcial neural networks are to the bi-
+ological ones. For example, perhaps not many neuroscientists think biological
+
+3Typically, for multi-layer neural network, at the end, near the output, we don’t apply
+
+ReLU, especially when the output is not necessarily a positive number.
+
+Family SizeSchool QualityWalkableSize# BedroomsZip CodeWealthPricey87
+
+neural networks could have 1000 layers, while some modern artiﬁcial neural
+networks do (we will elaborate more on the notion of layers.) Moreover, it’s
+an open question whether human brains update their neural networks in a
+way similar to the way that computer scientists learn artiﬁcial neural net-
+works (using backpropagation, which we will introduce in the next section.).
+
+Two-layer Fully-Connected Neural Networks. We constructed the
+neural network in equation (7.13) using a signiﬁcant amount of prior knowl-
+edge/belief about how the “family size”, “walkable”, and “school quality” are
+determined by the inputs. We implicitly assumed that we know the family
+size is an important quantity to look at and that it can be determined by
+only the “size” and “# bedrooms”. Such a prior knowledge might not be
+available for other applications. It would be more ﬂexible and general to have
+a generic parameterization. A simple way would be to write the intermediate
+variable a1 as a function of all x1, . . . , x4:
+
+a1 = ReLU(w(cid:62)
+a2 = ReLU(w(cid:62)
+a3 = ReLU(w(cid:62)
+
+1 x + b1), where w1 ∈ R4 and b1 ∈ R
+2 x + b2), where w2 ∈ R4 and b2 ∈ R
+3 x + b3), where w3 ∈ R4 and b3 ∈ R
+
+(7.14)
+
+We still deﬁne ¯hθ(x) using equation (7.13) with a1, a2, a3 being deﬁned as
+above. Thus we have a so-called fully-connected neural network because
+all the intermediate variables ai’s depend on all the inputs xi’s.
+
+For full generality, a two-layer fully-connected neural network with m
+
+hidden units and d dimensional input x ∈ Rd is deﬁned as
+
+∀j ∈ [1, ..., m],
+
+j where w[1]
+
+j ∈ Rd, b[1]
+
+j ∈ R
+
+(cid:62)
+
+x + b[1]
+
+zj = w[1]
+j
+aj = ReLU(zj),
+a = [a1, . . . , am](cid:62) ∈ Rm
+
+(7.15)
+
+¯hθ(x) = w[2](cid:62)
+
+a + b[2] where w[2] ∈ Rm, b[2] ∈ R,
+
+(7.16)
+
+Note that by default the vectors in Rd are viewed as column vectors, and
+in particular a is a column vector with components a1, a2, ..., am. The indices
+[1] and [2] are used to distinguish two sets of parameters: the w[1]
+j ’s (each of
+which is a vector in Rd) and w[2] (which is a vector in Rm). We will have
+more of these later.
+
+Vectorization. Before we introduce neural networks with more layers and
+more complex structures, we will simplify the expressions for neural networks
+
+88
+
+with m

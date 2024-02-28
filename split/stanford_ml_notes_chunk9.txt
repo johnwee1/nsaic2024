@@ -1,0 +1,707 @@
+ore matrix and vector notations. Another important motivation of
+vectorization is the speed perspective in the implementation.
+In order to
+implement a neural network eﬃciently, one must be careful when using for
+loops. The most natural way to implement equation (7.15) in code is perhaps
+to use a for loop. In practice, the dimensionalities of the inputs and hidden
+units are high. As a result, code will run very slowly if you use for loops.
+Leveraging the parallelism in GPUs is/was crucial for the progress of deep
+learning.
+
+This gave rise to vectorization. Instead of using for loops, vectorization
+takes advantage of matrix algebra and highly optimized numerical linear
+algebra packages (e.g., BLAS) to make neural network computations run
+quickly. Before the deep learning era, a for loop may have been suﬃcient
+on smaller datasets, but modern deep networks and state-of-the-art datasets
+will be infeasible to run with for loops.
+
+We vectorize the two-layer fully-connected neural network as below. We
+deﬁne a weight matrix W [1] in Rm×d as the concatenation of all the vectors
+w[1]
+
+j ’s in the following way:
+
+W [1] =
+
+
+
+
+
+
+
+
+
+(cid:62)
+
+(cid:62)
+
+(cid:62)
+
+— w[1]
+1
+— w[1]
+2
+...
+— w[1]
+m
+
+—
+
+—
+
+—
+
+
+
+
+
+
+
+
+
+∈ Rm×d
+
+(7.17)
+
+Now by the deﬁnition of matrix vector multiplication, we can write z =
+
+[z1, . . . , zm](cid:62) ∈ Rm as
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+z1
+...
+...
+zm
+(cid:124) (cid:123)(cid:122) (cid:125)
+z ∈ Rm×1
+
+=
+
+
+
+
+
+
+
+
+
+(cid:124)
+
+(cid:62)
+
+(cid:62)
+
+—
+
+—
+
+— w[1]
+1
+— w[1]
+2
+...
+— w[1]
+m
+(cid:123)(cid:122)
+W [1] ∈ Rm×d
+
+—
+
+(cid:62)
+
+
+
+
+
+
+
+
+
+(cid:125)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+x1
+x2
+...
+xd
+(cid:124) (cid:123)(cid:122) (cid:125)
+x ∈ Rd×1
+
++
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+b[1]
+1
+b[1]
+2
+...
+b[1]
+m
+(cid:124) (cid:123)(cid:122) (cid:125)
+b[1] ∈ Rm×1
+
+(7.18)
+
+Or succinctly,
+
+z = W [1]x + b[1]
+
+(7.19)
+
+We remark again that a vector in Rd in this notes, following the conventions
+previously established, is automatically viewed as a column vector, and can
+
+89
+
+also be viewed as a d × 1 dimensional matrix. (Note that this is diﬀerent
+from numpy where a vector is viewed as a row vector in broadcasting.)
+
+Computing the activations a ∈ Rm from z ∈ Rm involves an element-
+wise non-linear application of the ReLU function, which can be computed in
+parallel eﬃciently. Overloading ReLU for element-wise application of ReLU
+(meaning, for a vector t ∈ Rd, ReLU(t) is a vector such that ReLU(t)i =
+ReLU(ti)), we have
+
+a = ReLU(z)
+
+(7.20)
+
+Deﬁne W [2] = [w[2](cid:62)] ∈ R1×m similarly. Then, the model in equa-
+
+tion (7.16) can be summarized as
+
+a = ReLU(W [1]x + b[1])
+
+¯hθ(x) = W [2]a + b[2]
+
+(7.21)
+
+Here θ consists of W [1], W [2] (often referred to as the weight matrices) and
+b[1], b[2] (referred to as the biases). The collection of W [1], b[1] is referred to as
+the ﬁrst layer, and W [2], b[2] the second layer. The activation a is referred to as
+the hidden layer. A two-layer neural network is also called one-hidden-layer
+neural network.
+
+Multi-layer fully-connected neural networks. With this succinct no-
+tations, we can stack more layers to get a deeper fully-connected neu-
+Let
+ral network.
+W [1], . . . , W [r], b[1], . . . , b[r] be the weight matrices and biases of all the layers.
+Then a multi-layer neural network can be written as
+
+Let r be the number of
+
+layers (weight matrices).
+
+a[1] = ReLU(W [1]x + b[1])
+a[2] = ReLU(W [2]a[1] + b[2])
+· · ·
+
+a[r−1] = ReLU(W [r−1]a[r−2] + b[r−1])
+¯hθ(x) = W [r]a[r−1] + b[r]
+
+(7.22)
+
+We note that the weight matrices and biases need to have compatible
+dimensions for the equations above to make sense. If a[k] has dimension mk,
+then the weight matrix W [k] should be of dimension mk × mk−1, and the bias
+b[k] ∈ Rmk. Moreover, W [1] ∈ Rm1×d and W [r] ∈ R1×mr−1.
+
+90
+
+The total number of neurons in the network is m1 + · · · + mr, and the
+total number of parameters in this network is (d + 1)m1 + (m1 + 1)m2 + · · · +
+(mr−1 + 1)mr.
+
+Sometimes for notational consistency we also write a[0] = x, and a[r] =
+
+hθ(x). Then we have simple recursion that
+
+a[k] = ReLU(W [k]a[k−1] + b[k]), ∀k = 1, . . . , r − 1
+
+(7.23)
+
+Note that this would have be true for k = r if there were an additional
+ReLU in equation (7.22), but often people like to make the last layer linear
+(aka without a ReLU) so that negative outputs are possible and it’s easier
+to interpret the last layer as a linear model. (More on the interpretability at
+the “connection to kernel method” paragraph of this section.)
+
+Other activation functions. The activation function ReLU can be re-
+placed by many other non-linear function σ(·) that maps R to R such as
+
+σ(z) =
+
+σ(z) =
+
+1
+1 + e−z
+ez − e−z
+ez + e−z
+
+(sigmoid)
+
+(tanh)
+
+σ(z) = max{z, γz}, γ ∈ (0, 1)
+
+(leaky ReLU)
+
+(cid:20)
+
+1 + erf(
+
+(cid:21)
+
+z
+√
+2
+
+)
+
+(GELU)
+
+σ(z) =
+
+σ(z) =
+
+z
+2
+1
+β
+
+log(1 + exp(βz)), β > 0
+
+(Softplus)
+
+(7.28)
+
+(7.24)
+
+(7.25)
+
+(7.26)
+
+(7.27)
+
+The activation functions are plotted in Figure 7.3. Sigmoid and tanh are
+less and less used these days partly because their are bounded from both sides
+and the gradient of them vanishes as z goes to both positive and negative
+inﬁnity (whereas all the other activation functions still have gradients as the
+input goes to positive inﬁnity.) Softplus is not used very often either in
+practice and can be viewed as a smoothing of the ReLU so that it has a
+proper second order derivative. GELU and leaky ReLU are both variants of
+ReLU but they have some non-zero gradient even when the input is negative.
+GELU (or its slight variant) is used in NLP models such as BERT and GPT
+(which we will discuss in Chapter 14.)
+
+Why do we not use the identity function for σ(z)? That is, why
+not use σ(z) = z? Assume for sake of argument that b[1] and b[2] are zeros.
+
+91
+
+Figure 7.3: Activation functions in deep learning.
+
+Suppose σ(z) = z, then for two-layer neural network, we have that
+
+¯hθ(x) = W [2]a[1]
+
+= W [2]σ(z[1])
+= W [2]z[1]
+= W [2]W [1]x
+= ˜W x
+
+by deﬁnition
+
+since σ(z) = z
+
+from Equation (7.18)
+where ˜W = W [2]W [1]
+
+(7.29)
+
+(7.30)
+
+(7.31)
+
+(7.32)
+
+(7.33)
+
+Notice how W [2]W [1] collapsed into ˜W .
+
+This is because applying a linear function to another linear function will
+result in a linear function over the original input (i.e., you can construct a ˜W
+such that ˜W x = W [2]W [1]x). This loses much of the representational power
+of the neural network as often times the output we are trying to predict
+has a non-linear relationship with the inputs. Without non-linear activation
+functions, the neural network will simply perform linear regression.
+
+Connection to the Kernel Method.
+In the previous lectures, we covered
+the concept of feature maps. Recall that the main motivation for feature
+maps is to represent functions that are non-linear in the input x by θ(cid:62)φ(x),
+where θ are the parameters and φ(x), the feature map, is a handcrafted
+function non-linear in the raw input x. The performance of the learning
+algorithms can signiﬁcantly depends on the choice of the feature map φ(x).
+Oftentimes people use domain knowledge to design the feature map φ(x) that
+
+92
+
+suits the particular applications. The process of choosing the feature maps
+is often referred to as feature engineering.
+
+We can view deep learning as a way to automatically learn the right
+feature map (sometimes also referred to as “the representation”) as follows.
+Suppose we denote by β the collection of the parameters in a fully-connected
+neural networks (equation (7.22)) except those in the last layer. Then we
+can abstract right a[r−1] as a function of the input x and the parameters in
+β: a[r−1] = φβ(x). Now we can write the model as
+
+¯hθ(x) = W [r]φβ(x) + b[r]
+
+(7.34)
+
+When β is ﬁxed, then φβ(·) can viewed as a feature map, and therefore ¯hθ(x)
+is just a linear model over the features φβ(x). However, we will train the
+neural networks, both the parameters in β and the parameters W [r], b[r] are
+optimized, and therefore we are not learning a linear model in the feature
+space, but also learning a good feature map φβ(·) itself so that it’s possi-
+ble to predict accurately with a linear model on top of the feature map.
+Therefore, deep learning tends to depend less on the domain knowledge of
+the particular applications and requires often less feature engineering. The
+penultimate layer a[r] is often (informally) referred to as the learned features
+or representations in the context of deep learning.
+
+In the example of house price prediction, a fully-connected neural network
+does not need us to specify the intermediate quantity such “family size”, and
+may automatically discover some useful features in the last penultimate layer
+(the activation a[r−1]), and use them to linearly predict the housing price.
+Often the feature map / representation obtained from one datasets (that is,
+the function φβ(·) can be also useful for other datasets, which indicates they
+contain essential information about the data. However, oftentimes, the neural
+network will discover complex features which are very useful for predicting
+the output but may be diﬃcult for a human to understand or interpret. This
+is why some people refer to neural networks as a black box, as it can be
+diﬃcult to understand the features it has discovered.
+
+7.3 Modules in Modern Neural Networks
+
+The multi-layer neural network introduced in equation (7.22) of Section 7.2
+is often called multi-layer perceptron (MLP) these days. Modern neural net-
+works used in practice are often much more complex and consist of multiple
+building blocks or multiple layers of building blocks. In this section, we will
+
+93
+
+introduce some of the other building blocks and discuss possible ways to
+combine them.
+
+First, each matrix multiplication can be viewed as a building block. Con-
+sider a matrix multiplication operation with parameters (W, b) where W is
+the weight matrix and b is the bias vector, operating on an input z,
+
+MMW,b(z) = W z + b .
+
+(7.35)
+
+Note that we implicitly assume all the dimensions are chosen to be compat-
+ible. We will also drop the subscripts under MM when they are clear in the
+context or just for convenience when they are not essential to the discussion.
+Then, the MLP can be written as as a composition of multiple matrix
+multiplication modules and nonlinear activation modules (which can also be
+viewed as a building block):
+
+MLP(x) = MMW [r],b[r](σ(MMW [r−1],b[r−1](σ(· · · MMW [1],b[1](x)))).
+
+(7.36)
+
+Alternatively, when we drop the subscripts that indicate the parameters for
+convenience, we can write
+
+MLP(x) = MM(σ(MMσ(· · · MM(x)))).
+
+(7.37)
+
+Note that in this lecture notes, by default, all the modules have diﬀerent
+sets of parameters, and the dimensions of the parameters are chosen such
+that the composition is meaningful.
+
+Larger modules can be deﬁned via smaller modules as well, e.g., one
+activation layer σ and a matrix multiplication layer MM are often combined
+and called a “layer” in many papers. People often draw the architecture
+with the basic modules in a ﬁgure by indicating the dependency between
+these modules. E.g., see an illustration of an MLP in Figure 7.4, Left.
+
+Residual connections. One of the very inﬂuential neural network archi-
+tecture for vision application is ResNet, which uses the residual connections
+that are essentially used in almost all large-scale deep learning architectures
+these days. Using our notation above, a very much simpliﬁed residual block
+can be deﬁned as
+
+Res(z) = z + σ(MM(σ(MM(z)))).
+
+(7.38)
+
+A much simpliﬁed ResNet is a composition of many residual blocks followed
+by a matrix multiplication,
+
+ResNet-S(x) = MM(Res(Res(· · · Res(x)))).
+
+(7.39)
+
+94
+
+Figure 7.4:
+layers. Right: A residual network.
+
+Illustrative Figures for Architecture. Left: An MLP with r
+
+We also draw the dependency of these modules in Figure 7.4, Right.
+
+We note that the ResNet-S is still not the same as the ResNet architec-
+ture introduced in the seminal paper [He et al., 2016] because ResNet uses
+convolution layers instead of vanilla matrix multiplication, and adds batch
+normalization between convolutions and activations. We will introduce con-
+volutional layers and some variants of batch normalization below. ResNet-S
+and layer normalization are part of the Transformer architecture that are
+widely used in modern large language models.
+
+Layer normalization. Layer normalization, denoted by LN in this text,
+is a module that maps a vector z ∈ Rm to a more normalized vector LN(z) ∈
+Rm. It is oftentimes used after the nonlinear activations.
+
+We ﬁrst deﬁne a sub-module of the layer normalization, denoted by LN-S.
+
+LN-S(z) =
+
+
+
+
+
+
+
+
+,
+
+
+
+
+
+
+
+
+z1−ˆµ
+ˆσ
+z2−ˆµ
+ˆσ
+
+...
+
+zm−ˆµ
+ˆσ
+
+(7.40)
+
+(cid:80)m
+
+i=1 zi
+m
+
+is the empirical mean of the vector z and ˆσ =
+
+where ˆµ =
+is the empirical standard deviation of the entries of z.4 Intuitively, LN-S(z)
+is a vector that is normalized to having empirical mean zero and empirical
+standard deviation 1.
+
+(cid:113) (cid:80)m
+
+i=1(zi−ˆµ2)
+m
+
+4Note that we divide by m instead of m − 1 in the empirical standard deviation here
+because we are interested in making the output of LN-S(z) have sum of squares equal to
+1 (as opposed to estimating the standard deviation in statistics.)
+
+𝑥Layer 𝑟−1Layer 𝑖...Layer 1MLP(𝑥)...Layer𝑖MM!["],#["]𝜎MM![$],#[$]𝑥ResRes...ResResNet-S(𝑥)...ResMM𝜎MM𝜎95
+
+Oftentimes zero mean and standard deviation 1 is not the most desired
+normalization scheme, and thus layernorm introduces to parameters learnable
+scalars β and γ as the desired mean and standard deviation, and use an aﬃne
+transformation to turn the output of LN-S(z) into a vector with mean β and
+standard deviation γ.
+
+LN(z) = β + γ · LN-S(z) =
+
+ˆσ
+
+
+
+β + γ (cid:0) z1−ˆµ
+β + γ (cid:0) z2−ˆµ
+
+
+...
+
+
+β + γ (cid:0) zm−ˆµ
+
+ˆσ
+
+
+
+(cid:1)
+(cid:1)
+
+
+
+
+
+(cid:1)
+
+ˆσ
+
+.
+
+(7.41)
+
+Here the ﬁrst occurrence of β should be technically interpreted as a vector
+with all the entries being β. in We also note that ˆµ and ˆσ are also functions
+of z and shouldn’t be treated as constants when computing the derivatives of
+layernorm. Moreover, β and γ are learnable parameters and thus layernorm
+is a parameterized module (as opposed to the activation layer which doesn’t
+have any parameters.)
+
+Scaling-invariant property. One important property of layer normalization
+is that it will make the model invariant to scaling of the parameters in the
+following sense. Suppose we consider composing LN with MMW,b and get
+a subnetwork LN(MMW,b(z)). Then, we have that the output of this sub-
+network does not change when the parameter in MMW,b is scaled:
+
+LN(MMαW,αb(z)) = LN(MMW,b(z)), ∀α > 0.
+
+(7.42)
+
+To see this, we ﬁrst know that LN-S(·) is scale-invariant
+
+LN-S(αz) =
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+αz1−αˆµ
+αˆσ
+αz2−αˆµ
+αˆσ
+
+...
+
+αzm−αˆµ
+αˆσ
+
+=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+z1−ˆµ
+ˆσ
+z2−ˆµ
+ˆσ
+
+...
+
+zm−ˆµ
+ˆσ
+
+= LN-S(z).
+
+(7.43)
+
+Then we have
+
+LN(MMαW,αb(z)) = β + γLN-S(MMαW,αb(z))
+= β + γLN-S(αMMW,b(z))
+= β + γLN-S(MMW,b(z))
+= LN(MMW,b(z)).
+
+(7.44)
+(7.45)
+(7.46)
+(7.47)
+
+Due to this property, most of the modern DL architectures for large-scale
+computer vision and language applications have the following scale-invariant
+
+96
+
+property w.r.t all the weights that are not at the last layer. Suppose the
+network f has last layer’ weights Wlast, and all the rest of the weights are
+denote by W . Then, we have fWlast,αW (x) = fWlast,W (x) for all α > 0. Here,
+the last layers weights are special because there are typically no layernorm
+or batchnorm after the last layer’s weights.
+
+Other normalization layers. There are several other normalization layers that
+aim to normalize the intermediate layers of the neural networks t
