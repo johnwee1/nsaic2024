@@ -1,191 +1,13 @@
-ld be able to verify that
-
-θP(w) = max
-
-α,β : αi≥0
-
-f (w) +
-
-= ∞.
-
-k
-(cid:88)
-
-i=1
-
-αigi(w) +
-
-l
-(cid:88)
-
-i=1
-
-βihi(w)
-
-(6.1)
-
-(6.2)
-
-Conversely, if the constraints are indeed satis�ed for a particular value of w,
-then θP(w) = f (w). Hence,
-
-θP(w) =
-
-(cid:26) f (w)
-
-if w satis�es primal constraints
-
-∞ otherwise.
-
-2Readers interested in learning more about this topic are encouraged to read, e.g., R.
-
-T. Rockarfeller (1970), Convex Analysis, Princeton University Press.
-
-67
-
-Thus, θP takes the same value as the objective in our problem for all val-
-ues of w that satis�es the primal constraints, and is positive in�nity if the
-constraints are violated. Hence, if we consider the minimization problem
-
-min
-w
-
-θP(w) = min
-
-w
-
-max
-α,β : αi≥0
-
-L(w, α, β),
-
-we see that it is the same problem (i.e., and has the same solutions as) our
-original, primal problem. For later use, we also de�ne the optimal value of
-the objective to be p∗ = minw θP(w); we call this the value of the primal
-problem.
-
-Now, let’s look at a slightly diﬀerent problem. We de�ne
-
-θD(α, β) = min
-
-L(w, α, β).
-
-w
-Here, the “D� subscript stands for “dual.� Note also that whereas in the
-de�nition of θP we were optimizing (maximizing) with respect to α, β, here
-we are minimizing with respect to w.
-
-We can now pose the dual optimization problem:
-
-max
-α,β : αi≥0
-
-θD(α, β) = max
-
-α,β : αi≥0
-
-min
-w
-
-L(w, α, β).
-
-This is exactly the same as our primal problem shown above, except that the
-order of the “max� and the “min� are now exchanged. We also de�ne the
-optimal value of the dual problem’s objective to be d∗ = maxα,β : αi≥0 θD(w).
-How are the primal and the dual problems related? It can easily be shown
-
-that
-
-d∗ = max
-
-α,β : αi≥0
-
-min
-w
-
-L(w, α, β) ≤ min
-
-w
-
-max
-α,β : αi≥0
-
-L(w, α, β) = p∗.
-
-(You should convince yourself of this; this follows from the “max min� of a
-function always being less than or equal to the “min max.�) However, under
-certain conditions, we will have
-
-d∗ = p∗,
-
-so that we can solve the dual problem in lieu of the primal problem. Let’s
-see what these conditions are.
-
-Suppose f and the gi’s are convex,3 and the hi’s are aﬃne.4 Suppose
-further that the constraints gi are (strictly) feasible; this means that there
-exists some w so that gi(w) < 0 for all i.
-
-3When f has a Hessian, then it is convex if and only if the Hessian is positive semi-
-de�nite. For instance, f (w) = wT w is convex; similarly, all linear (and aﬃne) functions
-are also convex. (A function f can also be convex without being diﬀerentiable, but we
-won’t need those more general de�nitions of convexity here.)
-
-4I.e., there exists ai, bi, so that hi(w) = aT
-
-i w + bi. “Aﬃne� means the same thing as
-
-linear, except that we also allow the extra intercept term bi.
-
-Under our above assumptions, there must exist w∗, α∗, β∗ so that w∗ is the
-solution to the primal problem, α∗, β∗ are the solution to the dual problem,
-and moreover p∗ = d∗ = L(w∗, α∗, β∗). Moreover, w∗, α∗ and β∗ satisfy the
-Karush-Kuhn-Tucker (KKT) conditions, which are as follows:
-
-68
-
-∂
-∂wi
-∂
-∂βi
-
-L(w∗, α∗, β∗) = 0,
-
-i = 1, . . . , d
-
-L(w∗, α∗, β∗) = 0,
-
-i = 1, . . . , l
-
-i gi(w∗) = 0,
-α∗
-gi(w∗) ≤ 0,
-α∗ ≥ 0,
-
-i = 1, . . . , k
-i = 1, . . . , k
-i = 1, . . . , k
-
-(6.3)
-
-(6.4)
-
-(6.5)
-(6.6)
-(6.7)
-
-Moreover, if some w∗, α∗, β∗ satisfy the KKT conditions, then it is also a solution to the primal and dual
-problems.
-
-We draw attention to Equation (6.5), which is called the KKT dual
-complementarity condition. Speci�cally, it implies that if α∗
+), which is called the KKT dual
+complementarity condition. Speciﬁcally, it implies that if α∗
 i > 0, then
-gi(w∗) = 0. (I.e., the “gi(w) ≤ 0� constraint is active, meaning it holds with
+gi(w∗) = 0. (I.e., the “gi(w) ≤ 0” constraint is active, meaning it holds with
 equality rather than with inequality.) Later on, this will be key for showing
-that the SVM has only a small number of “support vectors�; the KKT dual
+that the SVM has only a small number of “support vectors”; the KKT dual
 complementarity condition will also give us our convergence test when we
 talk about the SMO algorithm.
 
-6.6 Optimal margin classi�ers: the dual form
+6.6 Optimal margin classiﬁers: the dual form
 
 (option reading)
 
@@ -193,9 +15,9 @@ Note: The equivalence of optimization problem (6.8) and the optimization
 problem (6.12), and the relationship between the primary and dual variables
 in equation (6.10) are the most important take home messages of this section.
 
-Previously, we posed the following (primal) optimization problem for �nd-
+Previously, we posed the following (primal) optimization problem for ﬁnd-
 
-ing the optimal margin classi�er:
+ing the optimal margin classiﬁer:
 
 minw,b
 
@@ -220,7 +42,7 @@ We have one such constraint for each training example. Note that from the
 KKT dual complementarity condition, we will have αi > 0 only for the train-
 ing examples that have functional margin exactly equal to one (i.e., the ones
 corresponding to constraints that hold with equality, gi(w) = 0). Consider
-the �gure below, in which a maximum margin separating hyperplane is shown
+the ﬁgure below, in which a maximum margin separating hyperplane is shown
 by the solid line.
 
 The points with the smallest margins are exactly the ones closest to the
@@ -258,13 +80,13 @@ n
 2
 
 i=1
-Note that there’re only “αi� but no “βi� Lagrange multipliers, since the
+Note that there’re only “αi” but no “βi” Lagrange multipliers, since the
 problem has only inequality constraints.
 
 70
 
-Let’s �nd the dual form of the problem. To do so, we need to �rst
-minimize L(w, b, α) with respect to w and b (for �xed α), to get θD, which
+Let’s ﬁnd the dual form of the problem. To do so, we need to ﬁrst
+minimize L(w, b, α) with respect to w and b (for ﬁxed α), to get θD, which
 we’ll do by setting the derivatives of L with respect to w and b to zero. We
 have:
 
@@ -306,7 +128,7 @@ i=1
 
 (6.11)
 
-If we take the de�nition of w in Equation (6.10) and plug that back into
+If we take the deﬁnition of w in Equation (6.10) and plug that back into
 
 the Lagrangian (Equation 6.9), and simplify, we get
 
@@ -393,18 +215,18 @@ n
 i=1
 
 You should also be able to verify that the conditions required for p∗ = d∗
-and the KKT conditions (Equations 6.3–6.7) to hold are indeed satis�ed in
+and the KKT conditions (Equations 6.3–6.7) to hold are indeed satisﬁed in
 
 71
 
 our optimization problem. Hence, we can solve the dual in lieu of solving
-the primal problem. Speci�cally, in the dual problem above, we have a
+the primal problem. Speciﬁcally, in the dual problem above, we have a
 maximization problem in which the parameters are the αi’s. We’ll talk later
-about the speci�c algorithm that we’re going to use to solve the dual problem,
-but if we are indeed able to solve it (i.e., �nd the α’s that maximize W (α)
+about the speciﬁc algorithm that we’re going to use to solve the dual problem,
+but if we are indeed able to solve it (i.e., ﬁnd the α’s that maximize W (α)
 subject to the constraints), then we can use Equation (6.10) to go back and
-�nd the optimal w’s as a function of the α’s. Having found w∗, by considering
-the primal problem, it is also straightforward to �nd the optimal value for
+ﬁnd the optimal w’s as a function of the α’s. Having found w∗, by considering
+the primal problem, it is also straightforward to ﬁnd the optimal value for
 the intercept term b as
 
 b∗ = −
@@ -420,7 +242,7 @@ maxi:y(i)=−1 w∗T x(i) + mini:y(i)=1 w∗T x(i)
 
 Before moving on, let’s also take a more careful look at Equation (6.10),
 which gives the optimal value of w in terms of (the optimal value of) α.
-Suppose we’ve �t our model’s parameters to a training set, and now wish to
+Suppose we’ve ﬁt our model’s parameters to a training set, and now wish to
 make a prediction at a new point input x. We would then calculate wT x + b,
 and predict y = 1 if and only if this quantity is bigger than zero. But
 using (6.10), this quantity can also be written:
@@ -456,15 +278,15 @@ Hence, if we’ve found the αi’s, in order to make a prediction, we have to
 calculate a quantity that depends only on the inner product between x and
 the points in the training set. Moreover, we saw earlier that the αi’s will all
 be zero except for the support vectors. Thus, many of the terms in the sum
-above will be zero, and we really need to �nd only the inner products between
+above will be zero, and we really need to ﬁnd only the inner products between
 x and the support vectors (of which there is often only a small number) in
 order calculate (6.15) and make our prediction.
 
 By examining the dual form of the optimization problem, we gained sig-
-ni�cant insight into the structure of the problem, and were also able to write
+niﬁcant insight into the structure of the problem, and were also able to write
 the entire algorithm in terms of only inner products between input feature
 vectors. In the next section, we will exploit this property to apply the ker-
-nels to our classi�cation problem. The resulting algorithm, support vector
+nels to our classiﬁcation problem. The resulting algorithm, support vector
 machines, will be able to eﬃciently learn in very high dimensional spaces.
 
 72
@@ -477,11 +299,11 @@ The derivation of the SVM as presented so far assumed that the data is
 linearly separable. While mapping data to a high dimensional feature space
 via φ does generally increase the likelihood that the data is separable, we
 can’t guarantee that it always will be so. Also, in some cases it is not clear
-that �nding a separating hyperplane is exactly what we’d want to do, since
-that might be susceptible to outliers. For instance, the left �gure below
-shows an optimal margin classi�er, and when a single outlier is added in the
-upper-left region (right �gure), it causes the decision boundary to make a
-dramatic swing, and the resulting classi�er has a much smaller margin.
+that ﬁnding a separating hyperplane is exactly what we’d want to do, since
+that might be susceptible to outliers. For instance, the left ﬁgure below
+shows an optimal margin classiﬁer, and when a single outlier is added in the
+upper-left region (right ﬁgure), it causes the decision boundary to make a
+dramatic swing, and the resulting classiﬁer has a much smaller margin.
 
 To make the algorithm work for non-linearly separable datasets as well
 as be less sensitive to outliers, we reformulate our optimization (using (cid:96)1
@@ -592,7 +414,7 @@ given in Equation (6.10), so that after solving the dual problem, we can con-
 tinue to use Equation (6.15) to make our predictions. Note that, somewhat
 surprisingly, in adding (cid:96)1 regularization, the only change to the dual prob-
 lem is that what was originally a constraint that 0 ≤ αi has now become
-0 ≤ αi ≤ C. The calculation for b∗ also has to be modi�ed (Equation 6.13 is
+0 ≤ αi ≤ C. The calculation for b∗ also has to be modiﬁed (Equation 6.13 is
 no longer valid); see the comments in the next section/Platt’s paper.
 
 Also, the KKT dual-complementarity conditions (which in the next sec-
@@ -619,7 +441,7 @@ gives an eﬃcient way of solving the dual problem arising from the derivation
 74
 
 of the SVM. Partly to motivate the SMO algorithm, and partly because it’s
-interesting in its own right, let’s �rst take another digression to talk about
+interesting in its own right, let’s ﬁrst take another digression to talk about
 the coordinate ascent algorithm.
 
 6.8.1 Coordinate ascent
@@ -647,22 +469,22 @@ For i = 1, . . . , n, {
 }
 
 Thus, in the innermost loop of this algorithm, we will hold all the variables
-except for some αi �xed, and reoptimize W with respect to just the parameter
+except for some αi ﬁxed, and reoptimize W with respect to just the parameter
 αi. In the version of this method presented here, the inner-loop reoptimizes
 the variables in order α1, α2, . . . , αn, α1, α2, . . .. (A more sophisticated version
 might choose other orderings; for instance, we may choose the next variable
 to update according to which one we expect to allow us to make the largest
 increase in W (α).)
 
-When the function W happens to be of such a form that the “arg max�
+When the function W happens to be of such a form that the “arg max”
 in the inner loop can be performed eﬃciently, then coordinate ascent can be
 a fairly eﬃcient algorithm. Here’s a picture of coordinate ascent in action:
 
 75
 
-The ellipses in the �gure are the contours of a quadratic function that
+The ellipses in the ﬁgure are the contours of a quadratic function that
 we want to optimize. Coordinate ascent was initialized at (2, −2), and also
-plotted in the �gure is the path that it took on its way to the global maximum.
+plotted in the ﬁgure is the path that it took on its way to the global maximum.
 Notice that on each step, coordinate ascent takes a step that’s parallel to one
 of the axes, since only one variable is being optimized at a time.
 
@@ -674,3 +496,148 @@ algorithm.
 Here’s the (dual) optimization problem that we want to solve:
 
 maxα W (α) =
+
+n
+(cid:88)
+
+αi −
+
+1
+2
+
+n
+(cid:88)
+
+i,j=1
+
+y(i)y(j)αiαj(cid:104)x(i), x(j)(cid:105).
+
+(6.19)
+
+i=1
+s.t. 0 ≤ αi ≤ C,
+
+i = 1, . . . , n
+
+(6.20)
+
+(6.21)
+
+n
+(cid:88)
+
+i=1
+
+αiy(i) = 0.
+
+Let’s say we have set of αi’s that satisfy the constraints (6.20-6.21). Now,
+suppose we want to hold α2, . . . , αn ﬁxed, and take a coordinate ascent step
+and reoptimize the objective with respect to α1. Can we make any progress?
+The answer is no, because the constraint (6.21) ensures that
+
+α1y(1) = −
+
+n
+(cid:88)
+
+i=2
+
+αiy(i).
+
+−2−1.5−1−0.500.511.522.5−2−1.5−1−0.500.511.522.576
+
+Or, by multiplying both sides by y(1), we equivalently have
+
+α1 = −y(1)
+
+n
+(cid:88)
+
+i=2
+
+αiy(i).
+
+(This step used the fact that y(1) ∈ {−1, 1}, and hence (y(1))2 = 1.) Hence,
+α1 is exactly determined by the other αi’s, and if we were to hold α2, . . . , αn
+ﬁxed, then we can’t make any change to α1 without violating the con-
+straint (6.21) in the optimization problem.
+
+Thus, if we want to update some subject of the αi’s, we must update at
+least two of them simultaneously in order to keep satisfying the constraints.
+This motivates the SMO algorithm, which simply does the following:
+
+Repeat till convergence {
+
+1. Select some pair αi and αj to update next (using a heuristic that
+tries to pick the two that will allow us to make the biggest progress
+towards the global maximum).
+
+2. Reoptimize W (α) with respect to αi and αj, while holding all the
+
+other αk’s (k (cid:54)= i, j) ﬁxed.
+
+}
+
+To test for convergence of this algorithm, we can check whether the KKT
+conditions (Equations 6.16-6.18) are satisﬁed to within some tol. Here, tol is
+the convergence tolerance parameter, and is typically set to around 0.01 to
+0.001. (See the paper and pseudocode for details.)
+
+The key reason that SMO is an eﬃcient algorithm is that the update to
+αi, αj can be computed very eﬃciently. Let’s now brieﬂy sketch the main
+ideas for deriving the eﬃcient update.
+
+Let’s say we currently have some setting of the αi’s that satisfy the con-
+straints (6.20-6.21), and suppose we’ve decided to hold α3, . . . , αn ﬁxed, and
+want to reoptimize W (α1, α2, . . . , αn) with respect to α1 and α2 (subject to
+the constraints). From (6.21), we require that
+
+α1y(1) + α2y(2) = −
+
+n
+(cid:88)
+
+i=3
+
+αiy(i).
+
+Since the right hand side is ﬁxed (as we’ve ﬁxed α3, . . . αn), we can just let
+it be denoted by some constant ζ:
+
+α1y(1) + α2y(2) = ζ.
+
+(6.22)
+
+We can thus picture the constraints on α1 and α2 as follows:
+
+77
+
+From the constraints (6.20), we know that α1 and α2 must lie within the box
+[0, C] × [0, C] shown. Also plotted is the line α1y(1) + α2y(2) = ζ, on which we
+know α1 and α2 must lie. Note also that, from these constraints, we know
+L ≤ α2 ≤ H; otherwise, (α1, α2) can’t simultaneously satisfy both the box
+and the straight line constraint. In this example, L = 0. But depending on
+what the line α1y(1) + α2y(2) = ζ looks like, this won’t always necessarily be
+the case; but more generally, there will be some lower-bound L and some
+upper-bound H on the permissible values for α2 that will ensure that α1, α2
+lie within the box [0, C] × [0, C].
+
+Using Equation (6.22), we can also write α1 as a function of α2:
+
+α1 = (ζ − α2y(2))y(1).
+
+(Check this derivation yourself; we again used the fact that y(1) ∈ {−1, 1} so
+that (y(1))2 = 1.) Hence, the objective W (α) can be written
+
+W (α1, α2, . . . , αn) = W ((ζ − α2y(2))y(1), α2, . . . , αn).
+
+Treating α3, . . . , αn as constants, you should be able to verify that this is
+just some quadratic function in α2. I.e., this can also be expressed in the
+form aα2
+2 + bα2 + c for some appropriate a, b, and c. If we ignore the “box”
+constraints (6.20) (or, equivalently, that L ≤ α2 ≤ H), then we can easily
+maximize this quadratic function by setting its derivative to zero and solving.
+We’ll let αnew,unclipped
+denote the resulting value of α2. You should also be
+2
+able to convince yourself that if we had instead wanted to m

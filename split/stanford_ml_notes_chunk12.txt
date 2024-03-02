@@ -1,212 +1,4 @@
- you have a training
-set with three examples x(1), x(2), x(3). The �rst-layer activations for each
-example are as follows:
-
-z[1](1) = W [1]x(1) + b[1]
-z[1](2) = W [1]x(2) + b[1]
-z[1](3) = W [1]x(3) + b[1]
-
-Note the diﬀerence between square brackets [·], which refer to the layer num-
-ber, and parenthesis (·), which refer to the training example number.
-In-
-tuitively, one would implement this using a for loop. It turns out, we can
-vectorize these operations as well. First, de�ne:
-
-
-
-
-
-X =
-
-|
-
-|
-
-|
-x(1) x(2) x(3)
-|
-
-|
-
-|
-
-
- ∈ Rd×3
-
-(7.81)
-
-Note that we are stacking training examples in columns and not rows. We
-can then combine this into a single uni�ed formulation:
-
-
-
-
-
-Z [1] =
-
-|
-
-|
-
-|
-z[1](1) z[1](2) z[1](3)
-|
-
-|
-
-|
-
-
- = W [1]X + b[1]
-
-(7.82)
-
-You may notice that we are attempting to add b[1] ∈ R4×1 to W [1]X ∈
-R4×3. Strictly following the rules of linear algebra, this is not allowed. In
-practice however, this addition is performed using broadcasting. We create
-an intermediate ˜b[1] ∈ R4×3:
-
-˜b[1] =
-
-
-
-
-
-|
-b[1]
-|
-
-|
-b[1]
-|
-
-
-
-
-
-|
-b[1]
-|
-
-(7.83)
-
-We can then perform the computation: Z [1] = W [1]X + ˜b[1]. Often times, it
-is not necessary to explicitly construct ˜b[1]. By inspecting the dimensions in
-(7.82), you can assume b[1] ∈ R4×1 is correctly broadcast to W [1]X ∈ R4×3.
-
-The matricization approach as above can easily generalize to multiple
-
-layers, with one subtlety though, as discussed below.
-
-111
-
-Complications/Subtlety in the Implementation. All the deep learn-
-ing packages or implementations put the data points in the rows of a data
-matrix. (If the data point itself is a matrix or tensor, then the data are con-
-centrated along the zero-th dimension.) However, most of the deep learning
-papers use a similar notation to these notes where the data points are treated
-as column vectors.8 There is a simple conversion to deal with the mismatch:
-in the implementation, all the columns become row vectors, row vectors be-
-come column vectors, all the matrices are transposed, and the orders of the
-matrix multiplications are ﬂipped. In the example above, using the row ma-
-jor convention, the data matrix is X ∈ R3×d, the �rst layer weight matrix
-has dimensionality d × m (instead of m × d as in the two layer neural net
-section), and the bias vector b[1] ∈ R1×m. The computation for the hidden
-activation becomes
-
-Z [1] = XW [1] + b[1] ∈ R3×m
-
-(7.84)
-
-8The instructor suspects that this is mostly because in mathematics we naturally mul-
-
-tiply a matrix to a vector on the left hand side.
-
-Part III
-
-Generalization and
-regularization
-
-112
-
-Chapter 8
-
-Generalization
-
-This chapter discusses tools to analyze and understand the generaliza-
-i.e, their performances on unseen test
-tion of machine learning models,
-examples. Recall that for supervised learning problems, given a train-
-ing dataset {(x(i), y(i))}n
-i=1, we typically learn a model hθ by minimizing a
-loss/cost function J(θ), which encourages hθ to �t the data. E.g., when
-the loss function is the least square loss (aka mean squared error), we have
-J(θ) = 1
-i=1(y(i) − hθ(x(i)))2. This loss function for training purposes is
-n
-oftentimes referred to as the training loss/error/cost.
-
-(cid:80)n
-
-However, minimizing the training loss is not our ultimate goal—it is
-merely our approach towards the goal of learning a predictive model. The
-most important evaluation metric of a model is the loss on unseen test exam-
-ples, which is oftentimes referred to as the test error. Formally, we sample a
-test example (x, y) from the so-called test distribution D, and measure the
-model’s error on it, by, e.g., the mean squared error, (hθ(x) − y)2. The ex-
-pected loss/error over the randomness of the test example is called the test
-loss/error,1
-
-L(θ) = E(x,y)∼D[(y − hθ(x))2]
-
-(8.1)
-
-Note that the measurement of the error involves computing the expectation,
-and in practice, it can be approximated by the average error on many sampled
-test examples, which are referred to as the test dataset. Note that the key
-diﬀerence here between training and test datasets is that the test examples
-
-1In theoretical and statistical literature, we oftentimes call the uniform distribution
-over the training set {(x(i), y(i))}n
-i=1, denoted by (cid:98)D, an empirical distribution, and call
-D the population distribution. Partly because of this, the training loss is also referred
-to as the empirical loss/risk/error, and the test loss is also referred to as the population
-loss/risk/error.
-
-113
-
-114
-
-are unseen, in the sense that the training procedure has not used the test
-examples. In classical statistical learning settings, the training examples are
-also drawn from the same distribution as the test distribution D, but still
-the test examples are unseen by the learning procedure whereas the training
-examples are seen.2
-
-Because of this key diﬀerence between training and test datasets, even
-if they are both drawn from the same distribution D, the test error is not
-necessarily always close to the training error.3 As a result, successfully min-
-imizing the training error may not always lead to a small test error. We
-typically say the model over�ts the data if the model predicts accurately on
-the training dataset but doesn’t generalize well to other test examples, that
-is, if the training error is small but the test error is large. We say the model
-under�ts the data if the training error is relatively large4 (and in this case,
-typically the test error is also relatively large.)
-
-This chapter studies how the test error is inﬂuenced by the learning pro-
-cedure, especially the choice of model parameterizations. We will decompose
-the test error into “bias� and “variance� terms and study how each of them is
-aﬀected by the choice of model parameterizations and their tradeoﬀs. Using
-the bias-variance tradeoﬀ, we will discuss when over�tting and under�tting
-will occur and be avoided. We will also discuss the double descent phe-
-nomenon in Section 8.2 and some classical theoretical results in Section 8.3.
-
-2These days, researchers have increasingly been more interested in the setting with
-
-“domain shift�, that is, the training distribution and test distribution are diﬀerent.
-
-3the diﬀerence between test error and training error is often referred to as the gener-
-alization gap. The term generalization error in some literature means the test error, and
+r, and
 in some other literature means the generalization gap.
 
 4e.g., larger than the intrinsic noise level of the data in regression problems.
@@ -227,44 +19,44 @@ relationship y = h(cid:63)(x) + ξ where ξ ∼ N (0, σ2). It’s impossible to
 noise ξ, and therefore essentially our goal is to recover the function h(cid:63)(·).
 
 We will consider the test error of learning various types of models. When
-talking about linear regression, we discussed the problem of whether to �t
-a “simple� model such as the linear “y = θ0 + θ1x,� or a more “complex�
-model such as the polynomial “y = θ0 + θ1x + · · · θ5x5.�
+talking about linear regression, we discussed the problem of whether to ﬁt
+a “simple” model such as the linear “y = θ0 + θ1x,” or a more “complex”
+model such as the polynomial “y = θ0 + θ1x + · · · θ5x5.”
 
-We start with �tting a linear model, as shown in Figure 8.2. The best
-�tted linear model cannot predict y from x accurately even on the training
+We start with ﬁtting a linear model, as shown in Figure 8.2. The best
+ﬁtted linear model cannot predict y from x accurately even on the training
 dataset, let alone on the test dataset. This is because the true relationship
 between y and x is not linear—any linear model is far away from the true
 function h(cid:63)(·). As a result, the training error is large and this is a typical
-situation of under�tting.
+situation of underﬁtting.
 
 0.00.20.40.60.81.0x0.00.51.01.5ytraining datasettraining dataground truth h*0.00.20.40.60.81.0x0.00.51.01.5ytest datasettest dataground truth h*116
 
-Figure 8.2: The best �t linear model has large training and test errors.
+Figure 8.2: The best ﬁt linear model has large training and test errors.
 
 The issue cannot be mitigated with more training examples—even with
-a very large amount of, or even in�nite training examples, the best �tted
+a very large amount of, or even inﬁnite training examples, the best ﬁtted
 linear model is still inaccurate and fails to capture the structure of the data
 (Figure 8.3). Even if the noise is not present in the training data, the issue
 still occurs (Figure 8.4). Therefore, the fundamental bottleneck here is the
 linear model family’s inability to capture the structure in the data—linear
 models cannot represent the true quadratic function h(cid:63)—, but not the lack of
-the data. Informally, we de�ne the bias of a model to be the test error even
-if we were to �t it to a very (say, in�nitely) large training dataset. Thus, in
-this case, the linear model suﬀers from large bias, and under�ts (i.e., fails to
+the data. Informally, we deﬁne the bias of a model to be the test error even
+if we were to ﬁt it to a very (say, inﬁnitely) large training dataset. Thus, in
+this case, the linear model suﬀers from large bias, and underﬁts (i.e., fails to
 capture structure exhibited by) the data.
 
-Figure 8.3: The best �t linear
+Figure 8.3: The best ﬁt linear
 model on a much larger dataset
 still has a large training error.
 
-Figure 8.4: The best �t linear
+Figure 8.4: The best ﬁt linear
 model on a noiseless dataset also
 has a large training/test error.
 
-Next, we �t a 5th-degree polynomial to the data. Figure 8.5 shows that
+Next, we ﬁt a 5th-degree polynomial to the data. Figure 8.5 shows that
 it fails to learn a good model either. However, the failure pattern is diﬀerent
-from the linear model case. Speci�cally, even though the learnt 5th-degree
+from the linear model case. Speciﬁcally, even though the learnt 5th-degree
 
 0.00.20.40.60.81.0x0.00.51.01.5ytraining databest fit linear model0.00.20.40.60.81.0x0.00.51.01.5ytest databest fit linear model0.00.20.40.60.81.0x0.00.51.01.5yfitting linear models on a large datasettraining dataground truth h*best fit linear model0.00.20.40.60.81.0x0.00.51.01.5yfitting linear models on a noiseless datasettraining dataground truth h*best fit linear model117
 
@@ -272,7 +64,7 @@ polynomial did a very good job predicting y(i)’s from x(i)’s for training ex
 amples, it does not work well on test examples (Figure 8.5). In other words,
 the model learnt from the training set does not generalize well to other test
 examples—the test error is high. Contrary to the behavior of linear models,
-the bias of the 5-th degree polynomials is small—if we were to �t a 5-th de-
+the bias of the 5-th degree polynomials is small—if we were to ﬁt a 5-th de-
 gree polynomial to an extremely large dataset, the resulting model would be
 close to a quadratic function and be accurate (Figure 8.6). This is because
 the family of 5-th degree polynomials contains all the quadratic functions
@@ -280,46 +72,46 @@ the family of 5-th degree polynomials contains all the quadratic functions
 5-th degree polynomials are in principle capable of capturing the structure
 of the data.
 
-Figure 8.5: Best �t 5-th degree polynomial has zero training error, but still
+Figure 8.5: Best ﬁt 5-th degree polynomial has zero training error, but still
 has a large test error and does not recover the the ground truth. This is a
-classic situation of over�tting.
+classic situation of overﬁtting.
 
-Figure 8.6: The best �t 5-th degree polynomial on a huge dataset nearly
+Figure 8.6: The best ﬁt 5-th degree polynomial on a huge dataset nearly
 recovers the ground-truth—suggesting that the culprit in Figure 8.5 is the
 variance (or lack of data) but not bias.
 
-The failure of �tting 5-th degree polynomials can be captured by another
+The failure of ﬁtting 5-th degree polynomials can be captured by another
 
 0.00.20.40.60.81.0x0.00.51.01.5ytraining databest fit 5-th degree model0.00.20.40.60.81.0x0.00.51.01.5ytest dataground truth h*best fit 5-th degree model0.00.20.40.60.81.0x0.00.51.01.5ytraining databest fit 5-th degree modelground truth h*fitting 5-th degree model on large dataset118
 
-component of the test error, called variance of a model �tting procedure.
-Speci�cally, when �tting a 5-th degree polynomial as in Figure 8.7, there is a
-large risk that we’re �tting patterns in the data that happened to be present
-in our small, �nite training set, but that do not reﬂect the wider pattern of
-the relationship between x and y. These “spurious� patterns in the training
-set are (mostly) due to the observation noise ξ(i), and �tting these spurious
+component of the test error, called variance of a model ﬁtting procedure.
+Speciﬁcally, when ﬁtting a 5-th degree polynomial as in Figure 8.7, there is a
+large risk that we’re ﬁtting patterns in the data that happened to be present
+in our small, ﬁnite training set, but that do not reﬂect the wider pattern of
+the relationship between x and y. These “spurious” patterns in the training
+set are (mostly) due to the observation noise ξ(i), and ﬁtting these spurious
 patters results in a model with large test error. In this case, we say the model
 has a large variance.
 
-Figure 8.7: The best �t 5-th degree models on three diﬀerent datasets gen-
+Figure 8.7: The best ﬁt 5-th degree models on three diﬀerent datasets gen-
 erated from the same distribution behave quite diﬀerently, suggesting the
 existence of a large variance.
 
 The variance can be intuitively (and mathematically, as shown in Sec-
 tion 8.1.1) characterized by the amount of variations across models learnt
 on multiple diﬀerent training datasets (drawn from the same underlying dis-
-tribution). The “spurious patterns� are speci�c to the randomness of the
+tribution). The “spurious patterns” are speciﬁc to the randomness of the
 noise (and inputs) in a particular dataset, and thus are diﬀerent across mul-
-tiple training datasets. Therefore, over�tting to the “spurious patterns� of
+tiple training datasets. Therefore, overﬁtting to the “spurious patterns” of
 multiple datasets should result in very diﬀerent models. Indeed, as shown
 in Figure 8.7, the models learned on the three diﬀerent training datasets are
-quite diﬀerent, over�tting to the “spurious patterns� of each datasets.
+quite diﬀerent, overﬁtting to the “spurious patterns” of each datasets.
 
 Often, there is a tradeoﬀ between bias and variance. If our model is too
-“simple� and has very few parameters, then it may have large bias (but small
-variance), and it typically may suﬀer from under�ttng. If it is too “complex�
+“simple” and has very few parameters, then it may have large bias (but small
+variance), and it typically may suﬀer from underﬁttng. If it is too “complex”
 and has very many parameters, then it may suﬀer from large variance (but
-have smaller bias), and thus over�tting. See Figure 8.8 for a typical tradeoﬀ
+have smaller bias), and thus overﬁtting. See Figure 8.8 for a typical tradeoﬀ
 between bias and variance.
 
 0.00.20.40.60.81.0x0.00.51.01.5ytraining databest fit 5-th degree model0.00.20.40.60.81.0x0.00.51.01.5ytraining databest fit 5-th degree model0.00.20.40.60.81.0x0.00.51.01.5ytraining databest fit 5-th degree modelfitting 5-th degree model on different datasets119
@@ -330,17 +122,17 @@ As we will see formally in Section 8.1.1, the test error can be decomposed
 as a summation of bias and variance. This means that the test error will
 have a convex curve as the model complexity increases, and in practice we
 should tune the model complexity to achieve the best tradeoﬀ. For instance,
-in the example above, �tting a quadratic function does better than either of
-the extremes of a �rst or a 5-th degree polynomial, as shown in Figure 8.9.
+in the example above, ﬁtting a quadratic function does better than either of
+the extremes of a ﬁrst or a 5-th degree polynomial, as shown in Figure 8.9.
 
-Figure 8.9: Best �t quadratic model has small training and test error because
+Figure 8.9: Best ﬁt quadratic model has small training and test error because
 quadratic model achieves a better tradeoﬀ.
 
 Interestingly, the bias-variance tradeoﬀ curves or the test error curves
 do not universally follow the shape in Figure 8.8, at least not universally
 when the model complexity is simply measured by the number of parameters.
 (We will discuss the so-called double descent phenomenon in Section 8.2.)
-Nevertheless, the principle of bias-variance tradeoﬀ is perhaps still the �rst
+Nevertheless, the principle of bias-variance tradeoﬀ is perhaps still the ﬁrst
 resort when analyzing and predicting the behavior of test errors.
 
 Model ComplexityErrorBias2VarianceTest Error (= Bias2+Variance)Optimal Tradeoff0.00.20.40.60.81.0x0.00.51.01.5ytraining databest fit quadratic model0.00.20.40.60.81.0x0.00.51.01.5ytest databest fit quadratic modelground truth h*8.1.1 A mathematical decomposition (for regression)
@@ -360,4 +152,163 @@ where ξ(i) ∈ N (0, σ2).
 • Train a model on the dataset S, denoted by ˆhS.
 
 • Take a test example (x, y) such that y = h(cid:63)(x) + ξ where ξ ∼ N (0, σ2),
-and measure the expected test error (averag
+and measure the expected test error (averaged over the random draw of
+the training set S and the randomness of ξ)56
+
+MSE(x) = ES,ξ[(y − hS(x))2]
+
+(8.2)
+
+We will decompose the MSE into a bias and variance term. We start by
+stating a following simple mathematical tool that will be used twice below.
+
+Claim 8.1.1: Suppose A and B are two independent real random variables
+and E[A] = 0. Then, E[(A + B)2] = E[A2] + E[B2].
+
+As a corollary, because a random variable A is independent with a con-
+
+stant c, when E[A] = 0, we have E[(A + c)2] = E[A2] + c2.
+
+The proof of the claim follows from expanding the square: E[(A + B)2] =
+E[A2] + E[B2] + 2E[AB] = E[A2] + E[B2]. Here we used the independence to
+show that E[AB] = E[A]E[B] = 0.
+
+Using Claim 8.1.1 with A = ξ and B = h(cid:63)(x) − ˆhS(x), we have
+
+MSE(x) = E[(y − hS(x))2] = E[(ξ + (h(cid:63)(x) − hS(x)))2]
+
+(8.3)
+= E[ξ2] + E[(h(cid:63)(x) − hS(x))2] (by Claim 8.1.1)
+= σ2 + E[(h(cid:63)(x) − hS(x))2]
+(8.4)
+
+Then, let’s deﬁne havg(x) = ES[hS(x)] as the “average model”—the model
+obtained by drawing an inﬁnite number of datasets, training on them, and
+averaging their predictions on x. Note that havg is a hypothetical model for
+analytical purposes that can not be obtained in reality (because we don’t
+
+5For simplicity, the test input x is considered to be ﬁxed here, but the same conceptual
+
+message holds when we average over the choice of x’s.
+
+6The subscript under the expectation symbol is to emphasize the variables that are
+
+considered as random by the expectation operation.
+
+121
+
+It turns out that for many cases, havg
+have inﬁnite number of datasets).
+is (approximately) equal to the the model obtained by training on a single
+dataset with inﬁnite samples. Thus, we can also intuitively interpret havg this
+way, which is consistent with our intuitive deﬁnition of bias in the previous
+subsection.
+
+We can further decompose MSE(x) by letting c = h(cid:63)(x)−havg(x) (which is
+a constant that does not depend on the choice of S!) and A = havg(x)−hS(x)
+in the corollary part of Claim 8.1.1:
+
+MSE(x) = σ2 + E[(h(cid:63)(x) − hS(x))2]
+
+= σ2 + (h(cid:63)(x) − havg(x))2 + E[(havg − hS(x))2]
+=
+
++ (h(cid:63)(x) − havg(x))2
+(cid:123)(cid:122)
+(cid:125)
+(cid:44) bias2
+
+(cid:124)
+
++ var(hS(x))
+(cid:125)
+(cid:123)(cid:122)
+(cid:44) variance
+
+(cid:124)
+
+σ2
+(cid:124)(cid:123)(cid:122)(cid:125)
+unavoidable
+
+(8.5)
+(8.6)
+(8.7)
+
+We call the second term the bias (square) and the third term the variance. As
+discussed before, the bias captures the part of the error that are introduced
+due to the lack of expressivity of the model. Recall that havg can be thought
+of as the best possible model learned even with inﬁnite data. Thus, the bias is
+not due to the lack of data, but is rather caused by that the family of models
+fundamentally cannot approximate the h(cid:63). For example, in the illustrating
+example in Figure 8.2, because any linear model cannot approximate the
+true quadratic function h(cid:63), neither can havg, and thus the bias term has to
+be large.
+
+The variance term captures how the random nature of the ﬁnite dataset
+It measures the sensitivity of the
+introduces errors in the learned model.
+learned model to the randomness in the dataset. It often decreases as the
+size of the dataset increases.
+
+There is nothing we can do about the ﬁrst term σ2 as we can not predict
+
+the noise ξ by deﬁnition.
+
+Finally, we note that the bias-variance decomposition for classiﬁcation
+is much less clear than for regression problems. There have been several
+proposals, but there is as yet no agreement on what is the “right” and/or
+the most useful formalism.
+
+8.2 The double descent phenomenon
+
+Model-wise double descent. Recent works have demonstrated that the
+test error can present a “double descent” phenomenon in a range of machine
+
+122
+
+learning models including linear models and deep neural networks.7 The
+conventional wisdom, as discussed in Section 8.1, is that as we increase the
+model complexity, the test error ﬁrst decreases and then increases, as illus-
+trated in Figure 8.8. However, in many cases, we empirically observe that
+the test error can have a second descent—it ﬁrst decreases, then increases
+to a peak around when the model size is large enough to ﬁt all the training
+data very well, and then decreases again in the so-called overparameterized
+regime, where the number of parameters is larger than the number of data
+points. See Figure 8.10 for an illustration of the typical curves of test errors
+against model complexity (measured by the number of parameters). To some
+extent, the overparameterized regime with the second descent is considered as
+new to the machine learning community—partly because lightly-regularized,
+overparameterized models are only extensively used in the deep learning era.
+A practical implication of the phenomenon is that one should not hold back
+from scaling into and experimenting with over-parametrized models because
+the test error may well decrease again to a level even smaller than the previ-
+ous lowest point. Actually, in many cases, larger overparameterized models
+always lead to a better test performance (meaning there won’t be a second
+ascent after the second descent).
+
+Figure 8.10: A typical model-wise double descent phenomenon. As the num-
+ber of parameters increases, the test error ﬁrst decreases when the number of
+parameters is smaller than the training data. Then in the overparameterized
+regime, the test error decreases again.
+
+7The discovery of the phenomenon perhaps dates back to Opper [1995, 2001], and has
+
+been recently popularized by Belkin et al. [2020], Hastie et al. [2019], etc.
+
+# parameterstesterrortypicallywhen # parametersis sufficient to fit the dataclassical regime:bias-variance tradeoffmodern regime:over-parameterization123
+
+Sample-wise double descent. A priori, we would expect that more
+training examples always lead to smaller test errors—more samples give
+strictly more information for the algorithm to learn from. However, recent
+work [Nakkiran, 2019] observes that the test error is not monotonically de-
+creasing as we increase the sample size. Instead, as shown in Figure 8.11, the
+test error decreases, and then increases and peaks around when the number
+of examples (denoted by n) is similar to the number of parameters (denoted
+by d), and then decreases again. We refer to this as the sample-wise dou-
+ble descent phenomenon. To some extent, sample-wise double descent and
+model-wise double descent are essentially describing similar phenomena—the
+test error is peaked when n ≈ d.
+
+Explanation and mitigation strategy. The sample-wise double descent,
+or, in particular, the peak of test error at n ≈ d, suggests that the exi

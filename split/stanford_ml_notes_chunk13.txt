@@ -1,163 +1,4 @@
-ed over the random draw of
-the training set S and the randomness of ξ)56
-
-MSE(x) = ES,ξ[(y − hS(x))2]
-
-(8.2)
-
-We will decompose the MSE into a bias and variance term. We start by
-stating a following simple mathematical tool that will be used twice below.
-
-Claim 8.1.1: Suppose A and B are two independent real random variables
-and E[A] = 0. Then, E[(A + B)2] = E[A2] + E[B2].
-
-As a corollary, because a random variable A is independent with a con-
-
-stant c, when E[A] = 0, we have E[(A + c)2] = E[A2] + c2.
-
-The proof of the claim follows from expanding the square: E[(A + B)2] =
-E[A2] + E[B2] + 2E[AB] = E[A2] + E[B2]. Here we used the independence to
-show that E[AB] = E[A]E[B] = 0.
-
-Using Claim 8.1.1 with A = ξ and B = h(cid:63)(x) − ˆhS(x), we have
-
-MSE(x) = E[(y − hS(x))2] = E[(ξ + (h(cid:63)(x) − hS(x)))2]
-
-(8.3)
-= E[ξ2] + E[(h(cid:63)(x) − hS(x))2] (by Claim 8.1.1)
-= σ2 + E[(h(cid:63)(x) − hS(x))2]
-(8.4)
-
-Then, let’s de�ne havg(x) = ES[hS(x)] as the “average model�—the model
-obtained by drawing an in�nite number of datasets, training on them, and
-averaging their predictions on x. Note that havg is a hypothetical model for
-analytical purposes that can not be obtained in reality (because we don’t
-
-5For simplicity, the test input x is considered to be �xed here, but the same conceptual
-
-message holds when we average over the choice of x’s.
-
-6The subscript under the expectation symbol is to emphasize the variables that are
-
-considered as random by the expectation operation.
-
-121
-
-It turns out that for many cases, havg
-have in�nite number of datasets).
-is (approximately) equal to the the model obtained by training on a single
-dataset with in�nite samples. Thus, we can also intuitively interpret havg this
-way, which is consistent with our intuitive de�nition of bias in the previous
-subsection.
-
-We can further decompose MSE(x) by letting c = h(cid:63)(x)−havg(x) (which is
-a constant that does not depend on the choice of S!) and A = havg(x)−hS(x)
-in the corollary part of Claim 8.1.1:
-
-MSE(x) = σ2 + E[(h(cid:63)(x) − hS(x))2]
-
-= σ2 + (h(cid:63)(x) − havg(x))2 + E[(havg − hS(x))2]
-=
-
-+ (h(cid:63)(x) − havg(x))2
-(cid:123)(cid:122)
-(cid:125)
-(cid:44) bias2
-
-(cid:124)
-
-+ var(hS(x))
-(cid:125)
-(cid:123)(cid:122)
-(cid:44) variance
-
-(cid:124)
-
-σ2
-(cid:124)(cid:123)(cid:122)(cid:125)
-unavoidable
-
-(8.5)
-(8.6)
-(8.7)
-
-We call the second term the bias (square) and the third term the variance. As
-discussed before, the bias captures the part of the error that are introduced
-due to the lack of expressivity of the model. Recall that havg can be thought
-of as the best possible model learned even with in�nite data. Thus, the bias is
-not due to the lack of data, but is rather caused by that the family of models
-fundamentally cannot approximate the h(cid:63). For example, in the illustrating
-example in Figure 8.2, because any linear model cannot approximate the
-true quadratic function h(cid:63), neither can havg, and thus the bias term has to
-be large.
-
-The variance term captures how the random nature of the �nite dataset
-It measures the sensitivity of the
-introduces errors in the learned model.
-learned model to the randomness in the dataset. It often decreases as the
-size of the dataset increases.
-
-There is nothing we can do about the �rst term σ2 as we can not predict
-
-the noise ξ by de�nition.
-
-Finally, we note that the bias-variance decomposition for classi�cation
-is much less clear than for regression problems. There have been several
-proposals, but there is as yet no agreement on what is the “right� and/or
-the most useful formalism.
-
-8.2 The double descent phenomenon
-
-Model-wise double descent. Recent works have demonstrated that the
-test error can present a “double descent� phenomenon in a range of machine
-
-122
-
-learning models including linear models and deep neural networks.7 The
-conventional wisdom, as discussed in Section 8.1, is that as we increase the
-model complexity, the test error �rst decreases and then increases, as illus-
-trated in Figure 8.8. However, in many cases, we empirically observe that
-the test error can have a second descent—it �rst decreases, then increases
-to a peak around when the model size is large enough to �t all the training
-data very well, and then decreases again in the so-called overparameterized
-regime, where the number of parameters is larger than the number of data
-points. See Figure 8.10 for an illustration of the typical curves of test errors
-against model complexity (measured by the number of parameters). To some
-extent, the overparameterized regime with the second descent is considered as
-new to the machine learning community—partly because lightly-regularized,
-overparameterized models are only extensively used in the deep learning era.
-A practical implication of the phenomenon is that one should not hold back
-from scaling into and experimenting with over-parametrized models because
-the test error may well decrease again to a level even smaller than the previ-
-ous lowest point. Actually, in many cases, larger overparameterized models
-always lead to a better test performance (meaning there won’t be a second
-ascent after the second descent).
-
-Figure 8.10: A typical model-wise double descent phenomenon. As the num-
-ber of parameters increases, the test error �rst decreases when the number of
-parameters is smaller than the training data. Then in the overparameterized
-regime, the test error decreases again.
-
-7The discovery of the phenomenon perhaps dates back to Opper [1995, 2001], and has
-
-been recently popularized by Belkin et al. [2020], Hastie et al. [2019], etc.
-
-# parameterstesterrortypicallywhen # parametersis sufficient to fit the dataclassical regime:bias-variance tradeoffmodern regime:over-parameterization123
-
-Sample-wise double descent. A priori, we would expect that more
-training examples always lead to smaller test errors—more samples give
-strictly more information for the algorithm to learn from. However, recent
-work [Nakkiran, 2019] observes that the test error is not monotonically de-
-creasing as we increase the sample size. Instead, as shown in Figure 8.11, the
-test error decreases, and then increases and peaks around when the number
-of examples (denoted by n) is similar to the number of parameters (denoted
-by d), and then decreases again. We refer to this as the sample-wise dou-
-ble descent phenomenon. To some extent, sample-wise double descent and
-model-wise double descent are essentially describing similar phenomena—the
-test error is peaked when n ≈ d.
-
-Explanation and mitigation strategy. The sample-wise double descent,
-or, in particular, the peak of test error at n ≈ d, suggests that the existing
+sting
 training algorithms evaluated in these experiments are far from optimal when
 n ≈ d. We will be better oﬀ by tossing away some examples and run the
 algorithms with a smaller sample size to steer clear of the peak. In other
@@ -180,10 +21,10 @@ the commonly-used optimizers such as gradient descent provide an implicit
 regularization eﬀect (which will be discussed in more detail in Section 9.2).
 In other words, even in the overparameterized regime and with an unregular-
 ized loss function, the model is still implicitly regularized, and thus exhibits
-a better test performance than an arbitrary solution that �ts the data. For
+a better test performance than an arbitrary solution that ﬁts the data. For
 example, for linear models, when n (cid:28) d, the gradient descent optimizer with
-zero initialization �nds the minimum norm solution that �ts the data (in-
-stead of an arbitrary solution that �ts the data), and the minimum norm reg-
+zero initialization ﬁnds the minimum norm solution that ﬁts the data (in-
+stead of an arbitrary solution that ﬁts the data), and the minimum norm reg-
 ularizer turns out to be a suﬃciently good for the overparameterized regime
 (but it’s not a good regularizer when n ≈ d, resulting in the peak of test
 
@@ -211,7 +52,7 @@ and discussions in Section 10.8 of James et al. [2021]). For deep neural
 networks, the correct complexity measure is even more elusive. The study of
 double descent phenomenon is an active research topic.
 
-8The �gure is reproduced from Figure 1 of Nakkiran et al. [2020]. Similar phenomenon
+8The ﬁgure is reproduced from Figure 1 of Nakkiran et al. [2020]. Similar phenomenon
 
 are also observed in Hastie et al. [2022], Mei and Montanari [2022]
 
@@ -223,7 +64,7 @@ model is peaked around n ≈ d. Right: The test error against the norm of
 the learnt model. The color bar indicate the number of parameters and the
 arrows indicates the direction of increasing model size. Their relationship
 are closer to the convention wisdom than to a double descent. Setup: We
-consider a linear regression with a �xed dataset of size n = 500. The input
+consider a linear regression with a ﬁxed dataset of size n = 500. The input
 x is a random ReLU feature on Fashion-MNIST, and output y ∈ R10 is the
 one-hot label. This is the same setting as in Section 5.2 of Nakkiran et al.
 [2020].
@@ -247,11 +88,11 @@ apply learning algorithms in diﬀerent settings. We will also seek to answer
 a few questions: First, can we make formal the bias/variance tradeoﬀ that
 was just discussed? This will also eventually lead us to talk about model
 selection methods, which can, for instance, automatically decide what order
-polynomial to �t to a training set. Second, in machine learning it’s really
-generalization error that we care about, but most learning algorithms �t their
+polynomial to ﬁt to a training set. Second, in machine learning it’s really
+generalization error that we care about, but most learning algorithms ﬁt their
 models to the training set. Why should doing well on the training set tell us
-anything about generalization error? Speci�cally, can we relate error on the
-training set to generalization error? Third and �nally, are there conditions
+anything about generalization error? Speciﬁcally, can we relate error on the
+training set to generalization error? Third and ﬁnally, are there conditions
 under which we can actually prove that learning algorithms will work well?
 
 We start with two simple but very useful lemmas.
@@ -270,7 +111,7 @@ Lemma. (Hoeﬀding inequality) Let Z1, . . . , Zn be n independent and iden-
 tically distributed (iid) random variables drawn from a Bernoulli(φ) distri-
 bution. I.e., P (Zi = 1) = φ, and P (Zi = 0) = 1 − φ. Let ˆφ = (1/n) (cid:80)n
 i=1 Zi
-be the mean of these random variables, and let any γ > 0 be �xed. Then
+be the mean of these random variables, and let any γ > 0 be ﬁxed. Then
 
 P (|φ − ˆφ| > γ) ≤ 2 exp(−2γ2n)
 
@@ -289,13 +130,13 @@ Using just these two lemmas, we will be able to prove some of the deepest
 
 and most important results in learning theory.
 
-To simplify our exposition, let’s restrict our attention to binary classi�ca-
+To simplify our exposition, let’s restrict our attention to binary classiﬁca-
 tion in which the labels are y ∈ {0, 1}. Everything we’ll say here generalizes
-to other problems, including regression and multi-class classi�cation.
+to other problems, including regression and multi-class classiﬁcation.
 
 We assume we are given a training set S = {(x(i), y(i)); i = 1, . . . , n} of size
 n, where the training examples (x(i), y(i)) are drawn iid from some probability
-distribution D. For a hypothesis h, we de�ne the training error (also called
+distribution D. For a hypothesis h, we deﬁne the training error (also called
 the empirical risk or empirical error in learning theory) to be
 
 ˆε(h) =
@@ -310,9 +151,9 @@ i=1
 
 1{h(x(i)) (cid:54)= y(i)}.
 
-This is just the fraction of training examples that h misclassi�es. When we
+This is just the fraction of training examples that h misclassiﬁes. When we
 want to make explicit the dependence of ˆε(h) on the training set S, we may
-also write this a ˆεS(h). We also de�ne the generalization error to be
+also write this a ˆεS(h). We also deﬁne the generalization error to be
 
 ε(h) = P(x,y)∼D(h(x) (cid:54)= y).
 
@@ -321,11 +162,11 @@ the distribution D, h will misclassify it.
 
 Note that we have assumed that the training data was drawn from the
 same distribution D with which we’re going to evaluate our hypotheses (in
-the de�nition of generalization error). This is sometimes also referred to as
+the deﬁnition of generalization error). This is sometimes also referred to as
 one of the PAC assumptions.9
 
-Consider the setting of linear classi�cation, and let hθ(x) = 1{θT x ≥ 0}.
-What’s a reasonable way of �tting the parameters θ? One approach is to try
+Consider the setting of linear classiﬁcation, and let hθ(x) = 1{θT x ≥ 0}.
+What’s a reasonable way of ﬁtting the parameters θ? One approach is to try
 to minimize the training error, and pick
 
 ˆθ = arg min
@@ -336,6 +177,233 @@ to minimize the training error, and pick
 
 We call this process empirical risk minimization (ERM), and the resulting
 hypothesis output by the learning algorithm is ˆh = hˆθ. We think of ERM
-as the most “basic� learning algorithm, and it will be this algorithm that we
+as the most “basic” learning algorithm, and it will be this algorithm that we
 
-9PAC stands for “probably approximately correc
+9PAC stands for “probably approximately correct,” which is a framework and set of
+assumptions under which numerous results on learning theory were proved. Of these, the
+assumption of training and testing on the same distribution, and the assumption of the
+independently drawn training examples, were the most important.
+
+128
+
+focus on in these notes. (Algorithms such as logistic regression can also be
+viewed as approximations to empirical risk minimization.)
+
+In our study of learning theory, it will be useful to abstract away from
+the speciﬁc parameterization of hypotheses and from issues such as whether
+we’re using a linear classiﬁer. We deﬁne the hypothesis class H used by a
+learning algorithm to be the set of all classiﬁers considered by it. For linear
+classiﬁcation, H = {hθ : hθ(x) = 1{θT x ≥ 0}, θ ∈ Rd+1} is thus the set of
+all classiﬁers over X (the domain of the inputs) where the decision boundary
+is linear. More broadly, if we were studying, say, neural networks, then we
+could let H be the set of all classiﬁers representable by some neural network
+architecture.
+
+Empirical risk minimization can now be thought of as a minimization over
+the class of functions H, in which the learning algorithm picks the hypothesis:
+
+ˆh = arg min
+h∈H
+
+ˆε(h)
+
+8.3.2 The case of ﬁnite H
+
+Let’s start by considering a learning problem in which we have a ﬁnite hy-
+pothesis class H = {h1, . . . , hk} consisting of k hypotheses. Thus, H is just a
+set of k functions mapping from X to {0, 1}, and empirical risk minimization
+selects ˆh to be whichever of these k functions has the smallest training error.
+We would like to give guarantees on the generalization error of ˆh. Our
+strategy for doing so will be in two parts: First, we will show that ˆε(h) is a
+reliable estimate of ε(h) for all h. Second, we will show that this implies an
+upper-bound on the generalization error of ˆh.
+
+Take any one, ﬁxed, hi ∈ H. Consider a Bernoulli random variable Z
+whose distribution is deﬁned as follows. We’re going to sample (x, y) ∼ D.
+I.e., we’re going to draw one example,
+Then, we set Z = 1{hi(x) (cid:54)= y}.
+and let Z indicate whether hi misclassiﬁes it. Similarly, we also deﬁne Zj =
+1{hi(x(j)) (cid:54)= y(j)}. Since our training set was drawn iid from D, Z and the
+Zj’s have the same distribution.
+
+We see that the misclassiﬁcation probability on a randomly drawn
+example—that is, ε(h)—is exactly the expected value of Z (and Zj). More-
+over, the training error can be written
+
+ˆε(hi) =
+
+1
+n
+
+n
+(cid:88)
+
+j=1
+
+Zj.
+
+Thus, ˆε(hi) is exactly the mean of the n random variables Zj that are drawn
+iid from a Bernoulli distribution with mean ε(hi). Hence, we can apply the
+
+129
+
+Hoeﬀding inequality, and obtain
+
+P (|ε(hi) − ˆε(hi)| > γ) ≤ 2 exp(−2γ2n).
+
+This shows that, for our particular hi, training error will be close to
+generalization error with high probability, assuming n is large. But we don’t
+just want to guarantee that ε(hi) will be close to ˆε(hi) (with high probability)
+for just only one particular hi. We want to prove that this will be true
+simultaneously for all h ∈ H. To do so, let Ai denote the event that |ε(hi) −
+ˆε(hi)| > γ. We’ve already shown that, for any particular Ai, it holds true
+that P (Ai) ≤ 2 exp(−2γ2n). Thus, using the union bound, we have that
+
+P (∃ h ∈ H.|ε(hi) − ˆε(hi)| > γ) = P (A1 ∪ · · · ∪ Ak)
+
+≤
+
+≤
+
+k
+(cid:88)
+
+i=1
+k
+(cid:88)
+
+i=1
+
+P (Ai)
+
+2 exp(−2γ2n)
+
+= 2k exp(−2γ2n)
+
+If we subtract both sides from 1, we ﬁnd that
+
+P (¬∃ h ∈ H.|ε(hi) − ˆε(hi)| > γ) = P (∀h ∈ H.|ε(hi) − ˆε(hi)| ≤ γ)
+
+≥ 1 − 2k exp(−2γ2n)
+
+(The “¬” symbol means “not.”)
+So, with probability at least 1 −
+2k exp(−2γ2n), we have that ε(h) will be within γ of ˆε(h) for all h ∈ H.
+This is called a uniform convergence result, because this is a bound that
+holds simultaneously for all (as opposed to just one) h ∈ H.
+
+In the discussion above, what we did was, for particular values of n and
+γ, give a bound on the probability that for some h ∈ H, |ε(h) − ˆε(h)| > γ.
+There are three quantities of interest here: n, γ, and the probability of error;
+we can bound either one in terms of the other two.
+
+For instance, we can ask the following question: Given γ and some δ > 0,
+how large must n be before we can guarantee that with probability at least
+1 − δ, training error will be within γ of generalization error? By setting
+δ = 2k exp(−2γ2n) and solving for n, [you should convince yourself this is
+the right thing to do!], we ﬁnd that if
+
+n ≥
+
+1
+2γ2 log
+
+2k
+δ
+
+,
+
+130
+
+then with probability at least 1 − δ, we have that |ε(h) − ˆε(h)| ≤ γ for all
+h ∈ H. (Equivalently, this shows that the probability that |ε(h) − ˆε(h)| > γ
+for some h ∈ H is at most δ.) This bound tells us how many training
+examples we need in order make a guarantee. The training set size n that
+a certain method or algorithm requires in order to achieve a certain level of
+performance is also called the algorithm’s sample complexity.
+
+The key property of the bound above is that the number of training
+examples needed to make this guarantee is only logarithmic in k, the number
+of hypotheses in H. This will be important later.
+
+Similarly, we can also hold n and δ ﬁxed and solve for γ in the previous
+equation, and show [again, convince yourself that this is right!] that with
+probability 1 − δ, we have that for all h ∈ H,
+
+|ˆε(h) − ε(h)| ≤
+
+(cid:114)
+
+1
+2n
+
+log
+
+2k
+δ
+
+.
+
+Now, let’s assume that uniform convergence holds, i.e., that |ε(h)−ˆε(h)| ≤
+γ for all h ∈ H. What can we prove about the generalization of our learning
+algorithm that picked ˆh = arg minh∈H ˆε(h)?
+
+Deﬁne h∗ = arg minh∈H ε(h) to be the best possible hypothesis in H. Note
+that h∗ is the best that we could possibly do given that we are using H, so
+it makes sense to compare our performance to that of h∗. We have:
+
+ε(ˆh) ≤ ˆε(ˆh) + γ
+≤ ˆε(h∗) + γ
+≤ ε(h∗) + 2γ
+
+The ﬁrst line used the fact that |ε(ˆh)− ˆε(ˆh)| ≤ γ (by our uniform convergence
+assumption). The second used the fact that ˆh was chosen to minimize ˆε(h),
+and hence ˆε(ˆh) ≤ ˆε(h) for all h, and in particular ˆε(ˆh) ≤ ˆε(h∗). The third
+line used the uniform convergence assumption again, to show that ˆε(h∗) ≤
+ε(h∗) + γ. So, what we’ve shown is the following: If uniform convergence
+occurs, then the generalization error of ˆh is at most 2γ worse than the best
+possible hypothesis in H!
+
+Let’s put all this together into a theorem.
+
+Theorem. Let |H| = k, and let any n, δ be ﬁxed. Then with probability at
+least 1 − δ, we have that
+
+(cid:18)
+
+ε(ˆh) ≤
+
+(cid:19)
+
+(cid:114)
+
+min
+h∈H
+
+ε(h)
+
++ 2
+
+1
+2n
+
+log
+
+2k
+δ
+
+.
+
+131
+
+This is proved by letting γ equal the
+
+· term, using our previous argu-
+ment that uniform convergence occurs with probability at least 1 − δ, and
+then noting that uniform convergence implies ε(h) is at most 2γ higher than
+ε(h∗) = minh∈H ε(h) (as we showed previously).
+
+√
+
+This also quantiﬁes what we were saying previously saying about the
+bias/variance tradeoﬀ in model selection. Speciﬁ
