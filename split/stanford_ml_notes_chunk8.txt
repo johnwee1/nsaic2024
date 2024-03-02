@@ -1,151 +1,7 @@
-
-n
-(cid:88)
-
-αi −
-
-1
-2
-
-n
-(cid:88)
-
-i,j=1
-
-y(i)y(j)αiαj(cid:104)x(i), x(j)(cid:105).
-
-(6.19)
-
-i=1
-s.t. 0 ≤ αi ≤ C,
-
-i = 1, . . . , n
-
-(6.20)
-
-(6.21)
-
-n
-(cid:88)
-
-i=1
-
-αiy(i) = 0.
-
-Let’s say we have set of αi’s that satisfy the constraints (6.20-6.21). Now,
-suppose we want to hold α2, . . . , αn �xed, and take a coordinate ascent step
-and reoptimize the objective with respect to α1. Can we make any progress?
-The answer is no, because the constraint (6.21) ensures that
-
-α1y(1) = −
-
-n
-(cid:88)
-
-i=2
-
-αiy(i).
-
-−2−1.5−1−0.500.511.522.5−2−1.5−1−0.500.511.522.576
-
-Or, by multiplying both sides by y(1), we equivalently have
-
-α1 = −y(1)
-
-n
-(cid:88)
-
-i=2
-
-αiy(i).
-
-(This step used the fact that y(1) ∈ {−1, 1}, and hence (y(1))2 = 1.) Hence,
-α1 is exactly determined by the other αi’s, and if we were to hold α2, . . . , αn
-�xed, then we can’t make any change to α1 without violating the con-
-straint (6.21) in the optimization problem.
-
-Thus, if we want to update some subject of the αi’s, we must update at
-least two of them simultaneously in order to keep satisfying the constraints.
-This motivates the SMO algorithm, which simply does the following:
-
-Repeat till convergence {
-
-1. Select some pair αi and αj to update next (using a heuristic that
-tries to pick the two that will allow us to make the biggest progress
-towards the global maximum).
-
-2. Reoptimize W (α) with respect to αi and αj, while holding all the
-
-other αk’s (k (cid:54)= i, j) �xed.
-
-}
-
-To test for convergence of this algorithm, we can check whether the KKT
-conditions (Equations 6.16-6.18) are satis�ed to within some tol. Here, tol is
-the convergence tolerance parameter, and is typically set to around 0.01 to
-0.001. (See the paper and pseudocode for details.)
-
-The key reason that SMO is an eﬃcient algorithm is that the update to
-αi, αj can be computed very eﬃciently. Let’s now brieﬂy sketch the main
-ideas for deriving the eﬃcient update.
-
-Let’s say we currently have some setting of the αi’s that satisfy the con-
-straints (6.20-6.21), and suppose we’ve decided to hold α3, . . . , αn �xed, and
-want to reoptimize W (α1, α2, . . . , αn) with respect to α1 and α2 (subject to
-the constraints). From (6.21), we require that
-
-α1y(1) + α2y(2) = −
-
-n
-(cid:88)
-
-i=3
-
-αiy(i).
-
-Since the right hand side is �xed (as we’ve �xed α3, . . . αn), we can just let
-it be denoted by some constant ζ:
-
-α1y(1) + α2y(2) = ζ.
-
-(6.22)
-
-We can thus picture the constraints on α1 and α2 as follows:
-
-77
-
-From the constraints (6.20), we know that α1 and α2 must lie within the box
-[0, C] × [0, C] shown. Also plotted is the line α1y(1) + α2y(2) = ζ, on which we
-know α1 and α2 must lie. Note also that, from these constraints, we know
-L ≤ α2 ≤ H; otherwise, (α1, α2) can’t simultaneously satisfy both the box
-and the straight line constraint. In this example, L = 0. But depending on
-what the line α1y(1) + α2y(2) = ζ looks like, this won’t always necessarily be
-the case; but more generally, there will be some lower-bound L and some
-upper-bound H on the permissible values for α2 that will ensure that α1, α2
-lie within the box [0, C] × [0, C].
-
-Using Equation (6.22), we can also write α1 as a function of α2:
-
-α1 = (ζ − α2y(2))y(1).
-
-(Check this derivation yourself; we again used the fact that y(1) ∈ {−1, 1} so
-that (y(1))2 = 1.) Hence, the objective W (α) can be written
-
-W (α1, α2, . . . , αn) = W ((ζ − α2y(2))y(1), α2, . . . , αn).
-
-Treating α3, . . . , αn as constants, you should be able to verify that this is
-just some quadratic function in α2. I.e., this can also be expressed in the
-form aα2
-2 + bα2 + c for some appropriate a, b, and c. If we ignore the “box�
-constraints (6.20) (or, equivalently, that L ≤ α2 ≤ H), then we can easily
-maximize this quadratic function by setting its derivative to zero and solving.
-We’ll let αnew,unclipped
-denote the resulting value of α2. You should also be
-2
-able to convince yourself that if we had instead wanted to maximize W with
-respect to α2 but subject to the box constraint, then we can �nd the resulting
+aximize W with
+respect to α2 but subject to the box constraint, then we can ﬁnd the resulting
 value optimal simply by taking αnew,unclipped
-and “clipping� it to lie in the
+and “clipping” it to lie in the
 
 2
 
@@ -182,7 +38,7 @@ if αnew,unclipped
 ≤ H
 
 Finally, having found the αnew
-�nd the optimal value of αnew
+ﬁnd the optimal value of αnew
 .
 
 2
@@ -220,18 +76,18 @@ cases when hθ(x) = θ(cid:62)x (in linear regression) or hθ(x) = θ(cid:62)φ(
 is the feature map). A commonality of these two models is that they are
 linear in the parameters θ. Next we will consider learning general family of
 models that are non-linear in both the parameters θ and the inputs x. The
-most common non-linear models are neural networks, which we will de�ne
+most common non-linear models are neural networks, which we will deﬁne
 staring from the next section. For this section, it suﬃces to think hθ(x) as
 an abstract non-linear model.1
 Suppose {(x(i), y(i))}n
 
-i=1 are the training examples. We will de�ne the
+i=1 are the training examples. We will deﬁne the
 
 nonlinear model and the loss/cost function for learning it.
 
 Regression problems. For simplicity, we start with the case where the
 output is a real number, that is, y(i) ∈ R, and thus the model hθ also outputs
-a real number hθ(x) ∈ R. We de�ne the least square cost function for the
+a real number hθ(x) ∈ R. We deﬁne the least square cost function for the
 
 1If a concrete example is helpful, perhaps think about the model hθ(x) = θ2
 
@@ -260,7 +116,7 @@ J (i)(θ) =
 
 (hθ(x(i)) − y(i))2 ,
 
-and de�ne the mean-square cost function for the dataset as
+and deﬁne the mean-square cost function for the dataset as
 
 J(θ) =
 
@@ -286,10 +142,10 @@ that multiplying the cost function with a scalar will not change the local
 minima or global minima of the cost function. Also note that the underlying
 parameterization for hθ(x) is diﬀerent from the case of linear regression,
 even though the form of the cost function is the same mean-squared loss.
-Throughout the notes, we use the words “loss� and “cost� interchangeably.
+Throughout the notes, we use the words “loss” and “cost” interchangeably.
 
-Binary classi�cation. Next we de�ne the model and loss function for
-binary classi�cation. Suppose the inputs x ∈ Rd. Let ¯hθ : Rd → R be a
+Binary classiﬁcation. Next we deﬁne the model and loss function for
+binary classiﬁcation. Suppose the inputs x ∈ Rd. Let ¯hθ : Rd → R be a
 parameterized model (the analog of θ(cid:62)x in logistic linear regression). We
 call the output ¯hθ(x) ∈ R the logit. Analogous to Section 2.1, we use the
 logistic function g(·) to turn the logit ¯hθ(x) to a probability hθ(x) ∈ [0, 1]:
@@ -310,7 +166,7 @@ J (i)(θ) = − log p(y(i) | x(i); θ) = (cid:96)logistic(¯hθ(x(i)), y(i))
 
 (7.4)
 
-As done in equation (7.2), the total loss function is also de�ned as the average
+As done in equation (7.2), the total loss function is also deﬁned as the average
 of the loss function over individual training examples, J(θ) = 1
 i=1 J (i)(θ).
 n
@@ -319,7 +175,7 @@ n
 
 82
 
-Multi-class classi�cation. Following Section 2.3, we consider a classi�ca-
+Multi-class classiﬁcation. Following Section 2.3, we consider a classiﬁca-
 tion problem where the response variable y can take on any one of k values,
 i.e. y ∈ {1, 2, . . . , k}. Let ¯hθ : Rd → Rk be a parameterized model. We
 call the outputs ¯hθ(x) ∈ Rk the logits. Each logit corresponds to the predic-
@@ -362,7 +218,7 @@ J (i)(θ) = (cid:96)ce(¯hθ(x(i)), y(i)).
 
 (7.7)
 
-The loss function is also de�ned as the average of the loss function of indi-
+The loss function is also deﬁned as the average of the loss function of indi-
 (cid:80)n
 vidual training examples, J(θ) = 1
 n
@@ -385,12 +241,12 @@ update rule can be written as2
 
 where α > 0 is often referred to as the learning rate or step size. Next, we
 introduce a version of the SGD (Algorithm 1), which is lightly diﬀerent from
-that in the �rst lecture notes.
+that in the ﬁrst lecture notes.
 
-2Recall that, as de�ned in the previous lecture notes, we use the notation “a := b� to
+2Recall that, as deﬁned in the previous lecture notes, we use the notation “a := b” to
 denote an operation (in a computer program) in which we set the value of a variable a to
 be equal to the value of b. In other words, this operation overwrites a with the value of
-b. In contrast, we will write “a = b� when we are asserting a statement of fact, that the
+b. In contrast, we will write “a = b” when we are asserting a statement of fact, that the
 value of a is equal to the value of b.
 
 83
@@ -439,7 +295,7 @@ k=1
 (7.10)
 
 With these generic algorithms, a typical deep learning model is learned
-with the following steps. 1. De�ne a neural network parametrization hθ(x),
+with the following steps. 1. Deﬁne a neural network parametrization hθ(x),
 which we will introduce in Section 7.2, and 2. write the backpropagation
 algorithm to compute the gradient of the loss function J (j)(θ) eﬃciently,
 which will be covered in Section 7.4, and 3. run SGD or mini-batch SGD (or
@@ -451,12 +307,12 @@ other gradient-based optimizers) with the loss function J(θ).
 
 Neural networks refer to a broad type of non-linear models/parametrizations
 ¯hθ(x) that involve combinations of matrix multiplications and other entry-
-wise non-linear operations. To have a uni�ed treatment for regression prob-
-lem and classi�cation problem, here we consider ¯hθ(x) as the output of the
-neural network. For regression problem, the �nal prediction hθ(x) = ¯hθ(x),
-and for classi�cation problem, ¯hθ(x) is the logits and the predicted probability
-will be hθ(x) = 1/(1+exp(−¯hθ(x)) (see equation 7.3) for binary classi�cation
-or hθ(x) = softmax(¯hθ(x)) for multi-class classi�cation (see equation 7.5).
+wise non-linear operations. To have a uniﬁed treatment for regression prob-
+lem and classiﬁcation problem, here we consider ¯hθ(x) as the output of the
+neural network. For regression problem, the ﬁnal prediction hθ(x) = ¯hθ(x),
+and for classiﬁcation problem, ¯hθ(x) is the logits and the predicted probability
+will be hθ(x) = 1/(1+exp(−¯hθ(x)) (see equation 7.3) for binary classiﬁcation
+or hθ(x) = softmax(¯hθ(x)) for multi-class classiﬁcation (see equation 7.5).
 We will start small and slowly build up a neural network, step by step.
 
 A Neural Network with a Single Neuron.
@@ -464,14 +320,14 @@ Recall the housing price
 prediction problem from before: given the size of the house, we want to
 predict the price. We will use it as a running example in this subsection.
 
-Previously, we �t a straight line to the graph of size vs. housing price.
-Now, instead of �tting a straight line, we wish to prevent negative housing
-prices by setting the absolute minimum price as zero. This produces a “kink�
+Previously, we ﬁt a straight line to the graph of size vs. housing price.
+Now, instead of ﬁtting a straight line, we wish to prevent negative housing
+prices by setting the absolute minimum price as zero. This produces a “kink”
 in the graph as shown in Figure 7.1. How do we represent such a function
 with a single kink as ¯hθ(x) with unknown parameter? (After doing so, we
 can invoke the machinery in Section 7.1.)
 
-We de�ne a parameterized function ¯hθ(x) with input x, parameterized by
+We deﬁne a parameterized function ¯hθ(x) with input x, parameterized by
 θ, which outputs the price of the house y. Formally, ¯hθ : x → y. Perhaps
 one of the simplest parametrization would be
 
@@ -481,7 +337,7 @@ one of the simplest parametrization would be
 
 Here ¯hθ(x) returns a single value: (wx+b) or zero, whichever is greater. In
 the context of neural networks, the function max{t, 0} is called a ReLU (pro-
-nounced “ray-lu�), or recti�ed linear unit, and often denoted by ReLU(t) (cid:44)
+nounced “ray-lu”), or rectiﬁed linear unit, and often denoted by ReLU(t) (cid:44)
 max{t, 0}.
 
 Generally, a one-dimensional non-linear function that maps R to R such as
@@ -500,14 +356,14 @@ a single neuron can be written as
 
 85
 
-Figure 7.1: Housing prices with a “kink� in the graph.
+Figure 7.1: Housing prices with a “kink” in the graph.
 
-The term b is often referred to as the “bias�, and the vector w is referred
-to as the weight vector. Such a neural network has 1 layer. (We will de�ne
+The term b is often referred to as the “bias”, and the vector w is referred
+to as the weight vector. Such a neural network has 1 layer. (We will deﬁne
 what multiple layers mean in the sequel.)
 
 Stacking Neurons. A more complex neural network may take the single
-neuron described above and “stack� them together such that one neuron
+neuron described above and “stack” them together such that one neuron
 passes its output as input into the next neuron, resulting in a more complex
 function.
 
@@ -523,4 +379,123 @@ we might then decide that the price of the house depends on the maximum
 family size it can accommodate. Suppose the family size is a function of the
 size of the house and number of bedrooms (see Figure 7.2). The zip code
 may provide additional information such as how walkable the neighborhood
-is (i.e., can you walk to the
+is (i.e., can you walk to the grocery store or do you need to drive everywhere).
+Combining the zip code with the wealth of the neighborhood may predict
+the quality of the local elementary school. Given these three derived features
+(family size, walkable, school quality), we may conclude that the price of the
+
+50010001500200025003000350040004500500001002003004005006007008009001000housing pricessquare feetprice (in $1000)home ultimately depends on these three features.
+
+86
+
+Figure 7.2: Diagram of a small neural network for predicting housing prices.
+
+Formally, the input to a neural network is a set of input features
+x1, x2, x3, x4. We denote the intermediate variables for “family size”, “walk-
+able”, and “school quality” by a1, a2, a3 (these ai’s are often referred to as
+“hidden units” or “hidden neurons”). We represent each of the ai’s as a neu-
+ral network with a single neuron with a subset of x1, . . . , x4 as inputs. Then
+as in Figure 7.1, we will have the parameterization:
+
+a1 = ReLU(θ1x1 + θ2x2 + θ3)
+a2 = ReLU(θ4x3 + θ5)
+a3 = ReLU(θ6x3 + θ7x4 + θ8)
+
+where (θ1, · · · , θ8) are parameters. Now we represent the ﬁnal output ¯hθ(x)
+as another linear function with a1, a2, a3 as inputs, and we get3
+
+¯hθ(x) = θ9a1 + θ10a2 + θ11a3 + θ12
+
+(7.13)
+
+where θ contains all the parameters (θ1, · · · , θ12).
+
+Now we represent the output as a quite complex function of x with pa-
+rameters θ. Then you can use this parametrization ¯hθ with the machinery of
+Section 7.1 to learn the parameters θ.
+
+Inspiration from Biological Neural Networks. As the name suggests,
+artiﬁcial neural networks were inspired by biological neural networks. The
+hidden units a1, . . . , am correspond to the neurons in a biological neural net-
+work, and the parameters θi’s correspond to the synapses. However, it’s
+unclear how similar the modern deep artiﬁcial neural networks are to the bi-
+ological ones. For example, perhaps not many neuroscientists think biological
+
+3Typically, for multi-layer neural network, at the end, near the output, we don’t apply
+
+ReLU, especially when the output is not necessarily a positive number.
+
+Family SizeSchool QualityWalkableSize# BedroomsZip CodeWealthPricey87
+
+neural networks could have 1000 layers, while some modern artiﬁcial neural
+networks do (we will elaborate more on the notion of layers.) Moreover, it’s
+an open question whether human brains update their neural networks in a
+way similar to the way that computer scientists learn artiﬁcial neural net-
+works (using backpropagation, which we will introduce in the next section.).
+
+Two-layer Fully-Connected Neural Networks. We constructed the
+neural network in equation (7.13) using a signiﬁcant amount of prior knowl-
+edge/belief about how the “family size”, “walkable”, and “school quality” are
+determined by the inputs. We implicitly assumed that we know the family
+size is an important quantity to look at and that it can be determined by
+only the “size” and “# bedrooms”. Such a prior knowledge might not be
+available for other applications. It would be more ﬂexible and general to have
+a generic parameterization. A simple way would be to write the intermediate
+variable a1 as a function of all x1, . . . , x4:
+
+a1 = ReLU(w(cid:62)
+a2 = ReLU(w(cid:62)
+a3 = ReLU(w(cid:62)
+
+1 x + b1), where w1 ∈ R4 and b1 ∈ R
+2 x + b2), where w2 ∈ R4 and b2 ∈ R
+3 x + b3), where w3 ∈ R4 and b3 ∈ R
+
+(7.14)
+
+We still deﬁne ¯hθ(x) using equation (7.13) with a1, a2, a3 being deﬁned as
+above. Thus we have a so-called fully-connected neural network because
+all the intermediate variables ai’s depend on all the inputs xi’s.
+
+For full generality, a two-layer fully-connected neural network with m
+
+hidden units and d dimensional input x ∈ Rd is deﬁned as
+
+∀j ∈ [1, ..., m],
+
+j where w[1]
+
+j ∈ Rd, b[1]
+
+j ∈ R
+
+(cid:62)
+
+x + b[1]
+
+zj = w[1]
+j
+aj = ReLU(zj),
+a = [a1, . . . , am](cid:62) ∈ Rm
+
+(7.15)
+
+¯hθ(x) = w[2](cid:62)
+
+a + b[2] where w[2] ∈ Rm, b[2] ∈ R,
+
+(7.16)
+
+Note that by default the vectors in Rd are viewed as column vectors, and
+in particular a is a column vector with components a1, a2, ..., am. The indices
+[1] and [2] are used to distinguish two sets of parameters: the w[1]
+j ’s (each of
+which is a vector in Rd) and w[2] (which is a vector in Rm). We will have
+more of these later.
+
+Vectorization. Before we introduce neural networks with more layers and
+more complex structures, we will simplify the expressions for neural networks
+
+88
+
+with m

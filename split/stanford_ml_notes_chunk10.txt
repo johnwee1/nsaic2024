@@ -1,245 +1,5 @@
-gful.
-
-Larger modules can be de�ned via smaller modules as well, e.g., one
-activation layer σ and a matrix multiplication layer MM are often combined
-and called a “layer� in many papers. People often draw the architecture
-with the basic modules in a �gure by indicating the dependency between
-these modules. E.g., see an illustration of an MLP in Figure 7.4, Left.
-
-Residual connections. One of the very inﬂuential neural network archi-
-tecture for vision application is ResNet, which uses the residual connections
-that are essentially used in almost all large-scale deep learning architectures
-these days. Using our notation above, a very much simpli�ed residual block
-can be de�ned as
-
-Res(z) = z + σ(MM(σ(MM(z)))).
-
-(7.38)
-
-A much simpli�ed ResNet is a composition of many residual blocks followed
-by a matrix multiplication,
-
-ResNet-S(x) = MM(Res(Res(· · · Res(x)))).
-
-(7.39)
-
-94
-
-Figure 7.4:
-layers. Right: A residual network.
-
-Illustrative Figures for Architecture. Left: An MLP with r
-
-We also draw the dependency of these modules in Figure 7.4, Right.
-
-We note that the ResNet-S is still not the same as the ResNet architec-
-ture introduced in the seminal paper [He et al., 2016] because ResNet uses
-convolution layers instead of vanilla matrix multiplication, and adds batch
-normalization between convolutions and activations. We will introduce con-
-volutional layers and some variants of batch normalization below. ResNet-S
-and layer normalization are part of the Transformer architecture that are
-widely used in modern large language models.
-
-Layer normalization. Layer normalization, denoted by LN in this text,
-is a module that maps a vector z ∈ Rm to a more normalized vector LN(z) ∈
-Rm. It is oftentimes used after the nonlinear activations.
-
-We �rst de�ne a sub-module of the layer normalization, denoted by LN-S.
-
-LN-S(z) =
-
-
-
-
-
-
-
-
-,
-
-
-
-
-
-
-
-
-z1−ˆµ
-ˆσ
-z2−ˆµ
-ˆσ
-
-...
-
-zm−ˆµ
-ˆσ
-
-(7.40)
-
-(cid:80)m
-
-i=1 zi
-m
-
-is the empirical mean of the vector z and ˆσ =
-
-where ˆµ =
-is the empirical standard deviation of the entries of z.4 Intuitively, LN-S(z)
-is a vector that is normalized to having empirical mean zero and empirical
-standard deviation 1.
-
-(cid:113) (cid:80)m
-
-i=1(zi−ˆµ2)
-m
-
-4Note that we divide by m instead of m − 1 in the empirical standard deviation here
-because we are interested in making the output of LN-S(z) have sum of squares equal to
-1 (as opposed to estimating the standard deviation in statistics.)
-
-�Layer �−1Layer �...Layer 1MLP(�)...Layer�MM!["],#["]�MM![$],#[$]�ResRes...ResResNet-S(�)...ResMM�MM�95
-
-Oftentimes zero mean and standard deviation 1 is not the most desired
-normalization scheme, and thus layernorm introduces to parameters learnable
-scalars β and γ as the desired mean and standard deviation, and use an aﬃne
-transformation to turn the output of LN-S(z) into a vector with mean β and
-standard deviation γ.
-
-LN(z) = β + γ · LN-S(z) =
-
-ˆσ
-
-
-
-β + γ (cid:0) z1−ˆµ
-β + γ (cid:0) z2−ˆµ
-
-
-...
-
-
-β + γ (cid:0) zm−ˆµ
-
-ˆσ
-
-
-
-(cid:1)
-(cid:1)
-
-
-
-
-
-(cid:1)
-
-ˆσ
-
-.
-
-(7.41)
-
-Here the �rst occurrence of β should be technically interpreted as a vector
-with all the entries being β. in We also note that ˆµ and ˆσ are also functions
-of z and shouldn’t be treated as constants when computing the derivatives of
-layernorm. Moreover, β and γ are learnable parameters and thus layernorm
-is a parameterized module (as opposed to the activation layer which doesn’t
-have any parameters.)
-
-Scaling-invariant property. One important property of layer normalization
-is that it will make the model invariant to scaling of the parameters in the
-following sense. Suppose we consider composing LN with MMW,b and get
-a subnetwork LN(MMW,b(z)). Then, we have that the output of this sub-
-network does not change when the parameter in MMW,b is scaled:
-
-LN(MMαW,αb(z)) = LN(MMW,b(z)), ∀α > 0.
-
-(7.42)
-
-To see this, we �rst know that LN-S(·) is scale-invariant
-
-LN-S(αz) =
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-αz1−αˆµ
-αˆσ
-αz2−αˆµ
-αˆσ
-
-...
-
-αzm−αˆµ
-αˆσ
-
-=
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-z1−ˆµ
-ˆσ
-z2−ˆµ
-ˆσ
-
-...
-
-zm−ˆµ
-ˆσ
-
-= LN-S(z).
-
-(7.43)
-
-Then we have
-
-LN(MMαW,αb(z)) = β + γLN-S(MMαW,αb(z))
-= β + γLN-S(αMMW,b(z))
-= β + γLN-S(MMW,b(z))
-= LN(MMW,b(z)).
-
-(7.44)
-(7.45)
-(7.46)
-(7.47)
-
-Due to this property, most of the modern DL architectures for large-scale
-computer vision and language applications have the following scale-invariant
-
-96
-
-property w.r.t all the weights that are not at the last layer. Suppose the
-network f has last layer’ weights Wlast, and all the rest of the weights are
-denote by W . Then, we have fWlast,αW (x) = fWlast,W (x) for all α > 0. Here,
-the last layers weights are special because there are typically no layernorm
-or batchnorm after the last layer’s weights.
-
-Other normalization layers. There are several other normalization layers that
-aim to normalize the intermediate layers of the neural networks to a more
-�xed and controllable scaling, such as batch-normalization [?], and group
+o a more
+ﬁxed and controllable scaling, such as batch-normalization [?], and group
 normalization [?]. Batch normalization and group normalization are more
 often used in computer vision applications whereas layer norm is used more
 often in language applications.
@@ -252,13 +12,13 @@ exposition, we focus on 1-D convolution in this text and only brieﬂy mention
 is more suitable for images which have two dimensions. 1-D convolution is
 also used in natural language processing.)
 
-We start by introducing a simpli�ed version of the 1-D convolution layer,
+We start by introducing a simpliﬁed version of the 1-D convolution layer,
 denoted by Conv1D-S(·) which is a type of matrix multiplication layer with
-a special structure. The parameters of Conv1D-S are a �lter vector w ∈ Rk
-where k is called the �lter size (oftentimes k (cid:28) m), and a bias scalar b.
-Oftentimes the �lter is also called a kernel (but it does not have much to do
+a special structure. The parameters of Conv1D-S are a ﬁlter vector w ∈ Rk
+where k is called the ﬁlter size (oftentimes k (cid:28) m), and a bias scalar b.
+Oftentimes the ﬁlter is also called a kernel (but it does not have much to do
 with the kernel in kernel method.) For simplicity, we assume k = 2(cid:96) + 1 is
-an odd number. We �rst pad zeros to the input vector z in the sense that we
+an odd number. We ﬁrst pad zeros to the input vector z in the sense that we
 let z1−(cid:96) = z1−(cid:96)+1 = .. = z0 = 0 and zm+1 = zm+2 = .. = zm+(cid:96) = 0, and treat
 z as an (m + 2(cid:96))-dimension vector. Conv1D-S outputs a vector of dimension
 Rm where each output dimension is a linear combination of subsets of zj’s
@@ -457,15 +217,15 @@ multiplication takes O(m2) time. Convolution has k parameters but generic
 matrix multiplication will have m2 parameters. Thus convolution is supposed
 to be much more eﬃcient than a generic matrix multiplication (as long as
 the additional structure imposed does not hurt the ﬂexibility of the model
-to �t the data).
+to ﬁt the data).
 
 We also note that in practice there are many variants of the convolutional
-layers that we de�ne here, e.g., there are other ways to pad zeros or sometimes
+layers that we deﬁne here, e.g., there are other ways to pad zeros or sometimes
 the dimension of the output of the convolutional layers could be diﬀerent from
 the input. We omit some of this subtleties here for simplicity.
 
-The convolutional layers used in practice have also many “channels� and
-the simpli�ed version above corresponds to the 1-channel version. Formally,
+The convolutional layers used in practice have also many “channels” and
+the simpliﬁed version above corresponds to the 1-channel version. Formally,
 Conv1D takes in C vectors z1, . . . , zC ∈ Rm as inputs, where C is referred
 to as the number of channels.
 In other words, the more general version,
@@ -473,7 +233,7 @@ denoted by Conv1D, takes in a matrix as input, which is the concatenation
 of z1, . . . , zC and has dimension m×C. It can output C (cid:48) vectors of dimension
 m, denoted by Conv1D(z)1, . . . , Conv1D(z)C(cid:48), where C (cid:48) is referred to as the
 output channel, or equivalently a matrix of dimension m × C (cid:48). Each of the
-output is a sum of the simpli�ed convolutions applied on various channels.
+output is a sum of the simpliﬁed convolutions applied on various channels.
 
 ∀i ∈ [C (cid:48)], Conv1D(z)i =
 
@@ -499,7 +259,7 @@ sion k × C × C (cid:48).
 
 2-D convolution (brief ). A 2-D convolution with one channel, denoted by
 Conv2D-S, is analogous to the Conv1D-S, but takes a 2-dimensional input
-z ∈ Rm×m and applies a �lter of size k × k, and outputs Conv2D-S(z) ∈
+z ∈ Rm×m and applies a ﬁlter of size k × k, and outputs Conv2D-S(z) ∈
 Rm×m. The full 2-D convolutional layer, denoted by Conv2D, takes in
 a sequence of matrices z1, . . . , zC ∈ Rm×m, or equivalently a 3-D ten-
 sor z = (z1, . . . , zC) ∈ Rm×m×C and outputs a sequence of matrices,
@@ -533,7 +293,7 @@ gradient can be eﬃciently computed in a similar time. We will then show
 how to do this concretely for neural networks.
 
 Because the formality of the general theorem is not the main focus here,
-we will introduce the terms with informal de�nitions. By a diﬀerentiable
+we will introduce the terms with informal deﬁnitions. By a diﬀerentiable
 circuit or a diﬀerentiable network, we mean a composition of a sequence of
 diﬀerentiable arithmetic operations (additions, subtraction, multiplication,
 divisions, etc) and elementary diﬀerentiable functions (ReLU, exp, log, sin,
@@ -621,5 +381,300 @@ J = f (u) ∈ R .
 (7.52)
 
 The same derivations below can be easily extend to the cases when z and u
-are matrices or tensors; but we insist that the �nal variable J is a scalar. (See
-also Remark 7.4.2.) Let u = (u1, . . . , un) and let g(z) = (g1(z), · · · , g
+are matrices or tensors; but we insist that the ﬁnal variable J is a scalar. (See
+also Remark 7.4.2.) Let u = (u1, . . . , un) and let g(z) = (g1(z), · · · , gn(z)).
+Then, the standard chain rule gives us that
+
+∀i ∈ {1, . . . , m},
+
+∂J
+∂zi
+
+=
+
+n
+(cid:88)
+
+j=1
+
+∂J
+∂uj
+
+·
+
+∂gj
+∂zi
+
+.
+
+(7.53)
+
+Alternatively, when z and u are both vectors, in a vectorized notation:
+
+∂J
+∂z
+
+=
+
+
+
+
+
+
+∂g1
+∂z1
+
+...
+
+∂g1
+∂zm
+
+· · ·
+. . .
+· · ·
+
+
+
+
+ ·
+
+∂gn
+∂z1
+
+...
+
+∂gn
+∂zm
+
+∂J
+∂u
+
+.
+
+(7.54)
+
+In other words, the backward function is always a linear map from ∂J
+∂u to
+∂J
+∂z , though note that the mapping itself can depend on z in complex ways.
+The matrix on the RHS of (7.54) is actually the transpose of the Jacobian
+matrix of the function g. However, we do not discuss in-depth about Jacobian
+matrices to avoid complications. Part of the reason is that when z is a matrix
+(or tensor), to write an analog of equation (7.54), one has to either ﬂatten z
+into a vector or introduce additional notations on tensor-matrix product. In
+this sense, equation (7.53) is more convenient and eﬀective to use in all cases.
+For example, when z ∈ Rr×s is a matrix, we can easily rewrite equation (7.53)
+
+to
+
+∀i, k,
+
+∂J
+∂zik
+
+=
+
+n
+(cid:88)
+
+j=1
+
+∂J
+∂uj
+
+·
+
+∂gj
+∂zik
+
+.
+
+101
+
+(7.55)
+
+which will indeed be used in some of the derivations in Section 7.4.3.
+
+Key interpretation of the chain rule. We can view the formula above (equa-
+tion (7.53) or (7.54)) as a way to compute ∂J
+∂u . Consider the following
+abstract problem. Suppose J depends on z via u as deﬁned in equation (7.52).
+However, suppose the function f is not given or the function f is complex,
+but we are given the value of ∂J
+∂u . Then, the formula in equation (7.54) gives
+∂z from ∂J
+us a way to compute ∂J
+∂u .
+
+∂z from ∂J
+
+∂J
+∂u
+
+chain rule, formula (7.54)
+====================⇒
+only requires info about g(·) and z
+
+∂J
+∂z
+
+.
+
+(7.56)
+
+Moreover, this formula only involves knowledge about g (more precisely ∂gj
+).
+∂zi
+We will repeatedly use this fact in situations where g is a building blocks of
+a complex network f .
+
+Empirically, it’s often useful to modularized the mapping in (7.53) or
+(7.54) into a black-box, and mathematically it’s also convenient to deﬁne a
+∂u to ∂J
+notation for it.6 We use B[g, z] to deﬁne the function that maps ∂J
+∂z ,
+and write
+
+∂J
+∂z
+
+= B[g, z]
+
+(cid:19)
+
+(cid:18)∂J
+∂u
+
+.
+
+(7.57)
+
+We call B[g, z] the backward function for the module g. Note that when z
+is ﬁxed, B[g, z] is merely a linear map from Rn to Rm. Using equation (7.53),
+we have
+
+(B[g, z](v))i =
+
+m
+(cid:88)
+
+j=1
+
+∂gj
+∂zi
+
+· vj .
+
+Or in vectorized notation, using (7.54), we have
+
+B[g, z](v) =
+
+
+
+
+
+
+∂g1
+∂z1
+
+...
+
+∂g1
+∂zm
+
+· · ·
+. . .
+· · ·
+
+
+
+
+ · v .
+
+∂gn
+∂z1
+
+...
+
+∂gn
+∂zm
+
+6e.g., the function is the .backward() method of the module in pytorch.
+
+(7.58)
+
+(7.59)
+
+102
+
+and therefore B[g, z] can be viewed as a matrix. However, in reality, z will be
+changing and thus the backward mapping has to be recomputed for diﬀerent
+z’s while g is often ﬁxed. Thus, empirically, the backward function B[g, z](v)
+is often viewed as a function which takes in z (=the input to g) and v (=a
+vector that is supposed to be the gradient of some variable J w.r.t to the
+output of g) as the inputs, and outputs a vector that is supposed to be the
+gradient of J w.r.t to z.
+
+7.4.2 General strategy of backpropagation
+
+We discuss the general strategy of auto-diﬀerentiation in this section to build
+a high-level understanding. Then, we will instantiate the approach to con-
+crete neural networks. We take the viewpoint that neural networks are com-
+plex compositions of small building blocks such as MM, σ, Conv2D, LN,
+etc., deﬁned in Section 7.3. Note that the losses (e.g., mean-squared loss, or
+the cross-entropy loss) can also be abstractly viewed as additional modules.
+Thus, we can abstractly write the loss function J (on a single example (x, y))
+as a composition of many modules:7
+
+J = Mk(Mk−1(· · · M1(x))) .
+
+(7.60)
+
+For example, for a binary classiﬁcation problem with a MLP ¯hθ(x) (de-
+ﬁned in equation (7.36) and (7.37)), the loss function has ber written in the
+form of equation (7.60) with M1 = MMW [1],b[1], M2 = σ, M3 = MMW [2],b[2],
+. . . , and Mk−1 = MMW [r],b[r] and Mk = (cid:96)logistic.
+
+We can see from this example that some modules involve parameters, and
+other modules might only involve a ﬁxed set of operations. For generality,
+we assume that eachj Mi involves a set of parameters θ[i], though θ[i] could
+possibly be an empty set when Mi is a ﬁxed operation such as the nonlinear
+activations. We will discuss more on the granularity of the modularization,
+but so far we assume all the modules Mi’s are simple enough.
+
+We introduce the intermediate variables for the computation in (7.60).
+
+7Technically, we should write J = Mk(Mk−1(· · · M1(x)), y). However, y is treated as a
+constant for the purpose of computing the derivatives w.r.t to the parameters, and thus
+we can view it as part of Mk for the sake of simplicity of notations.
+
+103
+
+Let
+
+u[0] = x
+u[1] = M1(u[0])
+u[2] = M2(u[1])
+
+...
+
+J = u[k] = Mk(u[k−1]) .
+
+(F)
+
+Backpropgation consists of two passes, the forward pass and backward
+pass. In the forward pass, the algorithm simply computes u[1], . . . , u[k] from
+i = 1, . . . , k, sequentially using the deﬁnition in (F), and save all the in-
+termediate variables u[i]’s in the memory.
+
+In the backward pass, we ﬁrst compute the derivatives w.r.t to the
+intermediate variables, that is,
+∂u[1] , sequentially in this backward
+order, and then compute the derivatives of the parameters ∂J
+∂u[i] and
+u[i−1]. These two type of computations can be also interleaved with each
+other because ∂J
+∂u[k] with
+k < i.
+
+∂u[i] and u[

@@ -6,11 +6,11 @@ def text_spliter(filename):
     # 1 chat gpt token roughly 4 chars.
 
     # retrieve length of prompt to dynamically size chunks
-    with open("prompt.txt", "r", errors='ignore') as f:
+    with open("prompt.txt", "r", errors="replace") as f:
         prompt_chars = len(f.read())
 
     raw_file_path = Path("raws") / f"{filename}.txt"
-    with raw_file_path.open("r", errors='ignore') as f:
+    with raw_file_path.open("r", errors="replace") as f:
         full_file = f.read()
 
     # Split the text into smaller chunks of 16000 characters - prompt_chars

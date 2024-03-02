@@ -1,247 +1,20 @@
-t,� which is a framework and set of
-assumptions under which numerous results on learning theory were proved. Of these, the
-assumption of training and testing on the same distribution, and the assumption of the
-independently drawn training examples, were the most important.
-
-128
-
-focus on in these notes. (Algorithms such as logistic regression can also be
-viewed as approximations to empirical risk minimization.)
-
-In our study of learning theory, it will be useful to abstract away from
-the speci�c parameterization of hypotheses and from issues such as whether
-we’re using a linear classi�er. We de�ne the hypothesis class H used by a
-learning algorithm to be the set of all classi�ers considered by it. For linear
-classi�cation, H = {hθ : hθ(x) = 1{θT x ≥ 0}, θ ∈ Rd+1} is thus the set of
-all classi�ers over X (the domain of the inputs) where the decision boundary
-is linear. More broadly, if we were studying, say, neural networks, then we
-could let H be the set of all classi�ers representable by some neural network
-architecture.
-
-Empirical risk minimization can now be thought of as a minimization over
-the class of functions H, in which the learning algorithm picks the hypothesis:
-
-ˆh = arg min
-h∈H
-
-ˆε(h)
-
-8.3.2 The case of �nite H
-
-Let’s start by considering a learning problem in which we have a �nite hy-
-pothesis class H = {h1, . . . , hk} consisting of k hypotheses. Thus, H is just a
-set of k functions mapping from X to {0, 1}, and empirical risk minimization
-selects ˆh to be whichever of these k functions has the smallest training error.
-We would like to give guarantees on the generalization error of ˆh. Our
-strategy for doing so will be in two parts: First, we will show that ˆε(h) is a
-reliable estimate of ε(h) for all h. Second, we will show that this implies an
-upper-bound on the generalization error of ˆh.
-
-Take any one, �xed, hi ∈ H. Consider a Bernoulli random variable Z
-whose distribution is de�ned as follows. We’re going to sample (x, y) ∼ D.
-I.e., we’re going to draw one example,
-Then, we set Z = 1{hi(x) (cid:54)= y}.
-and let Z indicate whether hi misclassi�es it. Similarly, we also de�ne Zj =
-1{hi(x(j)) (cid:54)= y(j)}. Since our training set was drawn iid from D, Z and the
-Zj’s have the same distribution.
-
-We see that the misclassi�cation probability on a randomly drawn
-example—that is, ε(h)—is exactly the expected value of Z (and Zj). More-
-over, the training error can be written
-
-ˆε(hi) =
-
-1
-n
-
-n
-(cid:88)
-
-j=1
-
-Zj.
-
-Thus, ˆε(hi) is exactly the mean of the n random variables Zj that are drawn
-iid from a Bernoulli distribution with mean ε(hi). Hence, we can apply the
-
-129
-
-Hoeﬀding inequality, and obtain
-
-P (|ε(hi) − ˆε(hi)| > γ) ≤ 2 exp(−2γ2n).
-
-This shows that, for our particular hi, training error will be close to
-generalization error with high probability, assuming n is large. But we don’t
-just want to guarantee that ε(hi) will be close to ˆε(hi) (with high probability)
-for just only one particular hi. We want to prove that this will be true
-simultaneously for all h ∈ H. To do so, let Ai denote the event that |ε(hi) −
-ˆε(hi)| > γ. We’ve already shown that, for any particular Ai, it holds true
-that P (Ai) ≤ 2 exp(−2γ2n). Thus, using the union bound, we have that
-
-P (∃ h ∈ H.|ε(hi) − ˆε(hi)| > γ) = P (A1 ∪ · · · ∪ Ak)
-
-≤
-
-≤
-
-k
-(cid:88)
-
-i=1
-k
-(cid:88)
-
-i=1
-
-P (Ai)
-
-2 exp(−2γ2n)
-
-= 2k exp(−2γ2n)
-
-If we subtract both sides from 1, we �nd that
-
-P (¬∃ h ∈ H.|ε(hi) − ˆε(hi)| > γ) = P (∀h ∈ H.|ε(hi) − ˆε(hi)| ≤ γ)
-
-≥ 1 − 2k exp(−2γ2n)
-
-(The “¬� symbol means “not.�)
-So, with probability at least 1 −
-2k exp(−2γ2n), we have that ε(h) will be within γ of ˆε(h) for all h ∈ H.
-This is called a uniform convergence result, because this is a bound that
-holds simultaneously for all (as opposed to just one) h ∈ H.
-
-In the discussion above, what we did was, for particular values of n and
-γ, give a bound on the probability that for some h ∈ H, |ε(h) − ˆε(h)| > γ.
-There are three quantities of interest here: n, γ, and the probability of error;
-we can bound either one in terms of the other two.
-
-For instance, we can ask the following question: Given γ and some δ > 0,
-how large must n be before we can guarantee that with probability at least
-1 − δ, training error will be within γ of generalization error? By setting
-δ = 2k exp(−2γ2n) and solving for n, [you should convince yourself this is
-the right thing to do!], we �nd that if
-
-n ≥
-
-1
-2γ2 log
-
-2k
-δ
-
-,
-
-130
-
-then with probability at least 1 − δ, we have that |ε(h) − ˆε(h)| ≤ γ for all
-h ∈ H. (Equivalently, this shows that the probability that |ε(h) − ˆε(h)| > γ
-for some h ∈ H is at most δ.) This bound tells us how many training
-examples we need in order make a guarantee. The training set size n that
-a certain method or algorithm requires in order to achieve a certain level of
-performance is also called the algorithm’s sample complexity.
-
-The key property of the bound above is that the number of training
-examples needed to make this guarantee is only logarithmic in k, the number
-of hypotheses in H. This will be important later.
-
-Similarly, we can also hold n and δ �xed and solve for γ in the previous
-equation, and show [again, convince yourself that this is right!] that with
-probability 1 − δ, we have that for all h ∈ H,
-
-|ˆε(h) − ε(h)| ≤
-
-(cid:114)
-
-1
-2n
-
-log
-
-2k
-δ
-
-.
-
-Now, let’s assume that uniform convergence holds, i.e., that |ε(h)−ˆε(h)| ≤
-γ for all h ∈ H. What can we prove about the generalization of our learning
-algorithm that picked ˆh = arg minh∈H ˆε(h)?
-
-De�ne h∗ = arg minh∈H ε(h) to be the best possible hypothesis in H. Note
-that h∗ is the best that we could possibly do given that we are using H, so
-it makes sense to compare our performance to that of h∗. We have:
-
-ε(ˆh) ≤ ˆε(ˆh) + γ
-≤ ˆε(h∗) + γ
-≤ ε(h∗) + 2γ
-
-The �rst line used the fact that |ε(ˆh)− ˆε(ˆh)| ≤ γ (by our uniform convergence
-assumption). The second used the fact that ˆh was chosen to minimize ˆε(h),
-and hence ˆε(ˆh) ≤ ˆε(h) for all h, and in particular ˆε(ˆh) ≤ ˆε(h∗). The third
-line used the uniform convergence assumption again, to show that ˆε(h∗) ≤
-ε(h∗) + γ. So, what we’ve shown is the following: If uniform convergence
-occurs, then the generalization error of ˆh is at most 2γ worse than the best
-possible hypothesis in H!
-
-Let’s put all this together into a theorem.
-
-Theorem. Let |H| = k, and let any n, δ be �xed. Then with probability at
-least 1 − δ, we have that
-
-(cid:18)
-
-ε(ˆh) ≤
-
-(cid:19)
-
-(cid:114)
-
-min
-h∈H
-
-ε(h)
-
-+ 2
-
-1
-2n
-
-log
-
-2k
-δ
-
-.
-
-131
-
-This is proved by letting γ equal the
-
-· term, using our previous argu-
-ment that uniform convergence occurs with probability at least 1 − δ, and
-then noting that uniform convergence implies ε(h) is at most 2γ higher than
-ε(h∗) = minh∈H ε(h) (as we showed previously).
-
-√
-
-This also quanti�es what we were saying previously saying about the
-bias/variance tradeoﬀ in model selection. Speci�cally, suppose we have some
+cally, suppose we have some
 hypothesis class H, and are considering switching to some much larger hy-
 pothesis class H(cid:48) ⊇ H.
-If we switch to H(cid:48), then the �rst term minh ε(h)
+If we switch to H(cid:48), then the ﬁrst term minh ε(h)
 can only decrease (since we’d then be taking a min over a larger set of func-
-tions). Hence, by learning using a larger hypothesis class, our “bias� can
+tions). Hence, by learning using a larger hypothesis class, our “bias” can
 · term would also
 only decrease. However, if k increases, then the second 2
-increase. This increase corresponds to our “variance� increasing when we use
+increase. This increase corresponds to our “variance” increasing when we use
 a larger hypothesis class.
 
 √
 
-By holding γ and δ �xed and solving for n like we did before, we can also
+By holding γ and δ ﬁxed and solving for n like we did before, we can also
 
 obtain the following sample complexity bound:
-Corollary. Let |H| = k, and let any δ, γ be �xed. Then for ε(ˆh) ≤
+Corollary. Let |H| = k, and let any δ, γ be ﬁxed. Then for ε(ˆh) ≤
 minh∈H ε(h) + 2γ to hold with probability at least 1 − δ, it suﬃces that
 
 n ≥
@@ -263,14 +36,14 @@ k
 
 = O
 
-8.3.3 The case of in�nite H
+8.3.3 The case of inﬁnite H
 
-We have proved some useful theorems for the case of �nite hypothesis classes.
+We have proved some useful theorems for the case of ﬁnite hypothesis classes.
 But many hypothesis classes, including any parameterized by real numbers
-(as in linear classi�cation) actually contain an in�nite number of functions.
+(as in linear classiﬁcation) actually contain an inﬁnite number of functions.
 Can we prove similar results for this setting?
 
-Let’s start by going through something that is not the “right� argument.
+Let’s start by going through something that is not the “right” argument.
 Better and more general arguments exist, but this will be useful for honing
 our intuitions about the domain.
 
@@ -280,7 +53,7 @@ are using a computer to represent real numbers, and IEEE double-precision
 ber, this means that our learning algorithm, assuming we’re using double-
 precision ﬂoating point, is parameterized by 64d bits. Thus, our hypothesis
 class really consists of at most k = 264d diﬀerent hypotheses. From the Corol-
-lary at the end of the previous section, we therefore �nd that, to guarantee
+lary at the end of the previous section, we therefore ﬁnd that, to guarantee
 
 132
 
@@ -309,7 +82,7 @@ of the model.
 
 The fact that we relied on 64-bit ﬂoating point makes this argument not
 entirely satisfying, but the conclusion is nonetheless roughly correct: If what
-we try to do is minimize training error, then in order to learn “well� using a
+we try to do is minimize training error, then in order to learn “well” using a
 hypothesis class that has d parameters, generally we’re going to need on the
 order of a linear number of training examples in d.
 
@@ -323,12 +96,12 @@ many non-ERM learning algorithms is still an area of active research.)
 
 The other part of our previous argument that’s slightly unsatisfying is
 that it relies on the parameterization of H. Intuitively, this doesn’t seem like
-it should matter: We had written the class of linear classi�ers as hθ(x) =
+it should matter: We had written the class of linear classiﬁers as hθ(x) =
 1{θ0 + θ1x1 + · · · θdxd ≥ 0}, with n + 1 parameters θ0, . . . , θd. But it could
 also be written hu,v(x) = 1{(u2
 d)xd ≥ 0}
-with 2d + 2 parameters ui, vi. Yet, both of these are just de�ning the same
-H: The set of linear classi�ers in d dimensions.
+with 2d + 2 parameters ui, vi. Yet, both of these are just deﬁning the same
+H: The set of linear classiﬁers in d dimensions.
 
 1)x1 + · · · (u2
 
@@ -340,13 +113,13 @@ d − v2
 
 1 − v2
 
-To derive a more satisfying argument, let’s de�ne a few more things.
+To derive a more satisfying argument, let’s deﬁne a few more things.
 Given a set S = {x(i), . . . , x(D)} (no relation to the training set) of points
 x(i) ∈ X , we say that H shatters S if H can realize any labeling on S.
 I.e., if for any set of labels {y(1), . . . , y(D)}, there exists some h ∈ H so that
 h(x(i)) = y(i) for all i = 1, . . . D.
 
-Given a hypothesis class H, we then de�ne its Vapnik-Chervonenkis
+Given a hypothesis class H, we then deﬁne its Vapnik-Chervonenkis
 dimension, written VC(H), to be the size of the largest set that is shattered
 by H. (If H can shatter arbitrarily large sets, then VC(H) = ∞.)
 
@@ -354,10 +127,10 @@ For instance, consider the following set of three points:
 
 133
 
-Can the set H of linear classi�ers in two dimensions (h(x) = 1{θ0 +θ1x1 +
-θ2x2 ≥ 0}) can shatter the set above? The answer is yes. Speci�cally, we
-see that, for any of the eight possible labelings of these points, we can �nd a
-linear classi�er that obtains “zero training error� on them:
+Can the set H of linear classiﬁers in two dimensions (h(x) = 1{θ0 +θ1x1 +
+θ2x2 ≥ 0}) can shatter the set above? The answer is yes. Speciﬁcally, we
+see that, for any of the eight possible labelings of these points, we can ﬁnd a
+linear classiﬁer that obtains “zero training error” on them:
 
 Moreover, it is possible to show that there is no set of 4 points that this
 hypothesis class can shatter. Thus, the largest set that H can shatter is of
@@ -365,12 +138,12 @@ size 3, and hence VC(H) = 3.
 
 Note that the VC dimension of H here is 3 even though there may be
 sets of size 3 that it cannot shatter. For instance, if we had a set of three
-points lying in a straight line (left �gure), then there is no way to �nd a linear
-separator for the labeling of the three points shown below (right �gure):
+points lying in a straight line (left ﬁgure), then there is no way to ﬁnd a linear
+separator for the labeling of the three points shown below (right ﬁgure):
 
 (cid:0)(cid:1)(cid:0)(cid:1)(cid:0)(cid:1)xx12xx12xx12xx12xx12xx12xx12xx12xx12134
 
-In order words, under the de�nition of the VC dimension, in order to
+In order words, under the deﬁnition of the VC dimension, in order to
 prove that VC(H) is at least D, we need to show only that there’s at least
 one set of size D that H can shatter.
 
@@ -433,19 +206,19 @@ log
 1
 δ
 
-In other words, if a hypothesis class has �nite VC dimension, then uniform
+In other words, if a hypothesis class has ﬁnite VC dimension, then uniform
 convergence occurs as n becomes large. As before, this allows us to give a
 bound on ε(h) in terms of ε(h∗). We also have the following corollary:
 Corollary. For |ε(h) − ˆε(h)| ≤ γ to hold for all h ∈ H (and hence ε(ˆh) ≤
 ε(h∗) + 2γ) with probability at least 1 − δ, it suﬃces that n = Oγ,δ(D).
 
-In other words, the number of training examples needed to learn “well�
-using H is linear in the VC dimension of H. It turns out that, for “most�
-hypothesis classes, the VC dimension (assuming a “reasonable� parameter-
+In other words, the number of training examples needed to learn “well”
+using H is linear in the VC dimension of H. It turns out that, for “most”
+hypothesis classes, the VC dimension (assuming a “reasonable” parameter-
 ization) is also roughly linear in the number of parameters. Putting these
 together, we conclude that for a given hypothesis class H (and for an algo-
 rithm that tries to minimize training error), the number of training examples
-needed to achieve generalization error close to that of the optimal classi�er
+needed to achieve generalization error close to that of the optimal classiﬁer
 is usually roughly linear in the number of parameters of H.
 
 xx12(cid:0)(cid:1)(cid:0)(cid:1)(cid:0)(cid:1)xx12Chapter 9
@@ -463,7 +236,7 @@ measured by the number of parameters, we can vary the size of the model
 ity measure of the models can be a function of the parameters (e.g., (cid:96)2 norm
 of the parameters), which may not necessarily depend on the number of pa-
 rameters. In such cases, we will use regularization, an important technique
-in machine learning, control the model complexity and prevent over�tting.
+in machine learning, control the model complexity and prevent overﬁtting.
 
 Regularization typically involves adding an additional term, called a reg-
 
@@ -477,4 +250,155 @@ Here Jλ is often called the regularized loss, and λ ≥ 0 is called the regula
 ization parameter. The regularizer R(θ) is a nonnegative function (in almost
 all cases). In classical methods, R(θ) is purely a function of the parameter θ,
 but some modern approach allows R(θ) to depend on the training dataset.1
-The regula
+The regularizer R(θ) is typically chosen to be some measure of the com-
+plexity of the model θ. Thus, when using the regularized loss, we aim to
+ﬁnd a model that both ﬁt the data (a small loss J(θ)) and have a small
+
+1Here our notations generally omit the dependency on the training dataset for
+simplicity—we write J(θ) even though it obviously needs to depend on the training dataset.
+
+135
+
+136
+
+model complexity (a small R(θ)). The balance between the two objectives is
+controlled by the regularization parameter λ. When λ = 0, the regularized
+loss is equivalent to the original loss. When λ is a suﬃciently small positive
+number, minimizing the regularized loss is eﬀectively minimizing the original
+loss with the regularizer as the tie-breaker. When the regularizer is extremely
+large, then the original loss is not eﬀective (and likely the model will have a
+large bias.)
+
+2(cid:107)θ(cid:107)2
+2.
+
+The most commonly used regularization is perhaps (cid:96)2 regularization,
+where R(θ) = 1
+It encourages the optimizer to ﬁnd a model with
+small (cid:96)2 norm. In deep learning, it’s oftentimes referred to as weight de-
+cay, because gradient descent with learning rate η on the regularized loss
+Rλ(θ) is equivalent to shrinking/decaying θ by a scalar factor of 1 − ηλ and
+then applying the standard gradient
+
+θ ← θ − η∇Jλ(θ) = θ − ηλθ − η∇J(θ)
+
+= (1 − λη)θ
+(cid:125)
+
+(cid:123)(cid:122)
+decaying weights
+
+(cid:124)
+
+−η∇J(θ)
+
+(9.2)
+
+Besides encouraging simpler models, regularization can also impose in-
+ductive biases or structures on the model parameters. For example, suppose
+we had a prior belief that the number of non-zeros in the ground-truth model
+parameters is small,2—which is oftentimes called sparsity of the model—, we
+can impose a regularization on the number of non-zeros in θ, denoted by
+(cid:107)θ(cid:107)0, to leverage such a prior belief. Imposing additional structure of the
+parameters narrows our search space and makes the complexity of the model
+family smaller,—e.g., the family of sparse models can be thought of as having
+lower complexity than the family of all models—, and thus tends to lead to a
+better generalization. On the other hand, imposing additional structure may
+risk increasing the bias. For example, if we regularize the sparsity strongly
+but no sparse models can predict the label accurately, we will suﬀer from
+large bias (analogously to the situation when we use linear models to learn
+data than can only be represented by quadratic functions in Section 8.1.)
+
+The sparsity of the parameters is not a continuous function of the param-
+eters, and thus we cannot optimize it with (stochastic) gradient descent. A
+common relaxation is to use R(θ) = (cid:107)θ(cid:107)1 as a continuous surrogate.3
+
+2For linear models, this means the model just uses a few coordinates of the inputs to
+
+make an accurate prediction.
+
+3There has been a rich line of theoretical work that explains why (cid:107)θ(cid:107)1 is a good sur-
+rogate for encouraging sparsity, but it’s beyond the scope of this course. An intuition is:
+assuming the parameter is on the unit sphere, the parameter with smallest (cid:96)1 norm also
+
+137
+
+The R(θ) = (cid:107)θ(cid:107)1 (also called LASSO) and R(θ) = 1
+
+2 are perhaps
+among the most commonly used regularizers for linear models. Other norm
+and powers of norms are sometimes also used. The (cid:96)2 norm regularization is
+much more commonly used with kernel methods because (cid:96)1 regularization is
+typically not compatible with the kernel trick (the optimal solution cannot
+be written as functions of inner products of features.)
+
+2(cid:107)θ(cid:107)2
+
+In deep learning, the most commonly used regularizer is (cid:96)2 regularization
+or weight decay. Other common ones include dropout, data augmentation,
+regularizing the spectral norm of the weight matrices, and regularizing the
+Lipschitzness of the model, etc. Regularization in deep learning is an ac-
+tive research area, and it’s known that there is another implicit source of
+regularization, as discussed in the next section.
+
+9.2 Implicit regularization eﬀect (optional
+
+reading)
+
+The implicit regularization eﬀect of optimizers, or implicit bias or algorithmic
+regularization, is a new concept/phenomenon observed in the deep learning
+era. It largely refers to that the optimizers can implicitly impose structures
+on parameters beyond what has been imposed by the regularized loss.
+
+In most classical settings, the loss or regularized loss has a unique global
+minimum, and thus any reasonable optimizer should converge to that global
+minimum and cannot impose any additional preferences. However, in deep
+learning, oftentimes the loss or regularized loss has more than one (approx-
+imate) global minima, and diﬀerence optimizers may converge to diﬀerent
+global minima. Though these global minima have the same or similar train-
+ing losses, they may be of diﬀerent nature and have dramatically diﬀerent
+generalization performance. See Figures 9.1 and 9.2 and its caption for an
+illustration and some experiment results. For example, it’s possible that one
+global minimum gives a much more Lipschitz or sparse model than others
+and thus has a better test error. It turns out that many commonly-used op-
+timizers (or their components) prefer or bias towards ﬁnding global minima
+of certain properties, leading to a better test performance.
+
+happen to be the sparsest parameter with only 1 non-zero coordinate. Thus, sparsity and
+(cid:96)1 norm gives the same extremal points to some extent.
+
+138
+
+Figure 9.1: An Illustration that diﬀerent global minima of the training loss
+can have diﬀerent test performance.
+
+Figure 9.2: Left: Performance of neural networks trained by two diﬀerent
+learning rates schedules on the CIFAR-10 dataset. Although both exper-
+iments used exactly the same regularized losses and the optimizers ﬁt the
+training data perfectly, the models’ generalization performance diﬀer much.
+Right: On a diﬀerent synthetic dataset, optimizers with diﬀerent initializa-
+tions have the same training error but diﬀerent generalization performance.4
+
+In summary, the takehome message here is that the choice of optimizer
+does not only aﬀect minimizing the training loss, but also imposes implicit
+regularization and aﬀects the generalization of the model. Even if your cur-
+rent optimizer already converges to a small training error perfectly, you may
+still need to tune your optimizer for a better generalization, .
+
+4The setting is the same as in Woodworth et al. [2020], HaoChen et al. [2020]
+
+θloss139
+
+One may wonder which components of the optimizers bias towards what
+type of global minima and what type of global minima may generalize bet-
+ter. These are open questions that researchers are actively investigating.
+Empirical and theoretical research have oﬀered some clues and heuristics.
+In many (but deﬁnitely far from all) situations, among those setting where
+optimization can succeed in minimizing the training loss, the use of larger
+initial learning rate, smaller initialization, smaller batch size, and momen-
+tum appears to help with biasing towards more generalizable solutions. A
+conjecture (that can be proven in certain simpliﬁed case) is that stochas-
+ticity in the optimization process help the optimizer to ﬁnd ﬂatter global
+minima (global minima where the curvature of the loss is small), and ﬂat
+global minima tend to give more Lipschitz models and better generalization.
+Characterizing the implicit regularization eﬀect

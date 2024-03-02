@@ -1,155 +1,4 @@
-rizer R(θ) is typically chosen to be some measure of the com-
-plexity of the model θ. Thus, when using the regularized loss, we aim to
-�nd a model that both �t the data (a small loss J(θ)) and have a small
-
-1Here our notations generally omit the dependency on the training dataset for
-simplicity—we write J(θ) even though it obviously needs to depend on the training dataset.
-
-135
-
-136
-
-model complexity (a small R(θ)). The balance between the two objectives is
-controlled by the regularization parameter λ. When λ = 0, the regularized
-loss is equivalent to the original loss. When λ is a suﬃciently small positive
-number, minimizing the regularized loss is eﬀectively minimizing the original
-loss with the regularizer as the tie-breaker. When the regularizer is extremely
-large, then the original loss is not eﬀective (and likely the model will have a
-large bias.)
-
-2(cid:107)θ(cid:107)2
-2.
-
-The most commonly used regularization is perhaps (cid:96)2 regularization,
-where R(θ) = 1
-It encourages the optimizer to �nd a model with
-small (cid:96)2 norm. In deep learning, it’s oftentimes referred to as weight de-
-cay, because gradient descent with learning rate η on the regularized loss
-Rλ(θ) is equivalent to shrinking/decaying θ by a scalar factor of 1 − ηλ and
-then applying the standard gradient
-
-θ � θ − η∇Jλ(θ) = θ − ηλθ − η∇J(θ)
-
-= (1 − λη)θ
-(cid:125)
-
-(cid:123)(cid:122)
-decaying weights
-
-(cid:124)
-
-−η∇J(θ)
-
-(9.2)
-
-Besides encouraging simpler models, regularization can also impose in-
-ductive biases or structures on the model parameters. For example, suppose
-we had a prior belief that the number of non-zeros in the ground-truth model
-parameters is small,2—which is oftentimes called sparsity of the model—, we
-can impose a regularization on the number of non-zeros in θ, denoted by
-(cid:107)θ(cid:107)0, to leverage such a prior belief. Imposing additional structure of the
-parameters narrows our search space and makes the complexity of the model
-family smaller,—e.g., the family of sparse models can be thought of as having
-lower complexity than the family of all models—, and thus tends to lead to a
-better generalization. On the other hand, imposing additional structure may
-risk increasing the bias. For example, if we regularize the sparsity strongly
-but no sparse models can predict the label accurately, we will suﬀer from
-large bias (analogously to the situation when we use linear models to learn
-data than can only be represented by quadratic functions in Section 8.1.)
-
-The sparsity of the parameters is not a continuous function of the param-
-eters, and thus we cannot optimize it with (stochastic) gradient descent. A
-common relaxation is to use R(θ) = (cid:107)θ(cid:107)1 as a continuous surrogate.3
-
-2For linear models, this means the model just uses a few coordinates of the inputs to
-
-make an accurate prediction.
-
-3There has been a rich line of theoretical work that explains why (cid:107)θ(cid:107)1 is a good sur-
-rogate for encouraging sparsity, but it’s beyond the scope of this course. An intuition is:
-assuming the parameter is on the unit sphere, the parameter with smallest (cid:96)1 norm also
-
-137
-
-The R(θ) = (cid:107)θ(cid:107)1 (also called LASSO) and R(θ) = 1
-
-2 are perhaps
-among the most commonly used regularizers for linear models. Other norm
-and powers of norms are sometimes also used. The (cid:96)2 norm regularization is
-much more commonly used with kernel methods because (cid:96)1 regularization is
-typically not compatible with the kernel trick (the optimal solution cannot
-be written as functions of inner products of features.)
-
-2(cid:107)θ(cid:107)2
-
-In deep learning, the most commonly used regularizer is (cid:96)2 regularization
-or weight decay. Other common ones include dropout, data augmentation,
-regularizing the spectral norm of the weight matrices, and regularizing the
-Lipschitzness of the model, etc. Regularization in deep learning is an ac-
-tive research area, and it’s known that there is another implicit source of
-regularization, as discussed in the next section.
-
-9.2 Implicit regularization eﬀect (optional
-
-reading)
-
-The implicit regularization eﬀect of optimizers, or implicit bias or algorithmic
-regularization, is a new concept/phenomenon observed in the deep learning
-era. It largely refers to that the optimizers can implicitly impose structures
-on parameters beyond what has been imposed by the regularized loss.
-
-In most classical settings, the loss or regularized loss has a unique global
-minimum, and thus any reasonable optimizer should converge to that global
-minimum and cannot impose any additional preferences. However, in deep
-learning, oftentimes the loss or regularized loss has more than one (approx-
-imate) global minima, and diﬀerence optimizers may converge to diﬀerent
-global minima. Though these global minima have the same or similar train-
-ing losses, they may be of diﬀerent nature and have dramatically diﬀerent
-generalization performance. See Figures 9.1 and 9.2 and its caption for an
-illustration and some experiment results. For example, it’s possible that one
-global minimum gives a much more Lipschitz or sparse model than others
-and thus has a better test error. It turns out that many commonly-used op-
-timizers (or their components) prefer or bias towards �nding global minima
-of certain properties, leading to a better test performance.
-
-happen to be the sparsest parameter with only 1 non-zero coordinate. Thus, sparsity and
-(cid:96)1 norm gives the same extremal points to some extent.
-
-138
-
-Figure 9.1: An Illustration that diﬀerent global minima of the training loss
-can have diﬀerent test performance.
-
-Figure 9.2: Left: Performance of neural networks trained by two diﬀerent
-learning rates schedules on the CIFAR-10 dataset. Although both exper-
-iments used exactly the same regularized losses and the optimizers �t the
-training data perfectly, the models’ generalization performance diﬀer much.
-Right: On a diﬀerent synthetic dataset, optimizers with diﬀerent initializa-
-tions have the same training error but diﬀerent generalization performance.4
-
-In summary, the takehome message here is that the choice of optimizer
-does not only aﬀect minimizing the training loss, but also imposes implicit
-regularization and aﬀects the generalization of the model. Even if your cur-
-rent optimizer already converges to a small training error perfectly, you may
-still need to tune your optimizer for a better generalization, .
-
-4The setting is the same as in Woodworth et al. [2020], HaoChen et al. [2020]
-
-θloss139
-
-One may wonder which components of the optimizers bias towards what
-type of global minima and what type of global minima may generalize bet-
-ter. These are open questions that researchers are actively investigating.
-Empirical and theoretical research have oﬀered some clues and heuristics.
-In many (but de�nitely far from all) situations, among those setting where
-optimization can succeed in minimizing the training loss, the use of larger
-initial learning rate, smaller initialization, smaller batch size, and momen-
-tum appears to help with biasing towards more generalizable solutions. A
-conjecture (that can be proven in certain simpli�ed case) is that stochas-
-ticity in the optimization process help the optimizer to �nd ﬂatter global
-minima (global minima where the curvature of the loss is small), and ﬂat
-global minima tend to give more Lipschitz models and better generalization.
-Characterizing the implicit regularization eﬀect formally is still a challenging
+ formally is still a challenging
 open research question.
 
 9.3 Model selection via cross validation
@@ -164,23 +13,23 @@ locally weighted regression, or the parameter C for our (cid:96)1-regularized SV
 How can we do that?
 
 For the sake of concreteness, in these notes we assume we have some
-�nite set of models M = {M1, . . . , Md} that we’re trying to select among.
-For instance, in our �rst example above, the model Mi would be an i-th
+ﬁnite set of models M = {M1, . . . , Md} that we’re trying to select among.
+For instance, in our ﬁrst example above, the model Mi would be an i-th
 degree polynomial regression model.
-(The generalization to in�nite M is
+(The generalization to inﬁnite M is
 not hard.6) Alternatively, if we are trying to decide between using an SVM,
 a neural network or logistic regression, then M may contain these models.
 
 5Given that we said in the previous set of notes that bias and variance are two very
-diﬀerent beasts, some readers may be wondering if we should be calling them “twin� evils
+diﬀerent beasts, some readers may be wondering if we should be calling them “twin” evils
 here. Perhaps it’d be better to think of them as non-identical twins. The phrase “the
-fraternal twin evils of bias and variance� doesn’t have the same ring to it, though.
+fraternal twin evils of bias and variance” doesn’t have the same ring to it, though.
 
-6If we are trying to choose from an in�nite set of models, say corresponding to the
-possible values of the bandwidth τ ∈ R+, we may discretize τ and consider only a �nite
+6If we are trying to choose from an inﬁnite set of models, say corresponding to the
+possible values of the bandwidth τ ∈ R+, we may discretize τ and consider only a ﬁnite
 number of possible values for it. More generally, most of the algorithms described here
 can all be viewed as performing optimization search in the space of models, and we can
-perform this search over in�nite model classes as well.
+perform this search over inﬁnite model classes as well.
 
 140
 
@@ -194,7 +43,7 @@ tion for model selection:
 2. Pick the hypotheses with the smallest training error.
 
 This algorithm does not work. Consider choosing the degree of a poly-
-nomial. The higher the degree of the polynomial, the better it will �t the
+nomial. The higher the degree of the polynomial, the better it will ﬁt the
 training set S, and thus the lower the training error. Hence, this method will
 always select a high-variance, high-degree polynomial model, which we saw
 previously is often poor choice.
@@ -237,12 +86,12 @@ conditions and/or data. For these methods, Mi doing well on Strain does not
 necessarily mean it will also do well on Scv, and it might be better to forgo
 this retraining step.)
 
-The disadvantage of using hold out cross validation is that it “wastes�
+The disadvantage of using hold out cross validation is that it “wastes”
 about 30% of the data. Even if we were to take the optional step of retraining
-the model on the entire training set, it’s still as if we’re trying to �nd a good
+the model on the entire training set, it’s still as if we’re trying to ﬁnd a good
 model for a learning problem in which we had 0.7n training examples, rather
 than n training examples, since we’re testing models that were trained on
-only 0.7n examples each time. While this is �ne if data is abundant and/or
+only 0.7n examples each time. While this is ﬁne if data is abundant and/or
 cheap, in learning problems in which data is scarce (consider a problem with
 n = 20, say), we’d like to do something better.
 
@@ -267,7 +116,7 @@ as the average of the ˆεSj (hij)’s (averaged over j).
 
 3. Pick the model Mi with the lowest estimated generalization error, and
 retrain that model on the entire training set S. The resulting hypothesis
-is then output as our �nal answer.
+is then output as our ﬁnal answer.
 
 A typical choice for the number of folds to use here would be k = 10.
 While the fraction of data held out each time is now 1/k—much smaller
@@ -298,9 +147,9 @@ validation would give a reasonable way of doing so.
 9.4 Bayesian statistics and regularization
 
 In this section, we will talk about one more tool in our arsenal for our battle
-against over�tting.
+against overﬁtting.
 
-At the beginning of the quarter, we talked about parameter �tting using
+At the beginning of the quarter, we talked about parameter ﬁtting using
 maximum likelihood estimation (MLE), and chose our parameters according
 to
 
@@ -318,4 +167,254 @@ i=1
 Throughout our subsequent discussions, we viewed θ as an unknown param-
 eter of the world. This view of the θ as being constant-valued but unknown
 is taken in frequentist statistics. In the frequentist this view of the world, θ
-is not random—it just happens to be unknown
+is not random—it just happens to be unknown—and it’s our job to come up
+with statistical procedures (such as maximum likelihood) to try to estimate
+this parameter.
+
+An alternative way to approach our parameter estimation problems is to
+take the Bayesian view of the world, and think of θ as being a random
+variable whose value is unknown.
+In this approach, we would specify a
+prior distribution p(θ) on θ that expresses our “prior beliefs” about the
+parameters. Given a training set S = {(x(i), y(i))}n
+i=1, when we are asked to
+make a prediction on a new value of x, we can then compute the posterior
+distribution on the parameters
+
+p(θ|S) =
+
+=
+
+p(S|θ)p(θ)
+p(S)
+(cid:0)(cid:81)n
+θ ((cid:81)n
+
+(cid:82)
+
+i=1 p(y(i)|x(i), θ)(cid:1) p(θ)
+i=1 p(y(i)|x(i), θ)p(θ)) dθ
+
+(9.3)
+
+In the equation above, p(y(i)|x(i), θ) comes from whatever model you’re using
+
+143
+
+for your learning problem. For example, if you are using Bayesian logistic re-
+gression, then you might choose p(y(i)|x(i), θ) = hθ(x(i))y(i)(1−hθ(x(i)))(1−y(i)),
+where hθ(x(i)) = 1/(1 + exp(−θT x(i))).7
+
+When we are given a new test example x and asked to make it prediction
+on it, we can compute our posterior distribution on the class label using the
+posterior distribution on θ:
+
+p(y|x, S) =
+
+(cid:90)
+
+θ
+
+p(y|x, θ)p(θ|S)dθ
+
+(9.4)
+
+In the equation above, p(θ|S) comes from Equation (9.3). Thus, for example,
+if the goal is to the predict the expected value of y given x, then we would
+output8
+
+(cid:90)
+
+E[y|x, S] =
+
+yp(y|x, S)dy
+
+y
+
+The procedure that we’ve outlined here can be thought of as doing “fully
+Bayesian” prediction, where our prediction is computed by taking an average
+with respect to the posterior p(θ|S) over θ. Unfortunately, in general it is
+computationally very diﬃcult to compute this posterior distribution. This is
+because it requires taking integrals over the (usually high-dimensional) θ as
+in Equation (9.3), and this typically cannot be done in closed-form.
+
+Thus, in practice we will instead approximate the posterior distribution
+for θ. One common approximation is to replace our posterior distribution for
+θ (as in Equation 9.4) with a single point estimate. The MAP (maximum
+a posteriori) estimate for θ is given by
+
+θMAP = arg max
+
+θ
+
+n
+(cid:89)
+
+i=1
+
+p(y(i)|x(i), θ)p(θ).
+
+(9.5)
+
+Note that this is the same formulas as for the MLE (maximum likelihood)
+estimate for θ, except for the prior p(θ) term at the end.
+
+In practical applications, a common choice for the prior p(θ) is to assume
+that θ ∼ N (0, τ 2I). Using this choice of prior, the ﬁtted parameters θMAP will
+have smaller norm than that selected by maximum likelihood. In practice,
+this causes the Bayesian MAP estimate to be less susceptible to overﬁtting
+than the ML estimate of the parameters. For example, Bayesian logistic
+regression turns out to be an eﬀective algorithm for text classiﬁcation, even
+though in text classiﬁcation we usually have d (cid:29) n.
+
+7Since we are now viewing θ as a random variable, it is okay to condition on it value,
+
+and write “p(y|x, θ)” instead of “p(y|x; θ).”
+
+8The integral below would be replaced by a summation if y is discrete-valued.
+
+Part IV
+
+Unsupervised learning
+
+144
+
+Chapter 10
+
+Clustering and the k-means
+algorithm
+
+In the clustering problem, we are given a training set {x(1), . . . , x(n)}, and
+want to group the data into a few cohesive “clusters.” Here, x(i) ∈ Rd
+as usual; but no labels y(i) are given. So, this is an unsupervised learning
+problem.
+
+The k-means clustering algorithm is as follows:
+
+1. Initialize cluster centroids µ1, µ2, . . . , µk ∈ Rd randomly.
+
+2. Repeat until convergence: {
+
+For every i, set
+
+For each j, set
+
+}
+
+c(i) := arg min
+
+j
+
+||x(i) − µj||2.
+
+µj :=
+
+(cid:80)n
+
+i=1 1{c(i) = j}x(i)
+(cid:80)n
+i=1 1{c(i) = j}
+
+.
+
+In the algorithm above, k (a parameter of the algorithm) is the number
+of clusters we want to ﬁnd; and the cluster centroids µj represent our current
+guesses for the positions of the centers of the clusters. To initialize the cluster
+centroids (in step 1 of the algorithm above), we could choose k training
+examples randomly, and set the cluster centroids to be equal to the values of
+these k examples. (Other initialization methods are also possible.)
+
+The inner-loop of the algorithm repeatedly carries out two steps: (i)
+“Assigning” each training example x(i) to the closest cluster centroid µj, and
+
+145
+
+146
+
+Figure 10.1: K-means algorithm. Training examples are shown as dots, and
+cluster centroids are shown as crosses. (a) Original dataset. (b) Random ini-
+tial cluster centroids (in this instance, not chosen to be equal to two training
+examples). (c-f) Illustration of running two iterations of k-means. In each
+iteration, we assign each training example to the closest cluster centroid
+(shown by “painting” the training examples the same color as the cluster
+centroid to which is assigned); then we move each cluster centroid to the
+mean of the points assigned to it. (Best viewed in color.) Images courtesy
+Michael Jordan.
+
+(ii) Moving each cluster centroid µj to the mean of the points assigned to it.
+Figure 10.1 shows an illustration of running k-means.
+
+Is the k-means algorithm guaranteed to converge? Yes it is, in a certain
+
+sense. In particular, let us deﬁne the distortion function to be:
+
+J(c, µ) =
+
+n
+(cid:88)
+
+i=1
+
+||x(i) − µc(i)||2
+
+Thus, J measures the sum of squared distances between each training exam-
+ple x(i) and the cluster centroid µc(i) to which it has been assigned. It can
+be shown that k-means is exactly coordinate descent on J. Speciﬁcally, the
+inner-loop of k-means repeatedly minimizes J with respect to c while holding
+µ ﬁxed, and then minimizes J with respect to µ while holding c ﬁxed. Thus,
+
+147
+
+J must monotonically decrease, and the value of J must converge. (Usu-
+ally, this implies that c and µ will converge too. In theory, it is possible for
+k-means to oscillate between a few diﬀerent clusterings—i.e., a few diﬀerent
+values for c and/or µ—that have exactly the same value of J, but this almost
+never happens in practice.)
+
+The distortion function J is a non-convex function, and so coordinate
+descent on J is not guaranteed to converge to the global minimum. In other
+words, k-means can be susceptible to local optima. Very often k-means will
+work ﬁne and come up with very good clusterings despite this. But if you
+are worried about getting stuck in bad local minima, one common thing to
+do is run k-means many times (using diﬀerent random initial values for the
+cluster centroids µj). Then, out of all the diﬀerent clusterings found, pick
+the one that gives the lowest distortion J(c, µ).
+
+Chapter 11
+
+EM algorithms
+
+In this set of notes, we discuss the EM (Expectation-Maximization) algorithm
+for density estimation.
+
+11.1 EM for mixture of Gaussians
+
+Suppose that we are given a training set {x(1), . . . , x(n)} as usual. Since we
+are in the unsupervised learning setting, these points do not come with any
+labels.
+
+We wish to model the data by specifying a joint distribution p(x(i), z(i)) =
+p(x(i)|z(i))p(z(i)). Here, z(i) ∼ Multinomial(φ) (where φj ≥ 0, (cid:80)k
+j=1 φj = 1,
+and the parameter φj gives p(z(i) = j)), and x(i)|z(i) = j ∼ N (µj, Σj). We
+let k denote the number of values that the z(i)’s can take on. Thus, our
+model posits that each x(i) was generated by randomly choosing z(i) from
+{1, . . . , k}, and then x(i) was drawn from one of k Gaussians depending on
+z(i). This is called the mixture of Gaussians model. Also, note that the
+z(i)’s are latent random variables, meaning that they’re hidden/unobserved.
+This is what will make our estimation problem diﬃcult.
+
+The parameters of our model are thus φ, µ and Σ. To estimate them, we
+
+can write down the likelihood of our data:
+
+(cid:96)(φ, µ, Σ) =
+
+=
+
+n
+(cid:88)
+
+i=1
+n
+(ci
