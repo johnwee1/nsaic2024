@@ -1,0 +1,440 @@
+',
+'Population ', 'Price ', 'ShelveLoc ', 'Age', 'Education ',
+'Urban ', 'US'],
+dtype='object ')
+
+The Carseats data includes qualitative predictors such as ShelveLoc, an
+indicator of the quality of the shelving location — that is, the space within
+a store in which the car seat is displayed. The predictor ShelveLoc takes on
+three possible values, Bad, Medium, and Good. Given a qualitative variable
+such as ShelveLoc, ModelSpec() generates dummy variables automatically.
+These variables are often referred to as a one-hot encoding of the categorical
+one-hot
+feature. Their columns sum to one, so to avoid collinearity with an inter- encoding
+cept, the first column is dropped. Below we see the column ShelveLoc[Bad]
+has been dropped, since Bad is the first level of ShelveLoc. Below we fit a
+multiple regression model that includes some interaction terms.
+In [36]: allvars = list(Carseats.columns.drop('Sales '))
+y = Carseats['Sales ']
+final = allvars + [('Income ', 'Advertising '),
+('Price ', 'Age')]
+X = MS(final).fit_transform(Carseats)
+model = sm.OLS(y, X)
+summarize(model.fit())
+Out[36]:
+
+intercept
+
+coef
+6.5756
+
+std err
+1.009
+
+t
+6.519
+
+P>|t|
+0.000
+
+3.7 Exercises
+CompPrice
+Income
+Advertising
+Population
+Price
+ShelveLoc[Good]
+ShelveLoc[Medium]
+Age
+Education
+Urban[Yes]
+US[Yes]
+Income:Advertising
+Price:Age
+
+0.0929
+0.0109
+0.0702
+0.0002
+-0.1008
+4.8487
+1.9533
+-0.0579
+-0.0209
+0.1402
+-0.1576
+0.0008
+0.0001
+
+0.004
+0.003
+0.023
+0.000
+0.007
+0.153
+0.126
+0.016
+0.020
+0.112
+0.149
+0.000
+0.000
+
+22.567
+4.183
+3.107
+0.433
+-13.549
+31.724
+15.531
+-3.633
+-1.063
+1.247
+-1.058
+2.698
+0.801
+
+127
+
+0.000
+0.000
+0.002
+0.665
+0.000
+0.000
+0.000
+0.000
+0.288
+0.213
+0.291
+0.007
+0.424
+
+In the first line above, we made allvars a list, so that we could add the
+interaction terms two lines down. Our model-matrix builder has created a
+ShelveLoc[Good] dummy variable that takes on a value of 1 if the shelving
+location is good, and 0 otherwise. It has also created a ShelveLoc[Medium]
+dummy variable that equals 1 if the shelving location is medium, and 0 otherwise. A bad shelving location corresponds to a zero for each of the two
+dummy variables. The fact that the coefficient for ShelveLoc[Good] in the
+regression output is positive indicates that a good shelving location is associated with high sales (relative to a bad location). And ShelveLoc[Medium]
+has a smaller positive coefficient, indicating that a medium shelving location leads to higher sales than a bad shelving location, but lower sales than
+a good shelving location.
+
+3.7
+
+Exercises
+
+Conceptual
+1. Describe the null hypotheses to which the p-values given in Table 3.4
+correspond. Explain what conclusions you can draw based on these
+p-values. Your explanation should be phrased in terms of sales, TV,
+radio, and newspaper, rather than in terms of the coefficients of the
+linear model.
+2. Carefully explain the differences between the KNN classifier and KNN
+regression methods.
+3. Suppose we have a data set with five predictors, X1 = GPA, X2 =
+IQ, X3 = Level (1 for College and 0 for High School), X4 = Interaction between GPA and IQ, and X5 = Interaction between GPA and
+Level. The response is starting salary after graduation (in thousands
+of dollars). Suppose we use least squares to fit the model, and get
+β̂0 = 50, β̂1 = 20, β̂2 = 0.07, β̂3 = 35, β̂4 = 0.01, β̂5 = −10.
+(a) Which answer is correct, and why?
+i. For a fixed value of IQ and GPA, high school graduates earn
+more, on average, than college graduates.
+ii. For a fixed value of IQ and GPA, college graduates earn
+more, on average, than high school graduates.
+
+128
+
+3. Linear Regression
+
+iii. For a fixed value of IQ and GPA, high school graduates earn
+more, on average, than college graduates provided that the
+GPA is high enough.
+iv. For a fixed value of IQ and GPA, college graduates earn
+more, on average, than high school graduates provided that
+the GPA is high enough.
+(b) Predict the salary of a college graduate with IQ of 110 and a
+GPA of 4.0.
+(c) True or false: Since the coefficient for the GPA/IQ interaction
+term is very small, there is very little evidence of an interaction
+effect. Justify your answer.
+4. I collect a set of data (n = 100 observations) containing a single
+predictor and a quantitative response. I then fit a linear regression
+model to the data, as well as a separate cubic regression, i.e. Y =
+β0 + β1 X + β2 X 2 + β3 X 3 + ".
+(a) Suppose that the true relationship between X and Y is linear,
+i.e. Y = β0 + β1 X + ". Consider the training residual sum of
+squares (RSS) for the linear regression, and also the training
+RSS for the cubic regression. Would we expect one to be lower
+than the other, would we expect them to be the same, or is there
+not enough information to tell? Justify your answer.
+(b) Answer (a) using test rather than training RSS.
+(c) Suppose that the true relationship between X and Y is not linear,
+but we don’t know how far it is from linear. Consider the training
+RSS for the linear regression, and also the training RSS for the
+cubic regression. Would we expect one to be lower than the
+other, would we expect them to be the same, or is there not
+enough information to tell? Justify your answer.
+(d) Answer (c) using test rather than training RSS.
+5. Consider the fitted values that result from performing linear regression without an intercept. In this setting, the ith fitted value takes
+the form
+ŷi = xi β̂,
+where
+β̂ =
+
+> n
+0
+i=1
+
+Show that we can write
+
+? > n
+?
+0
+2
+x i yi /
+x i! .
+
+ŷi =
+
+(3.38)
+
+i! =1
+
+n
+0
+
+a i! y i! .
+
+i! =1
+
+What is ai! ?
+
+Note: We interpret this result by saying that the fitted values from
+linear regression are linear combinations of the response values.
+
+3.7 Exercises
+
+129
+
+6. Using (3.4), argue that in the case of simple linear regression, the
+least squares line always passes through the point (x̄, ȳ).
+7. It is claimed in the text that in the case of simple linear regression
+of Y onto X, the R2 statistic (3.17) is equal to the square of the
+correlation between X and Y (3.18). Prove that this is the case. For
+simplicity, you may assume that x̄ = ȳ = 0.
+
+Applied
+8. This question involves the use of simple linear regression on the Auto
+data set.
+(a) Use the sm.OLS() function to perform a simple linear regression
+with mpg as the response and horsepower as the predictor. Use
+the summarize() function to print the results. Comment on the
+output. For example:
+i. Is there a relationship between the predictor and the response?
+ii. How strong is the relationship between the predictor and
+the response?
+iii. Is the relationship between the predictor and the response
+positive or negative?
+iv. What is the predicted mpg associated with a horsepower of
+98? What are the associated 95 % confidence and prediction
+intervals?
+(b) Plot the response and the predictor in a new set of axes ax. Use
+the ax.axline() method or the abline() function defined in the
+lab to display the least squares regression line.
+(c) Produce some of diagnostic plots of the least squares regression
+fit as described in the lab. Comment on any problems you see
+with the fit.
+9. This question involves the use of multiple linear regression on the
+Auto data set.
+(a) Produce a scatterplot matrix which includes all of the variables
+in the data set.
+(b) Compute the matrix of correlations between the variables using
+the DataFrame.corr() method.
+(c) Use the sm.OLS() function to perform a multiple linear regression
+with mpg as the response and all other variables except name as
+the predictors. Use the summarize() function to print the results.
+Comment on the output. For instance:
+i. Is there a relationship between the predictors and the response? Use the anova_lm() function from statsmodels to
+answer this question.
+
+.corr()
+
+130
+
+3. Linear Regression
+
+ii. Which predictors appear to have a statistically significant
+relationship to the response?
+iii. What does the coefficient for the year variable suggest?
+(d) Produce some of diagnostic plots of the linear regression fit as
+described in the lab. Comment on any problems you see with the
+fit. Do the residual plots suggest any unusually large outliers?
+Does the leverage plot identify any observations with unusually
+high leverage?
+(e) Fit some models with interactions as described in the lab. Do
+any interactions appear to be statistically significant?
+(f) Try a few
+√ different transformations of the variables, such as
+log(X), X, X 2 . Comment on your findings.
+10. This question should be answered using the Carseats data set.
+(a) Fit a multiple regression model to predict Sales using Price,
+Urban, and US.
+(b) Provide an interpretation of each coefficient in the model. Be
+careful—some of the variables in the model are qualitative!
+(c) Write out the model in equation form, being careful to handle
+the qualitative variables properly.
+(d) For which of the predictors can you reject the null hypothesis
+H0 : βj = 0?
+(e) On the basis of your response to the previous question, fit a
+smaller model that only uses the predictors for which there is
+evidence of association with the outcome.
+(f) How well do the models in (a) and (e) fit the data?
+(g) Using the model from (e), obtain 95 % confidence intervals for
+the coefficient(s).
+(h) Is there evidence of outliers or high leverage observations in the
+model from (e)?
+11. In this problem we will investigate the t-statistic for the null hypothesis H0 : β = 0 in simple linear regression without an intercept. To
+begin, we generate a predictor x and a response y as follows.
+rng = np.random.default_rng (1)
+x = rng.normal(size =100)
+y = 2 * x + rng.normal(size =100)
+
+(a) Perform a simple linear regression of y onto x, without an intercept. Report the coefficient estimate β̂, the standard error of
+this coefficient estimate, and the t-statistic and p-value associated with the null hypothesis H0 : β = 0. Comment on these
+results. (You can perform regression without an intercept using
+the keywords argument intercept=False to ModelSpec().)
+
+3.7 Exercises
+
+131
+
+(b) Now perform a simple linear regression of x onto y without an
+intercept, and report the coefficient estimate, its standard error,
+and the corresponding t-statistic and p-values associated with
+the null hypothesis H0 : β = 0. Comment on these results.
+(c) What is the relationship between the results obtained in (a) and
+(b)?
+(d) For the regression of Y onto X without an intercept, the tstatistic for H0 : β = 0 takes the form β̂/SE(β̂), where β̂ is
+given by (3.38), and where
+@)
+n
+2
+i − xi β̂)
+i=1 (y)
+SE(β̂) =
+.
+n
+2
+(n − 1) i! =1 xi!
+
+(These formulas are slightly different from those given in Sections 3.1.1 and 3.1.2, since here we are performing regression
+without an intercept.) Show algebraically, and confirm numerically in R, that the t-statistic can be written as
+√
+)n
+( n − 1) i=1 xi yi
+5 )n
+.
+)n
+)n
+( i=1 x2i )( i! =1 yi2! ) − ( i! =1 xi! yi! )2
+
+(e) Using the results from (d), argue that the t-statistic for the regression of y onto x is the same as the t-statistic for the regression
+of x onto y.
+
+(f) In R, show that when regression is performed with an intercept,
+the t-statistic for H0 : β1 = 0 is the same for the regression of y
+onto x as it is for the regression of x onto y.
+12. This problem involves simple linear regression without an intercept.
+(a) Recall that the coefficient estimate β̂ for the linear regression of
+Y onto X without an intercept is given by (3.38). Under what
+circumstance is the coefficient estimate for the regression of X
+onto Y the same as the coefficient estimate for the regression of
+Y onto X?
+(b) Generate an example in Python with n = 100 observations in
+which the coefficient estimate for the regression of X onto Y
+is different from the coefficient estimate for the regression of Y
+onto X.
+(c) Generate an example in Python with n = 100 observations in
+which the coefficient estimate for the regression of X onto Y is
+the same as the coefficient estimate for the regression of Y onto
+X.
+13. In this exercise you will create some simulated data and will fit simple
+linear regression models to it. Make sure to use the default random
+number generator with seed set to 1 prior to starting part (a) to
+ensure consistent results.
+
+132
+
+3. Linear Regression
+
+(a) Using the normal() method of your random number generator,
+create a vector, x, containing 100 observations drawn from a
+N (0, 1) distribution. This represents a feature, X.
+(b) Using the normal() method, create a vector, eps, containing 100
+observations drawn from a N (0, 0.25) distribution—a normal
+distribution with mean zero and variance 0.25.
+(c) Using x and eps, generate a vector y according to the model
+Y = −1 + 0.5X + ".
+
+(3.39)
+
+What is the length of the vector y? What are the values of β0
+and β1 in this linear model?
+(d) Create a scatterplot displaying the relationship between x and
+y. Comment on what you observe.
+(e) Fit a least squares linear model to predict y using x. Comment
+on the model obtained. How do β̂0 and β̂1 compare to β0 and
+β1 ?
+(f) Display the least squares line on the scatterplot obtained in (d).
+Draw the population regression line on the plot, in a different
+color. Use the legend() method of the axes to create an appropriate legend.
+(g) Now fit a polynomial regression model that predicts y using x
+and x2 . Is there evidence that the quadratic term improves the
+model fit? Explain your answer.
+(h) Repeat (a)–(f) after modifying the data generation process in
+such a way that there is less noise in the data. The model (3.39)
+should remain the same. You can do this by decreasing the variance of the normal distribution used to generate the error term
+" in (b). Describe your results.
+(i) Repeat (a)–(f) after modifying the data generation process in
+such a way that there is more noise in the data. The model
+(3.39) should remain the same. You can do this by increasing
+the variance of the normal distribution used to generate the
+error term " in (b). Describe your results.
+(j) What are the confidence intervals for β0 and β1 based on the
+original data set, the noisier data set, and the less noisy data
+set? Comment on your results.
+14. This problem focuses on the collinearity problem.
+(a) Perform the following commands in Python:
+rng = np.random.default_rng (10)
+x1 = rng.uniform (0, 1, size =100)
+x2 = 0.5 * x1 + rng.normal(size =100) / 10
+y = 2 + 2 * x1 + 0.3 * x2 + rng.normal(size =100)
+
+The last line corresponds to creating a linear model in which y is
+a function of x1 and x2. Write out the form of the linear model.
+What are the regression coefficients?
+
+3.7 Exercises
+
+133
+
+(b) What is the correlation between x1 and x2? Create a scatterplot
+displaying the relationship between the variables.
+(c) Using this data, fit a least squares regression to predict y using
+x1 and x2. Describe the results obtained. What are β̂0 , β̂1 , and
+β̂2 ? How do these relate to the true β0 , β1 , and β2 ? Can you
+reject the null hypothesis H0 : β1 = 0? How about the null
+hypothesis H0 : β2 = 0?
+(d) Now fit a least squares regression to predict y using only x1.
+Comment on your results. Can you reject the null hypothesis
+H0 : β1 = 0?
+(e) Now fit a least squares regression to predict y using only x2.
+Comment on your results. Can you reject the null hypothesis
+H0 : β1 = 0?
+(f) Do the results obtained in (c)–(e) contradict each other? Explain
+your answer.
+(g) Suppose we obtain one additional observation, which was unfortunately mismeasured. We use the function np.concatenate() to np.concaadd this additional observation to each of x1, x2 and y.
+tenate()
+x1 = np.concatenate ([x1 , [0.1]])
+x2 = 

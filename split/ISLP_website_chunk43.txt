@@ -1,0 +1,437 @@
+ated Ridge
+Choosing λ using cross-validation provides a single regression estimator,
+similar to fitting a linear regression model as we saw in Chapter 3. It is
+therefore reasonable to estimate what its test error is. We run into a problem here in that cross-validation will have touched all of its data in choosing
+λ, hence we have no further data to estimate test error. A compromise is
+to do an initial split of the data into two disjoint sets: a training set and a
+test set. We then fit a cross-validation tuned ridge regression on the training set, and evaluate its performance on the test set. We might call this
+cross-validation nested within the validation set approach. A priori there
+is no reason to use half of the data for each of the two sets in validation.
+Below, we use 75% for training and 25% for test, with the estimator being
+ridge regression tuned using 5-fold cross-validation. This can be achieved
+in code as follows:
+
+6.5 Lab: Linear Models and Regularization Methods
+
+279
+
+In [41]: outer_valid = skm.ShuffleSplit(n_splits =1,
+test_size =0.25 ,
+random_state =1)
+inner_cv = skm.KFold(n_splits =5,
+shuffle=True ,
+random_state =2)
+ridgeCV = skl.ElasticNetCV(alphas=lambdas ,
+l1_ratio =0,
+cv=inner_cv)
+pipeCV = Pipeline(steps =[('scaler ', scaler),
+('ridge ', ridgeCV)]);
+In [42]: results = skm.cross_validate(pipeCV ,
+X,
+Y,
+cv=outer_valid ,
+scoring='neg_mean_squared_error ')
+-results['test_score ']
+Out[42]: array ([132393.84])
+
+The Lasso
+We saw that ridge regression with a wise choice of λ can outperform least
+squares as well as the null model on the Hitters data set. We now ask
+whether the lasso can yield either a more accurate or a more interpretable
+model than ridge regression. In order to fit a lasso model, we once again
+use the ElasticNetCV() function; however, this time we use the argument
+l1_ratio=1. Other than that change, we proceed just as we did in fitting a
+ridge model.
+In [43]: lassoCV = skl.ElasticNetCV(n_alphas =100,
+l1_ratio =1,
+cv=kfold)
+pipeCV = Pipeline(steps =[('scaler ', scaler),
+('lasso ', lassoCV)])
+pipeCV.fit(X, Y)
+tuned_lasso = pipeCV.named_steps['lasso ']
+tuned_lasso.alpha_
+Out[43]: 3.147
+In [44]: lambdas , soln_array = skl.Lasso.path(Xs ,
+Y,
+l1_ratio =1,
+n_alphas =100) [:2]
+soln_path = pd.DataFrame(soln_array.T,
+columns=D.columns ,
+index=-np.log(lambdas))
+
+We can see from the coefficient plot of the standardized coefficients that
+depending on the choice of tuning parameter, some of the coefficients will
+be exactly equal to zero.
+
+280
+
+6. Linear Model Selection and Regularization
+
+In [45]: path_fig , ax = subplots(figsize =(8 ,8))
+soln_path.plot(ax=ax , legend=False)
+ax.legend(loc='upper left ')
+ax.set_xlabel('$-\log(\ lambda)$', fontsize =20)
+ax.set_ylabel('Standardized coefficiients ', fontsize =20);
+
+The smallest cross-validated error is lower than the test set MSE of the null
+model and of least squares, and very similar to the test MSE of 115526.71
+of ridge regression (page 278) with λ chosen by cross-validation.
+In [46]: np.min(tuned_lasso.mse_path_.mean (1))
+Out[46]: 114690.73
+
+Let’s again produce a plot of the cross-validation error.
+In [47]: lassoCV_fig , ax = subplots(figsize =(8 ,8))
+ax.errorbar(-np.log(tuned_lasso.alphas_),
+tuned_lasso.mse_path_.mean (1),
+yerr=tuned_lasso.mse_path_.std (1) / np.sqrt(K))
+ax.axvline(-np.log(tuned_lasso.alpha_), c='k', ls='--')
+ax.set_ylim ([50000 ,250000])
+ax.set_xlabel('$-\log(\ lambda)$', fontsize =20)
+ax.set_ylabel('Cross -validated MSE', fontsize =20);
+
+However, the lasso has a substantial advantage over ridge regression in
+that the resulting coefficient estimates are sparse. Here we see that 6 of the
+19 coefficient estimates are exactly zero. So the lasso model with λ chosen
+by cross-validation contains only 13 variables.
+In [48]: tuned_lasso.coef_
+Out[48]: array ([ -210.01008773 ,
+0.
+,
+0.
+,
+-126.29986768 ,
+21.62698014 ,
+
+243.4550306 ,
+97.69397357 ,
+39.62298193 ,
+15.70262427 ,
+-12.04423675 ,
+
+0.
+,
+0.
+,
+-41.52283116 ,
+-0.
+,
+205.75273856 , 124.55456561 ,
+-59.50157967 ,
+75.24590036 ,
+-0.
+])
+
+As in ridge regression, we could evaluate the test error of cross-validated
+lasso by first splitting into test and training sets and internally running
+cross-validation on the training set. We leave this as an exercise.
+
+6.5.3 PCR and PLS Regression
+Principal Components Regression
+Principal components regression (PCR) can be performed using PCA() from
+PCA()
+the sklearn.decomposition module. We now apply PCR to the Hitters
+data, in order to predict Salary. Again, ensure that the missing values
+have been removed from the data, as described in Section 6.5.1.
+We use LinearRegression() to fit the regression model here. Note that Linear
+it fits an intercept by default, unlike the OLS() function seen earlier in Regression()
+Section 6.5.1.
+
+6.5 Lab: Linear Models and Regularization Methods
+
+281
+
+In [49]: pca = PCA(n_components =2)
+linreg = skl.LinearRegression ()
+pipe = Pipeline ([('pca', pca),
+('linreg ', linreg)])
+pipe.fit(X, Y)
+pipe.named_steps['linreg ']. coef_
+Out[49]: array ([0.09846131 , 0.4758765 ])
+
+When performing PCA, the results vary depending on whether the data
+has been standardized or not. As in the earlier examples, this can be accomplished by including an additional step in the pipeline.
+In [50]: pipe = Pipeline ([('scaler ', scaler),
+('pca', pca),
+('linreg ', linreg)])
+pipe.fit(X, Y)
+pipe.named_steps['linreg ']. coef_
+Out[50]: array ([106.36859204 , -21.60350456])
+
+We can of course use CV to choose the number of components, by
+using skm.GridSearchCV, in this case fixing the parameters to vary the
+n_components.
+In [51]: param_grid = {'pca__n_components ': range (1, 20)}
+grid = skm.GridSearchCV(pipe ,
+param_grid ,
+cv=kfold ,
+scoring='neg_mean_squared_error ')
+grid.fit(X, Y)
+
+Let’s plot the results as we have for other methods.
+In [52]: pcr_fig , ax = subplots(figsize =(8 ,8))
+n_comp = param_grid['pca__n_components ']
+ax.errorbar(n_comp ,
+-grid.cv_results_['mean_test_score '],
+grid.cv_results_['std_test_score '] / np.sqrt(K))
+ax.set_ylabel('Cross -validated MSE', fontsize =20)
+ax.set_xlabel('# principal components ', fontsize =20)
+ax.set_xticks(n_comp [::2])
+ax.set_ylim ([50000 ,250000]);
+
+We see that the smallest cross-validation error occurs when 17 components are used. However, from the plot we also see that the cross-validation
+error is roughly the same when only one component is included in the
+model. This suggests that a model that uses just a small number of components might suffice.
+The CV score is provided for each possible number of components from
+1 to 19 inclusive. The PCA() method complains if we try to fit an intercept
+only with n_components=0 so we also compute the MSE for just the null
+model with these splits.
+In [53]: Xn = np.zeros ((X.shape [0], 1))
+cv_null = skm.cross_validate(linreg ,
+
+282
+
+6. Linear Model Selection and Regularization
+
+-cv_null['test_score ']. mean ()
+
+Xn ,
+Y,
+cv=kfold ,
+scoring='neg_mean_squared_error ')
+
+Out[53]: 204139.31
+
+The explained_variance_ratio_ attribute of our PCA object provides the
+percentage of variance explained in the predictors and in the response using
+different numbers of components. This concept is discussed in greater detail
+in Section 12.2.
+In [54]: pipe.named_steps['pca']. explained_variance_ratio_
+Out[54]: array ([0.3831424 , 0.21841076])
+
+Briefly, we can think of this as the amount of information about the predictors that is captured using M principal components. For example, setting
+M = 1 only captures 38.31% of the variance, while M = 2 captures an additional 21.84%, for a total of 60.15% of the variance. By M = 6 it increases
+to 88.63%. Beyond this the increments continue to diminish, until we use
+all M = p = 19 components, which captures all 100% of the variance.
+Partial Least Squares
+Partial least squares (PLS) is implemented in the PLSRegression() function. PLS
+In [55]: pls = PLSRegression(n_components =2,
+scale=True)
+pls.fit(X, Y)
+
+As was the case in PCR, we will want to use CV to choose the number
+of components.
+In [56]: param_grid = {'n_components ':range(1, 20)}
+grid = skm.GridSearchCV(pls ,
+param_grid ,
+cv=kfold ,
+scoring='neg_mean_squared_error ')
+grid.fit(X, Y)
+
+As for our other methods, we plot the MSE.
+In [57]: pls_fig , ax = subplots(figsize =(8 ,8))
+n_comp = param_grid['n_components ']
+ax.errorbar(n_comp ,
+-grid.cv_results_['mean_test_score '],
+grid.cv_results_['std_test_score '] / np.sqrt(K))
+ax.set_ylabel('Cross -validated MSE', fontsize =20)
+ax.set_xlabel('# principal components ', fontsize =20)
+ax.set_xticks(n_comp [::2])
+ax.set_ylim ([50000 ,250000]);
+
+CV error is minimized at 12, though there is little noticable difference
+between this point and a much lower number like 2 or 3 components.
+
+Regression()
+
+6.6 Exercises
+
+6.6
+
+283
+
+Exercises
+
+Conceptual
+1. We perform best subset, forward stepwise, and backward stepwise
+selection on a single data set. For each approach, we obtain p + 1
+models, containing 0, 1, 2, . . . , p predictors. Explain your answers:
+(a) Which of the three models with k predictors has the smallest
+training RSS?
+(b) Which of the three models with k predictors has the smallest
+test RSS?
+(c) True or False:
+i. The predictors in the k-variable model identified by forward
+stepwise are a subset of the predictors in the (k +1)-variable
+model identified by forward stepwise selection.
+ii. The predictors in the k-variable model identified by backward stepwise are a subset of the predictors in the (k + 1)variable model identified by backward stepwise selection.
+iii. The predictors in the k-variable model identified by backward stepwise are a subset of the predictors in the (k + 1)variable model identified by forward stepwise selection.
+iv. The predictors in the k-variable model identified by forward
+stepwise are a subset of the predictors in the (k +1)-variable
+model identified by backward stepwise selection.
+v. The predictors in the k-variable model identified by best
+subset are a subset of the predictors in the (k + 1)-variable
+model identified by best subset selection.
+2. For parts (a) through (c), indicate which of i. through iv. is correct.
+Justify your answer.
+(a) The lasso, relative to least squares, is:
+i. More flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in
+variance.
+ii. More flexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease
+in bias.
+iii. Less flexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in
+variance.
+iv. Less flexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease
+in bias.
+(b) Repeat (a) for ridge regression relative to least squares.
+(c) Repeat (a) for non-linear methods relative to least squares.
+
+284
+
+6. Linear Model Selection and Regularization
+
+3. Suppose we estimate the regression coefficients in a linear regression
+model by minimizing
+n
+0
+i=1
+
+
+
+y i − β 0 −
+
+p
+0
+j=1
+
+2
+
+βj xij 
+
+subject to
+
+p
+0
+j=1
+
+|βj | ≤ s
+
+for a particular value of s. For parts (a) through (e), indicate which
+of i. through v. is correct. Justify your answer.
+(a) As we increase s from 0, the training RSS will:
+i. Increase initially, and then eventually start decreasing in an
+inverted U shape.
+ii. Decrease initially, and then eventually start increasing in a
+U shape.
+iii. Steadily increase.
+iv. Steadily decrease.
+v. Remain constant.
+(b) Repeat (a) for test RSS.
+(c) Repeat (a) for variance.
+(d) Repeat (a) for (squared) bias.
+(e) Repeat (a) for the irreducible error.
+4. Suppose we estimate the regression coefficients in a linear regression
+model by minimizing
+n
+0
+i=1
+
+
+
+yi − β0 −
+
+p
+0
+j=1
+
+2
+
+βj xij  + λ
+
+p
+0
+
+βj2
+
+j=1
+
+for a particular value of λ. For parts (a) through (e), indicate which
+of i. through v. is correct. Justify your answer.
+(a) As we increase λ from 0, the training RSS will:
+i. Increase initially, and then eventually start decreasing in an
+inverted U shape.
+ii. Decrease initially, and then eventually start increasing in a
+U shape.
+iii. Steadily increase.
+iv. Steadily decrease.
+v. Remain constant.
+(b) Repeat (a) for test RSS.
+(c) Repeat (a) for variance.
+(d) Repeat (a) for (squared) bias.
+(e) Repeat (a) for the irreducible error.
+
+6.6 Exercises
+
+285
+
+5. It is well-known that ridge regression tends to give similar coefficient
+values to correlated variables, whereas the lasso may give quite different coefficient values to correlated variables. We will now explore
+this property in a very simple setting.
+Suppose that n = 2, p = 2, x11 = x12 , x21 = x22 . Furthermore,
+suppose that y1 + y2 = 0 and x11 + x21 = 0 and x12 + x22 = 0, so that
+the estimate for the intercept in a least squares, ridge regression, or
+lasso model is zero: β̂0 = 0.
+(a) Write out the ridge regression optimization problem in this setting.
+(b) Argue that in this setting, the ridge coefficient estimates satisfy
+β̂1 = β̂2 .
+(c) Write out the lasso optimization problem in this setting.
+(d) Argue that in this setting, the lasso coefficients β̂1 and β̂2 are
+not unique—in other words, there are many possible solutions
+to the optimization problem in (c). Describe these solutions.
+6. We will now explore (6.12) and (6.13) further.
+(a) Consider (6.12) with p = 1. For some choice of y1 and λ > 0,
+plot (6.12) as a function of β1 . Your plot should confirm that
+(6.12) is solved by (6.14).
+(b) Consider (6.13) with p = 1. For some choice of y1 and λ > 0,
+plot (6.13) as a function of β1 . Your plot should confirm that
+(6.13) is solved by (6.15).
+7. We will now derive the Bayesian connection to the lasso and ridge
+regression discussed in Section 6.2.2.
+)p
+(a) Suppose that yi = β0 + j=1 xij βj +"i where "1 , . . . , "n are independent and identically distributed from a N (0, σ 2 ) distribution.
+Write out the likelihood for the data.
+(b) Assume the following prior for β: β1 , . . . , βp are independent
+and identically distributed according to a double-exponential
+distribution with mean 0 and common scale parameter b: i.e.
+1
+p(β) = 2b
+exp(−|β|/b). Write out the posterior for β in this
+setting.
+(c) Argue that the lasso estimate is the mode for β under this posterior distribution.
+(d) Now assume the following prior for β: β1 , . . . , βp are independent
+and identically distributed according to a normal distribution
+with mean zero and variance c. Write out the posterior for β in
+this setting.
+(e) Argue that the ridge regression estimate is both the mode and
+the mean for β under this posterior distribution.
+
+286
+
+6. Linear Model Selection and Regularization
+
+Applied
+8. In this exercise, we will generate simulated data, and will then use
+this data to perform forward and backward stepwise selection.
+(a) Create a random number generator and use its normal() method
+to generate a predictor X of length n = 100, as well as a noise
+vector " of length n = 100.
+(b) Generate a response vector Y of length n = 100 according to
+the model
+Y = β0 + β1 X + β2 X 2 + β3 X 3 + ",
+where β0 , β1 , β2 , and β3 are constants of your choice.
+(c) Use forward stepwise selection in order to select a model containing the predictors X, X 2 , . . . , X 10 . What is the model obtained
+according to Cp ? Report the coefficients of the model obtained.
+(d) Repeat (c), using backwards stepwise selection. How does your
+answer compare to the results in (c)?
+(e) Now fit a lasso model to the simulated data, again using X, X 2 ,
+. . . , X 10 as predictors. Use cross-validation to select the optimal
+v

@@ -1,0 +1,506 @@
+lar but slightly more complex way, and
+the details are omitted here.
+
+8.2 Bagging, Random Forests, Boosting, and Bayesian Additive Regression Trees
+
+349
+
+Algorithm 8.2 Boosting for Regression Trees
+1. Set fˆ(x) = 0 and ri = yi for all i in the training set.
+2. For b = 1, 2, . . . , B, repeat:
+(a) Fit a tree fˆb with d splits (d + 1 terminal nodes) to the training
+data (X, r).
+(b) Update fˆ by adding in a shrunken version of the new tree:
+fˆ(x) ← fˆ(x) + λfˆb (x).
+
+(8.10)
+
+(c) Update the residuals,
+ri ← ri − λfˆb (xi ).
+
+(8.11)
+
+3. Output the boosted model,
+fˆ(x) =
+
+B
+0
+
+λfˆb (x).
+
+(8.12)
+
+b=1
+
+Boosting has three tuning parameters:
+1. The number of trees B. Unlike bagging and random forests, boosting
+can overfit if B is too large, although this overfitting tends to occur
+slowly if at all. We use cross-validation to select B.
+2. The shrinkage parameter λ, a small positive number. This controls
+the rate at which boosting learns. Typical values are 0.01 or 0.001, and
+the right choice can depend on the problem. Very small λ can require
+using a very large value of B in order to achieve good performance.
+3. The number d of splits in each tree, which controls the complexity
+of the boosted ensemble. Often d = 1 works well, in which case each
+tree is a stump, consisting of a single split. In this case, the boosted stump
+ensemble is fitting an additive model, since each term involves only a
+single variable. More generally d is the interaction depth, and controls
+interaction
+the interaction order of the boosted model, since d splits can involve depth
+at most d variables.
+In Figure 8.11, we applied boosting to the 15-class cancer gene expression
+data set, in order to develop a classifier that can distinguish the normal
+class from the 14 cancer classes. We display the test error as a function of
+the total number of trees and the interaction depth d. We see that simple
+stumps with an interaction depth of one perform well if enough of them
+are included. This model outperforms the depth-two model, and both outperform a random forest. This highlights one difference between boosting
+and random forests: in boosting, because the growth of a particular tree
+takes into account the other trees that have already been grown, smaller
+
+8. Tree-Based Methods
+
+0.10
+
+0.15
+
+0.20
+
+Boosting: depth=1
+Boosting: depth=2
+RandomForest: m= p
+
+0.05
+
+Test Classification Error
+
+0.25
+
+350
+
+0
+
+1000
+
+2000
+
+3000
+
+4000
+
+5000
+
+Number of Trees
+
+FIGURE 8.11. Results from performing boosting and random forests on the
+15-class gene expression data set in order to predict cancer versus normal. The test
+error is displayed as a function of the number of trees. For the two boosted models,
+λ = 0.01. Depth-1 trees slightly outperform depth-2 trees, and both outperform
+the random forest, although the standard errors are around 0.02, making none of
+these differences significant. The test error rate for a single tree is 24 %.
+
+trees are typically sufficient. Using smaller trees can aid in interpretability
+as well; for instance, using stumps leads to an additive model.
+
+8.2.4
+
+Bayesian Additive Regression Trees
+
+Finally, we discuss Bayesian additive regression trees (BART), another enBayesian
+semble method that uses decision trees as its building blocks. For simplicity, additive
+we present BART for regression (as opposed to classification).
+regression
+Recall that bagging and random forests make predictions from an aver- trees
+age of regression trees, each of which is built using a random sample of data
+and/or predictors. Each tree is built separately from the others. By contrast, boosting uses a weighted sum of trees, each of which is constructed
+by fitting a tree to the residual of the current fit. Thus, each new tree attempts to capture signal that is not yet accounted for by the current set
+of trees. BART is related to both approaches: each tree is constructed in
+a random manner as in bagging and random forests, and each tree tries to
+capture signal not yet accounted for by the current model, as in boosting.
+The main novelty in BART is the way in which new trees are generated.
+Before we introduce the BART algorithm, we define some notation. We
+let K denote the number of regression trees, and B the number of iterations
+for which the BART algorithm will be run. The notation fˆkb (x) represents
+the prediction at x for the kth regression tree used in the bth iteration. At
+the end of each
+)Kiteration, the K trees from that iteration will be summed,
+i.e. fˆb (x) = k=1 fˆkb (x) for b = 1, . . . , B.
+In the first iteration of the BART algorithm,
+all trees are initialized to
+)n
+1
+have a single root node, with fˆk1 (x) = nK
+y
+,
+i=1 i the mean of the response
+
+8.2 Bagging, Random Forests, Boosting, and Bayesian Additive Regression Trees
+
+(a): fˆkb−1 (X)
+
+(b): Possibility #1 for fˆkb (X)
+
+X < 169.17
+|
+
+X < 169.17
+|
+
+X < 114.305
+X < 140.35
+
+X < 114.305
+
+0.4079
+
+0.4221
+
+X < 140.35
+−0.5110
+
+−0.5031
+0.2667
+
+0.2693
+
+−0.2470
+
+(c): Possibility #2 for fˆkb (X)
+
+−0.2649
+
+(d): Possibility #3 for fˆkb (X)
+
+X < 169.17
+|
+
+X < 169.17
+|
+X < 114.305
+X < 106.755
+
+−0.1218
+
+0.4079
+
+−0.05089
+
+−1.03100
+
+X < 140.35
+
+0.26670
+
+0.40790
+
+−0.24700
+
+FIGURE 8.12. A schematic of perturbed trees from the BART algorithm. (a):
+The kth tree at the (b − 1)st iteration, fˆkb−1 (X), is displayed. Panels (b)–(d)
+display three of many possibilities for fˆkb (X), given the form of fˆkb−1 (X). (b): One
+possibility is that fˆkb (X) has the same structure as fˆkb−1 (X), but with different
+predictions at the terminal nodes. (c): Another possibility is that fˆkb (X) results
+from pruning fˆkb−1 (X). (d): Alternatively, fˆkb (X) may have more terminal nodes
+than fˆkb−1 (X).
+
+)K
+values
+divided by the total number of trees. Thus, fˆ1 (x) = k=1 fˆk1 (x) =
+)
+n
+1
+i=1 yi .
+n
+In subsequent iterations, BART updates each of the K trees, one at a
+time. In the bth iteration, to update the kth tree, we subtract from each
+response value the predictions from all but the kth tree, in order to obtain
+a partial residual
+0
+0
+ri = y i −
+fˆkb! (xi ) −
+fˆkb−1
+(xi )
+!
+k! <k
+
+k! >k
+
+for the ith observation, i = 1, . . . , n. Rather than fitting a fresh tree to this
+partial residual, BART randomly chooses a perturbation to the tree from
+the previous iteration (fˆkb−1 ) from a set of possible perturbations, favoring
+ones that improve the fit to the partial residual. There are two components
+to this perturbation:
+1. We may change the structure of the tree by adding or pruning branches.
+2. We may change the prediction in each terminal node of the tree.
+Figure 8.12 illustrates examples of possible perturbations to a tree.
+The output of BART is a collection of prediction models,
+fˆb (x) =
+
+K
+0
+
+k=1
+
+fˆkb (x), for b = 1, 2, . . . , B.
+
+351
+
+352
+
+8. Tree-Based Methods
+
+Algorithm 8.3 Bayesian Additive Regression Trees
+)n
+1
+1
+1. Let fˆ11 (x) = fˆ21 (x) = · · · = fˆK
+(x) = nK
+i=1 yi .
+)K
+)n
+2. Compute fˆ1 (x) = k=1 fˆk1 (x) = n1 i=1 yi .
+3. For b = 2, . . . , B:
+
+(a) For k = 1, 2, . . . , K:
+i. For i = 1, . . . , n, compute the current partial residual
+0
+0
+ri = y i −
+fˆkb! (xi ) −
+fˆkb−1
+(xi ).
+!
+k! <k
+
+k! >k
+
+ii. Fit a new tree, fˆkb (x), to ri , by randomly perturbing the
+kth tree from the previous iteration, fˆkb−1 (x). Perturbations
+that improve the fit are favored.
+)K ˆb
+(b) Compute fˆb (x) =
+f (x).
+k=1
+
+k
+
+4. Compute the mean after L burn-in samples,
+fˆ(x) =
+
+B
+0
+1
+fˆb (x).
+B−L
+b=L+1
+
+We typically throw away the first few of these prediction models, since
+models obtained in the earlier iterations — known as the burn-in period
+burn-in
+— tend not to provide very good results. We can let L denote the number of burn-in iterations; for instance, we might take L = 200. Then, to
+obtain a single prediction,
+take the average after the burn-in
+)B we simply
+1
+ˆb
+iterations, fˆ(x) = B−L
+b=L+1 f (x). However, it is also possible to compute quantities other than the average: for instance, the percentiles of
+fˆL+1 (x), . . . , fˆB (x) provide a measure of uncertainty in the final prediction. The overall BART procedure is summarized in Algorithm 8.3.
+A key element of the BART approach is that in Step 3(a)ii., we do not fit
+a fresh tree to the current partial residual: instead, we try to improve the fit
+to the current partial residual by slightly modifying the tree obtained in the
+previous iteration (see Figure 8.12). Roughly speaking, this guards against
+overfitting since it limits how “hard” we fit the data in each iteration.
+Furthermore, the individual trees are typically quite small. We limit the
+tree size in order to avoid overfitting the data, which would be more likely
+to occur if we grew very large trees.
+Figure 8.13 shows the result of applying BART to the Heart data, using
+K = 200 trees, as the number of iterations is increased to 10, 000. During
+the initial iterations, the test and training errors jump around a bit. After
+this initial burn-in period, the error rates settle down. We note that there
+is only a small difference between the training error and the test error,
+indicating that the tree perturbation process largely avoids overfitting.
+
+8.2 Bagging, Random Forests, Boosting, and Bayesian Additive Regression Trees
+
+353
+
+0.3
+0.0
+
+0.1
+
+0.2
+
+Error
+
+0.4
+
+0.5
+
+BART Training Error
+BART Test Error
+Boosting Training Error
+Boosting Test Error
+
+5
+
+10
+
+50 100
+
+500
+
+5000
+
+Number of Iterations
+
+FIGURE 8.13. BART and boosting results for the Heart data. Both training
+and test errors are displayed. After a burn-in period of 100 iterations (shown in
+gray), the error rates for BART settle down. Boosting begins to overfit after a
+few hundred iterations.
+
+The training and test errors for boosting are also displayed in Figure 8.13.
+We see that the test error for boosting approaches that of BART, but then
+begins to increase as the number of iterations increases. Furthermore, the
+training error for boosting decreases as the number of iterations increases,
+indicating that boosting has overfit the data.
+Though the details are outside of the scope of this book, it turns out
+that the BART method can be viewed as a Bayesian approach to fitting an
+ensemble of trees: each time we randomly perturb a tree in order to fit the
+residuals, we are in fact drawing a new tree from a posterior distribution.
+(Of course, this Bayesian connection is the motivation for BART’s name.)
+Furthermore, Algorithm 8.3 can be viewed as a Markov chain Monte Carlo
+Markov
+algorithm for fitting the BART model.
+chain Monte
+When we apply BART, we must select the number of trees K, the number Carlo
+of iterations B, and the number of burn-in iterations L. We typically choose
+large values for B and K, and a moderate value for L: for instance, K = 200,
+B = 1,000, and L = 100 is a reasonable choice. BART has been shown to
+have very impressive out-of-box performance — that is, it performs well
+with minimal tuning.
+
+8.2.5
+
+Summary of Tree Ensemble Methods
+
+Trees are an attractive choice of weak learner for an ensemble method
+for a number of reasons, including their flexibility and ability to handle
+
+354
+
+8. Tree-Based Methods
+
+predictors of mixed types (i.e. qualitative as well as quantitative). We have
+now seen four approaches for fitting an ensemble of trees: bagging, random
+forests, boosting, and BART.
+• In bagging, the trees are grown independently on random samples of
+the observations. Consequently, the trees tend to be quite similar to
+each other. Thus, bagging can get caught in local optima and can fail
+to thoroughly explore the model space.
+• In random forests, the trees are once again grown independently on
+random samples of the observations. However, each split on each tree
+is performed using a random subset of the features, thereby decorrelating the trees, and leading to a more thorough exploration of model
+space relative to bagging.
+• In boosting, we only use the original data, and do not draw any random samples. The trees are grown successively, using a “slow” learning approach: each new tree is fit to the signal that is left over from
+the earlier trees, and shrunken down before it is used.
+• In BART, we once again only make use of the original data, and we
+grow the trees successively. However, each tree is perturbed in order
+to avoid local minima and achieve a more thorough exploration of
+the model space.
+
+8.3
+
+Lab: Tree-Based Methods
+
+We import some of our usual libraries at this top level.
+In [1]: import numpy as np
+import pandas as pd
+from matplotlib.pyplot import subplots
+from statsmodels.datasets import get_rdataset
+import sklearn.model_selection as skm
+from ISLP import load_data , confusion_table
+from ISLP.models import ModelSpec as MS
+
+We also collect the new imports needed for this lab.
+In [2]: from sklearn.tree import ( DecisionTreeClassifier as DTC ,
+DecisionTreeRegressor as DTR ,
+plot_tree ,
+export_text)
+from sklearn.metrics import (accuracy_score ,
+log_loss)
+from sklearn.ensemble import \
+(RandomForestRegressor as RF ,
+GradientBoostingRegressor as GBR)
+from ISLP.bart import BART
+
+8.3 Lab: Tree-Based Methods
+
+8.3.1
+
+355
+
+Fitting Classification Trees
+
+We first use classification trees to analyze the Carseats data set. In these
+data, Sales is a continuous variable, and so we begin by recoding it as a
+binary variable. We use the where() function to create a variable, called
+where()
+High, which takes on a value of Yes if the Sales variable exceeds 8, and
+takes on a value of No otherwise.
+In [3]: Carseats = load_data('Carseats ')
+High = np.where(Carseats.Sales > 8,
+"Yes",
+"No")
+
+We now use DecisionTreeClassifier() to fit a classification tree in order DecisionTree
+to predict High using all variables but Sales. To do so, we must form a Classifier()
+model matrix as we did when fitting regression models.
+In [4]: model = MS(Carseats.columns.drop('Sales '), intercept=False)
+D = model.fit_transform(Carseats)
+feature_names = list(D.columns)
+X = np.asarray(D)
+
+We have converted D from a data frame to an array X, which is needed in
+some of the analysis below. We also need the feature_names for annotating
+our plots later.
+There are several options needed to specify the classifier, such as max_depth
+(how deep to grow the tree), min_samples_split (minimum number of observations in a node to be eligible for splitting) and criterion (whether to
+use Gini or cross-entropy as the split criterion). We also set random_state
+for reproducibility; ties in the split criterion are broken at random.
+In [5]: clf = DTC(criterion='entropy ',
+max_depth =3,
+random_state =0)
+clf.fit(X, High)
+Out[5]: DecisionTreeClassifier (criterion='entropy ', max_depth =3)
+
+In our discussion of qualitative features in Section 3.3, we noted that for
+a linear regression model such a feature could be represented by including a
+matrix of dummy variables (one-hot-encoding) in the model matrix, using
+the formula notation of statsmodels. As mentioned in Section 8.1, there is
+a more natural way to handle qualitative features when building a decision
+tree, that does not require such dummy variables; each split amounts to
+partitioning the levels into two groups. However, the sklearn implementation of decision trees does not take advantage of this approach; instead it
+simply treats the one-hot-encoded levels as separate variables.
+In [6]: accuracy_score(High , clf.predict(X))
+Out[6]: 0.7275
+
+With only the default arguments, the training error rate is 21%. For classification trees, we can access the value of the deviance using log_loss(),
+
+log_loss()
+
+356
+
+8. Tree-Based Methods
+
+−2
+
+00
+m
+
+nmk log p̂mk ,
+
+k
+
+where nmk is the number of observations 

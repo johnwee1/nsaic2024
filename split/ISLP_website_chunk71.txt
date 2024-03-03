@@ -1,0 +1,495 @@
+= 1.2, which corresponds to a twosided p-value of 0.2 using the theoretical null distribution, and a p-value
+of 0.25 using the permutation null distribution with 1,000 permutations.
+Thus, we cannot reject the null hypothesis of no difference in survival curves
+between females and males.
+The log-rank test is closely related to Cox’s proportional hazards model,
+which we discuss in Section 11.5.2.
+
+11.5
+
+Regression Models With a Survival Response
+
+We now consider the task of fitting a regression model to survival data.
+As in Section 11.1, the observations are of the form (Y, δ), where Y =
+min(T, C) is the (possibly censored) survival time, and δ is an indicator
+variable that equals 1 if T ≤ C. Furthermore, X ∈ Rp is a vector of p
+features. We wish to predict the true survival time T .
+Since the observed quantity Y is positive and may have a long right
+tail, we might be tempted to fit a linear regression of log(Y ) on X. But
+as the reader will surely guess, censoring again creates a problem since
+we are actually interested in predicting T and not Y . To overcome this
+difficulty, we instead make use of a sequential construction, similar to the
+constructions of the Kaplan–Meier survival curve in Section 11.3 and the
+log-rank test in Section 11.4.
+
+11.5.1
+
+The Hazard Function
+
+The hazard function or hazard rate — also known as the force of mortality
+hazard
+— is formally defined as
+function
+h(t) = lim
+
+∆t→0
+
+Pr(t < T ≤ t + ∆t|T > t)
+,
+∆t
+
+(11.9)
+
+6 Alternatively, we can estimate the p-value via permutations, using ideas that will
+be presented in Section 13.5. The permutation distribution is obtained by randomly
+swapping the labels for the observations in the two groups.
+
+11.5 Regression Models With a Survival Response
+
+477
+
+where T is the (unobserved) survival time. It is the death rate in the instant
+after time t, given survival past that time.7 In (11.9), we take the limit as
+∆t approaches zero, so we can think of ∆t as being an extremely tiny
+number. Thus, more informally, (11.9) implies that
+Pr(t < T ≤ t + ∆t|T > t)
+∆t
+for some arbitrarily small ∆t.
+Why should we care about the hazard function? First of all, it is closely
+related to the survival curve (11.2), as we will see next. Second, it turns out
+that a key approach for modeling survival data as a function of covariates
+relies heavily on the hazard function; we will introduce this approach —
+Cox’s proportional hazards model — in Section 11.5.2.
+We now consider the hazard function h(t) in a bit more detail. Recall
+that for two events A and B, the probability of A given B can be expressed
+as Pr(A | B) = Pr(A ∩ B)/ Pr(B), i.e. the probability that A and B both
+occur divided by the probability that B occurs. Furthermore, recall from
+(11.2) that S(t) = Pr(T > t). Thus,
+h(t) ≈
+
+h(t) =
+=
+=
+
+Pr ((t < T ≤ t + ∆t) ∩ (T > t)) /∆t
+Pr(T > t)
+Pr(t < T ≤ t + ∆t)/∆t
+lim
+∆t→0
+Pr(T > t)
+f (t)
+,
+S(t)
+lim
+
+∆t→0
+
+(11.10)
+
+where
+
+Pr(t < T ≤ t + ∆t)
+(11.11)
+∆t
+is the probability density function associated with T , i.e. it is the instantaprobability
+neous rate of death at time t. The second equality in (11.10) made use of density
+the fact that if t < T ≤ t + ∆t, then it must be the case that T > t.
+function
+Equation 11.10 implies a relationship between the hazard function h(t),
+the survival function S(t), and the probability density function f (t). In
+fact, these are three equivalent ways8 of describing the distribution of T .
+The likelihood associated with the ith observation is
+=
+f (yi ) if the ith observation is not censored
+Li =
+S(yi ) if the ith observation is censored
+f (t) = lim
+
+∆t→0
+
+= f (yi )δi S(yi )1−δi .
+
+(11.12)
+
+The intuition behind (11.12) is as follows: if Y = yi and the ith observation
+is not censored, then the likelihood is the probability of dying in a tiny interval around time yi . If the ith observation is censored, then the likelihood
+7 Due to the ∆t in the denominator of (11.9), the hazard function is a rate of death,
+rather than a probability of death. However, higher values of h(t) directly correspond
+to a higher probability of death, just as higher values of a probability density function
+correspond to more likely outcomes for a random variable. In fact, h(t) is the probability
+density function for T conditional on T > t.
+8 See Exercise 8.
+
+478
+
+11. Survival Analysis and Censored Data
+
+is the probability of surviving at least until time yi . Assuming that the n
+observations are independent, the likelihood for the data takes the form
+L=
+
+n
+E
+
+f (yi )δi S(yi )1−δi =
+
+i=1
+
+n
+E
+
+h(yi )δi S(yi ),
+
+(11.13)
+
+i=1
+
+where the second equality follows from (11.10).
+We now consider the task of modeling the survival times. If we assume exponential survival, i.e. that the probability density function of the survival
+time T takes the form f (t) = λ exp(−λt), then estimating the parameter λ
+by maximizing the likelihood in (11.13) is straightforward.9 Alternatively,
+we could assume that the survival times are drawn from a more flexible
+family of distributions, such as the Gamma or Weibull family. Another
+possibility is to model the survival times non-parametrically, as was done
+in Section 11.3 using the Kaplan–Meier estimator.
+However, what we would really like to do is model the survival time as
+a function of the covariates. To do this, it is convenient to work directly
+with the hazard function, instead of the probability density function.10
+One possible approach is to assume
+form
+1 a functional
+2 for the hazard func)p
+tion h(t|xi ), such as h(t|xi ) = exp β0 + j=1 βj xij , where the exponent
+function guarantees that the hazard function is non-negative. Note that
+the exponential hazard function is special, in that it does not vary with
+time.11 Given h(t|xi ), we could calculate S(t|xi ). Plugging these equations
+into (11.13), we could then maximize the likelihood in order to estimate the
+parameter β = (β0 , β1 , . . . , βp )T . However, this approach is quite restrictive, in the sense that it requires us to make a very stringent assumption
+on the form of the hazard function h(t|xi ). In the next section, we will
+consider a much more flexible approach.
+
+11.5.2
+
+Proportional Hazards
+
+The Proportional Hazards Assumption
+The proportional hazards assumption states that
+
+
+p
+0
+h(t|xi ) = h0 (t) exp 
+xij βj  ,
+
+(11.14)
+
+proportional
+hazards
+assumption
+
+j=1
+
+where h0 (t) ≥ 0 is an unspecified function, known as the baseline hazard.
+baseline
+It is the hazard function for an individual with features xi1 = · · · = xip = hazard
+0. The name “proportional hazards” arises from the fact that the hazard
+function for an individual with feature vector xi is some unknown function
+9 See Exercise 9.
+
+10 Given the close relationship between the hazard function h(t) and the density func-
+
+tion f (t) explored in Exercise 8, posing an assumption about the form of the hazard
+function is closely related to posing an assumption about the form of the density function, as was done in the previous paragraph.
+11 The notation h(t|x ) indicates that we are now considering the hazard function for
+i
+the ith observation conditional on the values of the covariates, xi .
+
+Survival Probability
+
+0
+−1
+−2
+
+Log Hazard
+
+−3
+
+0.5
+
+1.0
+
+1.5
+
+2.0
+
+0.5
+
+1.5
+
+2.0
+
+Survival Probability
+1.5
+
+1.5
+
+2.0
+
+0.0 0.2 0.4 0.6 0.8 1.0
+
+1
+0
+
+Log Hazard
+
+−2
+−4
+
+1.0
+
+1.0
+Time
+
+2
+
+Time
+
+0.5
+
+479
+
+0.0 0.2 0.4 0.6 0.8 1.0
+
+11.5 Regression Models With a Survival Response
+
+2.0
+
+0.5
+
+Time
+
+1.0
+Time
+
+FIGURE 11.4. Top: In a simple example with p = 1 and a binary covariate
+xi ∈ {0, 1}, the log hazard and the survival function under the model (11.14)
+are shown (green for xi = 0 and black for xi = 1). Because of the proportional
+hazards assumption (11.14), the log hazard functions differ by a constant, and the
+survival functions do not cross. Bottom: Again we have a single binary covariate
+xi ∈ {0, 1}. However, the proportional hazards assumption (11.14) does not hold.
+The log hazard functions cross, as do the survival functions.
+
+h0 (t) times the factor exp
+
+1)
+
+p
+j=1 xij βj
+
+2
+
+. The quantity exp
+
+1)
+
+p
+j=1 xij βj
+T
+
+2
+
+is called the relative risk for the feature vector xi = (xi1 , . . . , xip ) , relative
+to that for the feature vector xi = (0, . . . , 0)T .
+What does it mean that the baseline hazard function h0 (t) in (11.14) is
+unspecified? Basically, we make no assumptions about its functional form.
+We allow the instantaneous probability of death at time t, given that one
+has survived at least until time t, to take any form. This means that the
+hazard function is very flexible and can model a wide range of relationships
+between the covariates and survival time. Our only assumption is that a
+one-unit increase in xij corresponds to an increase in h(t|xi ) by a factor of
+exp(βj ).
+An illustration of the proportional hazards assumption (11.14) is given in
+Figure 11.4, in a simple setting with a single binary covariate xi ∈ {0, 1} (so
+that p = 1). In the top row, the proportional hazards assumption (11.14)
+holds. Thus, the hazard functions of the two groups are a constant multiple
+of each other, so that on the log scale, the gap between them is constant.
+Furthermore, the survival curves never cross, and in fact the gap between
+the survival curves tends to (initially) increase over time. By contrast, in
+the bottom row, (11.14) does not hold. We see that the log hazard functions
+for the two groups cross, as do the survival curves.
+
+480
+
+11. Survival Analysis and Censored Data
+
+Cox’s Proportional Hazards Model
+Because the form of h0 (t) in the proportional hazards assumption (11.14)
+is unknown, we cannot simply plug h(t|xi ) into the likelihood (11.13) and
+then estimate β = (β1 , . . . , βp )T by maximum likelihood. The magic of
+Cox’s proportional hazards model lies in the fact that it is in fact possible
+Cox’s
+to estimate β without having to specify the form of h0 (t).
+proportional
+To accomplish this, we make use of the same “sequential in time” logic hazards
+that we used to derive the Kaplan–Meier survival curve and the log-rank model
+test. For simplicity, assume that there are no ties among the failure, or
+death, times: i.e. each failure occurs at a distinct time. Assume that δi =
+1, i.e. the ith observation is uncensored, and thus yi is its failure time.
+Then the hazard
+function
+1)
+2 for the ith observation at time yi is h(yi |xi ) =
+p
+h0 (yi ) exp
+j=1 xij βj , and the total hazard at time yi for the at risk
+observations12 is
+
+0
+
+i! :yi! ≥yi
+
+
+
+p
+0
+h0 (yi ) exp 
+x i! j β j  .
+j=1
+
+Therefore, the probability that the ith observation is the one to fail at time
+yi (as opposed to one of the other observations in the risk set) is
+1)
+2
+1)
+2
+p
+p
+h0 (yi ) exp
+exp
+j=1 xij βj
+j=1 xij βj
+1)
+2=)
+1)
+2.
+)
+p
+p
+i! :yi! ≥yi h0 (yi ) exp
+j=1 xi! j βj
+i! :yi! ≥yi exp
+j=1 xi! j βj
+(11.15)
+Notice that the unspecified baseline hazard function h0 (yi ) cancels out of
+the numerator and denominator!
+The partial likelihood is simply the product of these probabilities over all
+partial
+of the uncensored observations,
+likelihood
+1)
+2
+p
+exp
+E
+j=1 xij βj
+1)
+2.
+P L(β) =
+(11.16)
+)
+p
+!
+exp
+x
+β
+!
+i:δi =1
+i :yi! ≥yi
+j=1 i j j
+
+Critically, the partial likelihood is valid regardless of the true value of h0 (t),
+making the model very flexible and robust.13
+To estimate β, we simply maximize the partial likelihood (11.16) with
+respect to β. As was the case for logistic regression in Chapter 4, no closedform solution is available, and so iterative algorithms are required.
+In addition to estimating β, we can also obtain other model outputs that
+we saw in the context of least squares regression in Chapter 3 and logistic
+regression in Chapter 4. For example, we can obtain p-values corresponding
+12 Recall that the “at risk” observations at time y are those that are still at risk of
+i
+failure, i.e. those that have not yet failed or been censored before time yi .
+13 In general, the partial likelihood is used in settings where it is difficult to compute
+the full likelihood for all of the parameters. Instead, we compute a likelihood for just the
+parameters of primary interest: in this case, β1 , . . . , βp . It can be shown that maximizing
+(11.16) provides good estimates for these parameters.
+
+11.5 Regression Models With a Survival Response
+
+481
+
+to particular null hypotheses (e.g. H0 : βj = 0), as well as confidence
+intervals associated with the coefficients.
+Connection With The Log-Rank Test
+Suppose we have just a single predictor (p = 1), which we assume to be
+binary, i.e. xi ∈ {0, 1}. In order to determine whether there is a difference
+between the survival times of the observations in the group {i : xi = 0}
+and those in the group {i : xi = 1}, we can consider taking two possible
+approaches:
+Approach #1: Fit a Cox proportional hazards model, and test the
+null hypothesis H0 : β = 0. (Since p = 1, β is a scalar.)
+Approach #2: Perform a log-rank test to compare the two groups, as
+in Section 11.4.
+Which one should we prefer?
+In fact, there is a close relationship between these two approaches. In
+particular, when taking Approach #1, there are a number of possible ways
+to test H0 . One way is known as a score test. It turns out that in the case of
+a single binary covariate, the score test for H0 : β = 0 in Cox’s proportional
+hazards model is exactly equal to the log-rank test. In other words, it does
+not matter whether we take Approach #1 or Approach #2!
+Additional Details
+The discussion of Cox’s proportional hazards model glossed over a few
+subtleties:
+• There is no intercept in (11.14) nor in the equations that follow,
+because an intercept can be absorbed into the baseline hazard h0 (t).
+• We have assumed that there are no tied failure times. In the case
+of ties, the exact form of the partial likelihood (11.16) is a bit more
+complicated, and a number of computational approximations must
+be used.
+• (11.16) is known as the partial likelihood because it is not exactly a
+likelihood. That is, it does not correspond exactly to the probability
+of the data under the assumption (11.14). However, it is a very good
+approximation.
+• We have focused only on estimation of the coefficients β = (β1 , . . . , βp )T .
+However, at times we may also wish to estimate the baseline hazard
+h0 (t), for instance so that we can estimate the survival curve S(t|x) for
+an individual with feature vector x. The details are beyond the scope
+of this book. Estimation of h0 (t) is implemented in the lifelines
+package in Python, which we will see in Section 11.8.
+
+482
+
+11.5.3
+
+11. Survival Analysis and Censored Data
+
+Example: Brain Cancer Data
+
+Table 11.2 shows the result of fitting the proportional hazards model to
+the BrainCancer data, which was originally described in Section 11.3. The
+coefficient column displays β̂j . The results indicate, for instance, that the
+estimated hazard for a male patient is e0.18 = 1.2 times greater than for
+a female patient: in other words, with all other features held fixed, males
+have a 1.2 times greater chance of dying than females, at any point in time.
+However, the p-value is 0.61, which indicates that this difference between
+males and females is not significant.
+As another example, we also see that each one-unit increase in the
+Karnofsky index corresponds to a multiplier of exp(−0.05) = 0.95 in the
+instantaneous chance of dying. In other words, the higher the Karnofsky
+index, the lower the chance of dying at any given point in time. This effect
+is highly significant, with a p-value of 0.0027.
+
+sex[Male]
+diagnosis[LG Glioma]
+diagnosis[HG Glioma]
+diagnosis[Other]
+loc[Supratentorial]
+k

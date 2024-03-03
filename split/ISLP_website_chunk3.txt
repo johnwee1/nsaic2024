@@ -1,0 +1,399 @@
+simple assumption is that f is linear in
+X:
+f (X) = β0 + β1 X1 + β2 X2 + · · · + βp Xp .
+(2.4)
+
+This is a linear model, which will be discussed extensively in Chapter 3. Once we have assumed that f is linear, the problem of estimating f is greatly simplified. Instead of having to estimate an entirely
+arbitrary p-dimensional function f (X), one only needs to estimate
+the p + 1 coefficients β0 , β1 , . . . , βp .
+
+parametric
+
+2.1 What Is Statistical Learning?
+
+21
+
+rs
+
+of
+
+Se
+ni
+or
+
+ity
+
+e
+Incom
+
+Ye
+a
+
+Ed
+
+uc
+
+ati
+
+on
+
+FIGURE 2.4. A linear model fit by least squares to the Income data from
+Figure 2.3. The observations are shown in red, and the yellow plane indicates the
+least squares fit to the data.
+
+2. After a model has been selected, we need a procedure that uses the
+training data to fit or train the model. In the case of the linear model
+fit
+(2.4), we need to estimate the parameters β0 , β1 , . . . , βp . That is, we train
+want to find values of these parameters such that
+Y ≈ β 0 + β 1 X1 + β2 X2 + · · · + βp Xp .
+
+The most common approach to fitting the model (2.4) is referred to
+as (ordinary) least squares, which we discuss in Chapter 3. However,
+least squares
+least squares is one of many possible ways to fit the linear model. In
+Chapter 6, we discuss other approaches for estimating the parameters
+in (2.4).
+The model-based approach just described is referred to as parametric;
+it reduces the problem of estimating f down to one of estimating a set of
+parameters. Assuming a parametric form for f simplifies the problem of
+estimating f because it is generally much easier to estimate a set of parameters, such as β0 , β1 , . . . , βp in the linear model (2.4), than it is to fit
+an entirely arbitrary function f . The potential disadvantage of a parametric approach is that the model we choose will usually not match the true
+unknown form of f . If the chosen model is too far from the true f , then
+our estimate will be poor. We can try to address this problem by choosing flexible models that can fit many different possible functional forms
+flexible
+for f . But in general, fitting a more flexible model requires estimating a
+greater number of parameters. These more complex models can lead to a
+phenomenon known as overfitting the data, which essentially means they
+overfitting
+follow the errors, or noise, too closely. These issues are discussed throughnoise
+out this book.
+Figure 2.4 shows an example of the parametric approach applied to the
+Income data from Figure 2.3. We have fit a linear model of the form
+income ≈ β0 + β1 × education + β2 × seniority.
+
+22
+
+2. Statistical Learning
+
+rs
+
+of
+
+Se
+ni
+or
+
+ity
+
+e
+
+Incom
+
+Ye
+a
+
+Ed
+
+uc
+
+ati
+
+on
+
+FIGURE 2.5. A smooth thin-plate spline fit to the Income data from Figure 2.3
+is shown in yellow; the observations are displayed in red. Splines are discussed in
+Chapter 7.
+
+Since we have assumed a linear relationship between the response and the
+two predictors, the entire fitting problem reduces to estimating β0 , β1 , and
+β2 , which we do using least squares linear regression. Comparing Figure 2.3
+to Figure 2.4, we can see that the linear fit given in Figure 2.4 is not quite
+right: the true f has some curvature that is not captured in the linear fit.
+However, the linear fit still appears to do a reasonable job of capturing the
+positive relationship between years of education and income, as well as the
+slightly less positive relationship between seniority and income. It may be
+that with such a small number of observations, this is the best we can do.
+Non-Parametric Methods
+Non-parametric methods do not make explicit assumptions about the functional form of f . Instead they seek an estimate of f that gets as close to the
+data points as possible without being too rough or wiggly. Such approaches
+can have a major advantage over parametric approaches: by avoiding the
+assumption of a particular functional form for f , they have the potential
+to accurately fit a wider range of possible shapes for f . Any parametric
+approach brings with it the possibility that the functional form used to
+estimate f is very different from the true f , in which case the resulting
+model will not fit the data well. In contrast, non-parametric approaches
+completely avoid this danger, since essentially no assumption about the
+form of f is made. But non-parametric approaches do suffer from a major
+disadvantage: since they do not reduce the problem of estimating f to a
+small number of parameters, a very large number of observations (far more
+than is typically needed for a parametric approach) is required in order to
+obtain an accurate estimate for f .
+An example of a non-parametric approach to fitting the Income data is
+shown in Figure 2.5. A thin-plate spline is used to estimate f . This apthin-plate
+proach does not impose any pre-specified model on f . It instead attempts spline
+
+2.1 What Is Statistical Learning?
+
+23
+
+rs
+
+of
+
+Se
+ni
+or
+
+ity
+
+e
+
+Incom
+
+Ye
+a
+
+Ed
+
+uc
+
+ati
+
+on
+
+FIGURE 2.6. A rough thin-plate spline fit to the Income data from Figure 2.3.
+This fit makes zero errors on the training data.
+
+to produce an estimate for f that is as close as possible to the observed
+data, subject to the fit—that is, the yellow surface in Figure 2.5—being
+smooth. In this case, the non-parametric fit has produced a remarkably accurate estimate of the true f shown in Figure 2.3. In order to fit a thin-plate
+spline, the data analyst must select a level of smoothness. Figure 2.6 shows
+the same thin-plate spline fit using a lower level of smoothness, allowing
+for a rougher fit. The resulting estimate fits the observed data perfectly!
+However, the spline fit shown in Figure 2.6 is far more variable than the
+true function f , from Figure 2.3. This is an example of overfitting the
+data, which we discussed previously. It is an undesirable situation because
+the fit obtained will not yield accurate estimates of the response on new
+observations that were not part of the original training data set. We discuss methods for choosing the correct amount of smoothness in Chapter 5.
+Splines are discussed in Chapter 7.
+As we have seen, there are advantages and disadvantages to parametric
+and non-parametric methods for statistical learning. We explore both types
+of methods throughout this book.
+
+2.1.3
+
+The Trade-Off Between Prediction Accuracy and Model
+Interpretability
+
+Of the many methods that we examine in this book, some are less flexible,
+or more restrictive, in the sense that they can produce just a relatively
+small range of shapes to estimate f . For example, linear regression is a
+relatively inflexible approach, because it can only generate linear functions
+such as the lines shown in Figure 2.1 or the plane shown in Figure 2.4.
+Other methods, such as the thin plate splines shown in Figures 2.5 and 2.6,
+are considerably more flexible because they can generate a much wider
+range of possible shapes to estimate f .
+
+2. Statistical Learning
+
+High
+
+24
+
+Subset Selection
+Lasso
+
+Interpretability
+
+Least Squares
+Generalized Additive Models
+Trees
+
+Bagging, Boosting
+
+Low
+
+Support Vector Machines
+Deep Learning
+
+Low
+
+High
+
+Flexibility
+
+FIGURE 2.7. A representation of the tradeoff between flexibility and interpretability, using different statistical learning methods. In general, as the flexibility
+of a method increases, its interpretability decreases.
+
+One might reasonably ask the following question: why would we ever
+choose to use a more restrictive method instead of a very flexible approach?
+There are several reasons that we might prefer a more restrictive model.
+If we are mainly interested in inference, then restrictive models are much
+more interpretable. For instance, when inference is the goal, the linear
+model may be a good choice since it will be quite easy to understand
+the relationship between Y and X1 , X2 , . . . , Xp . In contrast, very flexible
+approaches, such as the splines discussed in Chapter 7 and displayed in
+Figures 2.5 and 2.6, and the boosting methods discussed in Chapter 8, can
+lead to such complicated estimates of f that it is difficult to understand
+how any individual predictor is associated with the response.
+Figure 2.7 provides an illustration of the trade-off between flexibility and
+interpretability for some of the methods that we cover in this book. Least
+squares linear regression, discussed in Chapter 3, is relatively inflexible but
+is quite interpretable. The lasso, discussed in Chapter 6, relies upon the
+lasso
+linear model (2.4) but uses an alternative fitting procedure for estimating
+the coefficients β0 , β1 , . . . , βp . The new procedure is more restrictive in estimating the coefficients, and sets a number of them to exactly zero. Hence
+in this sense the lasso is a less flexible approach than linear regression.
+It is also more interpretable than linear regression, because in the final
+model the response variable will only be related to a small subset of the
+predictors—namely, those with nonzero coefficient estimates. Generalized
+additive models (GAMs), discussed in Chapter 7, instead extend the lingeneralized
+ear model (2.4) to allow for certain non-linear relationships. Consequently, additive
+GAMs are more flexible than linear regression. They are also somewhat model
+less interpretable than linear regression, because the relationship between
+each predictor and the response is now modeled using a curve. Finally,
+fully non-linear methods such as bagging, boosting, support vector machines
+bagging
+with non-linear kernels, and neural networks (deep learning), discussed in
+boosting
+Chapters 8, 9, and 10, are highly flexible approaches that are harder to
+support
+interpret.
+vector
+machine
+
+2.1 What Is Statistical Learning?
+
+25
+
+We have established that when inference is the goal, there are clear advantages to using simple and relatively inflexible statistical learning methods. In some settings, however, we are only interested in prediction, and
+the interpretability of the predictive model is simply not of interest. For
+instance, if we seek to develop an algorithm to predict the price of a
+stock, our sole requirement for the algorithm is that it predict accurately—
+interpretability is not a concern. In this setting, we might expect that it
+will be best to use the most flexible model available. Surprisingly, this is
+not always the case! We will often obtain more accurate predictions using
+a less flexible method. This phenomenon, which may seem counterintuitive at first glance, has to do with the potential for overfitting in highly
+flexible methods. We saw an example of overfitting in Figure 2.6. We will
+discuss this very important concept further in Section 2.2 and throughout
+this book.
+
+2.1.4
+
+Supervised Versus Unsupervised Learning
+
+Most statistical learning problems fall into one of two categories: supervised
+supervised
+or unsupervised. The examples that we have discussed so far in this chapunsupervised
+ter all fall into the supervised learning domain. For each observation of the
+predictor measurement(s) xi , i = 1, . . . , n there is an associated response
+measurement yi . We wish to fit a model that relates the response to the
+predictors, with the aim of accurately predicting the response for future
+observations (prediction) or better understanding the relationship between
+the response and the predictors (inference). Many classical statistical learning methods such as linear regression and logistic regression (Chapter 4), as
+logistic
+well as more modern approaches such as GAM, boosting, and support vec- regression
+tor machines, operate in the supervised learning domain. The vast majority
+of this book is devoted to this setting.
+By contrast, unsupervised learning describes the somewhat more challenging situation in which for every observation i = 1, . . . , n, we observe
+a vector of measurements xi but no associated response yi . It is not possible to fit a linear regression model, since there is no response variable
+to predict. In this setting, we are in some sense working blind; the situation is referred to as unsupervised because we lack a response variable that can supervise our analysis. What sort of statistical analysis is
+possible? We can seek to understand the relationships between the variables
+or between the observations. One statistical learning tool that we may use
+in this setting is cluster analysis, or clustering. The goal of cluster analysis
+cluster
+is to ascertain, on the basis of x1 , . . . , xn , whether the observations fall into analysis
+relatively distinct groups. For example, in a market segmentation study we
+might observe multiple characteristics (variables) for potential customers,
+such as zip code, family income, and shopping habits. We might believe
+that the customers fall into different groups, such as big spenders versus
+low spenders. If the information about each customer’s spending patterns
+were available, then a supervised analysis would be possible. However, this
+information is not available—that is, we do not know whether each potential customer is a big spender or not. In this setting, we can try to cluster
+the customers on the basis of the variables measured, in order to identify
+
+2. Statistical Learning
+
+6
+
+X2
+
+2
+
+2
+
+4
+
+4
+
+6
+
+X2
+
+8
+
+10
+
+8
+
+12
+
+26
+
+0
+
+2
+
+4
+
+6
+
+X1
+
+8
+
+10
+
+12
+
+0
+
+2
+
+4
+
+6
+
+X1
+
+FIGURE 2.8. A clustering data set involving three groups. Each group is
+shown using a different colored symbol. Left: The three groups are well-separated.
+In this setting, a clustering approach should successfully identify the three groups.
+Right: There is some overlap among the groups. Now the clustering task is more
+challenging.
+
+distinct groups of potential customers. Identifying such groups can be of
+interest because it might be that the groups differ with respect to some
+property of interest, such as spending habits.
+Figure 2.8 provides a simple illustration of the clustering problem. We
+have plotted 150 observations with measurements on two variables, X1
+and X2 . Each observation corresponds to one of three distinct groups. For
+illustrative purposes, we have plotted the members of each group using
+different colors and symbols. However, in practice the group memberships
+are unknown, and the goal is to determine the group to which each observation belongs. In the left-hand panel of Figure 2.8, this is a relatively easy
+task because the groups are well-separated. By contrast, the right-hand
+panel illustrates a more challenging setting in which there is some overlap
+between the groups. A clustering method could not be expected to assign
+all of the overlapping points to their correct group (blue, green, or orange).
+In the examples shown in Figure 2.8, there are only two variables, and
+so one can simply visually inspect the scatterplots of the observations in
+order to identify clusters. However, in practice, we often encounter data
+sets that contain many more than two variables. In this case, we cannot
+easily plot the observations. For instance, if there are p variables in our
+data set, then p(p − 1)/2 distinct scatterplots can be made, and visual
+inspection is simply not a viable way to identify clusters. For this reason,
+automated clustering methods are important. We discuss clustering and
+other unsupervised learning approaches in Chapter 12.
+Many problems fall naturally into the supervised or unsupervised learning paradigms. However, sometimes the question of whether an analysis
+should be considered supervised or unsupervised is less clear-cut. For instance, suppose that we have a set of n observat

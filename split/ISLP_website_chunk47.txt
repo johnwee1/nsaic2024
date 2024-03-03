@@ -1,0 +1,634 @@
+education) + "
+
+(7.16)
+
+=
+
+This is an example of a GAM. It is called an additive model because we
+calculate a separate fj for each Xj , and then add together all of their
+contributions.
+In Sections 7.1–7.6, we discuss many methods for fitting functions to a
+single variable. The beauty of GAMs is that we can use these methods
+as building blocks for fitting an additive model. In fact, for most of the
+methods that we have seen so far in this chapter, this can be done fairly
+trivially. Take, for example, natural splines, and consider the task of fitting
+the model
+
+on the Wage data. Here year and age are quantitative variables, while the
+variable education is qualitative with five levels: <HS, HS, <Coll, Coll, >Coll,
+referring to the amount of high school or college education that an individual has completed. We fit the first two functions using natural splines. We
+
+7.7 Generalized Additive Models
+<Coll
+
+Coll
+
+>Coll
+
+40
+
+HS
+
+2003
+
+2005
+
+2007
+
+2009
+
+20
+10
+−10
+
+0
+
+f3 (education)
+
+−10
+
+f2 (age)
+
+−20
+−30
+
+−50
+
+−30
+
+−40
+
+−20
+
+−30
+
+−20
+
+10
+0
+−10
+
+f1 (year)
+
+0
+
+20
+
+30
+
+10
+
+30
+
+20
+
+<HS
+
+307
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+80
+
+education
+year
+
+age
+
+FIGURE 7.12. Details are as in Figure 7.11, but now f1 and f2 are smoothing
+splines with four and five degrees of freedom, respectively.
+
+fit the third function using a separate constant for each level, via the usual
+dummy variable approach of Section 3.3.1.
+Figure 7.11 shows the results of fitting the model (7.16) using least
+squares. This is easy to do, since as discussed in Section 7.4, natural splines
+can be constructed using an appropriately chosen set of basis functions.
+Hence the entire model is just a big regression onto spline basis variables
+and dummy variables, all packed into one big regression matrix.
+Figure 7.11 can be easily interpreted. The left-hand panel indicates that
+holding age and education fixed, wage tends to increase slightly with year;
+this may be due to inflation. The center panel indicates that holding
+education and year fixed, wage tends to be highest for intermediate values of age, and lowest for the very young and very old. The right-hand
+panel indicates that holding year and age fixed, wage tends to increase
+with education: the more educated a person is, the higher their salary, on
+average. All of these findings are intuitive.
+Figure 7.12 shows a similar triple of plots, but this time f1 and f2 are
+smoothing splines with four and five degrees of freedom, respectively. Fitting a GAM with a smoothing spline is not quite as simple as fitting a GAM
+with a natural spline, since in the case of smoothing splines, least squares
+cannot be used. However, standard software such as the Python package
+pygam can be used to fit GAMs using smoothing splines, via an approach pygam
+known as backfitting. This method fits a model involving multiple predicbackfitting
+tors by repeatedly updating the fit for each predictor in turn, holding the
+others fixed. The beauty of this approach is that each time we update a
+function, we simply apply the fitting method for that variable to a partial
+residual.6
+The fitted functions in Figures 7.11 and 7.12 look rather similar. In most
+situations, the differences in the GAMs obtained using smoothing splines
+versus natural splines are small.
+6 A partial residual for X , for example, has the form r = y − f (x ) − f (x ). If we
+3
+1 i1
+2 i2
+i
+i
+know f1 and f2 , then we can fit f3 by treating this residual as a response in a non-linear
+regression on X3 .
+
+308
+
+7. Moving Beyond Linearity
+
+We do not have to use splines as the building blocks for GAMs: we can
+just as well use local regression, polynomial regression, or any combination
+of the approaches seen earlier in this chapter in order to create a GAM.
+GAMs are investigated in further detail in the lab at the end of this chapter.
+Pros and Cons of GAMs
+Before we move on, let us summarize the advantages and limitations of a
+GAM.
+! GAMs allow us to fit a non-linear fj to each Xj , so that we can
+automatically model non-linear relationships that standard linear regression will miss. This means that we do not need to manually try
+out many different transformations on each variable individually.
+! The non-linear fits can potentially make more accurate predictions
+for the response Y .
+! Because the model is additive, we can examine the effect of each Xj
+on Y individually while holding all of the other variables fixed.
+! The smoothness of the function fj for the variable Xj can be summarized via degrees of freedom.
+" The main limitation of GAMs is that the model is restricted to be
+additive. With many variables, important interactions can be missed.
+However, as with linear regression, we can manually add interaction
+terms to the GAM model by including additional predictors of the
+form Xj × Xk . In addition we can add low-dimensional interaction
+functions of the form fjk (Xj , Xk ) into the model; such terms can
+be fit using two-dimensional smoothers such as local regression, or
+two-dimensional splines (not covered here).
+For fully general models, we have to look for even more flexible approaches
+such as random forests and boosting, described in Chapter 8. GAMs provide
+a useful compromise between linear and fully nonparametric models.
+
+7.7.2
+
+GAMs for Classification Problems
+
+GAMs can also be used in situations where Y is qualitative. For simplicity,
+here we assume Y takes on values 0 or 1, and let p(X) = Pr(Y = 1|X) be
+the conditional probability (given the predictors) that the response equals
+one. Recall the logistic regression model (4.6):
+*
++
+p(X)
+log
+= β 0 + β 1 X1 + β 2 X2 + · · · + β p Xp .
+(7.17)
+1 − p(X)
+
+The left-hand side is the log of the odds of P (Y = 1|X) versus P (Y = 0|X),
+which (7.17) represents as a linear function of the predictors. A natural way
+to extend (7.17) to allow for non-linear relationships is to use the model
+*
++
+p(X)
+log
+= β0 + f1 (X1 ) + f2 (X2 ) + · · · + fp (Xp ).
+(7.18)
+1 − p(X)
+
+7.8 Lab: Non-Linear Modeling
+HS
+
+<Coll
+
+Coll
+
+>Coll
+
+2005
+
+2007
+
+2009
+
+200
+−200
+−400
+
+−8
+
+−4
+2003
+
+0
+
+−2
+
+f2 (age)
+
+−6
+
+−2
+
+−4
+
+0
+
+f1 (year)
+
+0
+
+f3 (education)
+
+2
+
+2
+
+4
+
+400
+
+<HS
+
+309
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+80
+
+education
+year
+
+age
+
+FIGURE 7.13. For the Wage data, the logistic regression GAM given in (7.19)
+is fit to the binary response I(wage>250). Each plot displays the fitted function
+and pointwise standard errors. The first function is linear in year, the second
+function a smoothing spline with five degrees of freedom in age, and the third a
+step function for education. There are very wide standard errors for the first
+level <HS of education.
+
+Equation 7.18 is a logistic regression GAM. It has all the same pros and
+cons as discussed in the previous section for quantitative responses.
+We fit a GAM to the Wage data in order to predict the probability that
+an individual’s income exceeds $250,000 per year. The GAM that we fit
+takes the form
+*
++
+p(X)
+log
+= β0 + β1 × year + f2 (age) + f3 (education), (7.19)
+1 − p(X)
+where
+
+p(X) = Pr(wage > 250|year, age, education).
+Once again f2 is fit using a smoothing spline with five degrees of freedom,
+and f3 is fit as a step function, by creating dummy variables for each of the
+levels of education. The resulting fit is shown in Figure 7.13. The last panel
+looks suspicious, with very wide confidence intervals for level <HS. In fact,
+no response values equal one for that category: no individuals with less than
+a high school education make more than $250,000 per year. Hence we refit
+the GAM, excluding the individuals with less than a high school education.
+The resulting model is shown in Figure 7.14. As in Figures 7.11 and 7.12,
+all three panels have similar vertical scales. This allows us to visually assess
+the relative contributions of each of the variables. We observe that age and
+education have a much larger effect than year on the probability of being
+a high earner.
+
+7.8
+
+Lab: Non-Linear Modeling
+
+In this lab, we demonstrate some of the nonlinear models discussed in
+this chapter. We use the Wage data as a running example, and show that
+many of the complex non-linear fitting procedures discussed can easily be
+implemented in Python.
+
+310
+
+7. Moving Beyond Linearity
+<Coll
+
+Coll
+
+>Coll
+
+2
+−2
+
+0
+
+−2
+
+f2 (age)
+
+−4
+
+−4
+
+−8
+
+−6
+
+−2
+
+−4
+
+0
+
+f1 (year)
+
+0
+
+f3 (education)
+
+2
+
+2
+
+4
+
+4
+
+HS
+
+2003
+
+2005
+
+2007
+
+2009
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+80
+
+education
+year
+
+age
+
+FIGURE 7.14. The same model is fit as in Figure 7.13, this time excluding the
+observations for which education is <HS. Now we see that increased education
+tends to be associated with higher salaries.
+
+As usual, we start with some of our standard imports.
+In [1]: import numpy as np , pandas as pd
+from matplotlib.pyplot import subplots
+import statsmodels.api as sm
+from ISLP import load_data
+from ISLP.models import (summarize ,
+poly ,
+ModelSpec as MS)
+from statsmodels.stats.anova import anova_lm
+
+We again collect the new imports needed for this lab. Many of these are
+developed specifically for the ISLP package.
+In [2]: from pygam import (s as s_gam ,
+l as l_gam ,
+f as f_gam ,
+LinearGAM ,
+LogisticGAM)
+from ISLP.transforms import (BSpline ,
+NaturalSpline)
+from ISLP.models import bs , ns
+from ISLP.pygam import (approx_lam ,
+degrees_of_freedom ,
+plot as plot_gam ,
+anova as anova_gam)
+
+7.8.1
+
+Polynomial Regression and Step Functions
+
+We start by demonstrating how Figure 7.1 can be reproduced. Let’s begin
+by loading the data.
+In [3]: Wage = load_data('Wage ')
+y = Wage['wage ']
+age = Wage['age']
+
+7.8 Lab: Non-Linear Modeling
+
+311
+
+Throughout most of this lab, our response is Wage['wage'], which we
+have stored as y above. As in Section 3.6.6, we will use the poly() function
+to create a model matrix that will fit a 4th degree polynomial in age.
+In [4]: poly_age = MS([ poly('age', degree =4)]).fit(Wage)
+M = sm.OLS(y, poly_age.transform(Wage)).fit()
+summarize(M)
+Out[4]:
+
+coef
+intercept 111.7036
+poly(age , degree =4) [0] 447.0679
+poly(age , degree =4) [1] -478.3158
+poly(age , degree =4) [2] 125.5217
+poly(age , degree =4) [3] -77.9112
+
+std err
+0.729
+39.915
+39.915
+39.915
+39.915
+
+t
+153.283
+11.201
+-11.983
+3.145
+-1.952
+
+P>|t|
+0.000
+0.000
+0.000
+0.002
+0.051
+
+This polynomial is constructed using the function poly(), which creates a special transformer Poly() (using sklearn terminology for feature
+transformer
+transformations such as PCA() seen in Section 6.5.3) which allows for easy
+evaluation of the polynomial at new data points. Here poly() is referred
+to as a helper function, and sets up the transformation; Poly() is the achelper
+tual workhorse that computes the transformation. See also the discussion
+of transformations on page 118.
+In the code above, the first line executes the fit() method using the
+dataframe Wage. This recomputes and stores as attributes any parameters
+needed by Poly() on the training data, and these will be used on all subsequent evaluations of the transform() method. For example, it is used on
+the second line, as well as in the plotting function developed below.
+We now create a grid of values for age at which we want predictions.
+In [5]: age_grid = np.linspace(age.min(),
+age.max(),
+100)
+age_df = pd.DataFrame ({'age': age_grid })
+
+Finally, we wish to plot the data and add the fit from the fourth-degree
+polynomial. As we will make several similar plots below, we first write a
+function to create all the ingredients and produce the plot. Our function
+takes in a model specification (here a basis specified by a transform), as
+well as a grid of age values. The function produces a fitted curve as well
+as 95% confidence bands. By using an argument for basis we can produce
+and plot the results with several different transforms, such as the splines
+we will see shortly.
+In [6]: def plot_wage_fit(age_df ,
+basis ,
+title):
+X = basis.transform(Wage)
+Xnew = basis.transform(age_df)
+M = sm.OLS(y, X).fit()
+preds = M.get_prediction(Xnew)
+bands = preds.conf_int(alpha =0.05)
+fig , ax = subplots(figsize =(8 ,8))
+ax.scatter(age ,
+y,
+
+312
+
+7. Moving Beyond Linearity
+facecolor='gray ',
+alpha =0.5)
+for val , ls in zip([ preds.predicted_mean ,
+bands [:,0],
+bands [:,1]],
+['b','r--','r--']):
+ax.plot(age_df.values , val , ls , linewidth =3)
+ax.set_title(title , fontsize =20)
+ax.set_xlabel('Age', fontsize =20)
+ax.set_ylabel('Wage ', fontsize =20);
+return ax
+
+We include an argument alpha to ax.scatter() to add some transparency
+to the points. This provides a visual indication of density. Notice the use
+of the zip() function in the for loop above (see Section 2.3.8). We have
+three lines to plot, each with different colors and line types. Here zip()
+conveniently bundles these together as iterators in the loop.7
+iterator
+We now plot the fit of the fourth-degree polynomial using this function.
+In [7]: plot_wage_fit(age_df ,
+poly_age ,
+'Degree -4 Polynomial ');
+
+With polynomial regression we must decide on the degree of the polynomial to use. Sometimes we just wing it, and decide to use second or third
+degree polynomials, simply to obtain a nonlinear fit. But we can make such
+a decision in a more systematic way. One way to do this is through hypothesis tests, which we demonstrate here. We now fit a series of models ranging
+from linear (degree-one) to degree-five polynomials, and look to determine
+the simplest model that is sufficient to explain the relationship between
+wage and age. We use the anova_lm() function, which performs a series of
+ANOVA tests. An analysis of variance or ANOVA tests the null hypothesis
+analysis of
+that a model M1 is sufficient to explain the data against the alternative variance
+hypothesis that a more complex model M2 is required. The determination
+is based on an F-test. To perform the test, the models M1 and M2 must
+be nested: the space spanned by the predictors in M1 must be a subspace
+of the space spanned by the predictors in M2 . In this case, we fit five different polynomial models and sequentially compare the simpler model to
+the more complex model.
+In [8]: models = [MS([ poly('age', degree=d)])
+for d in range(1, 6)]
+Xs = [model.fit_transform(Wage) for model in models]
+anova_lm (*[sm.OLS(y, X_).fit()
+for X_ in Xs])
+Out[8]:
+
+0
+1
+2
+3
+
+df_resid
+2998.0
+2997.0
+2996.0
+2995.0
+
+ssr
+5.022e+06
+4.793e+06
+4.778e+06
+4.772e+06
+
+df_diff
+0.0
+1.0
+1.0
+1.0
+
+ss_diff
+NaN
+228786.010
+15755.694
+6070.152
+
+F
+NaN
+143.593
+9.889
+3.810
+
+Pr(>F)
+NaN
+2.364e-32
+1.679e-03
+5.105e-02
+
+7 In Python speak, an “iterator” is an object with a finite number of values, that can
+be iterated on, as in a loop.
+
+7.8 Lab: Non-Linear Modeling
+4
+
+2994.0
+
+4.770e+06
+
+1.0
+
+1282.563
+
+0.805
+
+313
+
+3.697e-01
+
+Notice the * in the anova_lm() line above. This function takes a variable
+number of non-keyword arguments, in this case fitted models. When these
+models are provided as a list (as is done here), it must be prefixed by *.
+The p-value comparing the linear models[0] to the quadratic models[1]
+is essentially zero, indicating that a linear fit is not sufficient.8 Similarly the
+p-value comparing the quadratic models[1] to the cubic models[2] is very
+low (0.0017), so the quadratic fit is also insufficient. The p-value comparing
+the cubic and degree-four polynomials, models[2] and models[3], is approximately 5%, while the degree-five polynomial models[4] seems unnecessary
+because its p-value is 0.37. Hence, either a cubic or a quartic polynomial
+appear to provide a reasonable fit to the data, but lower- or higher-order
+models are not justified.
+In this case, instead of using the anova() function, we could have obtained
+these p-values more succinctly by exploiting the 

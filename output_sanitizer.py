@@ -4,7 +4,7 @@ import os
 """Helper script to sanitize the output from gpt files. idk how useful this will be but whatevs"""
 
 ### the .txt suffix IS NEEDED HERE!
-FILENAME = "machine_learning_yearning_qns.txt"
+FILENAME = "ISLP_website_qns.txt"
 
 
 def parse_text_file(input_file, output_file):
@@ -58,3 +58,5 @@ def sanitize(input):
 
 # NOTE: CHANGE THE FILE NAMES FOR DIFFERENT FILES!
 sanitize(FILENAME)
+
+# if it looks good to you, u can delete the pre-sanitized output and just keep the cleaned up one.

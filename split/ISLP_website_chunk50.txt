@@ -1,0 +1,377 @@
+ssion to predict nox using dis. Report the
+regression output, and plot the resulting data and polynomial
+fits.
+(b) Plot the polynomial fits for a range of different polynomial
+degrees (say, from 1 to 10), and report the associated residual
+sum of squares.
+(c) Perform cross-validation or another approach to select the optimal degree for the polynomial, and explain your results.
+(d) Use the bs() function from the ISLP.models module to fit a regression spline to predict nox using dis. Report the output for
+the fit using four degrees of freedom. How did you choose the
+knots? Plot the resulting fit.
+(e) Now fit a regression spline for a range of degrees of freedom, and
+plot the resulting fits and report the resulting RSS. Describe the
+results obtained.
+(f) Perform cross-validation or another approach in order to select
+the best degrees of freedom for a regression spline on this data.
+Describe your results.
+
+328
+
+7. Moving Beyond Linearity
+
+10. This question relates to the College data set.
+(a) Split the data into a training set and a test set. Using out-of-state
+tuition as the response and the other variables as the predictors,
+perform forward stepwise selection on the training set in order
+to identify a satisfactory model that uses just a subset of the
+predictors.
+(b) Fit a GAM on the training data, using out-of-state tuition as
+the response and the features selected in the previous step as
+the predictors. Plot the results, and explain your findings.
+(c) Evaluate the model obtained on the test set, and explain the
+results obtained.
+(d) For which variables, if any, is there evidence of a non-linear
+relationship with the response?
+11. In Section 7.7, it was mentioned that GAMs are generally fit using
+a backfitting approach. The idea behind backfitting is actually quite
+simple. We will now explore backfitting in the context of multiple
+linear regression.
+Suppose that we would like to perform multiple linear regression, but
+we do not have software to do so. Instead, we only have software
+to perform simple linear regression. Therefore, we take the following
+iterative approach: we repeatedly hold all but one coefficient estimate fixed at its current value, and update only that coefficient
+estimate using a simple linear regression. The process is continued until convergence—that is, until the coefficient estimates stop changing.
+We now try this out on a toy example.
+(a) Generate a response Y and two predictors X1 and X2 , with
+n = 100.
+(b) Write a function simple_reg() that takes two arguments outcome
+and feature, fits a simple linear regression model with this outcome and feature, and returns the estimated intercept and slope.
+(c) Initialize beta1 to take on a value of your choice. It does not
+matter what value you choose.
+(d) Keeping beta1 fixed, use your function simple_reg() to fit the
+model:
+Y − beta1 · X1 = β0 + β2 X2 + ".
+Store the resulting values as beta0 and beta2.
+(e) Keeping beta2 fixed, fit the model
+
+Y − beta2 · X2 = β0 + β1 X1 + ".
+
+Store the result as beta0 and beta1 (overwriting their previous
+values).
+(f) Write a for loop to repeat (c) and (d) 1,000 times. Report the
+estimates of beta0, beta1, and beta2 at each iteration of the for
+loop. Create a plot in which each of these values is displayed,
+with beta0, beta1, and beta2.
+
+7.9 Exercises
+
+329
+
+(g) Compare your answer in (e) to the results of simply performing multiple linear regression to predict Y using X1 and X2 .
+Use axline() method to overlay those multiple linear regression
+coefficient estimates on the plot obtained in (e).
+(h) On this data set, how many backfitting iterations were required
+in order to obtain a “good” approximation to the multiple regression coefficient estimates?
+12. This problem is a continuation of the previous exercise. In a toy
+example with p = 100, show that one can approximate the multiple
+linear regression coefficient estimates by repeatedly performing simple
+linear regression in a backfitting procedure. How many backfitting
+iterations are required in order to obtain a “good” approximation to
+the multiple regression coefficient estimates? Create a plot to justify
+your answer.
+
+8
+Tree-Based Methods
+
+In this chapter, we describe tree-based methods for regression and classification. These involve stratifying or segmenting the predictor space into a
+number of simple regions. In order to make a prediction for a given observation, we typically use the mean or the mode response value for the
+training observations in the region to which it belongs. Since the set of
+splitting rules used to segment the predictor space can be summarized in
+a tree, these types of approaches are known as decision tree methods.
+decision tree
+Tree-based methods are simple and useful for interpretation. However,
+they typically are not competitive with the best supervised learning approaches, such as those seen in Chapters 6 and 7, in terms of prediction
+accuracy. Hence in this chapter we also introduce bagging, random forests,
+boosting, and Bayesian additive regression trees. Each of these approaches
+involves producing multiple trees which are then combined to yield a single
+consensus prediction. We will see that combining a large number of trees
+can often result in dramatic improvements in prediction accuracy, at the
+expense of some loss in interpretation.
+
+8.1
+
+The Basics of Decision Trees
+
+Decision trees can be applied to both regression and classification problems.
+We first consider regression problems, and then move on to classification.
+
+8.1.1
+
+Regression Trees
+
+In order to motivate regression trees, we begin with a simple example.
+
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0_8
+
+regression
+tree
+
+331
+
+332
+
+8. Tree-Based Methods
+Years < 4.5
+|
+
+Hits < 117.5
+5.11
+
+6.00
+
+6.74
+
+FIGURE 8.1. For the Hitters data, a regression tree for predicting the log
+salary of a baseball player, based on the number of years that he has played in
+the major leagues and the number of hits that he made in the previous year. At a
+given internal node, the label (of the form Xj < tk ) indicates the left-hand branch
+emanating from that split, and the right-hand branch corresponds to Xj ≥ tk .
+For instance, the split at the top of the tree results in two large branches. The
+left-hand branch corresponds to Years<4.5, and the right-hand branch corresponds
+to Years>=4.5. The tree has two internal nodes and three terminal nodes, or
+leaves. The number in each leaf is the mean of the response for the observations
+that fall there.
+
+Predicting Baseball Players’ Salaries Using Regression Trees
+We use the Hitters data set to predict a baseball player’s Salary based on
+Years (the number of years that he has played in the major leagues) and
+Hits (the number of hits that he made in the previous year). We first remove
+observations that are missing Salary values, and log-transform Salary so
+that its distribution has more of a typical bell-shape. (Recall that Salary
+is measured in thousands of dollars.)
+Figure 8.1 shows a regression tree fit to this data. It consists of a series
+of splitting rules, starting at the top of the tree. The top split assigns
+observations having Years<4.5 to the left branch.1 The predicted salary
+for these players is given by the mean response value for the players in
+the data set with Years<4.5. For such players, the mean log salary is 5.107,
+and so we make a prediction of e5.107 thousands of dollars, i.e. $165,174, for
+these players. Players with Years>=4.5 are assigned to the right branch, and
+then that group is further subdivided by Hits. Overall, the tree stratifies
+or segments the players into three regions of predictor space: players who
+have played for four or fewer years, players who have played for five or more
+years and who made fewer than 118 hits last year, and players who have
+played for five or more years and who made at least 118 hits last year. These
+three regions can be written as R1 ={X | Years<4.5}, R2 ={X | Years>=4.5,
+Hits<117.5}, and R3 ={X | Years>=4.5, Hits>=117.5}. Figure 8.2 illustrates
+1 Both Years and Hits are integers in these data; the function used to fit this tree
+labels the splits at the midpoint between two adjacent values.
+
+8.1 The Basics of Decision Trees
+
+333
+
+238
+
+Hits
+
+R3
+
+R1
+
+117.5
+
+R2
+
+1
+
+4.5
+
+24
+
+1
+
+Years
+
+FIGURE 8.2. The three-region partition for the Hitters data set from the
+regression tree illustrated in Figure 8.1.
+
+the regions as a function of Years and Hits. The predicted salaries for these
+three groups are $1,000×e5.107 =$165,174, $1,000×e5.999 =$402,834, and
+$1,000×e6.740 =$845,346 respectively.
+In keeping with the tree analogy, the regions R1 , R2 , and R3 are known as
+terminal nodes or leaves of the tree. As is the case for Figure 8.1, decision
+terminal
+trees are typically drawn upside down, in the sense that the leaves are at node
+the bottom of the tree. The points along the tree where the predictor space leaf
+is split are referred to as internal nodes. In Figure 8.1, the two internal
+internal
+nodes are indicated by the text Years<4.5 and Hits<117.5. We refer to the node
+segments of the trees that connect the nodes as branches.
+branch
+We might interpret the regression tree displayed in Figure 8.1 as follows:
+Years is the most important factor in determining Salary, and players with
+less experience earn lower salaries than more experienced players. Given
+that a player is less experienced, the number of hits that he made in the
+previous year seems to play little role in his salary. But among players who
+have been in the major leagues for five or more years, the number of hits
+made in the previous year does affect salary, and players who made more
+hits last year tend to have higher salaries. The regression tree shown in
+Figure 8.1 is likely an over-simplification of the true relationship between
+Hits, Years, and Salary. However, it has advantages over other types of
+regression models (such as those seen in Chapters 3 and 6): it is easier to
+interpret, and has a nice graphical representation.
+Prediction via Stratification of the Feature Space
+We now discuss the process of building a regression tree. Roughly speaking,
+there are two steps.
+1. We divide the predictor space — that is, the set of possible values
+for X1 , X2 , . . . , Xp — into J distinct and non-overlapping regions,
+R1 , R 2 , . . . , R J .
+
+334
+
+8. Tree-Based Methods
+
+2. For every observation that falls into the region Rj , we make the same
+prediction, which is simply the mean of the response values for the
+training observations in Rj .
+For instance, suppose that in Step 1 we obtain two regions, R1 and R2 ,
+and that the response mean of the training observations in the first region
+is 10, while the response mean of the training observations in the second
+region is 20. Then for a given observation X = x, if x ∈ R1 we will predict
+a value of 10, and if x ∈ R2 we will predict a value of 20.
+We now elaborate on Step 1 above. How do we construct the regions
+R1 , . . . , RJ ? In theory, the regions could have any shape. However, we
+choose to divide the predictor space into high-dimensional rectangles, or
+boxes, for simplicity and for ease of interpretation of the resulting predictive model. The goal is to find boxes R1 , . . . , RJ that minimize the RSS,
+given by
+J 0
+0
+(yi − ŷRj )2 ,
+(8.1)
+j=1 i∈Rj
+
+where ŷRj is the mean response for the training observations within the
+jth box. Unfortunately, it is computationally infeasible to consider every
+possible partition of the feature space into J boxes. For this reason, we take
+a top-down, greedy approach that is known as recursive binary splitting. The
+recursive
+approach is top-down because it begins at the top of the tree (at which point binary
+all observations belong to a single region) and then successively splits the splitting
+predictor space; each split is indicated via two new branches further down
+on the tree. It is greedy because at each step of the tree-building process,
+the best split is made at that particular step, rather than looking ahead
+and picking a split that will lead to a better tree in some future step.
+In order to perform recursive binary splitting, we first select the predictor Xj and the cutpoint s such that splitting the predictor space into
+the regions {X|Xj < s} and {X|Xj ≥ s} leads to the greatest possible
+reduction in RSS. (The notation {X|Xj < s} means the region of predictor
+space in which Xj takes on a value less than s.) That is, we consider all
+predictors X1 , . . . , Xp , and all possible values of the cutpoint s for each of
+the predictors, and then choose the predictor and cutpoint such that the
+resulting tree has the lowest RSS. In greater detail, for any j and s, we
+define the pair of half-planes
+R1 (j, s) = {X|Xj < s} and R2 (j, s) = {X|Xj ≥ s},
+
+and we seek the value of j and s that minimize the equation
+0
+0
+(yi − ŷR1 )2 +
+(yi − ŷR2 )2 ,
+i: xi ∈R1 (j,s)
+
+(8.2)
+
+(8.3)
+
+i: xi ∈R2 (j,s)
+
+where ŷR1 is the mean response for the training observations in R1 (j, s),
+and ŷR2 is the mean response for the training observations in R2 (j, s).
+Finding the values of j and s that minimize (8.3) can be done quite quickly,
+especially when the number of features p is not too large.
+Next, we repeat the process, looking for the best predictor and best
+cutpoint in order to split the data further so as to minimize the RSS within
+
+8.1 The Basics of Decision Trees
+
+335
+
+R5
+t4
+
+X2
+
+X2
+
+R2
+
+R3
+R4
+
+t2
+
+R1
+
+t3
+
+t1
+X1
+
+X1
+
+X1 ≤ t1
+
+|
+
+X2 ≤ t2
+
+X1 ≤ t3
+
+X2 ≤ t4
+R1
+
+R2
+
+R3
+X2
+
+R4
+
+X1
+
+R5
+
+FIGURE 8.3. Top Left: A partition of two-dimensional feature space that could
+not result from recursive binary splitting. Top Right: The output of recursive
+binary splitting on a two-dimensional example. Bottom Left: A tree corresponding
+to the partition in the top right panel. Bottom Right: A perspective plot of the
+prediction surface corresponding to that tree.
+
+each of the resulting regions. However, this time, instead of splitting the
+entire predictor space, we split one of the two previously identified regions.
+We now have three regions. Again, we look to split one of these three regions
+further, so as to minimize the RSS. The process continues until a stopping
+criterion is reached; for instance, we may continue until no region contains
+more than five observations.
+Once the regions R1 , . . . , RJ have been created, we predict the response
+for a given test observation using the mean of the training observations in
+the region to which that test observation belongs.
+A five-region example of this approach is shown in Figure 8.3.
+Tree Pruning
+The process described above may produce good predictions on the training
+set, but is likely to overfit the data, leading to poor test set performance.
+This is because the resulting tree might be too complex. A smaller tree
+
+336
+
+8. Tree-Based Methods
+
+with fewer splits (that is, fewer regions R1 , . . . , RJ ) might lead to lower
+variance and better interpretation at the cost of a little bias. One possible
+alternative to the process described above is to build the tree only so long
+as the decrease in the RSS due to each split exceeds some (high) threshold.
+This strategy will result in smaller trees, but is too short-sighted since a
+seemingly worthless split early on in the tree might be followed by a very
+good split—that is, a split that leads to a large reduction in RSS later on.
+Therefore, a better strategy is to grow a very large tree T0 , and the

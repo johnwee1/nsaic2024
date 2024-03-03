@@ -1,0 +1,397 @@
+sumption that the
+errors are Gaussian. Also, the factor of 2 in front of the SE(β̂1 ) term will vary slightly
+depending on the number of observations n in the linear regression. To be precise, rather
+than the number 2, (3.10) should contain the 97.5 % quantile of a t-distribution with
+n−2 degrees of freedom. Details of how to compute the 95 % confidence interval precisely
+in R will be provided later in this chapter.
+
+3.1 Simple Linear Regression
+
+Intercept
+TV
+
+Coefficient
+7.0325
+0.0475
+
+Std. error
+0.4578
+0.0027
+
+t-statistic
+15.36
+17.67
+
+77
+
+p-value
+< 0.0001
+< 0.0001
+
+TABLE 3.1. For the Advertising data, coefficients of the least squares model
+for the regression of number of units sold on TV advertising budget. An increase
+of $1,000 in the TV advertising budget is associated with an increase in sales by
+around 50 units. (Recall that the sales variable is in thousands of units, and the
+TV variable is in thousands of dollars.)
+
+which measures the number of standard deviations that β̂1 is away from 0. If
+there really is no relationship between X and Y , then we expect that (3.14)
+will have a t-distribution with n − 2 degrees of freedom. The t-distribution
+has a bell shape and for values of n greater than approximately 30 it is
+quite similar to the standard normal distribution. Consequently, it is a
+simple matter to compute the probability of observing any number equal
+to |t| or larger in absolute value, assuming β1 = 0. We call this probability
+the p-value. Roughly speaking, we interpret the p-value as follows: a small
+p-value
+p-value indicates that it is unlikely to observe such a substantial association
+between the predictor and the response due to chance, in the absence of
+any real association between the predictor and the response. Hence, if we
+see a small p-value, then we can infer that there is an association between
+the predictor and the response. We reject the null hypothesis—that is, we
+declare a relationship to exist between X and Y —if the p-value is small
+enough. Typical p-value cutoffs for rejecting the null hypothesis are 5% or
+1%, although this topic will be explored in much greater detail in Chapter 13. When n = 30, these correspond to t-statistics (3.14) of around 2
+and 2.75, respectively.
+Table 3.1 provides details of the least squares model for the regression of
+number of units sold on TV advertising budget for the Advertising data.
+Notice that the coefficients for β̂0 and β̂1 are very large relative to their
+standard errors, so the t-statistics are also large; the probabilities of seeing
+such values if H0 is true are virtually zero. Hence we can conclude that
+β0 %= 0 and β1 %= 0.4
+
+3.1.3
+
+Assessing the Accuracy of the Model
+
+Once we have rejected the null hypothesis (3.12) in favor of the alternative
+hypothesis (3.13), it is natural to want to quantify the extent to which the
+model fits the data. The quality of a linear regression fit is typically assessed
+using two related quantities: the residual standard error (RSE) and the R2 2
+R
+statistic.
+4 In Table 3.1, a small p-value for the intercept indicates that we can reject the null
+hypothesis that β0 = 0, and a small p-value for TV indicates that we can reject the null
+hypothesis that β1 = 0. Rejecting the latter null hypothesis allows us to conclude that
+there is a relationship between TV and sales. Rejecting the former allows us to conclude
+that in the absence of TV expenditure, sales are non-zero.
+
+78
+
+3. Linear Regression
+
+Quantity
+Residual standard error
+R2
+F -statistic
+
+Value
+3.26
+0.612
+312.1
+
+TABLE 3.2. For the Advertising data, more information about the least
+squares model for the regression of number of units sold on TV advertising budget.
+
+Table 3.2 displays the RSE, the R2 statistic, and the F -statistic (to be
+described in Section 3.2.2) for the linear regression of number of units sold
+on TV advertising budget.
+Residual Standard Error
+Recall from the model (3.5) that associated with each observation is an
+error term ". Due to the presence of these error terms, even if we knew the
+true regression line (i.e. even if β0 and β1 were known), we would not be
+able to perfectly predict Y from X. The RSE is an estimate of the standard
+deviation of ". Roughly speaking, it is the average amount that the response
+will deviate from the true regression line. It is computed using the formula
+:
+9
+;
+n
+; 1 0
+1
+RSE =
+RSS = <
+(yi − ŷi )2 .
+(3.15)
+n−2
+n − 2 i=1
+Note that RSS was defined in Section 3.1.1, and is given by the formula
+RSS =
+
+n
+0
+i=1
+
+(yi − ŷi )2 .
+
+(3.16)
+
+In the case of the advertising data, we see from the linear regression
+output in Table 3.2 that the RSE is 3.26. In other words, actual sales in
+each market deviate from the true regression line by approximately 3,260
+units, on average. Another way to think about this is that even if the
+model were correct and the true values of the unknown coefficients β0
+and β1 were known exactly, any prediction of sales on the basis of TV
+advertising would still be off by about 3,260 units on average. Of course,
+whether or not 3,260 units is an acceptable prediction error depends on the
+problem context. In the advertising data set, the mean value of sales over
+all markets is approximately 14,000 units, and so the percentage error is
+3,260/14,000 = 23 %.
+The RSE is considered a measure of the lack of fit of the model (3.5) to
+the data. If the predictions obtained using the model are very close to the
+true outcome values—that is, if ŷi ≈ yi for i = 1, . . . , n—then (3.15) will
+be small, and we can conclude that the model fits the data very well. On
+the other hand, if ŷi is very far from yi for one or more observations, then
+the RSE may be quite large, indicating that the model doesn’t fit the data
+well.
+R2 Statistic
+The RSE provides an absolute measure of lack of fit of the model (3.5)
+to the data. But since it is measured in the units of Y , it is not always
+
+3.1 Simple Linear Regression
+
+79
+
+clear what constitutes a good RSE. The R2 statistic provides an alternative
+measure of fit. It takes the form of a proportion—the proportion of variance
+explained—and so it always takes on a value between 0 and 1, and is
+independent of the scale of Y .
+To calculate R2 , we use the formula
+R2 =
+
+TSS − RSS
+RSS
+=1−
+TSS
+TSS
+
+(3.17)
+
+)
+where TSS = (yi − ȳ)2 is the total sum of squares, and RSS is defined
+total sum of
+in (3.16). TSS measures the total variance in the response Y , and can be squares
+thought of as the amount of variability inherent in the response before the
+regression is performed. In contrast, RSS measures the amount of variability
+that is left unexplained after performing the regression. Hence, TSS − RSS
+measures the amount of variability in the response that is explained (or
+removed) by performing the regression, and R2 measures the proportion of
+variability in Y that can be explained using X. An R2 statistic that is close
+to 1 indicates that a large proportion of the variability in the response is
+explained by the regression. A number near 0 indicates that the regression
+does not explain much of the variability in the response; this might occur
+because the linear model is wrong, or the error variance σ 2 is high, or both.
+In Table 3.2, the R2 was 0.61, and so just under two-thirds of the variability
+in sales is explained by a linear regression on TV.
+The R2 statistic (3.17) has an interpretational advantage over the RSE
+(3.15), since unlike the RSE, it always lies between 0 and 1. However, it can
+still be challenging to determine what is a good R2 value, and in general,
+this will depend on the application. For instance, in certain problems in
+physics, we may know that the data truly comes from a linear model with
+a small residual error. In this case, we would expect to see an R2 value that
+is extremely close to 1, and a substantially smaller R2 value might indicate a
+serious problem with the experiment in which the data were generated. On
+the other hand, in typical applications in biology, psychology, marketing,
+and other domains, the linear model (3.5) is at best an extremely rough
+approximation to the data, and residual errors due to other unmeasured
+factors are often very large. In this setting, we would expect only a very
+small proportion of the variance in the response to be explained by the
+predictor, and an R2 value well below 0.1 might be more realistic!
+The R2 statistic is a measure of the linear relationship between X and
+Y . Recall that correlation, defined as
+correlation
+)n
+(xi − x)(yi − y)
+5)n
+Cor(X, Y ) = 5)n i=1
+,
+(3.18)
+2
+2
+i=1 (xi − x)
+i=1 (yi − y)
+is also a measure of the linear relationship between X and Y .5 This suggests that we might be able to use r = Cor(X, Y ) instead of R2 in order to
+assess the fit of the linear model. In fact, it can be shown that in the simple
+5 We note that in fact, the right-hand side of (3.18) is the sample correlation; thus,
+
+!Y ); however, we omit the “hat” for ease of
+it would be more correct to write Cor(X,
+notation.
+
+80
+
+3. Linear Regression
+
+Simple regression of sales on radio
+Coefficient Std. error t-statistic
+Intercept
+radio
+
+9.312
+0.203
+
+0.563
+0.020
+
+16.54
+9.92
+
+p-value
+< 0.0001
+< 0.0001
+
+Simple regression of sales on newspaper
+
+Intercept
+newspaper
+
+Coefficient
+
+Std. error
+
+t-statistic
+
+12.351
+0.055
+
+0.621
+0.017
+
+19.88
+3.30
+
+p-value
+< 0.0001
+0.00115
+
+TABLE 3.3. More simple linear regression models for the Advertising data.
+Coefficients of the simple linear regression model for number of units sold on Top:
+radio advertising budget and Bottom: newspaper advertising budget. A $1,000 increase in spending on radio advertising is associated with an average increase in
+sales by around 203 units, while the same increase in spending on newspaper advertising is associated with an average increase in sales by around 55 units. (Note
+that the sales variable is in thousands of units, and the radio and newspaper
+variables are in thousands of dollars.)
+
+linear regression setting, R2 = r2 . In other words, the squared correlation
+and the R2 statistic are identical. However, in the next section we will
+discuss the multiple linear regression problem, in which we use several predictors simultaneously to predict the response. The concept of correlation
+between the predictors and the response does not extend automatically to
+this setting, since correlation quantifies the association between a single
+pair of variables rather than between a larger number of variables. We will
+see that R2 fills this role.
+
+3.2
+
+Multiple Linear Regression
+
+Simple linear regression is a useful approach for predicting a response on the
+basis of a single predictor variable. However, in practice we often have more
+than one predictor. For example, in the Advertising data, we have examined
+the relationship between sales and TV advertising. We also have data for
+the amount of money spent advertising on the radio and in newspapers,
+and we may want to know whether either of these two media is associated
+with sales. How can we extend our analysis of the advertising data in order
+to accommodate these two additional predictors?
+One option is to run three separate simple linear regressions, each of
+which uses a different advertising medium as a predictor. For instance,
+we can fit a simple linear regression to predict sales on the basis of the
+amount spent on radio advertisements. Results are shown in Table 3.3 (top
+table). We find that a $1,000 increase in spending on radio advertising is
+associated with an increase in sales of around 203 units. Table 3.3 (bottom
+table) contains the least squares coefficients for a simple linear regression of
+sales onto newspaper advertising budget. A $1,000 increase in newspaper
+advertising budget is associated with an increase in sales of approximately
+55 units.
+
+3.2 Multiple Linear Regression
+
+81
+
+However, the approach of fitting a separate simple linear regression model
+for each predictor is not entirely satisfactory. First of all, it is unclear how to
+make a single prediction of sales given the three advertising media budgets,
+since each of the budgets is associated with a separate regression equation.
+Second, each of the three regression equations ignores the other two media
+in forming estimates for the regression coefficients. We will see shortly that
+if the media budgets are correlated with each other in the 200 markets
+in our data set, then this can lead to very misleading estimates of the
+association between each media budget and sales.
+Instead of fitting a separate simple linear regression model for each predictor, a better approach is to extend the simple linear regression model
+(3.5) so that it can directly accommodate multiple predictors. We can do
+this by giving each predictor a separate slope coefficient in a single model.
+In general, suppose that we have p distinct predictors. Then the multiple
+linear regression model takes the form
+Y = β0 + β1 X1 + β2 X2 + · · · + βp Xp + ",
+
+(3.19)
+
+where Xj represents the jth predictor and βj quantifies the association
+between that variable and the response. We interpret βj as the average
+effect on Y of a one unit increase in Xj , holding all other predictors fixed.
+In the advertising example, (3.19) becomes
+sales = β0 + β1 × TV + β2 × radio + β3 × newspaper + ".
+
+3.2.1
+
+(3.20)
+
+Estimating the Regression Coefficients
+
+As was the case in the simple linear regression setting, the regression coefficients β0 , β1 , . . . , βp in (3.19) are unknown, and must be estimated. Given
+estimates β̂0 , β̂1 , . . . , β̂p , we can make predictions using the formula
+ŷ = β̂0 + β̂1 x1 + β̂2 x2 + · · · + β̂p xp .
+
+(3.21)
+
+The parameters are estimated using the same least squares approach that
+we saw in the context of simple linear regression. We choose β0 , β1 , . . . , βp
+to minimize the sum of squared residuals
+RSS
+
+=
+
+n
+0
+i=1
+
+=
+
+n
+0
+i=1
+
+(yi − ŷi )2
+(yi − β̂0 − β̂1 xi1 − β̂2 xi2 − · · · − β̂p xip )2 .
+
+(3.22)
+
+The values β̂0 , β̂1 , . . . , β̂p that minimize (3.22) are the multiple least squares
+regression coefficient estimates. Unlike the simple linear regression estimates given in (3.4), the multiple regression coefficient estimates have
+somewhat complicated forms that are most easily represented using matrix algebra. For this reason, we do not provide them here. Any statistical
+software package can be used to compute these coefficient estimates, and
+later in this chapter we will show how this can be done in R. Figure 3.4
+
+82
+
+3. Linear Regression
+Y
+
+X2
+
+X1
+
+FIGURE 3.4. In a three-dimensional setting, with two predictors and one
+response, the least squares regression line becomes a plane. The plane is chosen
+to minimize the sum of the squared vertical distances between each observation
+(shown in red) and the plane.
+
+illustrates an example of the least squares fit to a toy data set with p = 2
+predictors.
+Table 3.4 displays the multiple regression coefficient estimates when TV,
+radio, and newspaper advertising budgets are used to predict product sales
+using the Advertising data. We interpret these results as follows: for a given
+amount of TV and newspaper advertising, spending an additional $1,000 on
+radio advertising is associated with approximately 189 units of additional
+sales. Comparing these coefficient estimates to those displayed in Tables 3.1
+and 3.3, we notice that the multiple regression coefficient estimates for
+TV and radio are pretty similar to the simple linear regression coefficient
+estimates. However, while the newspaper regression coefficient estimate in
+Table 3.3 was significantly non-zero, the

@@ -1,0 +1,341 @@
+ature map
+
+10.3 Convolutional Neural Networks
+
+407
+
+FIGURE 10.6. Schematic showing how a convolutional neural network classifies
+an image of a tiger. The network takes in the image and identifies local features.
+It then combines the local features in order to create compound features, which in
+this example include eyes and ears. These compound features are used to output
+the label “tiger”.
+
+axes are spatial (both are 32-dimensional), and the third is the channel
+channel
+axis,5 representing the three colors. There is a designated training set of
+50,000 images, and a test set of 10,000.
+A special family of convolutional neural networks (CNNs) has evolved for
+convolutional
+classifying images such as these, and has shown spectacular success on a neural
+wide range of problems. CNNs mimic to some degree how humans classify networks
+images, by recognizing specific features or patterns anywhere in the image
+that distinguish each particular object class. In this section we give a brief
+overview of how they work.
+Figure 10.6 illustrates the idea behind a convolutional neural network on
+a cartoon image of a tiger.6
+The network first identifies low-level features in the input image, such
+as small edges, patches of color, and the like. These low-level features are
+then combined to form higher-level features, such as parts of ears, eyes,
+and so on. Eventually, the presence or absence of these higher-level features
+contributes to the probability of any given output class.
+How does a convolutional neural network build up this hierarchy? It combines two specialized types of hidden layers, called convolution layers and
+pooling layers. Convolution layers search for instances of small patterns in
+the image, whereas pooling layers downsample these to select a prominent
+subset. In order to achieve state-of-the-art results, contemporary neuralnetwork architectures make use of many convolution and pooling layers.
+We describe convolution and pooling layers next.
+
+10.3.1
+
+Convolution Layers
+
+A convolution layer is made up of a large number of convolution filters, each
+
+convolution
+layer
+
+5 The term channel is taken from the signal-processing literature. Each channel is a convolution
+distinct source of information.
+filter
+6 Thanks to Elena Tuzhilina for producing the diagram and https://www.
+cartooning4kids.com/ for permission to use the cartoon tiger.
+
+408
+
+10. Deep Learning
+
+of which is a template that determines whether a particular local feature is
+present in an image. A convolution filter relies on a very simple operation,
+called a convolution, which basically amounts to repeatedly multiplying
+matrix elements and then adding the results.
+To understand how a convolution filter works, consider a very simple
+example of a 4 × 3 image:
+
+
+a b c
+d e f 
+
+Original Image = 
+g h i  .
+j k l
+
+Now consider a 2 × 2 filter of the form
+
+3
+
+α
+Convolution Filter =
+γ
+
+4
+β
+.
+δ
+
+When we convolve the image with the filter, we get the result7
+
+
+aα + bβ + dγ + eδ bα + cβ + eγ + f δ
+Convolved Image = dα + eβ + gγ + hδ eα + f β + hγ + iδ  .
+gα + hβ + jγ + kδ hα + iβ + kγ + lδ
+
+For instance, the top-left element comes from multiplying each element in
+the 2 × 2 filter by the corresponding element in the top left 2 × 2 portion
+of the image, and adding the results. The other elements are obtained in a
+similar way: the convolution filter is applied to every 2 × 2 submatrix of the
+original image in order to obtain the convolved image. If a 2 × 2 submatrix
+of the original image resembles the convolution filter, then it will have a
+large value in the convolved image; otherwise, it will have a small value.
+Thus, the convolved image highlights regions of the original image that
+resemble the convolution filter. We have used 2 × 2 as an example; in
+general convolution filters are small %1 × %2 arrays, with %1 and %2 small
+positive integers that are not necessarily equal.
+Figure 10.7 illustrates the application of two convolution filters to a 192×
+179 image of a tiger, shown on the left-hand side.8 Each convolution filter
+is a 15 × 15 image containing mostly zeros (black), with a narrow strip
+of ones (white) oriented either vertically or horizontally within the image.
+When each filter is convolved with the image of the tiger, areas of the tiger
+that resemble the filter (i.e. that have either horizontal or vertical stripes or
+edges) are given large values, and areas of the tiger that do not resemble the
+feature are given small values. The convolved images are displayed on the
+right-hand side. We see that the horizontal stripe filter picks out horizontal
+stripes and edges in the original image, whereas the vertical stripe filter
+picks out vertical stripes and edges in the original image.
+7 The convolved image is smaller than the original image because its dimension is
+given by the number of 2 × 2 submatrices in the original image. Note that 2 × 2 is the
+dimension of the convolution filter. If we want the convolved image to have the same
+dimension as the original image, then padding can be applied.
+8 The tiger image used in Figures 10.7–10.9 was obtained from the public domain
+image resource https://www.needpix.com/.
+
+10.3 Convolutional Neural Networks
+
+409
+
+FIGURE 10.7. Convolution filters find local features in an image, such as edges
+and small shapes. We begin with the image of the tiger shown on the left, and
+apply the two small convolution filters in the middle. The convolved images highlight areas in the original image where details similar to the filters are found.
+Specifically, the top convolved image highlights the tiger’s vertical stripes, whereas
+the bottom convolved image highlights the tiger’s horizontal stripes. We can think
+of the original image as the input layer in a convolutional neural network, and
+the convolved images as the units in the first hidden layer.
+
+We have used a large image and two large filters in Figure 10.7 for illustration. For the CIFAR100 database there are 32 × 32 color pixels per image,
+and we use 3 × 3 convolution filters.
+In a convolution layer, we use a whole bank of filters to pick out a variety
+of differently-oriented edges and shapes in the image. Using predefined
+filters in this way is standard practice in image processing. By contrast,
+with CNNs the filters are learned for the specific classification task. We can
+think of the filter weights as the parameters going from an input layer to a
+hidden layer, with one hidden unit for each pixel in the convolved image.
+This is in fact the case, though the parameters are highly structured and
+constrained (see Exercise 4 for more details). They operate on localized
+patches in the input image (so there are many structural zeros), and the
+same weights in a given filter are reused for all possible patches in the image
+(so the weights are constrained).9
+We now give some additional details.
+• Since the input image is in color, it has three channels represented
+by a three-dimensional feature map (array). Each channel is a twodimensional (32 × 32) feature map — one for red, one for green, and
+one for blue. A single convolution filter will also have three channels,
+one per color, each of dimension 3 × 3, with potentially different filter
+weights. The results of the three convolutions are summed to form
+a two-dimensional output feature map. Note that at this point the
+color information has been used, and is not passed on to subsequent
+layers except through its role in the convolution.
+9 This used to be called weight sharing in the early years of neural networks.
+
+410
+
+10. Deep Learning
+
+• If we use K different convolution filters at this first hidden layer,
+we get K two-dimensional output feature maps, which together are
+treated as a single three-dimensional feature map. We view each of
+the K output feature maps as a separate channel of information, so
+now we have K channels in contrast to the three color channels of
+the original input feature map. The three-dimensional feature map is
+just like the activations in a hidden layer of a simple neural network,
+except organized and produced in a spatially structured way.
+• We typically apply the ReLU activation function (10.5) to the convolved image. This step is sometimes viewed as a separate layer in
+the convolutional neural network, in which case it is referred to as a
+detector layer.
+
+10.3.2
+
+detector
+layer
+
+Pooling Layers
+
+A pooling layer provides a way to condense a large image into a smaller
+pooling
+summary image. While there are a number of possible ways to perform
+pooling, the max pooling operation summarizes each non-overlapping 2 × 2
+block of pixels in an image using the maximum value in the block. This
+reduces the size of the image by a factor of two in each direction, and it
+also provides some location invariance: i.e. as long as there is a large value
+in one of the four pixels in the block, the whole block registers as a large
+value in the reduced image.
+Here is a simple example of max pooling:
+
+
+1 2 5 3
+3
+4
+3 0 1 2
+→ 3 5 .
+Max pool 
+2 1 3 4
+2 4
+1 1 2 0
+
+10.3.3
+
+Architecture of a Convolutional Neural Network
+
+So far we have defined a single convolution layer — each filter produces a
+new two-dimensional feature map. The number of convolution filters in a
+convolution layer is akin to the number of units at a particular hidden layer
+in a fully-connected neural network of the type we saw in Section 10.2.
+This number also defines the number of channels in the resulting threedimensional feature map. We have also described a pooling layer, which
+reduces the first two dimensions of each three-dimensional feature map.
+Deep CNNs have many such layers. Figure 10.8 shows a typical architecture
+for a CNN for the CIFAR100 image classification task.
+At the input layer, we see the three-dimensional feature map of a color
+image, where the channel axis represents each color by a 32 × 32 twodimensional feature map of pixels. Each convolution filter produces a new
+channel at the first hidden layer, each of which is a 32 × 32 feature map
+(after some padding at the edges). After this first round of convolutions, we
+now have a new “image”; a feature map with considerably more channels
+than the three color input channels (six in the figure, since we used six
+convolution filters).
+
+10.3 Convolutional Neural Networks
+16
+
+32
+
+32
+
+411
+
+8
+8
+
+4
+
+16
+
+10
+0
+
+50
+0
+
+32
+
+2
+
+pool
+pool
+
+convolve
+
+pool
+convolve
+
+flatten
+
+convolve
+
+FIGURE 10.8. Architecture of a deep CNN for the CIFAR100 classification task.
+Convolution layers are interspersed with 2 × 2 max-pool layers, which reduce the
+size by a factor of 2 in both dimensions.
+
+This is followed by a max-pool layer, which reduces the size of the feature
+map in each channel by a factor of four: two in each dimension.
+This convolve-then-pool sequence is now repeated for the next two layers.
+Some details are as follows:
+• Each subsequent convolve layer is similar to the first. It takes as input
+the three-dimensional feature map from the previous layer and treats
+it like a single multi-channel image. Each convolution filter learned
+has as many channels as this feature map.
+• Since the channel feature maps are reduced in size after each pool
+layer, we usually increase the number of filters in the next convolve
+layer to compensate.
+• Sometimes we repeat several convolve layers before a pool layer. This
+effectively increases the dimension of the filter.
+These operations are repeated until the pooling has reduced each channel
+feature map down to just a few pixels in each dimension. At this point the
+three-dimensional feature maps are flattened — the pixels are treated as
+separate units — and fed into one or more fully-connected layers before
+reaching the output layer, which is a softmax activation for the 100 classes
+(as in (10.13)).
+There are many tuning parameters to be selected in constructing such a
+network, apart from the number, nature, and sizes of each layer. Dropout
+learning can be used at each layer, as well as lasso or ridge regularization
+(see Section 10.7). The details of constructing a convolutional neural network can seem daunting. Fortunately, terrific software is available, with
+extensive examples and vignettes that provide guidance on sensible choices
+for the parameters. For the CIFAR100 official test set, the best accuracy as
+of this writing is just above 75%, but undoubtedly this performance will
+continue to improve.
+
+10.3.4
+
+Data Augmentation
+
+An additional important trick used with image modeling is data augmentdata augation. Essentially, each training image is replicated many times, with each mentation
+replicate randomly distorted in a natural way such that human recognition
+is unaffected. Figure 10.9 shows some examples. Typical distortions are
+
+412
+
+10. Deep Learning
+
+FIGURE 10.9. Data augmentation. The original image (leftmost) is distorted
+in natural ways to produce different images with the same class label. These
+distortions do not fool humans, and act as a form of regularization when fitting
+the CNN.
+
+zoom, horizontal and vertical shift, shear, small rotations, and in this case
+horizontal flips. At face value this is a way of increasing the training set
+considerably with somewhat different examples, and thus protects against
+overfitting. In fact we can see this as a form of regularization: we build a
+cloud of images around each original image, all with the same label. This
+kind of fattening of the data is similar in spirit to ridge regularization.
+We will see in Section 10.7.2 that the stochastic gradient descent algorithms for fitting deep learning models repeatedly process randomlyselected batches of, say, 128 training images at a time. This works hand-inglove with augmentation, because we can distort each image in the batch
+on the fly, and hence do not have to store all the new images.
+
+10.3.5
+
+Results Using a Pretrained Classifier
+
+Here we use an industry-level pretrained classifier to predict the class of
+some new images. The resnet50 classifier is a convolutional neural network
+that was trained using the imagenet data set, which consists of millions of
+images that belong to an ever-growing number of categories.10 Figure 10.10
+demonstrates the performance of resnet50 on six photographs (private collection of one of the authors).11 The CNN does a reasonable job classifying
+the hawk in the second image. If we zoom out as in the third image, it
+gets confused and chooses the fountain rather than the hawk. In the final
+image a “jacamar” is a tropical bird from South and Central America with
+similar coloring to the South African Cape Weaver. We give more details
+on this example in Section 10.9.4.
+Much of the work in fitting a CNN is in learning the convolution filters
+at the hidden layers; these are the coefficients of a CNN. For models fit to
+massive corpora such as imagenet with many classes, the output of these
+filters can serve as features for general natural-image classification problems. One can use these pretrained hidden layers for new problems with
+much smaller training sets (a process referred to as weight freezing), and
+weight
+just train the last few layers of the network, which requires much less data. freezing
+10 For more information about resnet50, see He, Zhang, Ren, and Sun (2015) “Deep
+residual learning for image recognition”, https://arxiv.org/abs/1512.03385. For details about imagenet, see Russakovsky, Deng, et al. (2015) “ImageNet Large Scale
+Visual Recognition Challenge”, in International Journal of Computer Vision.
+11 These resnet results can change with tim

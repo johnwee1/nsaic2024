@@ -1,0 +1,593 @@
+=1 (yi − g(xi ))2 to be small. However, there is a problem
+with this approach. If we don’t put any constraints on g(xi ), then we can
+always make RSS zero simply by choosing g such that it interpolates all
+of the yi . Such a function would woefully overfit the data—it would be far
+too flexible. What we really want is a function g that makes RSS small,
+but that is also smooth.
+How might we ensure that g is smooth? There are a number of ways to
+do this. A natural approach is to find the function g that minimizes
+L
+n
+0
+(yi − g(xi ))2 + λ g $$ (t)2 dt
+(7.11)
+i=1
+
+where λ is a nonnegative tuning parameter. The function g that minimizes
+(7.11) is known as a smoothing spline.
+smoothing
+What does (7.11) mean? Equation 7.11 takes the “Loss+Penalty” for- spline
+mulation that we encounter
+)nin the context of ridge regression and the lasso
+in Chapter 6. The term i=1 (yi − g(xi ))2 is Ma loss function that encourloss function
+ages g to fit the data well, and the term λ g $$ (t)2 dt is a penalty term
+that penalizes the variability in g. The notation g $$ (t) indicates the second
+derivative of the function g. The first derivative g $ (t) measures the slope
+
+7.5 Smoothing Splines
+
+301
+
+of a function at t, and the second derivative corresponds to the amount by
+which the slope is changing. Hence, broadly speaking, the second derivative
+of a function is a measure of its roughness: it is large in absolute value if
+g(t) is very wiggly near t, and it is close to zero otherwise. (The second
+derivative
+of a straight line is zero; note that a line is perfectly smooth.)
+M
+The notation is an integral, which
+we can think of as a summation over
+M
+the range of t. In other words, g $$ (t)2 dt is simply a measure of the total
+change in the function g $ (t), over its Mentire range. If g is very smooth, then
+g $ (t) will be close to constant and g $$ (t)2 dt will take on a small value.
+Conversely,
+if g is jumpy and variable then g $ (t) will vary significantly
+and
+M $$ 2
+M
+g (t) dt will take on a large value. Therefore, in (7.11), λ g $$ (t)2 dt encourages g to be smooth. The larger the value of λ, the smoother g will be.
+When λ = 0, then the penalty term in (7.11) has no effect, and so the
+function g will be very jumpy and will exactly interpolate the training
+observations. When λ → ∞, g will be perfectly smooth—it will just be
+a straight line that passes as closely as possible to the training points.
+In fact, in this case, g will be the linear least squares line, since the loss
+function in (7.11) amounts to minimizing the residual sum of squares. For
+an intermediate value of λ, g will approximate the training observations
+but will be somewhat smooth. We see that λ controls the bias-variance
+trade-off of the smoothing spline.
+The function g(x) that minimizes (7.11) can be shown to have some special properties: it is a piecewise cubic polynomial with knots at the unique
+values of x1 , . . . , xn , and continuous first and second derivatives at each
+knot. Furthermore, it is linear in the region outside of the extreme knots.
+In other words, the function g(x) that minimizes (7.11) is a natural cubic
+spline with knots at x1 , . . . , xn ! However, it is not the same natural cubic
+spline that one would get if one applied the basis function approach described in Section 7.4.3 with knots at x1 , . . . , xn —rather, it is a shrunken
+version of such a natural cubic spline, where the value of the tuning parameter λ in (7.11) controls the level of shrinkage.
+
+7.5.2
+
+Choosing the Smoothing Parameter λ
+
+We have seen that a smoothing spline is simply a natural cubic spline
+with knots at every unique value of xi . It might seem that a smoothing
+spline will have far too many degrees of freedom, since a knot at each data
+point allows a great deal of flexibility. But the tuning parameter λ controls
+the roughness of the smoothing spline, and hence the effective degrees of
+freedom. It is possible to show that as λ increases from 0 to ∞, the effective
+effective
+degrees of freedom, which we write dfλ , decrease from n to 2.
+degrees of
+In the context of smoothing splines, why do we discuss effective degrees freedom
+of freedom instead of degrees of freedom? Usually degrees of freedom refer
+to the number of free parameters, such as the number of coefficients fit in a
+polynomial or cubic spline. Although a smoothing spline has n parameters
+and hence n nominal degrees of freedom, these n parameters are heavily
+constrained or shrunk down. Hence dfλ is a measure of the flexibility of the
+smoothing spline—the higher it is, the more flexible (and the lower-bias but
+higher-variance) the smoothing spline. The definition of effective degrees of
+
+302
+
+7. Moving Beyond Linearity
+
+freedom is somewhat technical. We can write
+ĝλ = Sλ y,
+
+(7.12)
+
+where ĝλ is the solution to (7.11) for a particular choice of λ—that is, it
+is an n-vector containing the fitted values of the smoothing spline at the
+training points x1 , . . . , xn . Equation 7.12 indicates that the vector of fitted
+values when applying a smoothing spline to the data can be written as a
+n × n matrix Sλ (for which there is a formula) times the response vector
+y. Then the effective degrees of freedom is defined to be
+dfλ =
+
+n
+0
+i=1
+
+{Sλ }ii ,
+
+(7.13)
+
+the sum of the diagonal elements of the matrix Sλ .
+In fitting a smoothing spline, we do not need to select the number or
+location of the knots—there will be a knot at each training observation,
+x1 , . . . , xn . Instead, we have another problem: we need to choose the value
+of λ. It should come as no surprise that one possible solution to this problem
+is cross-validation. In other words, we can find the value of λ that makes
+the cross-validated RSS as small as possible. It turns out that the leaveone-out cross-validation error (LOOCV) can be computed very efficiently
+for smoothing splines, with essentially the same cost as computing a single
+fit, using the following formula:
+42
+n
+n 3
+0
+0
+yi − ĝλ (xi )
+(−i)
+RSScv (λ) =
+(yi − ĝλ (xi ))2 =
+.
+1 − {Sλ }ii
+i=1
+i=1
+The notation ĝλ (xi ) indicates the fitted value for this smoothing spline
+evaluated at xi , where the fit uses all of the training observations except
+for the ith observation (xi , yi ). In contrast, ĝλ (xi ) indicates the smoothing
+spline function fit to all of the training observations and evaluated at xi .
+This remarkable formula says that we can compute each of these leaveone-out fits using only ĝλ , the original fit to all of the data!5 We have
+a very similar formula (5.2) on page 205 in Chapter 5 for least squares
+linear regression. Using (5.2), we can very quickly perform LOOCV for
+the regression splines discussed earlier in this chapter, as well as for least
+squares regression using arbitrary basis functions.
+Figure 7.8 shows the results from fitting a smoothing spline to the Wage
+data. The red curve indicates the fit obtained from pre-specifying that we
+would like a smoothing spline with 16 effective degrees of freedom. The blue
+curve is the smoothing spline obtained when λ is chosen using LOOCV; in
+this case, the value of λ chosen results in 6.8 effective degrees of freedom
+(computed using (7.13)). For this data, there is little discernible difference
+between the two smoothing splines, beyond the fact that the one with 16
+degrees of freedom seems slightly wigglier. Since there is little difference
+between the two fits, the smoothing spline fit with 6.8 degrees of freedom
+(−i)
+
+5 The exact formulas for computing ĝ(x ) and S are very technical; however, efficient
+i
+λ
+algorithms are available for computing these quantities.
+
+7.6 Local Regression
+
+303
+
+Smoothing Spline
+
+200
+0
+
+50 100
+
+Wage
+
+300
+
+16 Degrees of Freedom
+6.8 Degrees of Freedom (LOOCV)
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+80
+
+Age
+
+FIGURE 7.8. Smoothing spline fits to the Wage data. The red curve results
+from specifying 16 effective degrees of freedom. For the blue curve, λ was found
+automatically by leave-one-out cross-validation, which resulted in 6.8 effective
+degrees of freedom.
+
+is preferable, since in general simpler models are better unless the data
+provides evidence in support of a more complex model.
+
+7.6
+
+Local Regression
+
+Local regression is a different approach for fitting flexible non-linear funclocal
+tions, which involves computing the fit at a target point x0 using only the regression
+nearby training observations. Figure 7.9 illustrates the idea on some simulated data, with one target point near 0.4, and another near the boundary
+at 0.05. In this figure the blue line represents the function f (x) from which
+the data were generated, and the light orange line corresponds to the local
+regression estimate fˆ(x). Local regression is described in Algorithm 7.1.
+Note that in Step 3 of Algorithm 7.1, the weights Ki0 will differ for each
+value of x0 . In other words, in order to obtain the local regression fit at a
+new point, we need to fit a new weighted least squares regression model by
+minimizing (7.14) for a new set of weights. Local regression is sometimes
+referred to as a memory-based procedure, because like nearest-neighbors, we
+need all the training data each time we wish to compute a prediction. We
+will avoid getting into the technical details of local regression here—there
+are books written on the topic.
+In order to perform local regression, there are a number of choices to
+be made, such as how to define the weighting function K, and whether
+to fit a linear, constant, or quadratic regression in Step 3. (Equation 7.14
+corresponds to a linear regression.) While all of these choices make some
+difference, the most important choice is the span s, which is the proportion
+of points used to compute the local regression at x0 , as defined in Step 1
+above. The span plays a role like that of the tuning parameter λ in smooth-
+
+304
+
+7. Moving Beyond Linearity
+
+O
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.5
+1.0
+0.5
+0.0
+−0.5
+
+OO
+O
+O OO
+O
+O OO
+O
+O
+O
+OOO
+O
+OO O
+O
+O
+O O
+O
+O
+O O OO O
+O
+O O
+OOO
+O OO
+OO OO
+O
+O
+O OO OO O O
+OOO
+O OO O
+OO OO
+O O
+O
+O
+O
+O
+O OO
+O
+O O
+O
+O O
+O
+OO
+O O OO O
+O
+OO
+OO O O
+O O
+
+−1.0
+
+OO
+O
+O OO
+O
+O OO
+O
+O
+O
+OOO
+O
+OO O
+O
+O
+O O
+O
+O
+O O OO O
+O
+O O
+OOO
+O OO
+OO OO
+O
+O
+O OO OO O O
+OOO
+O OO O
+OO OO
+O O
+O
+O
+O
+O
+O OO
+O
+O O
+O
+O O
+O
+OO
+O O OO O
+O
+OO
+OO O O
+O O
+
+−1.0
+
+−0.5
+
+0.0
+
+0.5
+
+1.0
+
+1.5
+
+Local Regression
+
+1.0
+
+O
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+FIGURE 7.9. Local regression illustrated on some simulated data, where the
+blue curve represents f (x) from which the data were generated, and the light
+orange curve corresponds to the local regression estimate fˆ(x). The orange colored
+points are local to the target point x0 , represented by the orange vertical line. The
+yellow bell-shape superimposed on the plot indicates weights assigned to each
+point, decreasing to zero with distance from the target point. The fit fˆ(x0 ) at x0
+is obtained by fitting a weighted linear regression (orange line segment), and using
+the fitted value at x0 (orange solid dot) as the estimate fˆ(x0 ).
+
+ing splines: it controls the flexibility of the non-linear fit. The smaller the
+value of s, the more local and wiggly will be our fit; alternatively, a very
+large value of s will lead to a global fit to the data using all of the training observations. We can again use cross-validation to choose s, or we can
+specify it directly. Figure 7.10 displays local linear regression fits on the
+Wage data, using two values of s: 0.7 and 0.2. As expected, the fit obtained
+using s = 0.7 is smoother than that obtained using s = 0.2.
+The idea of local regression can be generalized in many different ways.
+In a setting with multiple features X1 , X2 , . . . , Xp , one very useful generalization involves fitting a multiple linear regression model that is global in
+some variables, but local in another, such as time. Such varying coefficient
+models are a useful way of adapting a model to the most recently gathered
+varying
+data. Local regression also generalizes very naturally when we want to fit coefficient
+models that are local in a pair of variables X1 and X2 , rather than one. model
+We can simply use two-dimensional neighborhoods, and fit bivariate linear
+regression models using the observations that are near each target point
+in two-dimensional space. Theoretically the same approach can be implemented in higher dimensions, using linear regressions fit to p-dimensional
+neighborhoods. However, local regression can perform poorly if p is much
+larger than about 3 or 4 because there will generally be very few training
+observations close to x0 . Nearest-neighbors regression, discussed in Chapter 3, suffers from a similar problem in high dimensions.
+
+7.7 Generalized Additive Models
+
+305
+
+Algorithm 7.1 Local Regression At X = x0
+1. Gather the fraction s = k/n of training points whose xi are closest
+to x0 .
+2. Assign a weight Ki0 = K(xi , x0 ) to each point in this neighborhood,
+so that the point furthest from x0 has weight zero, and the closest
+has the highest weight. All but these k nearest neighbors get weight
+zero.
+3. Fit a weighted least squares regression of the yi on the xi using the
+aforementioned weights, by finding β̂0 and β̂1 that minimize
+n
+0
+i=1
+
+(7.14)
+
+Ki0 (yi − β0 − β1 xi )2 .
+
+4. The fitted value at x0 is given by fˆ(x0 ) = β̂0 + β̂1 x0 .
+
+Local Linear Regression
+
+200
+0
+
+50 100
+
+Wage
+
+300
+
+Span is 0.2 (16.4 Degrees of Freedom)
+Span is 0.7 (5.3 Degrees of Freedom)
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+80
+
+Age
+
+FIGURE 7.10. Local linear fits to the Wage data. The span specifies the fraction
+of the data used to compute the fit at each target point.
+
+7.7
+
+Generalized Additive Models
+
+In Sections 7.1–7.6, we present a number of approaches for flexibly predicting a response Y on the basis of a single predictor X. These approaches can
+be seen as extensions of simple linear regression. Here we explore the problem of flexibly predicting Y on the basis of several predictors, X1 , . . . , Xp .
+This amounts to an extension of multiple linear regression.
+Generalized additive models (GAMs) provide a general framework for
+generalized
+extending a standard linear model by allowing non-linear functions of each additive
+of the variables, while maintaining additivity. Just like linear models, GAMs model
+can be applied with both quantitative and qualitative responses. We first additivity
+
+306
+
+7. Moving Beyond Linearity
+HS
+
+<Coll
+
+Coll
+
+>Coll
+
+2003
+
+2005
+
+2007
+
+2009
+
+20
+10
+−10
+
+0
+
+−10
+
+f2 (age)
+
+−20
+−30
+
+−50
+
+−30
+
+−40
+
+−20
+
+−30
+
+−20
+
+10
+0
+−10
+
+f1 (year)
+
+0
+
+f3 (education)
+
+20
+
+30
+
+10
+
+30
+
+40
+
+20
+
+<HS
+
+20
+
+30
+
+40
+
+50
+
+60
+
+70
+
+80
+
+education
+year
+
+age
+
+FIGURE 7.11. For the Wage data, plots of the relationship between each feature
+and the response, wage, in the fitted model (7.16). Each plot displays the fitted
+function and pointwise standard errors. The first two functions are natural splines
+in year and age, with four and five degrees of freedom, respectively. The third
+function is a step function, fit to the qualitative variable education.
+
+examine GAMs for a quantitative response in Section 7.7.1, and then for a
+qualitative response in Section 7.7.2.
+
+7.7.1
+
+GAMs for Regression Problems
+
+A natural way to extend the multiple linear regression model
+yi = β0 + β1 xi1 + β2 xi2 + · · · + βp xip + "i
+
+in order to allow for non-linear relationships between each feature and the
+response is to replace each linear component βj xij with a (smooth) nonlinear function fj (xij ). We would then write the model as
+yi
+
+=
+
+β0 +
+
+p
+0
+
+fj (xij ) + "i
+
+j=1
+
+β0 + f1 (xi1 ) + f2 (xi2 ) + · · · + fp (xip ) + "i .
+
+(7.15)
+
+wage = β0 + f1 (year) + f2 (age) + f3 (

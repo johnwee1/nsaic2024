@@ -1,0 +1,413 @@
+earning
+
+Embedding: 1-1
+[10, 500]
+[10, 500, 32]
+320 ,096
+LSTM: 1-2
+[10, 500, 32]
+[10, 500, 32]
+8,448
+Linear: 1-3
+[10, 32]
+[10, 1]
+33
+====================================================================
+Total params: 328 ,577
+Trainable params: 328 ,577
+
+The 10,003 is suppressed in the summary, but we see it in the parameter
+count, since 10, 003 × 32 = 320, 096.
+
+In [88]: lstm_module = SimpleModule. binary_classification(lstm_model)
+lstm_logger = CSVLogger('logs ', name='IMDB_LSTM ')
+In [89]: lstm_trainer = Trainer(deterministic=True ,
+max_epochs =20,
+logger=lstm_logger ,
+callbacks =[ ErrorTracker ()])
+lstm_trainer.fit(lstm_module ,
+datamodule=imdb_seq_dm)
+
+The rest is now similar to other networks we have fit. We track the test
+performance as the network is fit, and see that it attains 85% accuracy.
+In [90]: lstm_trainer.test(lstm_module , datamodule=imdb_seq_dm)
+Out[90]: [{'test_loss ': 0.8178 , 'test_accuracy ': 0.8476}]
+
+We once again show the learning progress, followed by cleanup.
+In [91]: lstm_results = pd.read_csv(lstm_logger.experiment.metrics_file_path)
+fig , ax = subplots (1, 1, figsize =(6, 6))
+summary_plot(lstm_results ,
+ax ,
+col='accuracy ',
+ylabel='Accuracy ')
+ax.set_xticks(np.linspace (0, 20, 5). astype(int))
+ax.set_ylabel('Accuracy ')
+ax.set_ylim ([0.5 , 1])
+In [92]: del(lstm_model ,
+lstm_trainer ,
+lstm_logger ,
+imdb_seq_dm ,
+imdb_seq_train ,
+imdb_seq_test)
+
+Time Series Prediction
+We now show how to fit the models in Section 10.5.2 for time series prediction. We first load and standardize the data.
+In [93]: NYSE = load_data('NYSE ')
+cols = ['DJ_return ', 'log_volume ', 'log_volatility ']
+X = pd.DataFrame(StandardScaler(
+with_mean=True ,
+with_std=True).fit_transform(NYSE[cols ]),
+columns=NYSE[cols ].columns ,
+index=NYSE.index)
+
+10.9 Lab: Deep Learning
+
+461
+
+Next we set up the lagged versions of the data, dropping any rows with
+missing values using the dropna() method.
+In [94]: for lag in range(1, 6):
+for col in cols:
+newcol = np.zeros(X.shape [0]) * np.nan
+newcol[lag:] = X[col]. values [:-lag]
+X.insert(len(X.columns), "{0}_{1}".format(col , lag), newcol)
+X.insert(len(X.columns), 'train ', NYSE['train '])
+X = X.dropna ()
+
+Finally, we extract the response, training indicator, and drop the current
+day’s DJ_return and log_volatility to predict only from previous day’s
+data.
+In [95]: Y, train = X['log_volume '], X['train ']
+X = X.drop(columns =['train '] + cols)
+X.columns
+Out[95]: Index (['DJ_return_1 ', 'log_volume_1 ', 'log_volatility_1 ',
+'DJ_return_2 ', 'log_volume_2 ', 'log_volatility_2 ',
+'DJ_return_3 ', 'log_volume_3 ', 'log_volatility_3 ',
+'DJ_return_4 ', 'log_volume_4 ', 'log_volatility_4 ',
+'DJ_return_5 ', 'log_volume_5 ', 'log_volatility_5 '],
+dtype='object ')
+
+We first fit a simple linear model and compute the R2 on the test data
+using the score() method.
+In [96]: M = LinearRegression ()
+M.fit(X[train], Y[train ])
+M.score(X[∼train], Y[∼train ])
+Out[96]: 0.4129
+
+We refit this model, including the factor variable day_of_week. For a categorical series in pandas, we can form the indicators using the get_dummies()
+method.
+In [97]: X_day = pd.merge(X,
+pd.get_dummies(NYSE['day_of_week ']),
+on='date ')
+
+Note that we do not have to reinstantiate the linear regression model as its
+fit() method accepts a design matrix and a response directly.
+In [98]: M.fit(X_day[train], Y[train ])
+M.score(X_day[∼train], Y[∼train ])
+Out[98]: 0.4595
+
+This model achieves an R2 of about 46%.
+To fit the RNN, we must reshape the data, as it will expect 5 lagged
+versions of each feature as indicated by the input_shape argument to the
+layer nn.RNN() below. We first ensure the columns of our data frame are
+such that a reshaped matrix will have the variables correctly lagged. We
+use the reindex() method to do this.
+
+462
+
+10. Deep Learning
+
+For an input shape (5,3), each row represents a lagged version of the
+three variables. The nn.RNN() layer also expects the first row of each observation to be earliest in time, so we must reverse the current order. Hence
+we loop over range(5,0,-1) below, which is an example of using a slice()
+to index iterable objects. The general notation is start:end:step.
+In [99]: ordered_cols = []
+for lag in range (5,0,-1):
+for col in cols:
+ordered_cols.append('{0}_{1}'.format(col , lag))
+X = X.reindex(columns=ordered_cols)
+X.columns
+Out[99]: Index (['DJ_return_5 ', 'log_volume_5 ', 'log_volatility_5 ',
+'DJ_return_4 ', 'log_volume_4 ', 'log_volatility_4 ',
+'DJ_return_3 ', 'log_volume_3 ', 'log_volatility_3 ',
+'DJ_return_2 ', 'log_volume_2 ', 'log_volatility_2 ',
+'DJ_return_1 ', 'log_volume_1 ', 'log_volatility_1 '],
+dtype='object ')
+
+We now reshape the data.
+In [100]: X_rnn = X.to_numpy ().reshape ((-1,5,3))
+X_rnn.shape
+Out[100]: (6046 , 5, 3)
+
+By specifying the first size as -1, numpy.reshape() deduces its size based on
+the remaining arguments.
+Now we are ready to proceed with the RNN, which uses 12 hidden units,
+and 10% dropout. After passing through the RNN, we extract the final
+time point as val[:,-1] in forward() below. This gets passed through a
+10% dropout and then flattened through a linear layer.
+In [101]: class NYSEModel(nn.Module):
+def __init__(self):
+super(NYSEModel , self).__init__ ()
+self.rnn = nn.RNN(3,
+12,
+batch_first=True)
+self.dense = nn.Linear (12, 1)
+self.dropout = nn.Dropout (0.1)
+def forward(self , x):
+val , h_n = self.rnn(x)
+val = self.dense(self.dropout(val[:,-1]))
+return torch.flatten(val)
+nyse_model = NYSEModel ()
+
+We fit the model in a similar fashion to previous networks. We supply
+the fit function with test data as validation data, so that when we monitor
+its progress and plot the history function we can see the progress on the
+test data. Of course we should not use this as a basis for early stopping,
+since then the test performance would be biased.
+We form the training dataset similar to our Hitters example.
+
+10.9 Lab: Deep Learning
+
+463
+
+In [102]: datasets = []
+for mask in [train , ∼train ]:
+X_rnn_t = torch.tensor(X_rnn[mask ]. astype(np.float32))
+Y_t = torch.tensor(Y[mask ]. astype(np.float32))
+datasets.append(TensorDataset(X_rnn_t , Y_t))
+nyse_train , nyse_test = datasets
+
+Following our usual pattern, we inspect the summary.
+In [103]: summary(nyse_model ,
+input_data=X_rnn_t ,
+col_names =['input_size ',
+'output_size ',
+'num_params '])
+Out[103]: ====================================================================
+Layer (type:depth -idx)
+Input Shape
+Output Shape
+Param #
+====================================================================
+NYSEModel
+[1770 , 5, 3]
+[1770]
+-RNN: 1-1
+[1770 , 5, 3]
+[1770 , 5, 12]
+204
+Dropout: 1-2
+[1770 , 12]
+[1770 , 12]
+-Linear: 1-3
+[1770 , 12]
+[1770 , 1]
+13
+====================================================================
+Total params: 217
+Trainable params: 217
+
+We again put the two datasets into a data module, with a batch size of 64.
+In [104]: nyse_dm = SimpleDataModule (nyse_train ,
+nyse_test ,
+num_workers=min(4, max_num_workers),
+validation=nyse_test ,
+batch_size =64)
+
+We run some data through our model to be sure the sizes match up correctly.
+In [105]: for idx , (x, y) in enumerate(nyse_dm.train_dataloader ()):
+out = nyse_model(x)
+print(y.size (), out.size ())
+if idx >= 2:
+break
+torch.Size ([64]) torch.Size ([64])
+torch.Size ([64]) torch.Size ([64])
+torch.Size ([64]) torch.Size ([64])
+
+We follow our previous example for setting up a trainer for a regression
+problem, requesting the R2 metric to be be computed at each epoch.
+In [106]: nyse_optimizer = RMSprop(nyse_model.parameters (),
+lr =0.001)
+nyse_module = SimpleModule.regression(nyse_model ,
+optimizer=nyse_optimizer ,
+metrics ={'r2':R2Score ()})
+
+Fitting the model should by now be familiar. The results on the test data
+are very similar to the linear AR model.
+
+464
+
+10. Deep Learning
+
+In [107]: nyse_trainer = Trainer(deterministic=True ,
+max_epochs =200,
+callbacks =[ ErrorTracker ()])
+nyse_trainer.fit(nyse_module ,
+datamodule=nyse_dm)
+nyse_trainer.test(nyse_module ,
+datamodule=nyse_dm)
+Out[107]: [{'test_loss ': 0.6141 , 'test_r2 ': 0.4172}]
+
+We could also fit a model without the nn.RNN() layer by just using a
+nn.Flatten() layer instead. This would be a nonlinear AR model. If in
+
+addition we excluded the hidden layer, this would be equivalent to our
+earlier linear AR model.
+Instead we will fit a nonlinear AR model using the feature set X_day that
+includes the day_of_week indicators. To do so, we must first create our test
+and training datasets and a corresponding data module. This may seem a
+little burdensome, but is part of the general pipeline for torch.
+In [108]: datasets = []
+for mask in [train , ∼train ]:
+X_day_t = torch.tensor(
+np.asarray(X_day[mask ]).astype(np.float32))
+Y_t = torch.tensor(np.asarray(Y[mask ]).astype(np.float32))
+datasets.append(TensorDataset(X_day_t , Y_t))
+day_train , day_test = datasets
+
+Creating a data module follows a familiar pattern.
+In [109]: day_dm = SimpleDataModule(day_train ,
+day_test ,
+num_workers=min(4, max_num_workers),
+validation=day_test ,
+batch_size =64)
+
+We build a NonLinearARModel() that takes as input the 20 features and
+a hidden layer with 32 units. The remaining steps are familiar.
+In [110]: class NonLinearARModel(nn.Module):
+def __init__(self):
+super(NonLinearARModel , self).__init__ ()
+self._forward = nn.Sequential(nn.Flatten (),
+nn.Linear (20, 32),
+nn.ReLU (),
+nn.Dropout (0.5) ,
+nn.Linear (32, 1))
+def forward(self , x):
+return torch.flatten(self._forward(x))
+In [111]: nl_model = NonLinearARModel ()
+nl_optimizer = RMSprop(nl_model.parameters (),
+lr =0.001)
+nl_module = SimpleModule.regression(nl_model ,
+optimizer=nl_optimizer ,
+metrics ={'r2':R2Score ()})
+
+10.10 Exercises
+
+465
+
+We continue with the usual training steps, fit the model, and evaluate
+the test error. We see the test R2 is a slight improvement over the linear
+AR model that also includes day_of_week.
+In [112]: nl_trainer = Trainer(deterministic=True ,
+max_epochs =20,
+callbacks =[ ErrorTracker ()])
+nl_trainer.fit(nl_module , datamodule=day_dm)
+nl_trainer.test(nl_module , datamodule=day_dm)
+Out[112]: [{'test_loss ': 0.5625 , 'test_r2 ': 0.4662}]
+
+10.10
+
+Exercises
+
+Conceptual
+1. Consider a neural network with two hidden layers: p = 4 input units,
+2 units in the first hidden layer, 3 units in the second hidden layer,
+and a single output.
+(a) Draw a picture of the network, similar to Figures 10.1 or 10.4.
+(b) Write out an expression for f (X), assuming ReLU activation
+functions. Be as explicit as you can!
+(c) Now plug in some values for the coefficients and write out the
+value of f (X).
+(d) How many parameters are there?
+2. Consider the softmax function in (10.13) (see also (4.13) on page 145)
+for modeling multinomial probabilities.
+(a) In (10.13), show that if we add a constant c to each of the z$ ,
+then the probability is unchanged.
+(b) In (4.13), show that if we add constants cj , j = 0, 1, . . . , p, to
+each of the corresponding coefficients for each of the classes, then
+the predictions at any new point x are unchanged.
+This shows that the softmax function is over-parametrized. However, overregularization and SGD typically constrain the solutions so that this parametrized
+is not a problem.
+3. Show that the negative multinomial log-likelihood (10.14) is equivalent to the negative log of the likelihood expression (4.5) when there
+are M = 2 classes.
+4. Consider a CNN that takes in 32 × 32 grayscale images and has a
+single convolution layer with three 5 × 5 convolution filters (without
+boundary padding).
+(a) Draw a sketch of the input and first hidden layer similar to
+Figure 10.8.
+
+466
+
+10. Deep Learning
+
+(b) How many parameters are in this model?
+(c) Explain how this model can be thought of as an ordinary feedforward neural network with the individual pixels as inputs, and
+with constraints on the weights in the hidden units. What are
+the constraints?
+(d) If there were no constraints, then how many weights would there
+be in the ordinary feed-forward neural network in (c)?
+5. In Table 10.2 on page 426, we see that the ordering of the three
+methods with respect to mean absolute error is different from the
+ordering with respect to test set R2 . How can this be?
+
+Applied
+6. Consider the simple function R(β) = sin(β) + β/10.
+(a) Draw a graph of this function over the range β ∈ [−6, 6].
+
+(b) What is the derivative of this function?
+
+(c) Given β 0 = 2.3, run gradient descent to find a local minimum
+of R(β) using a learning rate of ρ = 0.1. Show each of β 0 , β 1 , . . .
+in your plot, as well as the final answer.
+(d) Repeat with β 0 = 1.4.
+7. Fit a neural network to the Default data. Use a single hidden layer
+with 10 units, and dropout regularization. Have a look at Labs 10.9.1–
+10.9.2 for guidance. Compare the classification performance of your
+model with that of linear logistic regression.
+8. From your collection of personal photographs, pick 10 images of animals (such as dogs, cats, birds, farm animals, etc.). If the subject
+does not occupy a reasonable part of the image, then crop the image.
+Now use a pretrained image classification CNN as in Lab 10.9.4 to
+predict the class of each of your images, and report the probabilities
+for the top five predicted classes for each image.
+9. Fit a lag-5 autoregressive model to the NYSE data, as described in
+the text and Lab 10.9.6. Refit the model with a 12-level factor representing the month. Does this factor improve the performance of the
+model?
+10. In Section 10.9.6, we showed how to fit a linear AR model to the
+NYSE data using the LinearRegression() function. However, we also
+mentioned that we can “flatten” the short sequences produced for
+the RNN model in order to fit a linear AR model. Use this latter
+approach to fit a linear AR model to the NYSE data. Compare the test
+R2 of this linear AR model to that of the linear AR model that we fit
+in the lab. What are the advantages/disadvantages of each approach?
+11. Repeat the previous exercise, but now fit a nonlinear AR model by
+“flattening” the short sequences produced for the RNN model.
+
+10.10 Exercises
+
+467
+
+12. Consider the RNN fit to the NYSE data in Section 10.9.6. Modify the
+code to allow inclusion of the variable day_of_week, and fit the RNN.
+Compute the test R2 .
+13. Repeat the analysis of Lab 10.9.5 on the IMDb data using a similarly
+structured neural network. We used 16 hidden units at each of two
+hidden layers. Explore the effect of increasing this to 32 and 64 units
+per layer, with and without 30% dropout regularization.
+
+11
+Survival Analysis and Censored Data
+
+In this chapter, we will consider the topics of survival analysis and censored
+survival
+data. These arise in the analysis of a unique kind of outcome variable: the analysis
+time until an event occurs.
+censored
+For example, suppose that we have conducted a five-year medical study, data
+in which patients have been treated for cancer. We would like to fit a model
+to predict patient survival time, using features such as baseline health measurements or type of treatment. At first pass, this may sound like a regression problem of the kind discussed in Chapter 3. But there is an important
+complication: hopefully some or many of the patients have survived until
+the end of the study. Such a patient’s survival time is said to be censored: we
+know that it is at least five years, but we do not know its true value. We do
+not want to discard this subset of surviving patients, as the fact that they
+survived at least five years amounts to valuable information. However, it is
+not clear how to make use of this information using the technique

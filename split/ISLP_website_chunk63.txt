@@ -1,0 +1,388 @@
+ document: one-hot encoded using a dictionary of 16 words (top panel) and embedded
+in an m-dimensional space with m = 5 (bottom panel).
+
+where each column is indexed by one of the 10,000 words in our dictionary,
+and the values in that column give the m coordinates for that word in the
+embedding space.
+Figure 10.13 illustrates the idea (with a dictionary of 16 rather than
+10,000, and m = 5). Where does E come from? If we have a large corpus
+of labeled documents, we can have the neural network learn E as part
+of the optimization. In this case E is referred to as an embedding layer,
+embedding
+and a specialized E is learned for the task at hand. Otherwise we can layer
+insert a precomputed matrix E in the embedding layer, a process known
+as weight freezing. Two pretrained embeddings, word2vec and GloVe, are
+weight
+widely used.16 These are built from a very large corpus of documents by freezing
+a variant of principal components analysis (Section 12.2). The idea is that word2vec
+the positions of words in the embedding space preserve semantic meaning; GloVe
+e.g. synonyms should appear near each other.
+So far, so good. Each document is now represented as a sequence of mvectors that represents the sequence of words. The next step is to limit
+each document to the last L words. Documents that are shorter than L
+get padded with zeros upfront. So now each document is represented by a
+series consisting of L vectors X = {X1 , X2 , . . . , XL }, and each X$ in the
+sequence has m components.
+We now use the RNN structure in Figure 10.12. The training corpus
+consists of n separate series (documents) of length L, each of which gets
+processed sequentially from left to right. In the process, a parallel series of
+hidden activation vectors A$ , % = 1, . . . , L is created as in (10.16) for each
+document. A$ feeds into the output layer to produce the evolving prediction
+O$ . We use the final value OL to predict the response: the sentiment of the
+review.
+16 word2vec is described in Mikolov, Chen, Corrado, and Dean (2013), available
+at https://code.google.com/archive/p/word2vec. GloVe is described in Pennington,
+Socher, and Manning (2014), available at https://nlp.stanford.edu/projects/glove.
+
+420
+
+10. Deep Learning
+
+This is a simple RNN, and has relatively few parameters. If there are K
+hidden units, the common weight matrix W has K × (m + 1) parameters,
+the matrix U has K × K parameters, and B has 2(K + 1) for the two-class
+logistic regression as in (10.15). These are used repeatedly as we process
+the sequence X = {X$ }L
+1 from left to right, much like we use a single
+convolution filter to process each patch in an image (Section 10.3.1). If the
+embedding layer E is learned, that adds an additional m × D parameters
+(D = 10,000 here), and is by far the biggest cost.
+We fit the RNN as described in Figure 10.12 and the accompaying text to
+the IMDb data. The model had an embedding matrix E with m = 32 (which
+was learned in training as opposed to precomputed), followed by a single
+recurrent layer with K = 32 hidden units. The model was trained with
+dropout regularization on the 25,000 reviews in the designated training
+set, and achieved a disappointing 76% accuracy on the IMDb test data. A
+network using the GloVe pretrained embedding matrix E performed slightly
+worse.
+For ease of exposition we have presented a very simple RNN. More elaborate versions use long term and short term memory (LSTM). Two tracks
+of hidden-layer activations are maintained, so that when the activation A$
+is computed, it gets input from hidden units both further back in time,
+and closer in time — a so-called LSTM RNN. With long sequences, this
+LSTM RNN
+overcomes the problem of early signals being washed out by the time they
+get propagated through the chain to the final activation vector AL .
+When we refit our model using the LSTM architecture for the hidden
+layer, the performance improved to 87% on the IMDb test data. This is comparable with the 88% achieved by the bag-of-words model in Section 10.4.
+We give details on fitting these models in Section 10.9.6.
+Despite this added LSTM complexity, our RNN is still somewhat “entry
+level”. We could probably achieve slightly better results by changing the
+size of the model, changing the regularization, and including additional
+hidden layers. However, LSTM models take a long time to train, which
+makes exploring many architectures and parameter optimization tedious.
+RNNs provide a rich framework for modeling data sequences, and they
+continue to evolve. There have been many advances in the development
+of RNNs — in architecture, data augmentation, and in the learning algorithms. At the time of this writing (early 2020) the leading RNN configurations report accuracy above 95% on the IMDb data. The details are beyond
+the scope of this book.17
+
+10.5.2
+
+Time Series Forecasting
+
+Figure 10.14 shows historical trading statistics from the New York Stock
+Exchange. Shown are three daily time series covering the period December
+3, 1962 to December 31, 1986:18
+17 An IMDb leaderboard can be found at https://paperswithcode.com/sota/
+sentiment-analysis-on-imdb.
+18 These data were assembled by LeBaron and Weigend (1998) IEEE Transactions on
+Neural Networks, 9(1): 213–220.
+
+421
+
+0.5
+0.0
+−1.0
+0.00
+−9
+−11
+−13
+
+Log(Volatility)
+
+−8
+
+−0.04
+
+Dow Jones Return
+
+0.04
+
+Log(Trading Volume)
+
+1.0
+
+10.5 Recurrent Neural Networks
+
+1965
+
+1970
+
+1975
+
+1980
+
+1985
+
+FIGURE 10.14. Historical trading statistics from the New York Stock Exchange.
+Daily values of the normalized log trading volume, DJIA return, and log volatility
+are shown for a 24-year period from 1962–1986. We wish to predict trading volume
+on any day, given the history on all earlier days. To the left of the red bar (January
+2, 1980) is training data, and to the right test data.
+
+• Log trading volume. This is the fraction of all outstanding shares that
+are traded on that day, relative to a 100-day moving average of past
+turnover, on the log scale.
+• Dow Jones return. This is the difference between the log of the Dow
+Jones Industrial Index on consecutive trading days.
+• Log volatility. This is based on the absolute values of daily price
+movements.
+Predicting stock prices is a notoriously hard problem, but it turns out that
+predicting trading volume based on recent past history is more manageable
+(and is useful for planning trading strategies).
+An observation here consists of the measurements (vt , rt , zt ) on day t, in
+this case the values for log_volume, DJ_return and log_volatility. There
+are a total of T = 6,051 such triples, each of which is plotted as a time series
+in Figure 10.14. One feature that strikes us immediately is that the dayto-day observations are not independent of each other. The series exhibit
+auto-correlation — in this case values nearby in time tend to be similar autoto each other. This distinguishes time series from other data sets we have correlation
+encountered, in which observations can be assumed to be independent of
+
+422
+
+10. Deep Learning
+
+0.8
+0.4
+0.0
+
+Autocorrelation Function
+
+Log( Trading Volume)
+
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+
+30
+
+35
+
+Lag
+
+FIGURE 10.15. The autocorrelation function for log_volume. We see that
+nearby values are fairly strongly correlated, with correlations above 0.2 as far as
+20 days apart.
+
+each other. To be clear, consider pairs of observations (vt , vt−$ ), a lag of %
+lag
+days apart. If we take all such pairs in the vt series and compute their correlation coefficient, this gives the autocorrelation at lag %. Figure 10.15 shows
+the autocorrelation function for all lags up to 37, and we see considerable
+correlation.
+Another interesting characteristic of this forecasting problem is that the
+response variable vt — log_volume — is also a predictor! In particular, we
+will use the past values of log_volume to predict values in the future.
+RNN forecaster
+We wish to predict a value vt from past values vt−1 , vt−2 , . . ., and also to
+make use of past values of the other series rt−1 , rt−2 , . . . and zt−1 , zt−2 , . . ..
+Although our combined data is quite a long series with 6,051 trading
+days, the structure of the problem is different from the previous documentclassification example.
+• We only have one series of data, not 25,000.
+• We have an entire series of targets vt , and the inputs include past
+values of this series.
+How do we represent this problem in terms of the structure displayed in
+Figure 10.12? The idea is to extract many short mini-series of input sequences X = {X1 , X2 , . . . , XL } with a predefined length L (called the lag
+lag
+in this context), and a corresponding target Y . They have the form
+
+
+
+
+
+
+vt−L
+vt−L+1
+vt−1
+X1 = rt−L  , X2 = rt−L+1  , · · · , XL = rt−1  , and Y = vt .
+zt−L
+zt−L+1
+zt−1
+(10.20)
+So here the target Y is the value of log_volume vt at a single timepoint t,
+and the input sequence X is the series of 3-vectors {X$ }L
+1 each consisting
+of the three measurements log_volume, DJ_return and log_volatility from
+day t − L, t − L + 1, up to t − 1. Each value of t makes a separate (X, Y )
+pair, for t running from L + 1 to T . For the NYSE data we will use the past
+
+0.0 0.5 1.0
+
+423
+
+−1.0
+
+log(Trading Volume)
+
+10.5 Recurrent Neural Networks
+Test Period: Observed and Predicted
+
+1980
+
+1982
+
+1984
+
+1986
+
+FIGURE 10.16. RNN forecast of log_volume
+Year on the NYSE test data. The black
+lines are the true volumes, and the superimposed orange the forecasts. The forecasted series accounts for 42% of the variance of log_volume.
+
+five trading days to predict the next day’s trading volume. Hence, we use
+L = 5. Since T = 6,051, we can create 6,046 such (X, Y ) pairs. Clearly L
+is a parameter that should be chosen with care, perhaps using validation
+data.
+We fit this model with K = 12 hidden units using the 4,281 training
+sequences derived from the data before January 2, 1980 (see Figure 10.14),
+and then used it to forecast the 1,770 values of log_volume after this date.
+We achieve an R2 = 0.42 on the test data. Details are given in Section 10.9.6. As a straw man,19 using yesterday’s value for log_volume as
+the prediction for today has R2 = 0.18. Figure 10.16 shows the forecast
+results. We have plotted the observed values of the daily log_volume for the
+test period 1980–1986 in black, and superimposed the predicted series in
+orange. The correspondence seems rather good.
+In forecasting the value of log_volume in the test period, we have to use
+the test data itself in forming the input sequences X. This may feel like
+cheating, but in fact it is not; we are always using past data to predict the
+future.
+Autoregression
+The RNN we just fit has much in common with a traditional autoregression auto(AR) linear model, which we present now for comparison. We first consider regression
+the response sequence vt alone, and construct a response vector y and a
+matrix M of predictors for least squares regression as follows:
+
+
+
+
+vL+1
+1
+vL
+vL−1 · · ·
+v1
+ vL+2 
+ 1 vL+1
+vL
+···
+v2 
+
+
+
+
+ vL+3 
+ 1 vL+2 vL+1 · · ·
+v3 
+y=
+M=
+(10.21)
+
+.
+ .. 
+ ..
+
+..
+..
+..
+..
+ . 
+ .
+
+.
+.
+.
+.
+vT
+1 vT −1 vT −2 · · · vT −L
+M and y each have T − L rows, one per observation. We see that the
+predictors for any given response vt on day t are the previous L values
+19 A straw man here refers to a simple and sensible prediction that can be used as a
+baseline for comparison.
+
+424
+
+10. Deep Learning
+
+of the same series. Fitting a regression of y on M amounts to fitting the
+model
+v̂t = β̂0 + β̂1 vt−1 + β̂2 vt−2 + · · · + β̂L vt−L ,
+(10.22)
+
+and is called an order-L autoregressive model, or simply AR(L). For the
+NYSE data we can include lagged versions of DJ_return and log_volatility,
+rt and zt , in the predictor matrix M, resulting in 3L + 1 columns. An AR
+model with L = 5 achieves a test R2 of 0.41, slightly inferior to the 0.42
+achieved by the RNN.
+Of course the RNN and AR models are very similar. They both use
+the same response Y and input sequences X of length L = 5 and dimension p = 3 in this case. The RNN processes this sequence from left to
+right with the same weights W (for the input layer), while the AR model
+simply treats all L elements of the sequence equally as a vector of L × p
+predictors — a process called flattening in the neural network literature.
+flattening
+Of course the RNN also includes the hidden layer activations A$ which
+transfer information along the sequence, and introduces additional nonlinearity. From (10.19) with K = 12 hidden units, we see that the RNN has
+13 + 12 × (1 + 3 + 12) = 205 parameters, compared to the 16 for the AR(5)
+model.
+An obvious extension of the AR model is to use the set of lagged predictors as the input vector to an ordinary feedforward neural network (10.1),
+and hence add more flexibility. This achieved a test R2 = 0.42, slightly
+better than the linear AR, and the same as the RNN.
+All the models can be improved by including the variable day_of_week
+corresponding to the day t of the target vt (which can be learned from the
+calendar dates supplied with the data); trading volume is often higher on
+Mondays and Fridays. Since there are five trading days, this one-hot encodes to five binary variables. The performance of the AR model improved
+to R2 = 0.46 as did the RNN, and the nonlinear AR model improved to
+R2 = 0.47.
+We used the most simple version of the RNN in our examples here.
+Additional experiments with the LSTM extension of the RNN yielded small
+improvements, typically of up to 1% in R2 in these examples.
+We give details of how we fit all three models in Section 10.9.6.
+
+10.5.3
+
+Summary of RNNs
+
+We have illustrated RNNs through two simple use cases, and have only
+scratched the surface.
+There are many variations and enhancements of the simple RNN we
+used for sequence modeling. One approach we did not discuss uses a onedimensional convolutional neural network, treating the sequence of vectors
+(say words, as represented in the embedding space) as an image. The convolution filter slides along the sequence in a one-dimensional fashion, with
+the potential to learn particular phrases or short subsequences relevant to
+the learning task.
+One can also have additional hidden layers in an RNN. For example,
+with two hidden layers, the sequence A$ is treated as an input sequence to
+the next hidden layer in an obvious fashion.
+
+10.6 When to Use Deep Learning
+
+425
+
+The RNN we used scanned the document from beginning to end; alternative bidirectional RNNs scan the sequences in both directions.
+bidirectional
+In language translation the target is also a sequence of words, in a
+language different from that of the input sequence. Both the input sequence and the target sequence are represented by a structure similar to
+Figure 10.12, and they share the hidden units. In this so-called Seq2Seq
+Seq2Seq
+learning, the hidden units are thought to capture the semantic meaning
+of the sentences. Some of the big breakthroughs in language modeling and
+translation resulted from the relatively recent improvements in such RNNs.
+Algorithms used to fit RNNs can be complex and computationally costly.
+Fortunately, good software protects users somewhat from these complexities, and makes specifying and fitting these models relatively painless. Many
+of the models that we enjoy in daily life (like Google Translate) use stateof-the-art architectures developed by teams of highly skilled engineers, and
+have been trained using massive computational and data resources.
+
+10.6
+
+When to Use Deep Learning
+
+The performance of deep learning in this chapter has been rather impre

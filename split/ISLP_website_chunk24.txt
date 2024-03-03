@@ -1,0 +1,559 @@
+assigning an observation X = x to the class
+for which this quantity is largest. Unlike in (4.24), the quantity x appears
+as a quadratic function in (4.28). This is where QDA gets its name.
+Why does it matter whether or not we assume that the K classes share a
+common covariance matrix? In other words, why would one prefer LDA to
+
+X2
+
+−1
+
+0
+
+1
+
+2
+
+157
+
+−4
+
+−3
+
+−2
+
+−1
+−4
+
+−3
+
+−2
+
+X2
+
+0
+
+1
+
+2
+
+4.4 Generative Models for Classification
+
+−4
+
+−2
+
+0
+
+X1
+
+2
+
+4
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+X1
+
+FIGURE 4.9. Left: The Bayes (purple dashed), LDA (black dotted), and QDA
+(green solid) decision boundaries for a two-class problem with Σ1 = Σ2 . The
+shading indicates the QDA decision rule. Since the Bayes decision boundary is
+linear, it is more accurately approximated by LDA than by QDA. Right: Details
+are as given in the left-hand panel, except that Σ1 =
+" Σ2 . Since the Bayes decision
+boundary is non-linear, it is more accurately approximated by QDA than by LDA.
+
+QDA, or vice-versa? The answer lies in the bias-variance trade-off. When
+there are p predictors, then estimating a covariance matrix requires estimating p(p+1)/2 parameters. QDA estimates a separate covariance matrix
+for each class, for a total of Kp(p+1)/2 parameters. With 50 predictors this
+is some multiple of 1,275, which is a lot of parameters. By instead assuming that the K classes share a common covariance matrix, the LDA model
+becomes linear in x, which means there are Kp linear coefficients to estimate. Consequently, LDA is a much less flexible classifier than QDA, and
+so has substantially lower variance. This can potentially lead to improved
+prediction performance. But there is a trade-off: if LDA’s assumption that
+the K classes share a common covariance matrix is badly off, then LDA
+can suffer from high bias. Roughly speaking, LDA tends to be a better bet
+than QDA if there are relatively few training observations and so reducing
+variance is crucial. In contrast, QDA is recommended if the training set is
+very large, so that the variance of the classifier is not a major concern, or if
+the assumption of a common covariance matrix for the K classes is clearly
+untenable.
+Figure 4.9 illustrates the performances of LDA and QDA in two scenarios.
+In the left-hand panel, the two Gaussian classes have a common correlation of 0.7 between X1 and X2 . As a result, the Bayes decision boundary
+is linear and is accurately approximated by the LDA decision boundary.
+The QDA decision boundary is inferior, because it suffers from higher variance without a corresponding decrease in bias. In contrast, the right-hand
+panel displays a situation in which the orange class has a correlation of 0.7
+between the variables and the blue class has a correlation of −0.7. Now
+the Bayes decision boundary is quadratic, and so QDA more accurately
+approximates this boundary than does LDA.
+
+158
+
+4. Classification
+
+4.4.4
+
+Naive Bayes
+
+In previous sections, we used Bayes’ theorem (4.15) to develop the LDA
+and QDA classifiers. Here, we use Bayes’ theorem to motivate the popular
+naive Bayes classifier.
+naive Bayes
+Recall that Bayes’ theorem (4.15) provides an expression for the posterior probability pk (x) = Pr(Y = k|X = x) in terms of π1 , . . . , πK and
+f1 (x), . . . , fK (x). To use (4.15) in practice, we need estimates for π1 , . . . , πK
+and f1 (x), . . . , fK (x). As we saw in previous sections, estimating the prior
+probabilities π1 , . . . , πK is typically straightforward: for instance, we can
+estimate π̂k as the proportion of training observations belonging to the kth
+class, for k = 1, . . . , K.
+However, estimating f1 (x), . . . , fK (x) is more subtle. Recall that fk (x)
+is the p-dimensional density function for an observation in the kth class,
+for k = 1, . . . , K. In general, estimating a p-dimensional density function is
+challenging. In LDA, we make a very strong assumption that greatly simplifies the task: we assume that fk is the density function for a multivariate
+normal random variable with class-specific mean µk , and shared covariance
+matrix Σ. By contrast, in QDA, we assume that fk is the density function
+for a multivariate normal random variable with class-specific mean µk , and
+class-specific covariance matrix Σk . By making these very strong assumptions, we are able to replace the very challenging problem of estimating K
+p-dimensional density functions with the much simpler problem of estimating K p-dimensional mean vectors and one (in the case of LDA) or K (in
+the case of QDA) (p × p)-dimensional covariance matrices.
+The naive Bayes classifier takes a different tack for estimating f1 (x), . . . ,
+fK (x). Instead of assuming that these functions belong to a particular
+family of distributions (e.g. multivariate normal), we instead make a single
+assumption:
+Within the kth class, the p predictors are independent.
+Stated mathematically, this assumption means that for k = 1, . . . , K,
+fk (x) = fk1 (x1 ) × fk2 (x2 ) × · · · × fkp (xp ),
+
+(4.29)
+
+where fkj is the density function of the jth predictor among observations
+in the kth class.
+Why is this assumption so powerful? Essentially, estimating a p-dimensional density function is challenging because we must consider not only
+the marginal distribution of each predictor — that is, the distribution of
+marginal
+each predictor on its own — but also the joint distribution of the predictors distribution
+— that is, the association between the different predictors. In the case of joint
+a multivariate normal distribution, the association between the different distribution
+predictors is summarized by the off-diagonal elements of the covariance
+matrix. However, in general, this association can be very hard to characterize, and exceedingly challenging to estimate. But by assuming that the
+p covariates are independent within each class, we completely eliminate the
+need to worry about the association between the p predictors, because we
+have simply assumed that there is no association between the predictors!
+Do we really believe the naive Bayes assumption that the p covariates
+are independent within each class? In most settings, we do not. But even
+though this modeling assumption is made for convenience, it often leads to
+
+4.4 Generative Models for Classification
+
+159
+
+pretty decent results, especially in settings where n is not large enough relative to p for us to effectively estimate the joint distribution of the predictors
+within each class. In fact, since estimating a joint distribution requires such
+a huge amount of data, naive Bayes is a good choice in a wide range of settings. Essentially, the naive Bayes assumption introduces some bias, but
+reduces variance, leading to a classifier that works quite well in practice as
+a result of the bias-variance trade-off.
+Once we have made the naive Bayes assumption, we can plug (4.29) into
+(4.15) to obtain an expression for the posterior probability,
+πk × fk1 (x1 ) × fk2 (x2 ) × · · · × fkp (xp )
+Pr(Y = k|X = x) = )K
+l=1 πl × fl1 (x1 ) × fl2 (x2 ) × · · · × flp (xp )
+
+(4.30)
+
+for k = 1, . . . , K.
+To estimate the one-dimensional density function fkj using training data
+x1j , . . . , xnj , we have a few options.
+2
+• If Xj is quantitative, then we can assume that Xj |Y = k ∼ N (µjk , σjk
+).
+In other words, we assume that within each class, the jth predictor is
+drawn from a (univariate) normal distribution. While this may sound
+a bit like QDA, there is one key difference, in that here we are assuming that the predictors are independent; this amounts to QDA with
+an additional assumption that the class-specific covariance matrix is
+diagonal.
+
+• If Xj is quantitative, then another option is to use a non-parametric
+estimate for fkj . A very simple way to do this is by making a histogram for the observations of the jth predictor within each class.
+Then we can estimate fkj (xj ) as the fraction of the training observations in the kth class that belong to the same histogram bin as
+xj . Alternatively, we can use a kernel density estimator, which is
+kernel
+essentially a smoothed version of a histogram.
+density
+• If Xj is qualitative, then we can simply count the proportion of training observations for the jth predictor corresponding to each class. For
+instance, suppose that Xj ∈ {1, 2, 3}, and we have 100 observations
+in the kth class. Suppose that the jth predictor takes on values of 1,
+2, and 3 in 32, 55, and 13 of those observations, respectively. Then
+we can estimate fkj as
+
+
+0.32 if xj = 1
+fˆkj (xj ) = 0.55 if xj = 2
+
+
+0.13 if xj = 3.
+
+We now consider the naive Bayes classifier in a toy example with p = 3
+predictors and K = 2 classes. The first two predictors are quantitative,
+and the third predictor is qualitative with three levels. Suppose further
+that π̂1 = π̂2 = 0.5. The estimated density functions fˆkj for k = 1, 2
+and j = 1, 2, 3 are displayed in Figure 4.10. Now suppose that we wish
+to classify a new observation, x∗ = (0.4, 1.5, 1)T . It turns out that in this
+
+estimator
+
+160
+
+4. Classification
+
+Density estimates for class k=1
+fˆ12
+
+fˆ13
+
+Frequency
+
+fˆ11
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+−2
+
+0
+
+2
+
+4
+
+1
+
+2
+
+3
+
+Density estimates for class k=2
+fˆ22
+
+fˆ23
+
+Frequency
+
+fˆ21
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+−2
+
+0
+
+2
+
+4
+
+1
+
+2
+
+3
+
+FIGURE 4.10. In the toy example in Section 4.4.4, we generate data with p = 3
+predictors and K = 2 classes. The first two predictors are quantitative, and the
+third predictor is qualitative with three levels. In each class, the estimated density
+for each of the three predictors is displayed. If the prior probabilities for the two
+classes are equal, then the observation x∗ = (0.4, 1.5, 1)T has a 94.4% posterior
+probability of belonging to the first class.
+
+Predicted
+default status
+
+No
+Yes
+Total
+
+True default status
+No
+Yes Total
+9621 244
+9865
+46
+89
+135
+9667 333 10000
+
+TABLE 4.8. Comparison of the naive Bayes predictions to the true default
+status for the 10, 000 training observations in the Default data set, when we
+predict default for any observation for which P (Y = default|X = x) > 0.5.
+
+example, fˆ11 (0.4) = 0.368, fˆ12 (1.5) = 0.484, fˆ13 (1) = 0.226, and fˆ21 (0.4) =
+0.030, fˆ22 (1.5) = 0.130, fˆ23 (1) = 0.616. Plugging these estimates into (4.30)
+results in posterior probability estimates of Pr(Y = 1|X = x∗ ) = 0.944 and
+Pr(Y = 2|X = x∗ ) = 0.056.
+Table 4.8 provides the confusion matrix resulting from applying the naive
+Bayes classifier to the Default data set, where we predict a default if the
+posterior probability of a default — that is, P (Y = default|X = x) — exceeds 0.5. Comparing this to the results for LDA in Table 4.4, our findings
+are mixed. While LDA has a slightly lower overall error rate, naive Bayes
+
+4.5 A Comparison of Classification Methods
+
+Predicted
+default status
+
+No
+Yes
+Total
+
+161
+
+True default status
+No
+Yes Total
+9339 130
+9469
+328 203
+531
+9667 333 10000
+
+TABLE 4.9. Comparison of the naive Bayes predictions to the true default
+status for the 10, 000 training observations in the Default data set, when we
+predict default for any observation for which P (Y = default|X = x) > 0.2.
+
+correctly predicts a higher fraction of the true defaulters. In this implementation of naive Bayes, we have assumed that each quantitative predictor is
+drawn from a Gaussian distribution (and, of course, that within each class,
+each predictor is independent).
+Just as with LDA, we can easily adjust the probability threshold for
+predicting a default. For example, Table 4.9 provides the confusion matrix
+resulting from predicting a default if P (Y = default|X = x) > 0.2. Again,
+the results are mixed relative to LDA with the same threshold (Table 4.5).
+Naive Bayes has a higher error rate, but correctly predicts almost two-thirds
+of the true defaults.
+In this example, it should not be too surprising that naive Bayes does
+not convincingly outperform LDA: this data set has n = 10,000 and p = 2,
+and so the reduction in variance resulting from the naive Bayes assumption
+is not necessarily worthwhile. We expect to see a greater pay-off to using
+naive Bayes relative to LDA or QDA in instances where p is larger or n is
+smaller, so that reducing the variance is very important.
+
+4.5
+
+A Comparison of Classification Methods
+
+4.5.1
+
+An Analytical Comparison
+
+We now perform an analytical (or mathematical) comparison of LDA, QDA,
+naive Bayes, and logistic regression. We consider these approaches in a
+setting with K classes, so that we assign an observation to the class that
+maximizes Pr(Y = k|X = x). Equivalently, we can set K as the baseline
+class and assign an observation to the class that maximizes
+log
+
+*
+
+Pr(Y = k|X = x)
+Pr(Y = K|X = x)
+
++
+
+(4.31)
+
+for k = 1, . . . , K. Examining the specific form of (4.31) for each method
+provides a clear understanding of their similarities and differences.
+First, for LDA, we can make use of Bayes’ theorem (4.15) as well as
+the assumption that the predictors within each class are drawn from a
+multivariate normal density (4.23) with class-specific mean and shared co-
+
+162
+
+4. Classification
+
+variance matrix in order to show that
+*
++
+*
++
+Pr(Y = k|X = x)
+πk fk (x)
+log
+= log
+Pr(Y = K|X = x)
+πK fK (x)
+>
+'
+( ?
+πk exp − 21 (x − µk )T Σ−1 (x − µk )
+'
+(
+= log
+πK exp − 12 (x − µK )T Σ−1 (x − µK )
+*
++
+πk
+1
+= log
+− (x − µk )T Σ−1 (x − µk )
+πK
+2
+1
++ (x − µK )T Σ−1 (x − µK )
+2*
++
+πk
+1
+= log
+− (µk + µK )T Σ−1 (µk − µK )
+πK
+2
+=
+
++ xT Σ−1 (µk − µK )
+p
+0
+ak +
+bkj xj ,
+
+(4.32)
+
+j=1
+
+where ak = log
+
+1
+
+πk
+πK
+−1
+
+2
+
+− 12 (µk + µK )T Σ−1 (µk − µK ) and bkj is the jth
+
+component of Σ (µk − µK ). Hence LDA, like logistic regression, assumes
+that the log odds of the posterior probabilities is linear in x.
+Using similar calculations, in the QDA setting (4.31) becomes
+
+log
+
+*
+
+Pr(Y = k|X = x)
+Pr(Y = K|X = x)
+
++
+
+= ak +
+
+p
+0
+
+bkj xj +
+
+j=1
+
+p 0
+p
+0
+
+ckjl xj xl ,
+
+(4.33)
+
+j=1 l=1
+
+where ak , bkj , and ckjl are functions of πk , πK , µk , µK , Σk and ΣK . Again,
+as the name suggests, QDA assumes that the log odds of the posterior
+probabilities is quadratic in x.
+Finally, we examine (4.31) in the naive Bayes setting. Recall that in
+this setting, fk (x) is modeled as a product of p one-dimensional functions
+fkj (xj ) for j = 1, . . . , p. Hence,
+*
++
+*
++
+Pr(Y = k|X = x)
+πk fk (x)
+log
+= log
+Pr(Y = K|X = x)
+πK fK (x)
+>
+?
+Fp
+πk j=1 fkj (xj )
+Fp
+= log
+πK j=1 fKj (xj )
+*
++ 0
+*
++
+p
+πk
+fkj (xj )
+= log
++
+log
+πK
+fKj (xj )
+j=1
+=
+
+ak +
+
+p
+0
+
+gkj (xj ),
+
+(4.34)
+
+j=1
+
+1 2
+1
+2
+fkj (xj )
+where ak = log ππKk and gkj (xj ) = log fKj
+(xj ) . Hence, the right-hand
+side of (4.34) takes the form of a generalized additive model, a topic that is
+discussed further in Chapter 7.
+
+4.5 A Comparison of Classification Methods
+
+163
+
+Inspection of (4.32), (4.33), and (4.34) yields the following observations
+about LDA, QDA, and naive Bayes:
+• LDA is a special case of QDA with ckjl = 0 for all j = 1, . . . , p,
+l = 1, . . . , p, and k = 1, . . . , K. (Of course, this is not surprising, since
+LDA is simply a restricted version of QDA with Σ1 = · · · = ΣK = Σ.)
+• Any classifier with a linear decision boundary is a special case of naive
+Bayes with gkj (xj ) = bkj xj . In particular, this means that LDA is
+a special case of naive Bayes! This is not at all obvious from the
+descriptions of LDA and naive Bayes earlier in this chapter, since
+each method makes very different assumptions: LDA assumes that
+the features are normally distributed with a common within-class
+covariance matrix, and naive Bayes instead assumes independence of
+the features.
+• If we model fkj (xj ) in the naive Bayes classifier using a one-dimensional Gaussian distribution N (µkj , σj2 ), then we end

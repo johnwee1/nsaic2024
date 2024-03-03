@@ -1,0 +1,574 @@
+fact that poly() creates
+orthogonal polynomials.
+In [9]: summarize(M)
+Out[9]:
+
+coef std err
+intercept
+111.7036
+0.729
+poly(age , degree =4) [0] 447.0679
+39.915
+poly(age , degree =4) [1] -478.3158
+39.915
+poly(age , degree =4) [2] 125.5217
+39.915
+poly(age , degree =4) [3] -77.9112
+39.915
+
+t P>|t|
+153.283 0.000
+11.201 0.000
+-11.983 0.000
+3.145 0.002
+-1.952 0.051
+
+Notice that the p-values are the same, and in fact the square of the
+t-statistics are equal to the F-statistics from the anova_lm() function; for
+example:
+In [10]: ( -11.983) **2
+Out[10]: 143.59228
+
+However, the ANOVA method works whether or not we used orthogonal
+polynomials, provided the models are nested. For example, we can use
+anova_lm() to compare the following three models, which all have a linear
+term in education and a polynomial in age of different degrees:
+In [11]: models = [MS(['education ', poly('age', degree=d)])
+for d in range(1, 4)]
+XEs = [model.fit_transform(Wage)
+for model in models]
+anova_lm (*[sm.OLS(y, X_).fit() for X_ in XEs])
+Out[11]:
+
+0
+1
+2
+
+df_resid
+2997.0
+2996.0
+2995.0
+8 Indexing
+
+ssr
+3.902e+06
+3.759e+06
+3.754e+06
+
+df_diff
+0.0
+1.0
+1.0
+
+ss_diff
+NaN
+142862.701
+5926.207
+
+F
+NaN
+113.992
+4.729
+
+Pr(>F)
+NaN
+3.838e-26
+2.974e-02
+
+starting at zero is confusing for the polynomial degree example, since
+
+models[1] is quadratic rather than linear!
+
+314
+
+7. Moving Beyond Linearity
+
+As an alternative to using hypothesis tests and ANOVA, we could choose
+the polynomial degree using cross-validation, as discussed in Chapter 5.
+Next we consider the task of predicting whether an individual earns more
+than $250,000 per year. We proceed much as before, except that first we
+create the appropriate response vector, and then apply the glm() function
+using the binomial family in order to fit a polynomial logistic regression
+model.
+In [12]: X = poly_age.transform(Wage)
+high_earn = Wage['high_earn '] = y > 250 # shorthand
+glm = sm.GLM(y > 250,
+X,
+family=sm.families.Binomial ())
+B = glm.fit()
+summarize(B)
+Out[12]:
+
+coef
+intercept -4.3012
+poly(age , degree =4) [0] 71.9642
+poly(age , degree =4) [1] -85.7729
+poly(age , degree =4) [2] 34.1626
+poly(age , degree =4) [3] -47.4008
+
+std err
+z
+0.345 -12.457
+26.133
+2.754
+35.929 -2.387
+19.697
+1.734
+24.105 -1.966
+
+P>|z|
+0.000
+0.006
+0.017
+0.083
+0.049
+
+Once again, we make predictions using the get_prediction() method.
+In [13]: newX = poly_age.transform(age_df)
+preds = B.get_prediction(newX)
+bands = preds.conf_int(alpha =0.05)
+
+We now plot the estimated relationship.
+In [14]: fig , ax = subplots(figsize =(8 ,8))
+rng = np.random.default_rng (0)
+ax.scatter(age +
+0.2 * rng.uniform(size=y.shape [0]) ,
+np.where(high_earn , 0.198 , 0.002) ,
+fc='gray ',
+marker='|')
+for val , ls in zip([ preds.predicted_mean ,
+bands [:,0],
+bands [:,1]],
+['b','r--','r--']):
+ax.plot(age_df.values , val , ls , linewidth =3)
+ax.set_title('Degree -4 Polynomial ', fontsize =20)
+ax.set_xlabel('Age', fontsize =20)
+ax.set_ylim ([0 ,0.2])
+ax.set_ylabel('P(Wage > 250) ', fontsize =20);
+
+We have drawn the age values corresponding to the observations with wage
+values above 250 as gray marks on the top of the plot, and those with
+wage values below 250 are shown as gray marks on the bottom of the plot.
+We added a small amount of noise to jitter the age values a bit so that
+observations with the same age value do not cover each other up. This type
+of plot is often called a rug plot.
+rug plot
+In order to fit a step function, as discussed in Section 7.2, we first use
+the pd.qcut() function to discretize age based on quantiles. Then we use
+
+pd.qcut()
+
+7.8 Lab: Non-Linear Modeling
+
+315
+
+pd.get_dummies() to create the columns of the model matrix for this cate-
+
+pd.get_
+
+gorical variable. Note that this function will include all columns for a given dummies()
+categorical, rather than the usual approach which drops one of the levels.
+In [15]: cut_age = pd.qcut(age , 4)
+summarize(sm.OLS(y, pd.get_dummies(cut_age)).fit())
+Out[15]:
+
+(17.999 , 33.75]
+(33.75 , 42.0]
+(42.0 , 51.0]
+(51.0 , 80.0]
+
+coef
+94.1584
+116.6608
+119.1887
+116.5717
+
+std err
+1.478
+1.470
+1.416
+1.559
+
+t
+63.692
+79.385
+84.147
+74.751
+
+P>|t|
+0.0
+0.0
+0.0
+0.0
+
+Here pd.qcut() automatically picked the cutpoints based on the quantiles 25%, 50% and 75%, which results in four regions. We could also have
+specified our own quantiles directly instead of the argument 4. For cuts
+not based on quantiles we would use the pd.cut() function. The function
+pd.cut()
+pd.qcut() (and pd.cut()) returns an ordered categorical variable. The regression model then creates a set of dummy variables for use in the regression. Since age is the only variable in the model, the value $94,158.40 is the
+average salary for those under 33.75 years of age, and the other coefficients
+are the average salary for those in the other age groups. We can produce
+predictions and plots just as we did in the case of the polynomial fit.
+
+7.8.2
+
+Splines
+
+In order to fit regression splines, we use transforms from the ISLP package.
+The actual spline evaluation functions are in the scipy.interpolate package; we have simply wrapped them as transforms similar to Poly() and
+PCA().
+In Section 7.4, we saw that regression splines can be fit by constructing
+an appropriate matrix of basis functions. The BSpline() function generates
+BSpline()
+the entire matrix of basis functions for splines with the specified set of
+knots. By default, the B-splines produced are cubic. To change the degree,
+use the argument degree.
+In [16]: bs_ = BSpline(internal_knots =[25 ,40 ,60] , intercept=True).fit(age)
+bs_age = bs_.transform(age)
+bs_age.shape
+Out[16]: (3000 , 7)
+
+This results in a seven-column matrix, which is what is expected for a cubicspline basis with 3 interior knots. We can form this same matrix using the
+bs() object, which facilitates adding this to a model-matrix builder (as in
+poly() versus its workhorse Poly()) described in Section 7.8.1.
+We now fit a cubic spline model to the Wage data.
+In [17]: bs_age = MS([bs('age', internal_knots =[25 ,40 ,60]) ])
+Xbs = bs_age.fit_transform(Wage)
+M = sm.OLS(y, Xbs).fit()
+summarize(M)
+
+316
+Out[17]:
+
+7. Moving Beyond Linearity
+
+intercept
+bs(age , internal_knots =[25, 40, 60]) [0]
+bs(age , internal_knots =[25, 40, 60]) [1]
+bs(age , internal_knots =[25, 40, 60]) [2]
+bs(age , internal_knots =[25, 40, 60]) [3]
+bs(age , internal_knots =[25, 40, 60]) [4]
+bs(age , internal_knots =[25, 40, 60]) [5]
+
+coef
+60.494
+3.980
+44.631
+62.839
+55.991
+50.688
+16.606
+
+std err
+9.460
+12.538
+9.626
+10.755
+10.706
+14.402
+19.126
+
+...
+...
+...
+...
+...
+...
+...
+...
+
+The column names are a little cumbersome, and have caused us to truncate the printed summary. They can be set on construction using the name
+argument as follows.
+In [18]: bs_age = MS([bs('age',
+internal_knots =[25 ,40 ,60] ,
+name='bs(age)')])
+Xbs = bs_age.fit_transform(Wage)
+M = sm.OLS(y, Xbs).fit()
+summarize(M)
+Out[18]:
+
+intercept
+bs(age , knots)[0]
+bs(age , knots)[1]
+bs(age , knots)[2]
+bs(age , knots)[3]
+bs(age , knots)[4]
+bs(age , knots)[5]
+
+coef std err
+60.494
+9.460
+3.981 12.538
+44.631
+9.626
+62.839 10.755
+55.991 10.706
+50.688 14.402
+16.606 19.126
+
+t
+6.394
+0.317
+4.636
+5.843
+5.230
+3.520
+0.868
+
+P>|t|
+0.000
+0.751
+0.000
+0.000
+0.000
+0.000
+0.385
+
+Notice that there are 6 spline coefficients rather than 7. This is because, by
+default, bs() assumes intercept=False, since we typically have an overall
+intercept in the model. So it generates the spline basis with the given knots,
+and then discards one of the basis functions to account for the intercept.
+We could also use the df (degrees of freedom) option to specify the complexity of the spline. We see above that with 3 knots, the spline basis has
+6 columns or degrees of freedom. When we specify df=6 rather than the
+actual knots, bs() will produce a spline with 3 knots chosen at uniform
+quantiles of the training data. We can see these chosen knots most easily
+using Bspline() directly:
+In [19]: BSpline(df=6).fit(age).internal_knots_
+Out[19]: array ([33.75 , 42.0, 51.0])
+
+When asking for six degrees of freedom, the transform chooses knots at
+ages 33.75, 42.0, and 51.0, which correspond to the 25th, 50th, and 75th
+percentiles of age.
+When using B-splines we need not limit ourselves to cubic polynomials
+(i.e. degree=3). For instance, using degree=0 results in piecewise constant
+functions, as in our example with pd.qcut() above.
+In [20]: bs_age0 = MS([bs('age',
+df=3,
+degree =0)]).fit(Wage)
+Xbs0 = bs_age0.transform(Wage)
+summarize(sm.OLS(y, Xbs0).fit())
+
+7.8 Lab: Non-Linear Modeling
+Out[20]:
+
+intercept
+bs(age , df=3, degree =0) [0]
+bs(age , df=3, degree =0) [1]
+bs(age , df=3, degree =0) [2]
+
+coef
+94.158
+22.349
+24.808
+22.781
+
+std err
+1.478
+2.152
+2.044
+2.087
+
+t
+63.687
+10.388
+12.137
+10.917
+
+317
+
+P>|t|
+0.0
+0.0
+0.0
+0.0
+
+This fit should be compared with cell [15] where we use qcut() to create
+four bins by cutting at the 25%, 50% and 75% quantiles of age. Since we
+specified df=3 for degree-zero splines here, there will also be knots at the
+same three quantiles. Although the coefficients appear different, we see that
+this is a result of the different coding. For example, the first coefficient is
+identical in both cases, and is the mean response in the first bin. For the
+second coefficient, we have 94.158 + 22.349 = 116.507 ≈ 116.611, the latter
+being the mean in the second bin in cell [15]. Here the intercept is coded by
+a column of ones, so the second, third and fourth coefficients are increments
+for those bins. Why is the sum not exactly the same? It turns out that the
+qcut() uses ≤, while bs() uses < when deciding bin membership.
+In order to fit a natural spline, we use the NaturalSpline() transform Natural
+with the corresponding helper ns(). Here we fit a natural spline with five Spline()
+degrees of freedom (excluding the intercept) and plot the results.
+In [21]: ns_age = MS([ns('age', df=5)]).fit(Wage)
+M_ns = sm.OLS(y, ns_age.transform(Wage)).fit()
+summarize(M_ns)
+Out[21]:
+
+intercept
+ns(age , df=5) [0]
+ns(age , df=5) [1]
+ns(age , df=5) [2]
+ns(age , df=5) [3]
+ns(age , df=5) [4]
+
+coef
+60.475
+61.527
+55.691
+46.818
+83.204
+6.877
+
+std err
+4.708
+4.709
+5.717
+4.948
+11.918
+9.484
+
+t
+12.844
+13.065
+9.741
+9.463
+6.982
+0.725
+
+P>|t|
+0.000
+0.000
+0.000
+0.000
+0.000
+0.468
+
+We now plot the natural spline using our plotting function.
+In [22]: plot_wage_fit(age_df ,
+ns_age ,
+'Natural spline , df=5');
+
+7.8.3
+
+Smoothing Splines and GAMs
+
+A smoothing spline is a special case of a GAM with squared-error loss
+and a single feature. To fit GAMs in Python we will use the pygam package pygam
+which can be installed via pip install pygam. The estimator LinearGAM()
+LinearGAM()
+uses squared-error loss. The GAM is specified by associating each column
+of a model matrix with a particular smoothing operation: s for smoothing
+spline; l for linear, and f for factor or categorical variables. The argument 0
+passed to s below indicates that this smoother will apply to the first column
+of a feature matrix. Below, we pass it a matrix with a single column: X_age.
+The argument lam is the penalty parameter λ as discussed in Section 7.5.2.
+In [23]: X_age = np.asarray(age).reshape ((-1,1))
+gam = LinearGAM(s_gam(0, lam =0.6))
+gam.fit(X_age , y)
+
+318
+
+7. Moving Beyond Linearity
+
+Out[23]: LinearGAM(callbacks =[ Deviance (), Diffs ()], fit_intercept=True ,
+max_iter =100, scale=None , terms=s(0) + intercept , tol =0.0001 ,
+verbose=False)
+
+The pygam library generally expects a matrix of features so we reshape age
+to be a matrix (a two-dimensional array) instead of a vector (i.e. a onedimensional array). The -1 in the call to the reshape() method tells numpy
+to impute the size of that dimension based on the remaining entries of the
+shape tuple.
+Let’s investigate how the fit changes with the smoothing parameter lam.
+The function np.logspace() is similar to np.linspace() but spaces points
+np.logspace()
+evenly on the log-scale. Below we vary lam from 10−2 to 106 .
+In [24]: fig , ax = subplots(figsize =(8 ,8))
+ax.scatter(age , y, facecolor='gray ', alpha =0.5)
+for lam in np.logspace (-2, 6, 5):
+gam = LinearGAM(s_gam(0, lam=lam)).fit(X_age , y)
+ax.plot(age_grid ,
+gam.predict(age_grid),
+label='{:.1e}'.format(lam),
+linewidth =3)
+ax.set_xlabel('Age', fontsize =20)
+ax.set_ylabel('Wage ', fontsize =20);
+ax.legend(title='$\lambda$ ');
+
+The pygam package can perform a search for an optimal smoothing parameter.
+In [25]: gam_opt = gam.gridsearch(X_age , y)
+ax.plot(age_grid ,
+gam_opt.predict(age_grid),
+label='Grid search ',
+linewidth =4)
+ax.legend ()
+fig
+
+Alternatively, we can fix the degrees of freedom of the smoothing spline
+using a function included in the ISLP.pygam package. Below we find a value
+of λ that gives us roughly four degrees of freedom. We note here that these
+degrees of freedom include the unpenalized intercept and linear term of the
+smoothing spline, hence there are at least two degrees of freedom.
+In [26]: age_term = gam.terms [0]
+lam_4 = approx_lam(X_age , age_term , 4)
+age_term.lam = lam_4
+degrees_of_freedom (X_age , age_term)
+Out[26]: 4.000000100004728
+
+Let’s vary the degrees of freedom in a similar plot to above. We choose the
+degrees of freedom as the desired degrees of freedom plus one to account
+for the fact that these smoothing splines always have an intercept term.
+Hence, a value of one for df is just a linear fit.
+In [27]: fig , ax = subplots(figsize =(8 ,8))
+ax.scatter(X_age ,
+y,
+
+7.8 Lab: Non-Linear Modeling
+
+319
+
+facecolor='gray ',
+alpha =0.3)
+for df in [1 ,3 ,4 ,8 ,15]:
+lam = approx_lam(X_age , age_term , df+1)
+age_term.lam = lam
+gam.fit(X_age , y)
+ax.plot(age_grid ,
+gam.predict(age_grid),
+label='{:d}'.format(df),
+linewidth =4)
+ax.set_xlabel('Age', fontsize =20)
+ax.set_ylabel('Wage ', fontsize =20);
+ax.legend(title='Degrees of freedom ');
+
+Additive Models with Several Terms
+The strength of generalized additive models lies in their ability to fit multivariate regression models with more flexibility than linear models. We
+demonstrate two approaches: the first in a more manual fashion using natural splines and piecewise constant functions, and the second using the
+pygam package and smoothing splines.
+We now fit a GAM by hand to predict wage using natural spline functions
+of year and age, treating education as a qualitative predictor, as in (7.16).
+Since this is just a big linear regression model using an appropriate choice
+of basis functions, we can simply do this using the sm.OLS() function.
+We will build the model matrix in a more manual fashion here, since we
+wish to access the pieces separately when constructing partial dependence
+plots.
+In [28]: ns_age = NaturalSpline(df=4).fit(age)
+ns_year = NaturalSpline(df=5).fit(Wage['year '])
+Xs = [ns_age.transform(age),
+ns_year.transform(Wage['year ']),
+pd.get_dummies(Wage['education ']).values]
+X_bh = np.hstack(Xs)
+gam_bh = sm.OLS(y, X_bh).fit()
+
+Here the function NaturalSpline() is the workhorse supporting the ns()
+helper function. We chose to use all columns of the indicator matrix for
+the categorical variable education, making an intercept redundant. Finally,
+we stacked the three component matrices horizontally to form the model
+matrix X_bh.
+We now show how to construct partial dependence plots for each of the
+terms in our rudimentary GAM. We can do this by hand, given grids for
+age and year. We simply predict with new X matrices, fixing all but one
+of the features at a time.
+In [29]: age_grid = np.linspace(age.min(),
+age.max(),
+100)
+X_age_bh = X_bh.copy () [:100]
+X_age_bh [:] = X_bh [:]. mean (0)[None ,:]
+X_age_bh [: ,:4] = ns_age.transform(age_grid)
+preds = gam_bh.get_predict

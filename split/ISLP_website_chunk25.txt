@@ -1,0 +1,543 @@
+ up with gkj (xj ) =
+bkj xj where bkj = (µkj −µKj )/σj2 . In this case, naive Bayes is actually
+a special case of LDA with Σ restricted to be a diagonal matrix with
+jth diagonal element equal to σj2 .
+• Neither QDA nor naive Bayes is a special case of the other. Naive
+Bayes can produce a more flexible fit, since any choice can be made
+for gkj (xj ). However, it is restricted to a purely additive fit, in the
+sense that in (4.34), a function of xj is added to a function of xl , for
+j %= l; however, these terms are never multiplied. By contrast, QDA
+includes multiplicative terms of the form ckjl xj xl . Therefore, QDA
+has the potential to be more accurate in settings where interactions
+among the predictors are important in discriminating between classes.
+None of these methods uniformly dominates the others: in any setting, the
+choice of method will depend on the true distribution of the predictors in
+each of the K classes, as well as other considerations, such as the values of
+n and p. The latter ties into the bias-variance trade-off.
+How does logistic regression tie into this story? Recall from (4.12) that
+multinomial logistic regression takes the form
+log
+
+*
+
+Pr(Y = k|X = x)
+Pr(Y = K|X = x)
+
++
+
+= βk0 +
+
+p
+0
+
+βkj xj .
+
+j=1
+
+This1 is identical 2to the linear form of LDA (4.32): in both cases,
+Pr(Y =k|X=x)
+is a linear function of the predictors. In LDA, the colog Pr(Y
+=K|X=x)
+efficients in this linear function are functions of estimates for πk , πK , µk ,
+µK , and Σ obtained by assuming that X1 , . . . , Xp follow a normal distribution within each class. By contrast, in logistic regression, the coefficients
+are chosen to maximize the likelihood function (4.5). Thus, we expect LDA
+to outperform logistic regression when the normality assumption (approximately) holds, and we expect logistic regression to perform better when it
+does not.
+
+164
+
+4. Classification
+
+We close with a brief discussion of K-nearest neighbors (KNN), introduced in Chapter 2. Recall that KNN takes a completely different approach
+from the classifiers seen in this chapter. In order to make a prediction for
+an observation X = x, the training observations that are closest to x are
+identified. Then X is assigned to the class to which the plurality of these
+observations belong. Hence KNN is a completely non-parametric approach:
+no assumptions are made about the shape of the decision boundary. We
+make the following observations about KNN:
+• Because KNN is completely non-parametric, we can expect this approach to dominate LDA and logistic regression when the decision
+boundary is highly non-linear, provided that n is very large and p is
+small.
+• In order to provide accurate classification, KNN requires a lot of observations relative to the number of predictors—that is, n much larger
+than p. This has to do with the fact that KNN is non-parametric, and
+thus tends to reduce the bias while incurring a lot of variance.
+• In settings where the decision boundary is non-linear but n is only
+modest, or p is not very small, then QDA may be preferred to KNN.
+This is because QDA can provide a non-linear decision boundary
+while taking advantage of a parametric form, which means that it
+requires a smaller sample size for accurate classification, relative to
+KNN.
+• Unlike logistic regression, KNN does not tell us which predictors are
+important: we don’t get a table of coefficients as in Table 4.3.
+
+4.5.2
+
+An Empirical Comparison
+
+We now compare the empirical (practical) performance of logistic regression, LDA, QDA, naive Bayes, and KNN. We generated data from six different scenarios, each of which involves a binary (two-class) classification
+problem. In three of the scenarios, the Bayes decision boundary is linear,
+and in the remaining scenarios it is non-linear. For each scenario, we produced 100 random training data sets. On each of these training sets, we
+fit each method to the data and computed the resulting test error rate on
+a large test set. Results for the linear scenarios are shown in Figure 4.11,
+and the results for the non-linear scenarios are in Figure 4.12. The KNN
+method requires selection of K, the number of neighbors (not to be confused with the number of classes in earlier sections of this chapter). We
+performed KNN with two values of K: K = 1, and a value of K that was
+chosen automatically using an approach called cross-validation, which we
+discuss further in Chapter 5. We applied naive Bayes assuming univariate
+Gaussian densities for the features within each class (and, of course — since
+this is the key characteristic of naive Bayes — assuming independence of
+the features).
+In each of the six scenarios, there were p = 2 quantitative predictors.
+The scenarios were as follows:
+
+4.5 A Comparison of Classification Methods
+SCENARIO 2
+
+SCENARIO 3
+
+0.35
+0.30
+
+QDA
+
+Logistic
+
+NBayes
+
+LDA
+
+KNN−CV
+
+KNN−1
+
+0.20
+QDA
+
+Logistic
+
+NBayes
+
+LDA
+
+KNN−CV
+
+KNN−1
+
+QDA
+
+NBayes
+
+LDA
+
+Logistic
+
+KNN−1
+
+KNN−CV
+
+0.15
+
+0.25
+
+0.25
+
+0.20
+
+0.30
+
+0.35
+
+0.25
+
+0.40
+
+0.40
+
+0.30
+
+0.45
+
+0.45
+
+0.50
+
+SCENARIO 1
+
+165
+
+FIGURE 4.11. Boxplots of the test error rates for each of the linear scenarios
+described in the main text.
+
+Scenario 1: There were 20 training observations in each of two classes. The
+observations within each class were uncorrelated random normal variables
+with a different mean in each class. The left-hand panel of Figure 4.11 shows
+that LDA performed well in this setting, as one would expect since this is
+the model assumed by LDA. Logistic regression also performed quite well,
+since it assumes a linear decision boundary. KNN performed poorly because
+it paid a price in terms of variance that was not offset by a reduction in bias.
+QDA also performed worse than LDA, since it fit a more flexible classifier
+than necessary. The performance of naive Bayes was slightly better than
+QDA, because the naive Bayes assumption of independent predictors is
+correct.
+Scenario 2: Details are as in Scenario 1, except that within each class, the
+two predictors had a correlation of −0.5. The center panel of Figure 4.11
+indicates that the performance of most methods is similar to the previous scenario. The notable exception is naive Bayes, which performs very
+poorly here, since the naive Bayes assumption of independent predictors is
+violated.
+Scenario 3: As in the previous scenario, there is substantial negative correlation between the predictors within each class. However, this time we
+generated X1 and X2 from the t-distribution, with 50 observations per class. tThe t-distribution has a similar shape to the normal distribution, but it distribution
+has a tendency to yield more extreme points—that is, more points that are
+far from the mean. In this setting, the decision boundary was still linear,
+and so fit into the logistic regression framework. The set-up violated the
+assumptions of LDA, since the observations were not drawn from a normal
+distribution. The right-hand panel of Figure 4.11 shows that logistic regression outperformed LDA, though both methods were superior to the other
+approaches. In particular, the QDA results deteriorated considerably as a
+consequence of non-normality. Naive Bayes performed very poorly because
+the independence assumption is violated.
+Scenario 4: The data were generated from a normal distribution, with a
+correlation of 0.5 between the predictors in the first class, and correlation of
+−0.5 between the predictors in the second class. This setup corresponded to
+the QDA assumption, and resulted in quadratic decision boundaries. The
+left-hand panel of Figure 4.12 shows that QDA outperformed all of the
+
+4. Classification
+SCENARIO 5
+
+SCENARIO 6
+
+0.40
+0.30
+0.20
+
+QDA
+
+Logistic
+
+NBayes
+
+LDA
+
+KNN−CV
+
+QDA
+
+Logistic
+
+NBayes
+
+LDA
+
+KNN−CV
+
+KNN−1
+
+QDA
+
+NBayes
+
+LDA
+
+Logistic
+
+KNN−1
+
+KNN−CV
+
+0.18
+
+0.15
+
+0.20
+
+0.30
+
+0.22
+
+0.25
+
+0.24
+
+0.35
+
+0.26
+
+0.35
+
+0.28
+
+0.40
+
+0.30
+
+0.32
+
+0.45
+
+SCENARIO 4
+
+KNN−1
+
+166
+
+FIGURE 4.12. Boxplots of the test error rates for each of the non-linear
+scenarios described in the main text.
+
+other approaches. The naive Bayes assumption of independent predictors
+is violated, so naive Bayes performs poorly.
+Scenario 5: The data were generated from a normal distribution with uncorrelated predictors. Then the responses were sampled from the logistic
+function applied to a complicated non-linear function of the predictors. The
+center panel of Figure 4.12 shows that both QDA and naive Bayes gave
+slightly better results than the linear methods, while the much more flexible KNN-CV method gave the best results. But KNN with K = 1 gave the
+worst results out of all methods. This highlights the fact that even when the
+data exhibits a complex non-linear relationship, a non-parametric method
+such as KNN can still give poor results if the level of smoothness is not
+chosen correctly.
+Scenario 6: The observations were generated from a normal distribution
+with a different diagonal covariance matrix for each class. However, the
+sample size was very small: just n = 6 in each class. Naive Bayes performed
+very well, because its assumptions are met. LDA and logistic regression
+performed poorly because the true decision boundary is non-linear, due to
+the unequal covariance matrices. QDA performed a bit worse than naive
+Bayes, because given the very small sample size, the former incurred too
+much variance in estimating the correlation between the predictors within
+each class. KNN’s performance also suffered due to the very small sample
+size.
+These six examples illustrate that no one method will dominate the others in every situation. When the true decision boundaries are linear, then
+the LDA and logistic regression approaches will tend to perform well. When
+the boundaries are moderately non-linear, QDA or naive Bayes may give
+better results. Finally, for much more complicated decision boundaries, a
+non-parametric approach such as KNN can be superior. But the level of
+smoothness for a non-parametric approach must be chosen carefully. In the
+next chapter we examine a number of approaches for choosing the correct
+level of smoothness and, in general, for selecting the best overall method.
+Finally, recall from Chapter 3 that in the regression setting we can accommodate a non-linear relationship between the predictors and the response
+by performing regression using transformations of the predictors. A similar
+approach could be taken in the classification setting. For instance, we could
+
+4.6 Generalized Linear Models
+
+Intercept
+workingday
+temp
+weathersit[cloudy/misty]
+weathersit[light rain/snow]
+weathersit[heavy rain/snow]
+
+167
+
+Coefficient Std. error t-statistic p-value
+73.60
+5.13
+14.34
+0.00
+1.27
+1.78
+0.71
+0.48
+157.21
+10.26
+15.32
+0.00
+-12.89
+1.96
+-6.56
+0.00
+-66.49
+2.97
+-22.43
+0.00
+-109.75
+76.67
+-1.43
+0.15
+
+TABLE 4.10. Results for a least squares linear model fit to predict bikers in
+the Bikeshare data. The predictors mnth and hr are omitted from this table due
+to space constraints, and can be seen in Figure 4.13. For the qualitative variable
+weathersit, the baseline level corresponds to clear skies.
+
+create a more flexible version of logistic regression by including X 2 , X 3 ,
+and even X 4 as predictors. This may or may not improve logistic regression’s performance, depending on whether the increase in variance due to
+the added flexibility is offset by a sufficiently large reduction in bias. We
+could do the same for LDA. If we added all possible quadratic terms and
+cross-products to LDA, the form of the model would be the same as the
+QDA model, although the parameter estimates would be different. This
+device allows us to move somewhere between an LDA and a QDA model.
+
+4.6
+
+Generalized Linear Models
+
+In Chapter 3, we assumed that the response Y is quantitative, and explored the use of least squares linear regression to predict Y . Thus far in
+this chapter, we have instead assumed that Y is qualitative. However, we
+may sometimes be faced with situations in which Y is neither qualitative
+nor quantitative, and so neither linear regression from Chapter 3 nor the
+classification approaches covered in this chapter is applicable.
+As a concrete example, we consider the Bikeshare data set. The response
+is bikers, the number of hourly users of a bike sharing program in Washington, DC. This response value is neither qualitative nor quantitative:
+instead, it takes on non-negative integer values, or counts. We will consider counts
+predicting bikers using the covariates mnth (month of the year), hr (hour
+of the day, from 0 to 23), workingday (an indicator variable that equals 1 if
+it is neither a weekend nor a holiday), temp (the normalized temperature,
+in Celsius), and weathersit (a qualitative variable that takes on one of four
+possible values: clear; misty or cloudy; light rain or light snow; or heavy
+rain or heavy snow.)
+In the analyses that follow, we will treat mnth, hr, and weathersit as
+qualitative variables.
+
+4.6.1
+
+Linear Regression on the Bikeshare Data
+
+To begin, we consider predicting bikers using linear regression. The results
+are shown in Table 4.10.
+We see, for example, that a progression of weather from clear to cloudy
+results in, on average, 12.89 fewer bikers per hour; however, if the weather
+progresses further to rain or snow, then this further results in 53.60 fewer
+bikers per hour. Figure 4.13 displays the coefficients associated with mnth
+
+4. Classification
+200
+
+168
+
+●
+●
+
+20
+
+●
+●
+
+●
+
+●
+●
+
+100
+
+●
+
+50
+
+●
+● ●
+●
+
+●
+
+●
+
+● ●
+
+●
+
+●
+
+0
+
+Coefficient
+
+0
+
+●
+
+●
+●
+
+−20
+
+Coefficient
+
+●
+
+●
+
+●
+
+●
+
+−100
+
+−40
+
+●
+●
+●
+
+J
+
+F
+
+M
+
+A
+
+M
+
+J
+
+J
+
+Month
+
+A
+
+S
+
+O
+
+N
+
+D
+
+●
+
+●
+●
+●
+
+●
+
+● ●
+
+5
+
+●
+
+10
+
+15
+
+20
+
+Hour
+
+FIGURE 4.13. A least squares linear regression model was fit to predict bikers
+in the Bikeshare data set. Left: The coefficients associated with the month of the
+year. Bike usage is highest in the spring and fall, and lowest in the winter. Right:
+The coefficients associated with the hour of the day. Bike usage is highest during
+peak commute times, and lowest overnight.
+
+and the coefficients associated with hr. We see that bike usage is highest in
+the spring and fall, and lowest during the winter months. Furthermore, bike
+usage is greatest around rush hour (9 AM and 6 PM), and lowest overnight.
+Thus, at first glance, fitting a linear regression model to the Bikeshare data
+set seems to provide reasonable and intuitive results.
+But upon more careful inspection, some issues become apparent. For
+example, 9.6% of the fitted values in the Bikeshare data set are negative:
+that is, the linear regression model predicts a negative number of users
+during 9.6% of the hours in the data set. This calls into question our ability
+to perform meaningful predictions on the data, and it also raises concerns
+about the accuracy of the coefficient estimates, confidence intervals, and
+other outputs of the regression model.
+Furthermore, it is reasonable to suspect that when the expected value
+of bikers is small, the variance of bikers should be small as well. For
+instance, at 2 AM during a heavy December snow storm, we expect that
+extremely few people will use a bike, and moreover that there should be
+little variance associated with the number of users during those conditions.
+This is borne out in the data: between 1 AM and 4 AM, in December,
+January, and February, when it is raining, there are 5.05 users, on average,
+with a standard deviation of 3.73. By contrast, between 7 AM and 10 AM,
+in April, May, and June, when skies are clear, there are 243.59 users, on
+average, with a standard deviation of 131.7. The mean-variance relat

@@ -1,0 +1,454 @@
+% of test observations are misclassified by this
+SVM.
+
+9.6.3 ROC Curves
+SVMs and support vector classifiers output class labels for each observation.
+However, it is also possible to obtain fitted values for each observation,
+which are the numerical scores used to obtain the class labels. For instance,
+in the case of a support vector classifier, the fitted value for an observation
+X = (X1 , X2 , . . . , Xp )T takes the form β̂0 + β̂1 X1 + β̂2 X2 + . . . + β̂p Xp . For
+an SVM with a non-linear kernel, the equation that yields the fitted value
+is given in (9.23). The sign of the fitted value determines on which side
+of the decision boundary the observation lies. Therefore, the relationship
+between the fitted value and the class prediction for a given observation
+is simple: if the fitted value exceeds zero then the observation is assigned
+to one class, and if it is less than zero then it is assigned to the other.
+By changing this threshold from zero to some positive value, we skew the
+classifications in favor of one class versus the other. By considering a range
+of these thresholds, positive and negative, we produce the ingredients for a
+ROC plot. We can access these values by calling the decision_function() .function_
+method of a fitted SVM estimator.
+decision()
+The function ROCCurveDisplay.from_estimator() (which we have abbreviated to roc_curve()) will produce a plot of a ROC curve. It takes a fitted
+roc_curve()
+estimator as its first argument, followed by a model matrix X and labels y.
+The argument name is used in the legend, while color is used for the color
+of the line. Results are plotted on our axis object ax.
+In [26]: fig , ax = subplots(figsize =(8 ,8))
+roc_curve(best_svm ,
+X_train ,
+y_train ,
+name='Training ',
+color='r',
+ax=ax);
+
+In this example, the SVM appears to provide accurate predictions. By
+increasing γ we can produce a more flexible fit and generate further improvements in accuracy.
+In [27]: svm_flex = SVC(kernel="rbf",
+gamma =50,
+
+9.6 Lab: Support Vector Machines
+
+393
+
+C=1)
+svm_flex.fit(X_train , y_train)
+fig , ax = subplots(figsize =(8 ,8))
+roc_curve(svm_flex ,
+X_train ,
+y_train ,
+name='Training $\gamma =50$',
+color='r',
+ax=ax);
+
+However, these ROC curves are all on the training data. We are really
+more interested in the level of prediction accuracy on the test data. When
+we compute the ROC curves on the test data, the model with γ = 0.5
+appears to provide the most accurate results.
+In [28]: roc_curve(svm_flex ,
+X_test ,
+y_test ,
+name='Test $\gamma =50$',
+color='b',
+ax=ax)
+fig;
+
+Let’s look at our tuned SVM.
+In [29]: fig , ax = subplots(figsize =(8 ,8))
+for (X_ , y_ , c, name) in zip(
+(X_train , X_test),
+(y_train , y_test),
+('r', 'b'),
+('CV tuned on training ',
+'CV tuned on test ')):
+roc_curve(best_svm ,
+X_ ,
+y_ ,
+name=name ,
+ax=ax ,
+color=c)
+
+9.6.4
+
+SVM with Multiple Classes
+
+If the response is a factor containing more than two levels, then the SVC()
+function will perform multi-class classification using either the one-versusone approach (when decision_function_shape=='ovo') or one-versus-rest4
+(when decision_function_shape=='ovr'). We explore that setting briefly
+here by generating a third class of observations.
+In [30]: rng = np.random.default_rng (123)
+X = np.vstack ([X, rng.standard_normal ((50, 2))])
+y = np.hstack ([y, [0]*50])
+X[y==0 ,1] += 2
+fig , ax = subplots(figsize =(8 ,8))
+ax.scatter(X[:,0], X[:,1], c=y, cmap=cm.coolwarm);
+
+4 One-versus-rest is also known as one-versus-all.
+
+394
+
+9. Support Vector Machines
+
+We now fit an SVM to the data:
+In [31]: svm_rbf_3 = SVC(kernel="rbf",
+C=10,
+gamma=1,
+decision_function_shape ='ovo');
+svm_rbf_3.fit(X, y)
+fig , ax = subplots(figsize =(8 ,8))
+plot_svm(X,
+y,
+svm_rbf_3 ,
+scatter_cmap=cm.tab10 ,
+ax=ax)
+
+The sklearn.svm library can also be used to perform support vector regression with a numerical response using the estimator SupportVectorRegression().
+SupportVector
+Regression()
+
+9.6.5
+
+Application to Gene Expression Data
+
+We now examine the Khan data set, which consists of a number of tissue
+samples corresponding to four distinct types of small round blue cell tumors. For each tissue sample, gene expression measurements are available.
+The data set consists of training data, xtrain and ytrain, and testing data,
+xtest and ytest.
+We examine the dimension of the data:
+In [32]: Khan = load_data('Khan ')
+Khan['xtrain '].shape , Khan['xtest ']. shape
+Out[32]: ((63, 2308) , (20, 2308))
+
+This data set consists of expression measurements for 2,308 genes. The
+training and test sets consist of 63 and 20 observations, respectively.
+We will use a support vector approach to predict cancer subtype using
+gene expression measurements. In this data set, there is a very large number
+of features relative to the number of observations. This suggests that we
+should use a linear kernel, because the additional flexibility that will result
+from using a polynomial or radial kernel is unnecessary.
+In [33]: khan_linear = SVC(kernel='linear ', C=10)
+khan_linear.fit(Khan['xtrain '], Khan['ytrain '])
+confusion_table(khan_linear.predict(Khan['xtrain ']),
+Khan['ytrain '])
+Out[33]:
+
+Truth
+Predicted
+1
+2
+3
+4
+
+1
+
+2
+
+3
+
+4
+
+8
+0
+0
+0
+
+0
+23
+0
+0
+
+0
+0
+12
+0
+
+0
+0
+0
+20
+
+We see that there are no training errors. In fact, this is not surprising,
+because the large number of variables relative to the number of observations
+implies that it is easy to find hyperplanes that fully separate the classes.
+
+9.7 Exercises
+
+395
+
+We are more interested in the support vector classifier’s performance on
+the test observations.
+In [34]: confusion_table(khan_linear.predict(Khan['xtest ']),
+Khan['ytest '])
+Out[34]:
+
+Truth
+Predicted
+1
+2
+3
+4
+
+1
+
+2
+
+3
+
+4
+
+3
+0
+0
+0
+
+0
+6
+0
+0
+
+0
+2
+4
+0
+
+0
+0
+0
+5
+
+We see that using C=10 yields two test set errors on these data.
+
+9.7
+
+Exercises
+
+Conceptual
+1. This problem involves hyperplanes in two dimensions.
+(a) Sketch the hyperplane 1 + 3X1 − X2 = 0. Indicate the set of
+points for which 1 + 3X1 − X2 > 0, as well as the set of points
+for which 1 + 3X1 − X2 < 0.
+
+(b) On the same plot, sketch the hyperplane −2 + X1 + 2X2 = 0.
+Indicate the set of points for which −2 + X1 + 2X2 > 0, as well
+as the set of points for which −2 + X1 + 2X2 < 0.
+
+2. We have seen that in p = 2 dimensions, a linear decision boundary
+takes the form β0 +β1 X1 +β2 X2 = 0. We now investigate a non-linear
+decision boundary.
+(a) Sketch the curve
+(1 + X1 )2 + (2 − X2 )2 = 4.
+(b) On your sketch, indicate the set of points for which
+(1 + X1 )2 + (2 − X2 )2 > 4,
+
+as well as the set of points for which
+
+(1 + X1 )2 + (2 − X2 )2 ≤ 4.
+(c) Suppose that a classifier assigns an observation to the blue class
+if
+(1 + X1 )2 + (2 − X2 )2 > 4,
+
+and to the red class otherwise. To what class is the observation
+(0, 0) classified? (−1, 1)? (2, 2)? (3, 8)?
+
+(d) Argue that while the decision boundary in (c) is not linear in
+terms of X1 and X2 , it is linear in terms of X1 , X12 , X2 , and
+X22 .
+
+396
+
+9. Support Vector Machines
+
+3. Here we explore the maximal margin classifier on a toy data set.
+(a) We are given n = 7 observations in p = 2 dimensions. For each
+observation, there is an associated class label.
+Obs.
+1
+2
+3
+4
+5
+6
+7
+
+X1
+3
+2
+4
+1
+2
+4
+4
+
+X2
+4
+2
+4
+4
+1
+3
+1
+
+Y
+Red
+Red
+Red
+Red
+Blue
+Blue
+Blue
+
+Sketch the observations.
+(b) Sketch the optimal separating hyperplane, and provide the equation for this hyperplane (of the form (9.1)).
+(c) Describe the classification rule for the maximal margin classifier.
+It should be something along the lines of “Classify to Red if
+β0 + β1 X1 + β2 X2 > 0, and classify to Blue otherwise.” Provide
+the values for β0 , β1 , and β2 .
+(d) On your sketch, indicate the margin for the maximal margin
+hyperplane.
+(e) Indicate the support vectors for the maximal margin classifier.
+(f) Argue that a slight movement of the seventh observation would
+not affect the maximal margin hyperplane.
+(g) Sketch a hyperplane that is not the optimal separating hyperplane, and provide the equation for this hyperplane.
+(h) Draw an additional observation on the plot so that the two
+classes are no longer separable by a hyperplane.
+
+Applied
+4. Generate a simulated two-class data set with 100 observations and
+two features in which there is a visible but non-linear separation between the two classes. Show that in this setting, a support vector
+machine with a polynomial kernel (with degree greater than 1) or a
+radial kernel will outperform a support vector classifier on the training data. Which technique performs best on the test data? Make
+plots and report training and test error rates in order to back up
+your assertions.
+5. We have seen that we can fit an SVM with a non-linear kernel in order
+to perform classification using a non-linear decision boundary. We will
+now see that we can also obtain a non-linear decision boundary by
+performing logistic regression using non-linear transformations of the
+features.
+
+9.7 Exercises
+
+397
+
+(a) Generate a data set with n = 500 and p = 2, such that the observations belong to two classes with a quadratic decision boundary
+between them. For instance, you can do this as follows:
+rng = np.random.default_rng (5)
+x1 = rng.uniform(size =500) - 0.5
+x2 = rng.uniform(size =500) - 0.5
+y = x1**2 - x2**2 > 0
+
+(b) Plot the observations, colored according to their class labels.
+Your plot should display X1 on the x-axis, and X2 on the yaxis.
+(c) Fit a logistic regression model to the data, using X1 and X2 as
+predictors.
+(d) Apply this model to the training data in order to obtain a predicted class label for each training observation. Plot the observations, colored according to the predicted class labels. The
+decision boundary should be linear.
+(e) Now fit a logistic regression model to the data using non-linear
+functions of X1 and X2 as predictors (e.g. X12 , X1 ×X2 , log(X2 ),
+and so forth).
+(f) Apply this model to the training data in order to obtain a predicted class label for each training observation. Plot the observations, colored according to the predicted class labels. The
+decision boundary should be obviously non-linear. If it is not,
+then repeat (a)–(e) until you come up with an example in which
+the predicted class labels are obviously non-linear.
+(g) Fit a support vector classifier to the data with X1 and X2 as
+predictors. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted
+class labels.
+(h) Fit a SVM using a non-linear kernel to the data. Obtain a class
+prediction for each training observation. Plot the observations,
+colored according to the predicted class labels.
+(i) Comment on your results.
+6. At the end of Section 9.6.1, it is claimed that in the case of data that is
+just barely linearly separable, a support vector classifier with a small
+value of C that misclassifies a couple of training observations may
+perform better on test data than one with a huge value of C that does
+not misclassify any training observations. You will now investigate
+this claim.
+(a) Generate two-class data with p = 2 in such a way that the classes
+are just barely linearly separable.
+(b) Compute the cross-validation error rates for support vector
+classifiers with a range of C values. How many training observations are misclassified for each value of C considered, and how
+does this relate to the cross-validation errors obtained?
+
+398
+
+9. Support Vector Machines
+
+(c) Generate an appropriate test data set, and compute the test
+errors corresponding to each of the values of C considered. Which
+value of C leads to the fewest test errors, and how does this
+compare to the values of C that yield the fewest training errors
+and the fewest cross-validation errors?
+(d) Discuss your results.
+7. In this problem, you will use support vector approaches in order to
+predict whether a given car gets high or low gas mileage based on the
+Auto data set.
+(a) Create a binary variable that takes on a 1 for cars with gas
+mileage above the median, and a 0 for cars with gas mileage
+below the median.
+(b) Fit a support vector classifier to the data with various values of
+C, in order to predict whether a car gets high or low gas mileage.
+Report the cross-validation errors associated with different values of this parameter. Comment on your results. Note you will
+need to fit the classifier without the gas mileage variable to produce sensible results.
+(c) Now repeat (b), this time using SVMs with radial and polynomial basis kernels, with different values of gamma and degree and
+C. Comment on your results.
+(d) Make some plots to back up your assertions in (b) and (c).
+Hint: In the lab, we used the plot_svm() function for fitted SVMs.
+When p > 2, you can use the keyword argument features to
+create plots displaying pairs of variables at a time.
+8. This problem involves the OJ data set which is part of the ISLP
+package.
+(a) Create a training set containing a random sample of 800
+observations, and a test set containing the remaining
+observations.
+(b) Fit a support vector classifier to the training data using
+C = 0.01, with Purchase as the response and the other variables
+as predictors. How many support points are there?
+(c) What are the training and test error rates?
+(d) Use cross-validation to select an optimal C. Consider values in
+the range 0.01 to 10.
+(e) Compute the training and test error rates using this new value
+for C.
+(f) Repeat parts (b) through (e) using a support vector machine
+with a radial kernel. Use the default value for gamma.
+(g) Repeat parts (b) through (e) using a support vector machine
+with a polynomial kernel. Set degree = 2.
+(h) Overall, which approach seems to give the best results on this
+data?
+
+10
+Deep Learning
+
+This chapter covers the important topic of deep learning. At the time of
+deep
+writing (2020), deep learning is a very active area of research in the machine learning
+learning and artificial intelligence communities. The cornerstone of deep
+learning is the neural network.
+neural
+Neural networks rose to fame in the late 1980s. There was a lot of excite- network
+ment and a certain amount of hype associated with this approach, and they
+were the impetus for the popular Neural Information Processing Systems
+meetings (NeurIPS, formerly NIPS) held every year, typically in exotic
+places like ski resorts. This was followed by a synthesis stage, where the
+properties of neural networks were analyzed by machine learners, mathematicians and statisticians; algorithms were improved, and the methodology stabilized. Then along came SVMs, boosting, and random forests,
+and neural networks fell somewhat from favor. Part of the reason was that
+neural networks required a lot of tinkering, while the new methods were
+more automatic. Also, on many problems the new methods outperformed
+poorly-trained neural networks. This was the status quo for the first decade
+in the new millennium.
+All the while, though, a core group of neural-network enthusiasts were
+pushing their technology harder on ever-larger computing architectures and
+data sets. Neural networks resurfaced after 2010 with the new name deep
+learning, with new architectures, additional bells and whistles, and a string
+of success stories on some niche problems such as image and video classification, speech and text modeling. Many in the field believe that the major
+reason for these successes is the availability of ever-larger training datasets,
+made possible by the wide-scale use of digitization in science and industry.
+In this chapter we discuss the basics of neural networks and deep learning, and then go into some of the specializations for speci

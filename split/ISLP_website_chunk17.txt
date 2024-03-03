@@ -1,0 +1,619 @@
+e for K and a prediction point x0 , KNN regression
+regression first identifies the K training observations that are closest to
+x0 , represented by N0 . It then estimates f (x0 ) using the average of all the
+training responses in N0 . In other words,
+1
+fˆ(x0 ) =
+K
+
+0
+
+yi .
+
+xi ∈N0
+
+Figure 3.16 illustrates two KNN fits on a data set with p = 2 predictors. The
+fit with K = 1 is shown in the left-hand panel, while the right-hand panel
+corresponds to K = 9. We see that when K = 1, the KNN fit perfectly
+interpolates the training observations, and consequently takes the form
+of a step function. When K = 9, the KNN fit still is a step function, but
+averaging over nine observations results in much smaller regions of constant
+prediction, and consequently a smoother fit. In general, the optimal value
+for K will depend on the bias-variance tradeoff, which we introduced in
+Chapter 2. A small value for K provides the most flexible fit, which will
+have low bias but high variance. This variance is due to the fact that the
+prediction in a given region is entirely dependent on just one observation.
+
+112
+
+3. Linear Regression
+
+y
+
+y
+
+y
+
+y
+
+x1
+
+x2
+
+x2
+
+y
+
+x1
+
+FIGURE 3.16. Plots of fˆ(X) using KNN regression on a two-dimensional
+data set with 64 observations (orange dots). Left: K = 1 results in a rough step
+function fit. Right: K = 9 produces a much smoother fit.
+
+In contrast, larger values of K provide a smoother and less variable fit; the
+prediction in a region is an average of several points, and so changing one
+observation has a smaller effect. However, the smoothing may cause bias by
+masking some of the structure in f (X). In Chapter 5, we introduce several
+approaches for estimating test error rates. These methods can be used to
+identify the optimal value of K in KNN regression.
+In what setting will a parametric approach such as least squares linear regression outperform a non-parametric approach such as KNN regression?
+The answer is simple: the parametric approach will outperform the nonparametric approach if the parametric form that has been selected is close
+to the true form of f . Figure 3.17 provides an example with data generated
+from a one-dimensional linear regression model. The black solid lines represent f (X), while the blue curves correspond to the KNN fits using K = 1
+and K = 9. In this case, the K = 1 predictions are far too variable, while
+the smoother K = 9 fit is much closer to f (X). However, since the true
+relationship is linear, it is hard for a non-parametric approach to compete
+with linear regression: a non-parametric approach incurs a cost in variance
+that is not offset by a reduction in bias. The blue dashed line in the lefthand panel of Figure 3.18 represents the linear regression fit to the same
+data. It is almost perfect. The right-hand panel of Figure 3.18 reveals that
+linear regression outperforms KNN for this data. The green solid line, plotted as a function of 1/K, represents the test set mean squared error (MSE)
+for KNN. The KNN errors are well above the black dashed line, which is
+the test MSE for linear regression. When the value of K is large, then KNN
+performs only a little worse than least squares regression in terms of MSE.
+It performs far worse when K is small.
+In practice, the true relationship between X and Y is rarely exactly linear. Figure 3.19 examines the relative performances of least squares regression and KNN under increasing levels of non-linearity in the relationship
+between X and Y . In the top row, the true relationship is nearly linear.
+In this case we see that the test MSE for linear regression is still superior
+
+113
+
+3
+1
+
+2
+
+y
+
+2
+1
+
+y
+
+3
+
+4
+
+4
+
+3.5 Comparison of Linear Regression with K-Nearest Neighbors
+
+−1.0
+
+−0.5
+
+0.0
+
+0.5
+
+1.0
+
+−1.0
+
+−0.5
+
+x
+
+0.0
+
+0.5
+
+1.0
+
+x
+
+0.10
+0.05
+
+Mean Squared Error
+
+2
+
+0.00
+
+1
+
+y
+
+3
+
+0.15
+
+4
+
+FIGURE 3.17. Plots of fˆ(X) using KNN regression on a one-dimensional data
+set with 50 observations. The true relationship is given by the black solid line.
+Left: The blue curve corresponds to K = 1 and interpolates (i.e. passes directly
+through) the training data. Right: The blue curve corresponds to K = 9, and
+represents a smoother fit.
+
+−1.0
+
+−0.5
+
+0.0
+
+x
+
+0.5
+
+1.0
+
+0.2
+
+0.5
+
+1.0
+
+1/K
+
+FIGURE 3.18. The same data set shown in Figure 3.17 is investigated further.
+Left: The blue dashed line is the least squares fit to the data. Since f (X) is in
+fact linear (displayed as the black line), the least squares regression line provides
+a very good estimate of f (X). Right: The dashed horizontal line represents the
+least squares test set MSE, while the green solid line corresponds to the MSE
+for KNN as a function of 1/K (on the log scale). Linear regression achieves a
+lower test MSE than does KNN regression, since f (X) is in fact linear. For KNN
+regression, the best results occur with a very large value of K, corresponding to a
+small value of 1/K.
+
+3. Linear Regression
+
+0.5
+
+0.06
+0.04
+0.00
+
+1.0
+
+0.02
+
+1.5
+
+2.0
+
+y
+
+2.5
+
+Mean Squared Error
+
+3.0
+
+0.08
+
+3.5
+
+114
+
+−1.0
+
+−0.5
+
+0.0
+
+0.5
+
+1.0
+
+0.2
+
+0.5
+
+1.0
+
+0.5
+
+1.0
+
+1/K
+
+0.10
+0.05
+0.00
+
+1.0
+
+1.5
+
+2.0
+
+y
+
+2.5
+
+Mean Squared Error
+
+3.0
+
+3.5
+
+0.15
+
+x
+
+−1.0
+
+−0.5
+
+0.0
+
+x
+
+0.5
+
+1.0
+
+0.2
+
+1/K
+
+FIGURE 3.19. Top Left: In a setting with a slightly non-linear relationship
+between X and Y (solid black line), the KNN fits with K = 1 (blue) and K = 9
+(red) are displayed. Top Right: For the slightly non-linear data, the test set MSE
+for least squares regression (horizontal black) and KN N with various values of
+1/K (green) are displayed. Bottom Left and Bottom Right: As in the top panel,
+but with a strongly non-linear relationship between X and Y .
+
+to that of KNN for low values of K. However, for K ≥ 4, KNN outperforms linear regression. The second row illustrates a more substantial
+deviation from linearity. In this situation, KNN substantially outperforms
+linear regression for all values of K. Note that as the extent of non-linearity
+increases, there is little change in the test set MSE for the non-parametric
+KNN method, but there is a large increase in the test set MSE of linear
+regression.
+Figures 3.18 and 3.19 display situations in which KNN performs slightly
+worse than linear regression when the relationship is linear, but much better than linear regression for nonlinear situations. In a real life situation
+in which the true relationship is unknown, one might suspect that KNN
+should be favored over linear regression because it will at worst be slightly
+inferior to linear regression if the true relationship is linear, and may give
+substantially better results if the true relationship is non-linear. But in reality, even when the true relationship is highly non-linear, KNN may still
+provide inferior results to linear regression. In particular, both Figures 3.18
+
+3.5 Comparison of Linear Regression with K-Nearest Neighbors
+
+0.5 1.0
+
+0.2
+
+0.5 1.0
+
+0.2
+
+0.5 1.0
+
+0.5 1.0
+
+1.0
+0.6
+0.0
+
+0.2
+
+0.4
+
+0.6
+0.4
+0.2
+0.0
+0.2
+
+p=20
+
+0.8
+
+1.0
+
+p=10
+
+0.8
+
+1.0
+0.6
+0.2
+0.0
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+p=4
+
+0.4
+
+0.6
+0.4
+0.2
+0.0
+0.2
+
+p=3
+
+0.8
+
+1.0
+
+p=2
+
+0.8
+
+1.0
+0.8
+0.6
+0.4
+0.2
+0.0
+
+Mean Squared Error
+
+p=1
+
+115
+
+0.2
+
+0.5 1.0
+
+0.2
+
+0.5 1.0
+
+1/K
+
+FIGURE 3.20. Test MSE for linear regression (black dashed lines) and KNN
+(green curves) as the number of variables p increases. The true function is nonlinear in the first variable, as in the lower panel in Figure 3.19, and does not
+depend on the additional variables. The performance of linear regression deteriorates slowly in the presence of these additional noise variables, whereas KNN’s
+performance degrades much more quickly as p increases.
+
+and 3.19 illustrate settings with p = 1 predictor. But in higher dimensions,
+KNN often performs worse than linear regression.
+Figure 3.20 considers the same strongly non-linear situation as in the
+second row of Figure 3.19, except that we have added additional noise
+predictors that are not associated with the response. When p = 1 or p = 2,
+KNN outperforms linear regression. But for p = 3 the results are mixed,
+and for p ≥ 4 linear regression is superior to KNN. In fact, the increase in
+dimension has only caused a small deterioration in the linear regression test
+set MSE, but it has caused more than a ten-fold increase in the MSE for
+KNN. This decrease in performance as the dimension increases is a common
+problem for KNN, and results from the fact that in higher dimensions
+there is effectively a reduction in sample size. In this data set there are
+50 training observations; when p = 1, this provides enough information to
+accurately estimate f (X). However, spreading 50 observations over p = 20
+dimensions results in a phenomenon in which a given observation has no
+nearby neighbors—this is the so-called curse of dimensionality. That is,
+curse of dithe K observations that are nearest to a given test observation x0 may be mensionality
+very far away from x0 in p-dimensional space when p is large, leading to a
+very poor prediction of f (x0 ) and hence a poor KNN fit. As a general rule,
+parametric methods will tend to outperform non-parametric approaches
+when there is a small number of observations per predictor.
+Even when the dimension is small, we might prefer linear regression to
+KNN from an interpretability standpoint. If the test MSE of KNN is only
+slightly lower than that of linear regression, we might be willing to forego
+a little bit of prediction accuracy for the sake of a simple model that can
+be described in terms of just a few coefficients, and for which p-values are
+available.
+
+116
+
+3. Linear Regression
+
+3.6
+
+Lab: Linear Regression
+
+3.6.1
+
+Importing packages
+
+We import our standard libraries at this top level.
+In [1]: import numpy as np
+import pandas as pd
+from matplotlib.pyplot import subplots
+
+New imports
+Throughout this lab we will introduce new functions and libraries. However,
+we will import them here to emphasize these are the new code objects in
+this lab. Keeping imports near the top of a notebook makes the code more
+readable, since scanning the first few lines tells us what libraries are used.
+In [2]: import statsmodels.api as sm
+
+We will provide relevant details about the functions below as they are
+needed.
+Besides importing whole modules, it is also possible to import only a
+few items from a given module. This will help keep the namespace clean. namespace
+We will use a few specific objects from the statsmodels package which we statsmodels
+import here.
+In [3]: from statsmodels.stats. outliers_influence \
+import variance_inflation_factor as VIF
+from statsmodels.stats.anova import anova_lm
+
+As one of the import statements above is quite a long line, we inserted a
+line break \ to ease readability.
+We will also use some functions written for the labs in this book in the
+ISLP package.
+In [4]: from ISLP import load_data
+from ISLP.models import (ModelSpec as MS ,
+summarize ,
+poly)
+
+Inspecting Objects and Namespaces
+The function dir() provides a list of objects in a namespace.
+In [5]: dir()
+Out[5]: ['In',
+'MS',
+'_',
+'__',
+'___',
+'__builtin__ ',
+'__builtins__ ',
+...
+
+dir()
+
+3.6 Lab: Linear Regression
+
+117
+
+'poly ',
+'quit ',
+'sm',
+'summarize ']
+
+This shows you everything that Python can find at the top level. There
+are certain objects like __builtins__ that contain references to built-in
+functions like print().
+Every python object has its own notion of namespace, also accessible
+with dir(). This will include both the attributes of the object as well as
+any methods associated with it. For instance, we see 'sum' in the listing
+for an array.
+In [6]: A = np.array ([3 ,5 ,11])
+dir(A)
+Out[6]:
+
+...
+'strides ',
+'sum',
+'swapaxes ',
+...
+
+This indicates that the object A.sum exists. In this case it is a method that
+can be used to compute the sum of the array A as can be seen by typing
+A.sum?.
+In [7]: A.sum()
+Out[7]: 19
+
+3.6.2
+
+Simple Linear Regression
+
+In this section we will construct model matrices (also called design matrices) using the ModelSpec() transform from ISLP.models.
+We will use the Boston housing data set, which is contained in the ISLP
+package. The Boston dataset records medv (median house value) for 506
+neighborhoods around Boston. We will build a regression model to predict medv using 13 predictors such as rmvar (average number of rooms per
+house), age (proportion of owner-occupied units built prior to 1940), and
+lstat (percent of households with low socioeconomic status). We will use
+statsmodels for this task, a Python package that implements several commonly used regression methods.
+We have included a simple loading function load_data() in the ISLP packload_data()
+age:
+In [8]: Boston = load_data("Boston")
+Boston.columns
+Out[8]: Index (['crim ', 'zn', 'indus ', 'chas ', 'nox', 'rm', 'age', 'dis',
+'rad', 'tax', 'ptratio ', 'black ', 'lstat ', 'medv '],
+dtype='object ')
+
+118
+
+3. Linear Regression
+
+Type Boston? to find out more about these data.
+We start by using the sm.OLS() function to fit a simple linear regression
+sm.OLS()
+model. Our response will be medv and lstat will be the single predictor.
+For this model, we can create the model matrix by hand.
+In [9]: X = pd.DataFrame ({'intercept ': np.ones(Boston.shape [0]) ,
+'lstat ': Boston['lstat ']})
+X[:4]
+Out[9]:
+
+0
+1
+2
+3
+
+intercept
+1.0
+1.0
+1.0
+1.0
+
+lstat
+4.98
+9.14
+4.03
+2.94
+
+We extract the response, and fit the model.
+In [10]: y = Boston['medv ']
+model = sm.OLS(y, X)
+results = model.fit()
+
+Note that sm.OLS() does not fit the model; it specifies the model, and then
+model.fit() does the actual fitting.
+Our ISLP function summarize() produces a simple table of the paramesummarize()
+ter estimates, their standard errors, t-statistics and p-values. The function
+takes a single argument, such as the object results returned here by the
+fit method, and returns such a summary.
+In [11]: summarize(results)
+Out[11]:
+
+intercept
+lstat
+
+coef
+34.5538
+-0.9500
+
+std err
+t
+0.563 61.415
+0.039 -24.528
+
+P>|t|
+0.0
+0.0
+
+Before we describe other methods for working with fitted models, we
+outline a more useful and general framework for constructing a model matrix X.
+Using Transformations: Fit and Transform
+Our model above has a single predictor, and constructing X was straightforward. In practice we often fit models with more than one predictor,
+typically selected from an array or data frame. We may wish to introduce
+transformations to the variables before fitting the model, specify interactions between variables, and expand some particular variables into sets of
+variables (e.g. polynomials). The sklearn package has a particular notion sklearn
+for this type of task: a transform. A transform is an object that is created
+with some parameters as arguments. The object has two main methods:
+fit() and transform().
+.fit()
+We provide a general approach for specifying models and constructing .transform()
+the model matrix through the transform ModelSpec() in the ISLP library.
+ModelSpec()
+ModelSpec() (renamed MS() in the preamble) creates a transform object,
+and then a pair of methods transform() and fit() are used to construct a
+corresponding model matrix.
+
+3.6 Lab: Linear Regression
+
+119
+
+We first describe this process for our simple regression model using a
+single predictor lstat in the Boston data frame, but will use it repeatedly
+in more complex tasks in this and other labs in this book. In our case the
+transform is created by the expression design = MS(['lstat']).
+The fit() method takes the original array and may do some initial computations on it, as specified in the transform object. For example, it may
+compute means and standard devi

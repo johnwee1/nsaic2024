@@ -1,0 +1,464 @@
+r accommodating the presence of such outliers. These amount to a soft
+version of K-means clustering, and are described in ESL.
+8 ESL: The Elements of Statistical Learning by Hastie, Tibshirani and Friedman.
+
+12.5 Lab: Unsupervised Learning
+
+535
+
+In addition, clustering methods generally are not very robust to perturbations to the data. For instance, suppose that we cluster n observations,
+and then cluster the observations again after removing a subset of the n
+observations at random. One would hope that the two sets of clusters obtained would be quite similar, but often this is not the case!
+A Tempered Approach to Interpreting the Results of Clustering
+We have described some of the issues associated with clustering. However,
+clustering can be a very useful and valid statistical tool if used properly. We
+mentioned that small decisions in how clustering is performed, such as how
+the data are standardized and what type of linkage is used, can have a large
+effect on the results. Therefore, we recommend performing clustering with
+different choices of these parameters, and looking at the full set of results
+in order to see what patterns consistently emerge. Since clustering can be
+non-robust, we recommend clustering subsets of the data in order to get a
+sense of the robustness of the clusters obtained. Most importantly, we must
+be careful about how the results of a clustering analysis are reported. These
+results should not be taken as the absolute truth about a data set. Rather,
+they should constitute a starting point for the development of a scientific
+hypothesis and further study, preferably on an independent data set.
+
+12.5
+
+Lab: Unsupervised Learning
+
+In this lab we demonstrate PCA and clustering on several datasets. As in
+other labs, we import some of our libraries at this top level. This makes
+the code more readable, as scanning the first few lines of the notebook tell
+us what libraries are used in this notebook.
+In [1]: import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.datasets import get_rdataset
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from ISLP import load_data
+
+We also collect the new imports needed for this lab.
+In [2]: from sklearn.cluster import \
+(KMeans ,
+AgglomerativeClustering )
+from scipy.cluster.hierarchy import \
+(dendrogram ,
+cut_tree)
+from ISLP.cluster import compute_linkage
+
+12.5.1
+
+Principal Components Analysis
+
+In this lab, we perform PCA on USArrests, a data set in the R computing
+environment. We retrieve the data using get_rdataset(), which can fetch get_
+
+rdataset()
+
+536
+
+12. Unsupervised Learning
+
+data from many standard R packages.
+The rows of the data set contain the 50 states, in alphabetical order.
+In [3]: USArrests = get_rdataset('USArrests ').data
+USArrests
+Out[3]:
+
+Alabama
+Alaska
+Arizona
+...
+Wisconsin
+Wyoming
+
+Murder
+13.2
+10.0
+8.1
+...
+2.6
+6.8
+
+Assault
+236
+263
+294
+...
+53
+161
+
+UrbanPop
+58
+48
+80
+...
+66
+60
+
+Rape
+21.2
+44.5
+31.0
+...
+10.8
+15.6
+
+The columns of the data set contain the four variables.
+In [4]: USArrests.columns
+Out[4]: Index (['Murder ', 'Assault ', 'UrbanPop ', 'Rape '],
+dtype='object ')
+
+We first briefly examine the data. We notice that the variables have
+vastly different means.
+In [5]: USArrests.mean ()
+Out[5]: Murder
+7.788
+Assault
+170.760
+UrbanPop
+65.540
+Rape
+21.232
+dtype: float64
+
+Dataframes have several useful methods for computing column-wise summaries. We can also examine the variance of the four variables using the
+var() method.
+In [6]: USArrests.var()
+Out[6]: Murder
+18.970465
+Assault
+6945.165714
+UrbanPop
+209.518776
+Rape
+87.729159
+dtype: float64
+
+Not surprisingly, the variables also have vastly different variances. The
+UrbanPop variable measures the percentage of the population in each state
+living in an urban area, which is not a comparable number to the number of
+rapes in each state per 100,000 individuals. PCA looks for derived variables
+that account for most of the variance in the data set. If we do not scale the
+variables before performing PCA, then the principal components would
+mostly be driven by the Assault variable, since it has by far the largest
+variance. So if the variables are measured in different units or vary widely
+in scale, it is recommended to standardize the variables to have standard
+deviation one before performing PCA. Typically we set the means to zero
+as well.
+
+12.5 Lab: Unsupervised Learning
+
+537
+
+This scaling can be done via the StandardScaler() transform imported
+above. We first fit the scaler, which computes the necessary means and
+standard deviations and then apply it to our data using the transform
+method. As before, we combine these steps using the fit_transform()
+method.
+In [7]: scaler = StandardScaler(with_std=True ,
+with_mean=True)
+USArrests_scaled = scaler.fit_transform(USArrests)
+
+Having scaled the data, we can then perform principal components analysis
+using the PCA() transform from the sklearn.decomposition package.
+In [8]: pcaUS = PCA()
+
+(By default, the PCA() transform centers the variables to have mean zero
+though it does not scale them.) The transform pcaUS can be used to find
+the PCA scores returned by fit(). Once the fit method has been called,
+the pcaUS object also contains a number of useful quantities.
+In [9]: pcaUS.fit(USArrests_scaled)
+
+After fitting, the mean_ attribute corresponds to the means of the variables. In this case, since we centered and scaled the data with scaler() the
+means will all be 0.
+In [10]: pcaUS.mean_
+Out[10]: array ([-0.,
+
+0., -0.,
+
+0.])
+
+The scores can be computed using the transform() method of pcaUS after
+it has been fit.
+In [11]: scores = pcaUS.transform(USArrests_scaled)
+
+We will plot these scores a bit further down. The components_ attribute
+provides the principal component loadings: each row of pcaUS.components_
+contains the corresponding principal component loading vector.
+In [12]: pcaUS.components_
+Out[12]: array ([[ 0.53589947 , 0.58318363 , 0.27819087 , 0.54343209] ,
+[ 0.41818087 , 0.1879856 , -0.87280619 , -0.16731864] ,
+[ -0.34123273 , -0.26814843 , -0.37801579 , 0.81777791] ,
+[ 0.6492278 , -0.74340748 , 0.13387773 , 0.08902432]])
+
+The biplot is a common visualization method used with PCA. It is not
+built in as a standard part of sklearn, though there are python packages
+that do produce such plots. Here we make a simple biplot manually.
+In [13]: i, j = 0, 1 # which components
+fig , ax = plt.subplots (1, 1, figsize =(8, 8))
+ax.scatter(scores [:,0], scores [: ,1])
+ax.set_xlabel('PC%d' % (i+1))
+ax.set_ylabel('PC%d' % (j+1))
+for k in range(pcaUS.components_.shape [1]):
+
+PCA()
+
+538
+
+12. Unsupervised Learning
+ax.arrow(0, 0, pcaUS.components_[i,k], pcaUS.components_[j,k])
+ax.text(pcaUS.components_[i,k],
+pcaUS.components_[j,k],
+USArrests.columns[k])
+
+Notice that this figure is a reflection of Figure 12.1 through the y-axis.
+Recall that the principal components are only unique up to a sign change,
+so we can reproduce that figure by flipping the signs of the second set of
+scores and loadings. We also increase the length of the arrows to emphasize
+the loadings.
+In [14]: scale_arrow = s_ = 2
+scores [:,1] *= -1
+pcaUS.components_ [1] *= -1 # flip the y-axis
+fig , ax = plt.subplots (1, 1, figsize =(8, 8))
+ax.scatter(scores [:,0], scores [: ,1])
+ax.set_xlabel('PC%d' % (i+1))
+ax.set_ylabel('PC%d' % (j+1))
+for k in range(pcaUS.components_.shape [1]):
+ax.arrow(0, 0, s_*pcaUS.components_[i,k], s_*pcaUS.components_[
+j,k])
+ax.text(s_*pcaUS.components_[i,k],
+s_*pcaUS.components_[j,k],
+USArrests.columns[k])
+
+The standard deviations of the principal component scores are as follows:
+In [15]: scores.std(0, ddof =1)
+Out[15]: array ([1.5909 , 1.0050 , 0.6032 , 0.4207])
+
+The variance of each score can be extracted directly from the pcaUS object
+via the explained_variance_ attribute.
+In [16]: pcaUS.explained_variance_
+Out[16]: array ([2.5309 , 1.01
+
+, 0.3638 , 0.177 ])
+
+The proportion of variance explained by each principal component (PVE)
+is stored as explained_variance_ratio_:
+In [17]: pcaUS.explained_variance_ratio_
+Out[17]: array ([0.6201 , 0.2474 , 0.0891 , 0.0434])
+
+We see that the first principal component explains 62.0% of the variance
+in the data, the next principal component explains 24.7% of the variance,
+and so forth. We can plot the PVE explained by each component, as well
+as the cumulative PVE. We first plot the proportion of variance explained.
+In [18]: %% capture
+fig , axes = plt.subplots (1, 2, figsize =(15, 6))
+ticks = np.arange(pcaUS.n_components_)+1
+ax = axes [0]
+ax.plot(ticks ,
+pcaUS.explained_variance_ratio_ ,
+marker='o')
+
+12.5 Lab: Unsupervised Learning
+
+539
+
+ax.set_xlabel('Principal Component ');
+ax.set_ylabel('Proportion of Variance Explained ')
+ax.set_ylim ([0 ,1])
+ax.set_xticks(ticks)
+
+Notice the use of %%capture, which suppresses the displaying of the partially
+completed figure.
+In [19]: ax = axes [1]
+ax.plot(ticks ,
+pcaUS. explained_variance_ratio_ .cumsum (),
+marker='o')
+ax.set_xlabel('Principal Component ')
+ax.set_ylabel('Cumulative Proportion of Variance Explained ')
+ax.set_ylim ([0, 1])
+ax.set_xticks(ticks)
+fig
+
+The result is similar to that shown in Figure 12.3. Note that the method
+cumsum() computes the cumulative sum of the elements of a numeric vector.
+cumsum()
+For instance:
+In [20]: a = np.array ([1,2,8,-3])
+np.cumsum(a)
+Out[20]: array ([ 1,
+
+12.5.2
+
+3, 11,
+
+8])
+
+Matrix Completion
+
+We now re-create the analysis carried out on the USArrests data in Section 12.3.
+We saw in Section 12.2.2 that solving the optimization problem (12.6) on
+a centered data matrix X is equivalent to computing the first M principal
+components of the data. We use our scaled and centered USArrests data as
+X below. The singular value decomposition (SVD) is a general algorithm
+singular
+for solving (12.6).
+value deIn [21]: X = USArrests_scaled
+U, D, V = np.linalg.svd(X, full_matrices=False)
+U.shape , D.shape , V.shape
+
+composition
+svd()
+
+Out[21]: ((50, 4), (4,), (4, 4))
+
+The np.linalg.svd() function returns three components, U, D and V. The np.linalg.
+matrix V is equivalent to the loading matrix from principal components (up svd()
+to an unimportant sign flip). Using the full_matrices=False option ensures
+that for a tall matrix the shape of U is the same as the shape of X.
+In [22]: V
+Out[22]: array ([[ -0.53589947 , -0.58318363 , -0.27819087 , -0.54343209] ,
+[ 0.41818087 , 0.1879856 , -0.87280619 , -0.16731864] ,
+[ -0.34123273 , -0.26814843 , -0.37801579 , 0.81777791] ,
+[ 0.6492278 , -0.74340748 , 0.13387773 , 0.08902432]])
+
+540
+
+12. Unsupervised Learning
+
+In [23]: pcaUS.components_
+Out[23]: array ([[ 0.53589947 , 0.58318363 , 0.27819087 , 0.54343209] ,
+[ 0.41818087 , 0.1879856 , -0.87280619 , -0.16731864] ,
+[ -0.34123273 , -0.26814843 , -0.37801579 , 0.81777791] ,
+[ 0.6492278 , -0.74340748 , 0.13387773 , 0.08902432]])
+
+The matrix U corresponds to a standardized version of the PCA score matrix
+(each column standardized to have sum-of-squares one). If we multiply each
+column of U by the corresponding element of D, we recover the PCA scores
+exactly (up to a meaningless sign flip).
+In [24]: (U * D[None ,:]) [:3]
+Out[24]: array ([[ -0.9856 , 1.1334 , -0.4443 , 0.1563] ,
+[ -1.9501 , 1.0732 , 2.04 , -0.4386] ,
+[ -1.7632 , -0.746 , 0.0548 , -0.8347]])
+In [25]: scores [:3]
+Out[25]: array ([[ 0.9856 , -1.1334 , -0.4443 , 0.1563] ,
+[ 1.9501 , -1.0732, 2.04 , -0.4386] ,
+[ 1.7632 , 0.746 , 0.0548 , -0.8347]])
+
+While it would be possible to carry out this lab using the PCA() estimator,
+here we use the np.linalg.svd() function in order to illustrate its use.
+We now omit 20 entries in the 50 × 4 data matrix at random. We do
+so by first selecting 20 rows (states) at random, and then selecting one of
+the four entries in each row at random. This ensures that every row has at
+least three observed values.
+In [26]: n_omit = 20
+np.random.seed (15)
+r_idx = np.random.choice(np.arange(X.shape [0]) ,
+n_omit ,
+replace=False)
+c_idx = np.random.choice(np.arange(X.shape [1]) ,
+n_omit ,
+replace=True)
+Xna = X.copy ()
+Xna[r_idx , c_idx] = np.nan
+
+Here the array r_idx contains 20 integers from 0 to 49; this represents
+the states (rows of X) that are selected to contain missing values. And c_idx
+contains 20 integers from 0 to 3, representing the features (columns in X)
+that contain the missing values for each of the selected states.
+We now write some code to implement Algorithm 12.1. We first write a
+function that takes in a matrix, and returns an approximation to the matrix
+using the svd() function. This will be needed in Step 2 of Algorithm 12.1.
+In [27]: def low_rank(X, M=1):
+U, D, V = np.linalg.svd(X)
+L = U[:,:M] * D[None ,:M]
+return L.dot(V[:M])
+
+12.5 Lab: Unsupervised Learning
+
+541
+
+To conduct Step 1 of the algorithm, we initialize Xhat — this is X̃ in
+Algorithm 12.1 — by replacing the missing values with the column means
+of the non-missing entries. These are stored in Xbar below after running
+np.nanmean() over the row axis. We make a copy so that when we assign
+np.nanmean()
+values to Xhat below we do not also overwrite the values in Xna.
+In [28]: Xhat = Xna.copy ()
+Xbar = np.nanmean(Xhat , axis =0)
+Xhat[r_idx , c_idx] = Xbar[c_idx]
+
+Before we begin Step 2, we set ourselves up to measure the progress of
+our iterations:
+In [29]: thresh = 1e-7
+rel_err = 1
+count = 0
+ismiss = np.isnan(Xna)
+mssold = np.mean(Xhat[∼ismiss ]**2)
+mss0 = np.mean(Xna[∼ismiss ]**2)
+
+Here ismiss is a logical matrix with the same dimensions as Xna; a given
+element is True if the corresponding matrix element is missing. The notation
+∼ismiss negates this boolean vector. This is useful because it allows us to
+access both the missing and non-missing entries. We store the mean of the
+squared non-missing elements in mss0. We store the mean squared error
+of the non-missing elements of the old version of Xhat in mssold (which
+currently agrees with mss0). We plan to store the mean squared error of
+the non-missing elements of the current version of Xhat in mss, and will then
+iterate Step 2 of Algorithm 12.1 until the relative error, defined as (mssold
+- mss) / mss0, falls below thresh = 1e-7. 9
+In Step 2(a) of Algorithm 12.1, we approximate Xhat using low_rank();
+we call this Xapp. In Step 2(b), we use Xapp to update the estimates for
+elements in Xhat that are missing in Xna. Finally, in Step 2(c), we compute
+the relative error. These three steps are contained in the following while
+loop:
+In [30]: while rel_err > thresh:
+count += 1
+# Step 2(a)
+Xapp = low_rank(Xhat , M=1)
+# Step 2(b)
+Xhat[ismiss] = Xapp[ismiss]
+# Step 2(c)
+mss = np.mean ((( Xna - Xapp)[∼ismiss ]) **2)
+rel_err = (mssold - mss) / mss0
+mssold = mss
+print("Iteration: {0}, MSS :{1:.3f}, Rel.Err {2:.2e}"
+.format(count , mss , rel_err))
+
+9 Algorithm 12.1 tells us to iterate Step 2 until (12.14) is no longer decreasing. Determining whether (12.14) is decreasing requires us only to keep track of mssold - mss.
+However, in practice, we keep track of (mssold - mss) / mss0 instead: this makes
+it so that the number of iterations required for Algorithm 12.1 to converge does not
+depend on whether we multiplied the raw data X by a constant factor.
+
+542
+
+12. Unsupervised Learning
+
+Iteration: 1, MSS :0.395 ,
+Iteration: 2, MSS :0.382 ,
+Iteration: 3, MSS :0.381 ,
+Iteration: 4, MSS :0.381 ,
+Iteration: 5, MSS :0.381 ,
+Iteration: 6, MSS :0.381 ,
+Iteration: 7, MSS :0.381 ,
+Iteration: 8, MSS :0.381 ,
+Iteration: 9, MSS :0.381 ,
+
+Rel.Err
+Rel.Err
+Rel.Err
+Rel.Err
+Rel.Err
+Rel.Err
+Rel.Err
+Rel.Err
+Rel.Err
+
+5.99e-01
+1.33e-02
+1.44e-03
+1.79e-04
+2.58e-0

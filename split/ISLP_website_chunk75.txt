@@ -1,0 +1,502 @@
+ding chapters in this book, then you should by now have a good
+grasp of supervised learning. For instance, if you are asked to predict a
+binary outcome from a data set, you have a very well developed set of tools
+at your disposal (such as logistic regression, linear discriminant analysis,
+classification trees, support vector machines, and more) as well as a clear
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0_12
+
+503
+
+504
+
+12. Unsupervised Learning
+
+understanding of how to assess the quality of the results obtained (using
+cross-validation, validation on an independent test set, and so forth).
+In contrast, unsupervised learning is often much more challenging. The
+exercise tends to be more subjective, and there is no simple goal for the
+analysis, such as prediction of a response. Unsupervised learning is often
+performed as part of an exploratory data analysis. Furthermore, it can be
+exploratory
+hard to assess the results obtained from unsupervised learning methods, data
+since there is no universally accepted mechanism for performing cross- analysis
+validation or validating results on an independent data set. The reason
+for this difference is simple. If we fit a predictive model using a supervised
+learning technique, then it is possible to check our work by seeing how
+well our model predicts the response Y on observations not used in fitting
+the model. However, in unsupervised learning, there is no way to check our
+work because we don’t know the true answer—the problem is unsupervised.
+Techniques for unsupervised learning are of growing importance in a
+number of fields. A cancer researcher might assay gene expression levels in
+100 patients with breast cancer. He or she might then look for subgroups
+among the breast cancer samples, or among the genes, in order to obtain
+a better understanding of the disease. An online shopping site might try
+to identify groups of shoppers with similar browsing and purchase histories, as well as items that are of particular interest to the shoppers within
+each group. Then an individual shopper can be preferentially shown the
+items in which he or she is particularly likely to be interested, based on
+the purchase histories of similar shoppers. A search engine might choose
+which search results to display to a particular individual based on the click
+histories of other individuals with similar search patterns. These statistical
+learning tasks, and many more, can be performed via unsupervised learning
+techniques.
+
+12.2
+
+Principal Components Analysis
+
+Principal components are discussed in Section 6.3.1 in the context of
+principal components regression. When faced with a large set of correlated variables, principal components allow us to summarize this set with
+a smaller number of representative variables that collectively explain most
+of the variability in the original set. The principal component directions
+are presented in Section 6.3.1 as directions in feature space along which
+the original data are highly variable. These directions also define lines and
+subspaces that are as close as possible to the data cloud. To perform
+principal components regression, we simply use principal components as
+predictors in a regression model in place of the original larger set of variables.
+Principal components analysis (PCA) refers to the process by which prinprincipal
+cipal components are computed, and the subsequent use of these compo- components
+nents in understanding the data. PCA is an unsupervised approach, since analysis
+it involves only a set of features X1 , X2 , . . . , Xp , and no associated response
+Y . Apart from producing derived variables for use in supervised learning
+problems, PCA also serves as a tool for data visualization (visualization of
+
+12.2 Principal Components Analysis
+
+505
+
+the observations or visualization of the variables). It can also be used as a
+tool for data imputation — that is, for filling in missing values in a data
+matrix.
+We now discuss PCA in greater detail, focusing on the use of PCA as
+a tool for unsupervised data exploration, in keeping with the topic of this
+chapter.
+
+12.2.1
+
+What Are Principal Components?
+
+Suppose that we wish to visualize n observations with measurements on a
+set of p features, X1 , X2 , . . . , Xp , as part of an exploratory data analysis.
+We could do this by examining two-dimensional scatterplots of the data,
+each of which contains the 'n(observations’ measurements on two of the
+features. However, there are p2 = p(p−1)/2 such scatterplots; for example,
+with p = 10 there are 45 plots! If p is large, then it will certainly not be
+possible to look at all of them; moreover, most likely none of them will
+be informative since they each contain just a small fraction of the total
+information present in the data set. Clearly, a better method is required to
+visualize the n observations when p is large. In particular, we would like to
+find a low-dimensional representation of the data that captures as much of
+the information as possible. For instance, if we can obtain a two-dimensional
+representation of the data that captures most of the information, then we
+can plot the observations in this low-dimensional space.
+PCA provides a tool to do just this. It finds a low-dimensional representation of a data set that contains as much as possible of the variation. The
+idea is that each of the n observations lives in p-dimensional space, but not
+all of these dimensions are equally interesting. PCA seeks a small number
+of dimensions that are as interesting as possible, where the concept of interesting is measured by the amount that the observations vary along each
+dimension. Each of the dimensions found by PCA is a linear combination
+of the p features. We now explain the manner in which these dimensions,
+or principal components, are found.
+The first principal component of a set of features X1 , X2 , . . . , Xp is the
+normalized linear combination of the features
+Z1 = φ11 X1 + φ21 X2 + · · · + φp1 Xp
+
+)p
+
+(12.1)
+
+that has the largest variance. By normalized, we mean that
+We refer to the elements φ11 , . . . , φp1 as the loadings of the first principal
+loading
+component; together, the loadings make up the principal component loading vector, φ1 = (φ11 φ21 . . . φp1 )T . We constrain the loadings so that
+their sum of squares is equal to one, since otherwise setting these elements
+to be arbitrarily large in absolute value could result in an arbitrarily large
+variance.
+Given an n × p data set X, how do we compute the first principal component? Since we are only interested in variance, we assume that each of
+the variables in X has been centered to have mean zero (that is, the column means of X are zero). We then look for the linear combination of the
+sample feature values of the form
+zi1 = φ11 xi1 + φ21 xi2 + · · · + φp1 xip
+
+2
+j=1 φj1 = 1.
+
+(12.2)
+
+506
+
+12. Unsupervised Learning
+
+)p
+that has largest sample variance, subject to the constraint that j=1 φ2j1 =1.
+In other words, the first principal component loading vector solves the optimization problem
+
+
+2 
+
+
+p
+p
+n
+1 0
+
+0
+0
+
+
+maximize
+φj1 xij
+subject to
+φ2j1 = 1.
+(12.3)
+
+φ11 ,...,φp1 
+ n i=1 j=1
+
+j=1
+
+)n
+2
+From
+(12.2) we can write the objective in (12.3) as n1 i=1 zi1
+. Since
+)
+n
+1
+x
+=
+0,
+the
+average
+of
+the
+z
+,
+.
+.
+.
+,
+z
+will
+be
+zero
+as
+well.
+Hence
+ij
+11
+n1
+i=1
+n
+the objective that we are maximizing in (12.3) is just the sample variance of
+the n values of zi1 . We refer to z11 , . . . , zn1 as the scores of the first princi- score
+pal component. Problem (12.3) can be solved via an eigen decomposition,
+eigen decoma standard technique in linear algebra, but the details are outside of the position
+scope of this book.1
+There is a nice geometric interpretation of the first principal component.
+The loading vector φ1 with elements φ11 , φ21 , . . . , φp1 defines a direction in
+feature space along which the data vary the most. If we project the n data
+points x1 , . . . , xn onto this direction, the projected values are the principal component scores z11 , . . . , zn1 themselves. For instance, Figure 6.14 on
+page 254 displays the first principal component loading vector (green solid
+line) on an advertising data set. In these data, there are only two features,
+and so the observations as well as the first principal component loading
+vector can be easily displayed. As can be seen from (6.19), in that data set
+φ11 = 0.839 and φ21 = 0.544.
+After the first principal component Z1 of the features has been determined, we can find the second principal component Z2 . The second principal component is the linear combination of X1 , . . . , Xp that has maximal
+variance out of all linear combinations that are uncorrelated with Z1 . The
+second principal component scores z12 , z22 , . . . , zn2 take the form
+zi2 = φ12 xi1 + φ22 xi2 + · · · + φp2 xip ,
+
+(12.4)
+
+where φ2 is the second principal component loading vector, with elements
+φ12 , φ22 , . . . , φp2 . It turns out that constraining Z2 to be uncorrelated with
+Z1 is equivalent to constraining the direction φ2 to be orthogonal (perpendicular) to the direction φ1 . In the example in Figure 6.14, the observations
+lie in two-dimensional space (since p = 2), and so once we have found φ1 ,
+there is only one possibility for φ2 , which is shown as a blue dashed line.
+(From Section 6.3.1, we know that φ12 = 0.544 and φ22 = −0.839.) But in
+a larger data set with p > 2 variables, there are multiple distinct principal
+components, and they are defined in a similar manner. To find φ2 , we solve
+a problem similar to (12.3) with φ2 replacing φ1 , and with the additional
+constraint that φ2 is orthogonal to φ1 .2
+1 As an alternative to the eigen decomposition, a related technique called the singular
+value decomposition can be used. This will be explored in the lab at the end of this
+chapter.
+2 On a technical note, the principal component directions φ , φ , φ , . . . are given
+1
+2
+3
+by the ordered sequence of eigenvectors of the matrix XT X, and the variances of the
+components are the eigenvalues. There are at most min(n − 1, p) principal components.
+
+12.2 Principal Components Analysis
+
+−0.5
+
+0.0
+
+507
+
+0.5
+
+California
+
+Colorado
+New York
+IllinoisArizona
+
+Washington
+
+Ohio
+Minnesota Pennsylvania
+Wisconsin
+Oregon
+
+0
+
+Idaho
+Maine
+South Dakota
+
+Michigan
+New Mexico
+
+Virginia
+Wyoming
+
+Florida
+
+Maryland
+
+Montana
+
+North Dakota
+
+Texas
+
+0.0
+
+Delaware Missouri
+Oklahoma
+Kansas
+Nebraska Indiana
+
+Iowa
+New Hampshire
+
+Nevada
+
+Rape
+
+Assault
+
+Kentucky
+Arkansas
+
+VermontWest Virginia
+
+Tennessee
+Louisiana
+Alaska
+Alabama
+Georgia
+
+Murder
+
+−0.5
+
+1
+
+Connecticut
+
+−1
+
+Second Principal Component
+
+Hawaii
+Rhode
+Island
+Massachusetts
+Utah New Jersey
+
+0.5
+
+2
+
+3
+
+UrbanPop
+
+−2
+
+South Carolina
+
+−3
+
+North Carolina
+Mississippi
+
+−3
+
+−2
+
+−1
+
+0
+
+1
+
+2
+
+3
+
+First Principal Component
+
+FIGURE 12.1. The first two principal components for the USArrests data. The
+blue state names represent the scores for the first two principal components. The
+orange arrows indicate the first two principal component loading vectors (with axes
+on the top and right). For example, the loading for Rape on the first component
+is 0.54, and its loading on the second principal component 0.17 (the word Rape
+is centered at the point (0.54, 0.17)). This figure is known as a biplot, because it
+displays both the principal component scores and the principal component loadings.
+
+Once we have computed the principal components, we can plot them
+against each other in order to produce low-dimensional views of the data.
+For instance, we can plot the score vector Z1 against Z2 , Z1 against Z3 ,
+Z2 against Z3 , and so forth. Geometrically, this amounts to projecting the
+original data down onto the subspace spanned by φ1 , φ2 , and φ3 , and
+plotting the projected points.
+We illustrate the use of PCA on the USArrests data set. For each of the
+50 states in the United States, the data set contains the number of arrests
+per 100, 000 residents for each of three crimes: Assault, Murder, and Rape.
+We also record UrbanPop (the percent of the population in each state living
+in urban areas). The principal component score vectors have length n = 50,
+and the principal component loading vectors have length p = 4. PCA was
+performed after standardizing each variable to have mean zero and standard
+
+508
+
+12. Unsupervised Learning
+
+Murder
+Assault
+UrbanPop
+Rape
+
+PC1
+0.5358995
+0.5831836
+0.2781909
+0.5434321
+
+PC2
+−0.4181809
+−0.1879856
+0.8728062
+0.1673186
+
+TABLE 12.1. The principal component loading vectors, φ1 and φ2 , for the
+USArrests data. These are also displayed in Figure 12.1.
+
+deviation one. Figure 12.1 plots the first two principal components of these
+data. The figure represents both the principal component scores and the
+loading vectors in a single biplot display. The loadings are also given in
+biplot
+Table 12.2.1.
+In Figure 12.1, we see that the first loading vector places approximately
+equal weight on Assault, Murder, and Rape, but with much less weight on
+UrbanPop. Hence this component roughly corresponds to a measure of overall
+rates of serious crimes. The second loading vector places most of its weight
+on UrbanPop and much less weight on the other three features. Hence, this
+component roughly corresponds to the level of urbanization of the state.
+Overall, we see that the crime-related variables (Murder, Assault, and Rape)
+are located close to each other, and that the UrbanPop variable is far from the
+other three. This indicates that the crime-related variables are correlated
+with each other—states with high murder rates tend to have high assault
+and rape rates—and that the UrbanPop variable is less correlated with the
+other three.
+We can examine differences between the states via the two principal component score vectors shown in Figure 12.1. Our discussion of the loading
+vectors suggests that states with large positive scores on the first component, such as California, Nevada and Florida, have high crime rates, while
+states like North Dakota, with negative scores on the first component, have
+low crime rates. California also has a high score on the second component,
+indicating a high level of urbanization, while the opposite is true for states
+like Mississippi. States close to zero on both components, such as Indiana,
+have approximately average levels of both crime and urbanization.
+
+12.2.2
+
+Another Interpretation of Principal Components
+
+The first two principal component loading vectors in a simulated threedimensional data set are shown in the left-hand panel of Figure 12.2; these
+two loading vectors span a plane along which the observations have the
+highest variance.
+In the previous section, we describe the principal component loading vectors as the directions in feature space along which the data vary the most,
+and the principal component scores as projections along these directions.
+However, an alternative interpretation of principal components can also be
+
+0.5
+0.0
+−0.5
+−1.0
+
+Second principal component
+
+1.0
+
+12.2 Principal Components Analysis
+
+509
+
+•
+•
+•
+• • • • •• ••• ••
+•
+• • • •
+•
+•
+•
+• •
+•
+••
+•
+•
+•
+•
+•
+• • ••• • •
+•
+••
+••
+•
+•
+• •
+• ••• •• •
+•
+•
+• • ••
+• • • •
+•
+•
+••
+•
+•
+• •••
+• • • ••
+• • •
+•
+• •
+−1.0
+
+−0.5
+
+0.0
+
+0.5
+
+1.0
+
+First principal component
+
+FIGURE 12.2. Ninety observations simulated in three dimensions. The observations are displayed in color for ease of visualization. Left: the first two principal
+component directions span the plane that best fit

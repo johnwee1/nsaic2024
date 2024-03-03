@@ -1,0 +1,473 @@
+4238 'test_accuracy ': 0.4206}]
+
+Hardware Acceleration
+As deep learning has become ubiquitous in machine learning, hardware
+manufacturers have produced special libraries that can often speed up the
+gradient-descent steps.
+For instance, Mac OS devices with the M1 chip may have the Metal programming framework enabled, which can speed up the torch computations.
+We present an example of how to use this acceleration.
+The main changes are to the Trainer() call as well as to the metrics that
+will be evaluated on the data. These metrics must be told where the data
+will be located at evaluation time. This is accomplished with a call to the
+to() method of the metrics.
+In [60]: try:
+
+for name , metric in cifar_module.metrics.items ():
+cifar_module.metrics[name] = metric.to('mps')
+cifar_trainer_mps = Trainer(accelerator='mps',
+deterministic=True ,
+max_epochs =30)
+cifar_trainer_mps .fit(cifar_module ,
+datamodule=cifar_dm)
+cifar_trainer_mps .test(cifar_module ,
+datamodule=cifar_dm)
+except:
+pass
+
+This yields approximately two- or three-fold acceleration for each epoch.
+We have protected this code block using try: and except: clauses; if it
+works, we get the speedup, if it fails, nothing happens.
+
+10.9.4
+
+Using Pretrained CNN Models
+
+We now show how to use a CNN pretrained on the imagenet database to
+classify natural images, and demonstrate how we produced Figure 10.10.
+We copied six JPEG images from a digital photo album into the directory book_images. These images are available from the data section of www.
+statlearning.com, the ISLP book website. Download book_images.zip;
+when clicked it creates the book_images directory.
+The pretrained network we use is called resnet50; specification details
+can be found on the web. We will read in the images, and convert them into
+the array format expected by the torch software to match the specifications
+in resnet50. The conversion involves a resize, a crop and then a predefined
+standardization for each of the three channels. We now read in the images
+and preprocess them.
+
+10.9 Lab: Deep Learning
+
+453
+
+In [61]: resize = Resize ((232 ,232))
+crop = CenterCrop (224)
+normalize = Normalize ([0.485 ,0.456 ,0.406] ,
+[0.229 ,0.224 ,0.225])
+imgfiles = sorted ([f for f in glob('book_images /*')])
+imgs = torch.stack ([ torch.div(crop(resize(read_image(f))), 255)
+for f in imgfiles ])
+imgs = normalize(imgs)
+imgs.size ()
+Out[61]: torch.Size ([6, 3, 224, 224])
+
+We now set up the trained network with the weights we read in code
+block 6. The model has 50 layers, with a fair bit of complexity.
+In [62]: resnet_model = resnet50(weights=ResNet50_Weights.DEFAULT)
+summary(resnet_model ,
+input_data=imgs ,
+col_names =['input_size ',
+'output_size ',
+'num_params '])
+
+We set the mode to eval() to ensure that the model is ready to predict on
+new data.
+In [63]: resnet_model.eval ()
+
+Inspecting the output above, we see that when setting up the resnet_model,
+the authors defined a Bottleneck, much like our BuildingBlock module.
+We now feed our six images through the fitted network.
+In [64]: img_preds = resnet_model(imgs)
+
+Let’s look at the predicted probabilities for each of the top 3 choices.
+First we compute the probabilities by applying the softmax to the logits
+in img_preds. Note that we have had to call the detach() method on the
+tensor img_preds in order to convert it to our a more familiar ndarray.
+In [65]: img_probs = np.exp(np.asarray(img_preds.detach ()))
+img_probs /= img_probs.sum (1)[:,None]
+
+In order to see the class labels, we must download the index file associated
+with imagenet.27
+In [66]: labs = json.load(open('imagenet_class_index .json '))
+class_labels = pd.DataFrame ([( int(k), v[1]) for k, v in
+labs.items ()],
+columns =['idx', 'label '])
+class_labels = class_labels.set_index('idx')
+class_labels = class_labels.sort_index ()
+
+We’ll now construct a data frame for each image file with the labels with
+the three highest probabilities as estimated by the model above.
+27 This is avalable from the book website and s3.amazonaws.com/deep-learningmodels/image-models/imagenet_class_index.json.
+
+454
+
+10. Deep Learning
+
+In [67]: for i, imgfile in enumerate(imgfiles ):
+img_df = class_labels.copy ()
+img_df['prob '] = img_probs[i]
+img_df = img_df.sort_values(by='prob ', ascending=False )[:3]
+print(f'Image: {imgfile}')
+print(img_df.reset_index (). drop(columns =['idx']))
+Image: book_images/Cape_Weaver.jpg
+label
+prob
+0
+jacamar 0.287283
+1 bee_eater 0.046768
+2
+bulbul 0.037507
+Image: book_images/Flamingo.jpg
+prob
+label
+0
+flamingo 0.591761
+1
+spoonbill 0.012386
+2 American_egret 0.002105
+Image: book_images/Hawk_Fountain.jpg
+label
+prob
+0 great_grey_owl 0.287959
+1
+kite 0.039478
+2
+fountain 0.029384
+Image: book_images/Hawk_cropped.jpg
+label
+prob
+0
+kite 0.301830
+1
+jay 0.121674
+2 magpie 0.015513
+Image: book_images/Lhasa_Apso.jpg
+label
+prob
+0
+Lhasa 0.151143
+1
+Shih -Tzu 0.129850
+2 Tibetan_terrier 0.102358
+Image: book_images/Sleeping_Cat.jpg
+label
+prob
+0
+tabby 0.173627
+1 tiger_cat 0.110414
+2
+doormat 0.093447
+
+We see that the model is quite confident about Flamingo.jpg, but a little
+less so for the other images.
+We end this section with our usual cleanup.
+In [68]: del(cifar_test ,
+cifar_train ,
+cifar_dm ,
+cifar_module ,
+cifar_logger ,
+cifar_optimizer ,
+cifar_trainer)
+
+10.9.5
+
+IMDB Document Classification
+
+We now implement models for sentiment classification (Section 10.4) on
+the IMDB dataset. As mentioned above code block 8, we are using a preprocessed version of the IMDB dataset found in the keras package. As keras uses
+
+10.9 Lab: Deep Learning
+
+455
+
+tensorflow, a different tensor and deep learning library, we have converted
+the data to be suitable for torch. The code used to convert from keras
+is available in the module ISLP.torch._make_imdb. It requires some of the
+keras packages to run. These data use a dictionary of size 10,000.
+
+We have stored three different representations of the review data for this
+lab:
+• load_tensor(), a sparse tensor version usable by torch;
+• load_sparse(), a sparse matrix version usable by sklearn, since we
+will compare with a lasso fit;
+• load_sequential(), a padded version of the original sequence representation, limited to the last 500 words of each review.
+In [69]: (imdb_seq_train ,
+imdb_seq_test) = load_sequential(root='data/IMDB ')
+padded_sample = np.asarray(imdb_seq_train.tensors [0][0])
+sample_review = padded_sample[padded_sample > 0][:12]
+sample_review [:12]
+Out[69]: array ([
+
+1,
+65,
+
+14,
+22,
+16,
+43, 530,
+458, 4468] , dtype=int32)
+
+973, 1622, 1385,
+
+The datasets imdb_seq_train and imdb_seq_test are both instances of the
+class TensorDataset. The tensors used to construct them can be found in
+the tensors attribute, with the first tensor the features X and the second
+the outcome Y. We have taken the first row of features and stored it as
+padded_sample. In the preprocessing used to form these data, sequences
+were padded with 0s in the beginning if they were not long enough, hence
+we remove this padding by restricting to entries where padded_sample > 0.
+We then provide the first 12 words of the sample review.
+We can find these words in the lookup dictionary from the ISLP.torch.imdb
+module.
+In [70]: lookup = load_lookup(root='data/IMDB ')
+' '.join(lookup[i] for i in sample_review)
+Out[70]: "<START > this film was just brilliant casting location scenery
+story direction everyone 's"
+
+For our first model, we have created a binary feature for each of the
+10,000 possible words in the dataset, with an entry of one in the i, j entry
+if word j appears in review i. As most reviews are quite short, such a feature
+matrix has over 98% zeros. These data are accessed using load_tensor()
+from the ISLP library.
+In [71]: max_num_workers =10
+(imdb_train ,
+imdb_test) = load_tensor(root='data/IMDB ')
+imdb_dm = SimpleDataModule (imdb_train ,
+imdb_test ,
+validation =2000 ,
+num_workers=min(6, max_num_workers),
+batch_size =512)
+
+456
+
+10. Deep Learning
+
+We’ll use a two-layer model for our first model.
+In [72]: class IMDBModel(nn.Module):
+def __init__(self , input_size):
+super(IMDBModel , self).__init__ ()
+self.dense1 = nn.Linear(input_size , 16)
+self.activation = nn.ReLU ()
+self.dense2 = nn.Linear (16, 16)
+self.output = nn.Linear (16, 1)
+def forward(self , x):
+val = x
+for _map in [self.dense1 ,
+self.activation ,
+self.dense2 ,
+self.activation ,
+self.output ]:
+val = _map(val)
+return torch.flatten(val)
+
+We now instantiate our model and look at a summary (not shown).
+In [73]: imdb_model = IMDBModel(imdb_test.tensors [0]. size () [1])
+summary(imdb_model ,
+input_size=imdb_test.tensors [0]. size (),
+col_names =['input_size ',
+'output_size ',
+'num_params '])
+
+We’ll again use a smaller learning rate for these data, hence we pass an
+
+optimizer to the SimpleModule. Since the reviews are classified into positive
+or negative sentiment, we use SimpleModule.binary_classification().28
+In [74]: imdb_optimizer = RMSprop(imdb_model.parameters (), lr =0.001)
+imdb_module = SimpleModule. binary_classification(
+imdb_model ,
+optimizer=imdb_optimizer)
+
+Having loaded the datasets into a data module and created a SimpleModule,
+the remaining steps are familiar.
+In [75]: imdb_logger = CSVLogger('logs ', name='IMDB ')
+imdb_trainer = Trainer(deterministic=True ,
+max_epochs =30,
+logger=imdb_logger ,
+callbacks =[ ErrorTracker ()])
+imdb_trainer.fit(imdb_module ,
+datamodule=imdb_dm)
+
+Evaluating the test error yields roughly 86% accuracy.
+In [76]: test_results = imdb_trainer.test(imdb_module , datamodule=imdb_dm)
+test_results
+
+28 Our use of binary_classification() instead of classification() is due to
+some subtlety in how torchmetrics.Accuracy() works, as well as the data type of
+the targets.
+
+10.9 Lab: Deep Learning
+
+457
+
+Out[76]: [{'test_loss ': 1.0863 , 'test_accuracy ': 0.8550}]
+
+Comparison to Lasso
+We now fit a lasso logistic regression model using LogisticRegression()
+from sklearn. Since sklearn does not recognize the sparse tensors of torch,
+we use a sparse matrix that is recognized by sklearn.
+In [77]: ((X_train , Y_train),
+(X_valid , Y_valid),
+(X_test , Y_test)) = load_sparse(validation =2000 ,
+random_state =0,
+root='data/IMDB ')
+
+Similar to what we did in Section 10.9.1, we construct a series of 50
+values for the lasso reguralization parameter λ.
+In [78]: lam_max = np.abs(X_train.T * (Y_train - Y_train.mean ())).max()
+lam_val = lam_max * np.exp(np.linspace(np.log (1),
+np.log(1e-4), 50))
+
+With LogisticRegression() the regularization parameter C is specified as
+the inverse of λ. There are several solvers for logistic regression; here we
+use liblinear which works well with the sparse input format.
+In [79]: logit = LogisticRegression (penalty='l1',
+C=1/ lam_max ,
+solver='liblinear ',
+warm_start=True ,
+fit_intercept=True)
+
+The path of 50 values takes approximately 40 seconds to run.
+In [80]: coefs = []
+intercepts = []
+for l in lam_val:
+logit.C = 1/l
+logit.fit(X_train , Y_train)
+coefs.append(logit.coef_.copy ())
+intercepts.append(logit.intercept_)
+
+The coefficient and intercepts have an extraneous dimension which can
+be removed by the np.squeeze() function.
+In [81]: coefs = np.squeeze(coefs)
+intercepts = np.squeeze(intercepts)
+
+We’ll now make a plot to compare our neural network results with the
+lasso.
+In [82]: %% capture
+fig , axes = subplots (1, 2, figsize =(16, 8), sharey=True)
+for ((X_ , Y_),
+data_ ,
+color) in zip ([( X_train , Y_train),
+(X_valid , Y_valid),
+(X_test , Y_test)],
+
+458
+
+10. Deep Learning
+
+['Training ', 'Validation ', 'Test '],
+['black ', 'red', 'blue ']):
+linpred_ = X_ * coefs.T + intercepts[None ,:]
+label_ = np.array(linpred_ > 0)
+accuracy_ = np.array ([np.mean(Y_ == l) for l in label_.T])
+axes [0]. plot(-np.log(lam_val / X_train.shape [0]) ,
+accuracy_ ,
+'.--',
+color=color ,
+markersize =13,
+linewidth =2,
+label=data_)
+axes [0]. legend ()
+axes [0]. set_xlabel(r'$-\log(\ lambda)$', fontsize =20)
+axes [0]. set_ylabel('Accuracy ', fontsize =20)
+
+Notice the use of %%capture, which suppresses the displaying of the partially
+%%capture
+completed figure. This is useful when making a complex figure, since the
+steps can be spread across two or more cells. We now add a plot of the lasso
+accuracy, and display the composed figure by simply entering its name at
+the end of the cell.
+In [83]: imdb_results = pd.read_csv(imdb_logger.experiment.metrics_file_path)
+summary_plot(imdb_results ,
+axes [1],
+col='accuracy ',
+ylabel='Accuracy ')
+axes [1]. set_xticks(np.linspace (0, 30, 7). astype(int))
+axes [1]. set_ylabel('Accuracy ', fontsize =20)
+axes [1]. set_xlabel('Epoch ', fontsize =20)
+axes [1]. set_ylim ([0.5 , 1]);
+axes [1]. axhline(test_results [0][ 'test_accuracy '],
+color='blue ',
+linestyle='--',
+linewidth =3)
+fig
+
+From the graphs we see that the accuracy of the lasso logistic regression
+peaks at about 0.88, as it does for the neural network.
+Once again, we end with a cleanup.
+In [84]: del(imdb_model ,
+imdb_trainer ,
+imdb_logger ,
+imdb_dm ,
+imdb_train ,
+imdb_test)
+
+10.9.6
+
+Recurrent Neural Networks
+
+In this lab we fit the models illustrated in Section 10.5.
+Sequential Models for Document Classification
+Here we fit a simple LSTM RNN for sentiment prediction to the IMDb
+movie-review data, as discussed in Section 10.5.1. For an RNN we use
+
+10.9 Lab: Deep Learning
+
+459
+
+the sequence of words in a document, taking their order into account. We
+loaded the preprocessed data at the beginning of Section 10.9.5. A script
+that details the preprocessing can be found in the ISLP library. Notably,
+since more than 90% of the documents had fewer than 500 words, we set
+the document length to 500. For longer documents, we used the last 500
+words, and for shorter documents, we padded the front with blanks.
+In [85]: imdb_seq_dm = SimpleDataModule (imdb_seq_train ,
+imdb_seq_test ,
+validation =2000 ,
+batch_size =300,
+num_workers=min(6, max_num_workers)
+)
+
+The first layer of the RNN is an embedding layer of size 32, which will
+be learned during training. This layer one-hot encodes each document as a
+matrix of dimension 500 × 10, 003, and then maps these 10, 003 dimensions
+down to 32.29 Since each word is represented by an integer, this is effectively
+achieved by the creation of an embedding matrix of size 10, 003 × 32; each
+of the 500 integers in the document are then mapped to the appropriate
+32 real numbers by indexing the appropriate rows of this matrix.
+The second layer is an LSTM with 32 units, and the output layer is a
+single logit for the binary classification task. In the last line of the forward()
+method below, we take the last 32-dimensional output of the LSTM and
+map it to our response.
+In [86]: class LSTMModel(nn.Module):
+def __init__(self , input_size):
+super(LSTMModel , self).__init__ ()
+self.embedding = nn.Embedding(input_size , 32)
+self.lstm = nn.LSTM(input_size =32,
+hidden_size =32,
+batch_first=True)
+self.dense = nn.Linear (32, 1)
+def forward(self , x):
+val , (h_n , c_n) = self.lstm(self.embedding(x))
+return torch.flatten(self.dense(val[:,-1]))
+
+We instantiate and take a look at the summary of the model, using the
+first 10 documents in the corpus.
+In [87]: lstm_model = LSTMModel(X_test.shape [-1])
+summary(lstm_model ,
+input_data=imdb_seq_train.tensors [0][:10] ,
+col_names =['input_size ',
+'output_size ',
+'num_params '])
+Out[87]: ====================================================================
+Layer (type:depth -idx)
+Input Shape
+Output Shape
+Param #
+====================================================================
+LSTMModel
+[10, 500]
+[10]
+-29 The extra 3 dimensions correspond to commonly occurring non-word entries in the
+reviews.
+
+460
+
+10. Deep L

@@ -1,0 +1,545 @@
+ssive. It nailed the digit classification problem, and deep CNNs have really
+revolutionized image classification. We see daily reports of new success stories for deep learning. Many of these are related to image classification
+tasks, such as machine diagnosis of mammograms or digital X-ray images,
+ophthalmology eye scans, annotations of MRI scans, and so on. Likewise
+there are numerous successes of RNNs in speech and language translation,
+forecasting, and document modeling. The question that then begs an answer is: should we discard all our older tools, and use deep learning on every
+problem with data? To address this question, we revisit our Hitters dataset
+from Chapter 6.
+This is a regression problem, where the goal is to predict the Salary of
+a baseball player in 1987 using his performance statistics from 1986. After
+removing players with missing responses, we are left with 263 players and
+19 variables. We randomly split the data into a training set of 176 players
+(two thirds), and a test set of 87 players (one third). We used three methods
+for fitting a regression model to these data.
+• A linear model was used to fit the training data, and make predictions
+on the test data. The model has 20 parameters.
+• The same linear model was fit with lasso regularization. The tuning
+parameter was selected by 10-fold cross-validation on the training
+data. It selected a model with 12 variables having nonzero coefficients.
+• A neural network with one hidden layer consisting of 64 ReLU units
+was fit to the data. This model has 1,345 parameters.20
+20 The model was fit by stochastic gradient descent with a batch size of 32 for 1,000
+epochs, and 10% dropout regularization. The test error performance flattened out and
+started to slowly increase after 1,000 epochs. These fitting details are discussed in Section 10.7.
+
+426
+
+10. Deep Learning
+
+Model
+Linear Regression
+Lasso
+Neural Network
+
+# Parameters
+20
+12
+1345
+
+Mean Abs. Error
+254.7
+252.3
+257.4
+
+Test Set R2
+0.56
+0.51
+0.54
+
+TABLE 10.2. Prediction results on the Hitters test data for linear models fit
+by ordinary least squares and lasso, compared to a neural network fit by stochastic
+gradient descent with dropout regularization.
+
+Intercept
+Hits
+Walks
+CRuns
+PutOuts
+
+Coefficient
+-226.67
+3.06
+0.181
+0.859
+0.465
+
+Std. error
+86.26
+1.02
+2.04
+0.12
+0.13
+
+t-statistic
+-2.63
+3.00
+0.09
+7.09
+3.60
+
+p-value
+0.0103
+0.0036
+0.9294
+< 0.0001
+0.0005
+
+TABLE 10.3. Least squares coefficient estimates associated with the regression of Salary on four variables chosen by lasso on the Hitters data set. This
+model achieved the best performance on the test data, with a mean absolute error
+of 224.8. The results reported here were obtained from a regression on the test
+data, which was not used in fitting the lasso model.
+
+Table 10.2 compares the results. We see similar performance for all three
+models. We report the mean absolute error on the test data, as well as
+the test R2 for each method, which are all respectable (see Exercise 5).
+We spent a fair bit of time fiddling with the configuration parameters of
+the neural network to achieve these results. It is possible that if we were to
+spend more time, and got the form and amount of regularization just right,
+that we might be able to match or even outperform linear regression and
+the lasso. But with great ease we obtained linear models that work well.
+Linear models are much easier to present and understand than the neural
+network, which is essentially a black box. The lasso selected 12 of the 19
+variables in making its prediction. So in cases like this we are much better
+off following the Occam’s razor principle: when faced with several methods
+Occam’s
+that give roughly equivalent performance, pick the simplest.
+razor
+After a bit more exploration with the lasso model, we identified an even
+simpler model with four variables. We then refit the linear model with these
+four variables to the training data (the so-called relaxed lasso), and achieved
+a test mean absolute error of 224.8, the overall winner! It is tempting to
+present the summary table from this fit, so we can see coefficients and pvalues; however, since the model was selected on the training data, there
+would be selection bias. Instead, we refit the model on the test data, which
+was not used in the selection. Table 10.3 shows the results.
+We have a number of very powerful tools at our disposal, including neural
+networks, random forests and boosting, support vector machines and generalized additive models, to name a few. And then we have linear models,
+and simple variants of these. When faced with new data modeling and prediction problems, it’s tempting to always go for the trendy new methods.
+Often they give extremely impressive results, especially when the datasets
+are very large and can support the fitting of high-dimensional nonlinear
+models. However, if we can produce models with the simpler tools that
+
+10.7 Fitting a Neural Network
+
+427
+
+perform as well, they are likely to be easier to fit and understand, and potentially less fragile than the more complex approaches. Wherever possible,
+it makes sense to try the simpler models as well, and then make a choice
+based on the performance/complexity tradeoff.
+Typically we expect deep learning to be an attractive choice when the
+sample size of the training set is extremely large, and when interpretability
+of the model is not a high priority.
+
+10.7
+
+Fitting a Neural Network
+
+Fitting neural networks is somewhat complex, and we give a brief overview
+here. The ideas generalize to much more complex networks. Readers who
+find this material challenging can safely skip it. Fortunately, as we see in
+the lab at the end of this chapter, good software is available to fit neural
+network models in a relatively automated way, without worrying about the
+technical details of the model-fitting procedure.
+We start with the simple network depicted in Figure 10.1 in Section 10.1.
+In model (10.1) the parameters are β = (β0 , β1 , . . . , βK ), as well as each of
+the wk = (wk0 , wk1 , . . . , wkp ), k = 1, . . . , K. Given observations (xi , yi ), i =
+1, . . . , n, we could fit the model by solving a nonlinear least squares problem
+n
+
+10
+(yi − f (xi ))2 ,
+K
+{wk }1 , β 2
+i=1
+
+minimize
+where
+
+f (xi ) = β0 +
+
+K
+0
+
+1
+
+βk g wk0 +
+
+k=1
+
+p
+0
+j=1
+
+2
+wkj xij .
+
+(10.23)
+
+(10.24)
+
+The objective in (10.23) looks simple enough, but because of the nested
+arrangement of the parameters and the symmetry of the hidden units, it is
+not straightforward to minimize. The problem is nonconvex in the parameters, and hence there are multiple solutions. As an example, Figure 10.17
+shows a simple nonconvex function of a single variable θ; there are two
+solutions: one is a local minimum and the other is a global minimum. Furlocal
+thermore, (10.1) is the very simplest of neural networks; in this chapter we minimum
+have presented much more complex ones where these problems are com- global
+pounded. To overcome some of these issues and to protect from overfitting, minimum
+two general strategies are employed when fitting neural networks.
+• Slow Learning: the model is fit in a somewhat slow iterative fashion, using gradient descent. The fitting process is then stopped when
+gradient
+overfitting is detected.
+descent
+• Regularization: penalties are imposed on the parameters, usually lasso
+or ridge as discussed in Section 6.2.
+Suppose we represent all the parameters in one long vector θ. Then we
+can rewrite the objective in (10.23) as
+n
+
+10
+R(θ) =
+(yi − fθ (xi ))2 ,
+2 i=1
+
+(10.25)
+
+10. Deep Learning
+
+3
+
+R(θ0)
+1
+● R(θ )
+
+2
+
+R(θ)
+
+4
+
+5
+
+6
+
+428
+
+●
+
+R(θ2)
+
+1
+
+●
+
+0
+
+θ0
+−1.0
+
+−0.5
+
+0.0
+
+θ1
+
+θ2
+
+0.5
+
+R(θ7)
+●
+
+θ7
+1.0
+
+θ
+
+FIGURE 10.17. Illustration of gradient descent for one-dimensional θ. The
+objective function R(θ) is not convex, and has two minima, one at θ = −0.46
+(local), the other at θ = 1.02 (global). Starting at some value θ0 (typically randomly chosen), each step in θ moves downhill — against the gradient — until it
+cannot go down any further. Here gradient descent reached the global minimum
+in 7 steps.
+
+where we make explicit the dependence of f on the parameters. The idea
+of gradient descent is very simple.
+1. Start with a guess θ0 for all the parameters in θ, and set t = 0.
+2. Iterate until the objective (10.25) fails to decrease:
+(a) Find a vector δ that reflects a small change in θ, such that θt+1 =
+θt + δ reduces the objective; i.e. such that R(θt+1 ) < R(θt ).
+(b) Set t ← t + 1.
+
+One can visualize (Figure 10.17) standing in a mountainous terrain, and
+the goal is to get to the bottom through a series of steps. As long as each
+step goes downhill, we must eventually get to the bottom. In this case we
+were lucky, because with our starting guess θ0 we end up at the global
+minimum. In general we can hope to end up at a (good) local minimum.
+
+10.7.1
+
+Backpropagation
+
+How do we find the directions to move θ so as to decrease the objective R(θ)
+in (10.25)? The gradient of R(θ), evaluated at some current value θ = θm ,
+gradient
+is the vector of partial derivatives at that point:
+∇R(θm ) =
+
+∂R(θ) VV
+.
+V
+∂θ θ=θm
+
+(10.26)
+
+The subscript θ = θm means that after computing the vector of derivatives,
+we evaluate it at the current guess, θm . This gives the direction in θ-space
+in which R(θ) increases most rapidly. The idea of gradient descent is to
+move θ a little in the opposite direction (since we wish to go downhill):
+θm+1 ← θm − ρ∇R(θm ).
+
+(10.27)
+
+10.7 Fitting a Neural Network
+
+429
+
+For a small enough value of the learning rate ρ, this step will decrease the
+learning rate
+objective R(θ); i.e. R(θm+1 ) ≤ R(θm ). If the gradient vector is zero, then
+we may have arrived at a minimum of the objective.
+How complicated is the calculation (10.26)? It turns out that it is quite
+simple here, and remains simple even for much more complex networks,
+because of the chain
+)n rule of differentiation.
+)n
+chain rule
+Since R(θ) = i=1 Ri (θ) = 12 i=1 (yi − fθ (xi ))2 is a sum, its gradient
+is also a sum over the n observations, so we will just examine one of these
+terms,
+Ri (θ) =
+
+p
+K
+0
+0
+'
+( 22
+11
+yi − β 0 −
+βk g wk0 +
+wkj xij
+.
+2
+j=1
+
+(10.28)
+
+k=1
+
+To simplify the expressions to follow, we write zik = wk0 +
+First we take the derivative with respect to βk :
+∂Ri (θ)
+∂βk
+
+=
+=
+
+)p
+
+j=1 wkj xij .
+
+∂Ri (θ) ∂fθ (xi )
+·
+∂fθ (xi )
+∂βk
+−(yi − fθ (xi )) · g(zik ).
+
+(10.29)
+
+And now we take the derivative with respect to wkj :
+∂Ri (θ)
+∂wkj
+
+=
+=
+
+∂Ri (θ) ∂fθ (xi ) ∂g(zik ) ∂zik
+·
+·
+·
+∂fθ (xi ) ∂g(zik )
+∂zik
+∂wkj
+$
+−(yi − fθ (xi )) · βk · g (zik ) · xij .
+
+(10.30)
+
+Notice that both these expressions contain the residual yi − fθ (xi ). In
+(10.29) we see that a fraction of that residual gets attributed to each of
+the hidden units according to the value of g(zik ). Then in (10.30) we see
+a similar attribution to input j via hidden unit k. So the act of differentiation assigns a fraction of the residual to each of the parameters via the
+chain rule — a process known as backpropagation in the neural network
+backpropliterature. Although these calculations are straightforward, it takes careful agation
+bookkeeping to keep track of all the pieces.
+
+10.7.2
+
+Regularization and Stochastic Gradient Descent
+
+Gradient descent usually takes many steps to reach a local minimum. In
+practice, there are a number of approaches for accelerating the process.
+Also, when n is large, instead of summing (10.29)–(10.30) over all n observations, we can sample a small fraction or minibatch of them each time
+minibatch
+we compute a gradient step. This process is known as stochastic gradient
+descent (SGD) and is the state of the art for learning deep neural networks.
+stochastic
+Fortunately, there is very good software for setting up deep learning mod- gradient
+els, and for fitting them to data, so most of the technicalities are hidden descent
+from the user.
+We now turn to the multilayer network (Figure 10.4) used in the digit
+recognition problem. The network has over 235,000 weights, which is around
+four times the number of training examples. Regularization is essential here
+
+0.10
+0.08
+0.06
+0.02
+
+0.2
+
+0.3
+
+Classification Error
+
+0.4
+
+Training Set
+Validation Set
+
+0.00
+
+0.1
+
+Value of Objective Function
+
+0.12
+
+10. Deep Learning
+
+0.04
+
+430
+
+0
+
+5
+
+10
+
+15
+
+20
+
+25
+
+30
+
+0
+
+5
+
+10
+
+Epochs
+
+15
+
+20
+
+25
+
+30
+
+Epochs
+
+FIGURE 10.18. Evolution of training and validation errors for the MNIST neural
+network depicted in Figure 10.4, as a function of training epochs. The objective
+refers to the log-likelihood (10.14).
+
+to avoid overfitting. The first row in Table 10.1 uses ridge regularization on
+the weights. This is achieved by augmenting the objective function (10.14)
+with a penalty term:
+R(θ; λ) = −
+
+n 0
+9
+0
+
+i=1 m=0
+
+yim log(fm (xi )) + λ
+
+0
+
+θj2 .
+
+(10.31)
+
+j
+
+The parameter λ is often preset at a small value, or else it is found using the
+validation-set approach of Section 5.3.1. We can also use different values of
+λ for the groups of weights from different layers; in this case W1 and W2
+were penalized, while the relatively few weights B of the output layer were
+not penalized at all. Lasso regularization is also popular as an additional
+form of regularization, or as an alternative to ridge.
+Figure 10.18 shows some metrics that evolve during the training of the
+network on the MNIST data. It turns out that SGD naturally enforces its
+own form of approximately quadratic regularization.21 Here the minibatch
+size was 128 observations per gradient update. The term epochs labeling the
+epochs
+horizontal axis in Figure 10.18 counts the number of times an equivalent of
+the full training set has been processed. For this network, 20% of the 60,000
+training observations were used as a validation set in order to determine
+when training should stop. So in fact 48,000 observations were used for
+training, and hence there are 48,000/128 ≈ 375 minibatch gradient updates
+per epoch. We see that the value of the validation objective actually starts
+to increase by 30 epochs, so early stopping can also be used as an additional
+early
+form of regularization.
+stopping
+
+21 This and other properties of SGD for deep learning are the subject of much research
+in the machine learning literature at the time of writing.
+
+10.7 Fitting a Neural Network
+
+431
+
+FIGURE 10.19. Dropout Learning. Left: a fully connected network. Right: network with dropout in the input and hidden layer. The nodes in grey are selected
+at random, and ignored in an instance of training.
+
+10.7.3
+
+Dropout Learning
+
+The second row in Table 10.1 is labeled dropout. This is a relatively new
+dropout
+and efficient form of regularization, similar in some respects to ridge regularization. Inspired by random forests (Section 8.2), the idea is to randomly remove a fraction φ of the units in a layer when fitting the model.
+Figure 10.19 illustrates this. This is done separately each time a training
+observation is processed. The surviving units stand in for those missing,
+and their weights are scaled up by a factor of 1/(1 − φ) to compensate.
+This prevents nodes from becoming over-specialized, and can be seen as
+a form of regularization. In practice dropout is achieved by randomly setting the activations for the “dropped out” units to zero, while keeping the
+architecture intact.
+
+10.7.4
+
+Network Tuning
+
+The network in Figure 10.4 is considered to be relatively straightforward;
+it nevertheless requires a number of choices that all have an effect on the
+performance:
+• The number of hidden layers, and the number of units per layer.
+Modern thinking is that the number of unit

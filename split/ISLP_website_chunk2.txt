@@ -1,0 +1,445 @@
+tion (the USArrests data), and we show how to access it
+from Python in Section 12.5.1. Table 1.1 contains a summary of the data
+sets required to perform the labs and exercises. A couple of these data sets
+are also available as text files on the book website, for use in Chapter 2.
+
+1. Introduction
+
+13
+
+Book Website
+The website for this book is located at
+www.statlearning.com
+It contains a number of resources, including the Python package associated
+with this book, and some additional data sets.
+
+Acknowledgements
+A few of the plots in this book were taken from ESL: Figures 6.7, 8.3,
+and 12.14. All other plots were produced for the R version of ISL, except
+for Figure 13.10 which differs because of the Python software supporting
+the plot.
+
+2
+Statistical Learning
+
+2.1
+
+What Is Statistical Learning?
+
+In order to motivate our study of statistical learning, we begin with a simple
+example. Suppose that we are statistical consultants hired by a client to
+investigate the association between advertising and sales of a particular
+product. The Advertising data set consists of the sales of that product
+in 200 different markets, along with advertising budgets for the product in
+each of those markets for three different media: TV, radio, and newspaper.
+The data are displayed in Figure 2.1. It is not possible for our client to
+directly increase sales of the product. On the other hand, they can control
+the advertising expenditure in each of the three media. Therefore, if we
+determine that there is an association between advertising and sales, then
+we can instruct our client to adjust advertising budgets, thereby indirectly
+increasing sales. In other words, our goal is to develop an accurate model
+that can be used to predict sales on the basis of the three media budgets.
+In this setting, the advertising budgets are input variables while sales
+input
+is an output variable. The input variables are typically denoted using the variable
+symbol X, with a subscript to distinguish them. So X1 might be the TV output
+budget, X2 the radio budget, and X3 the newspaper budget. The inputs variable
+go by different names, such as predictors, independent variables, features,
+predictor
+or sometimes just variables. The output variable—in this case, sales—is
+independent
+often called the response or dependent variable, and is typically denoted variable
+using the symbol Y . Throughout this book, we will use all of these terms feature
+interchangeably.
+variable
+More generally, suppose that we observe a quantitative response Y and p response
+different predictors, X1 , X2 , . . . , Xp . We assume that there is some dependent
+relationship between Y and X = (X1 , X2 , . . . , Xp ), which can be written variable
+in the very general form
+Y = f (X) + ".
+(2.1)
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0_2
+
+15
+
+0
+
+50
+
+100
+
+200
+
+300
+
+25
+20
+5
+
+10
+
+15
+
+Sales
+
+20
+15
+
+Sales
+
+5
+
+10
+
+15
+5
+
+10
+
+Sales
+
+20
+
+25
+
+2. Statistical Learning
+
+25
+
+16
+
+0
+
+10
+
+TV
+
+20
+
+30
+
+40
+
+50
+
+0
+
+20
+
+Radio
+
+40
+
+60
+
+80
+
+100
+
+Newspaper
+
+FIGURE 2.1. The Advertising data set. The plot displays sales, in thousands
+of units, as a function of TV, radio, and newspaper budgets, in thousands of
+dollars, for 200 different markets. In each plot we show the simple least squares
+fit of sales to that variable, as described in Chapter 3. In other words, each blue
+line represents a simple model that can be used to predict sales using TV, radio,
+and newspaper, respectively.
+
+Here f is some fixed but unknown function of X1 , . . . , Xp , and " is a random
+error term, which is independent of X and has mean zero. In this formula- error term
+tion, f represents the systematic information that X provides about Y .
+80
+70
+60
+50
+
+Income
+
+20
+
+30
+
+40
+
+50
+20
+
+30
+
+40
+
+Income
+
+60
+
+70
+
+80
+
+systematic
+
+10
+
+12
+
+14
+
+16
+
+18
+
+Years of Education
+
+20
+
+22
+
+10
+
+12
+
+14
+
+16
+
+18
+
+20
+
+22
+
+Years of Education
+
+FIGURE 2.2. The Income data set. Left: The red dots are the observed values
+of income (in thousands of dollars) and years of education for 30 individuals.
+Right: The blue curve represents the true underlying relationship between income
+and years of education, which is generally unknown (but is known in this case
+because the data were simulated). The black lines represent the error associated
+with each observation. Note that some errors are positive (if an observation lies
+above the blue curve) and some are negative (if an observation lies below the
+curve). Overall, these errors have approximately mean zero.
+
+As another example, consider the left-hand panel of Figure 2.2, a plot of
+
+income versus years of education for 30 individuals in the Income data set.
+The plot suggests that one might be able to predict income using years of
+education. However, the function f that connects the input variable to the
+
+2.1 What Is Statistical Learning?
+
+17
+
+output variable is in general unknown. In this situation one must estimate
+f based on the observed points. Since Income is a simulated data set, f is
+known and is shown by the blue curve in the right-hand panel of Figure 2.2.
+The vertical lines represent the error terms ". We note that some of the
+30 observations lie above the blue curve and some lie below it; overall, the
+errors have approximately mean zero.
+In general, the function f may involve more than one input variable.
+In Figure 2.3 we plot income as a function of years of education and
+seniority. Here f is a two-dimensional surface that must be estimated
+based on the observed data.
+In essence, statistical learning refers to a set of approaches for estimating
+f . In this chapter we outline some of the key theoretical concepts that arise
+in estimating f , as well as tools for evaluating the estimates obtained.
+
+2.1.1
+
+Why Estimate f ?
+
+There are two main reasons that we may wish to estimate f : prediction
+and inference. We discuss each in turn.
+Prediction
+In many situations, a set of inputs X are readily available, but the output
+Y cannot be easily obtained. In this setting, since the error term averages
+to zero, we can predict Y using
+Ŷ = fˆ(X),
+
+(2.2)
+
+where fˆ represents our estimate for f , and Ŷ represents the resulting prediction for Y . In this setting, fˆ is often treated as a black box, in the sense
+that one is not typically concerned with the exact form of fˆ, provided that
+it yields accurate predictions for Y .
+As an example, suppose that X1 , . . . , Xp are characteristics of a patient’s
+blood sample that can be easily measured in a lab, and Y is a variable
+encoding the patient’s risk for a severe adverse reaction to a particular
+drug. It is natural to seek to predict Y using X, since we can then avoid
+giving the drug in question to patients who are at high risk of an adverse
+reaction—that is, patients for whom the estimate of Y is high.
+The accuracy of Ŷ as a prediction for Y depends on two quantities,
+which we will call the reducible error and the irreducible error. In general,
+reducible
+fˆ will not be a perfect estimate for f , and this inaccuracy will introduce error
+some error. This error is reducible because we can potentially improve the irreducible
+accuracy of fˆ by using the most appropriate statistical learning technique to error
+estimate f . However, even if it were possible to form a perfect estimate for
+f , so that our estimated response took the form Ŷ = f (X), our prediction
+would still have some error in it! This is because Y is also a function of
+", which, by definition, cannot be predicted using X. Therefore, variability
+associated with " also affects the accuracy of our predictions. This is known
+as the irreducible error, because no matter how well we estimate f , we
+cannot reduce the error introduced by ".
+Why is the irreducible error larger than zero? The quantity " may contain unmeasured variables that are useful in predicting Y : since we don’t
+
+18
+
+2. Statistical Learning
+
+rs
+
+of
+
+Se
+ni
+or
+
+ity
+
+e
+Incom
+
+Ye
+a
+
+Ed
+
+uc
+
+ati
+
+on
+
+FIGURE 2.3. The plot displays income as a function of years of education
+and seniority in the Income data set. The blue surface represents the true
+underlying relationship between income and years of education and seniority,
+which is known since the data are simulated. The red dots indicate the observed
+values of these quantities for 30 individuals.
+
+measure them, f cannot use them for its prediction. The quantity " may
+also contain unmeasurable variation. For example, the risk of an adverse
+reaction might vary for a given patient on a given day, depending on
+manufacturing variation in the drug itself or the patient’s general feeling
+of well-being on that day.
+Consider a given estimate fˆ and a set of predictors X, which yields the
+prediction Ŷ = fˆ(X). Assume for a moment that both fˆ and X are fixed,
+so that the only variability comes from ". Then, it is easy to show that
+E(Y − Ŷ )2
+
+=
+=
+
+E[f (X) + " − fˆ(X)]2
+[f (X) − fˆ(X)]2 + Var(") ,
+,
+-.
+/
+, -. /
+Reducible
+
+(2.3)
+
+Irreducible
+
+where E(Y − Ŷ )2 represents the average, or expected value, of the squared
+expected
+difference between the predicted and actual value of Y , and Var(") repre- value
+sents the variance associated with the error term ".
+variance
+The focus of this book is on techniques for estimating f with the aim of
+minimizing the reducible error. It is important to keep in mind that the
+irreducible error will always provide an upper bound on the accuracy of
+our prediction for Y . This bound is almost always unknown in practice.
+Inference
+We are often interested in understanding the association between Y and
+X1 , . . . , Xp . In this situation we wish to estimate f , but our goal is not
+necessarily to make predictions for Y . Now fˆ cannot be treated as a black
+box, because we need to know its exact form. In this setting, one may be
+interested in answering the following questions:
+
+2.1 What Is Statistical Learning?
+
+19
+
+• Which predictors are associated with the response? It is often the case
+that only a small fraction of the available predictors are substantially
+associated with Y . Identifying the few important predictors among a
+large set of possible variables can be extremely useful, depending on
+the application.
+• What is the relationship between the response and each predictor?
+Some predictors may have a positive relationship with Y , in the sense
+that larger values of the predictor are associated with larger values of
+Y . Other predictors may have the opposite relationship. Depending
+on the complexity of f , the relationship between the response and a
+given predictor may also depend on the values of the other predictors.
+• Can the relationship between Y and each predictor be adequately summarized using a linear equation, or is the relationship more complicated? Historically, most methods for estimating f have taken a linear
+form. In some situations, such an assumption is reasonable or even desirable. But often the true relationship is more complicated, in which
+case a linear model may not provide an accurate representation of
+the relationship between the input and output variables.
+In this book, we will see a number of examples that fall into the prediction
+setting, the inference setting, or a combination of the two.
+For instance, consider a company that is interested in conducting a
+direct-marketing campaign. The goal is to identify individuals who are
+likely to respond positively to a mailing, based on observations of demographic variables measured on each individual. In this case, the demographic variables serve as predictors, and response to the marketing campaign (either positive or negative) serves as the outcome. The company is
+not interested in obtaining a deep understanding of the relationships between each individual predictor and the response; instead, the company
+simply wants to accurately predict the response using the predictors. This
+is an example of modeling for prediction.
+In contrast, consider the Advertising data illustrated in Figure 2.1. One
+may be interested in answering questions such as:
+– Which media are associated with sales?
+– Which media generate the biggest boost in sales? or
+– How large of an increase in sales is associated with a given increase
+in TV advertising?
+This situation falls into the inference paradigm. Another example involves
+modeling the brand of a product that a customer might purchase based on
+variables such as price, store location, discount levels, competition price,
+and so forth. In this situation one might really be most interested in the
+association between each variable and the probability of purchase. For instance, to what extent is the product’s price associated with sales? This is
+an example of modeling for inference.
+Finally, some modeling could be conducted both for prediction and inference. For example, in a real estate setting, one may seek to relate values
+
+20
+
+2. Statistical Learning
+
+of homes to inputs such as crime rate, zoning, distance from a river, air
+quality, schools, income level of community, size of houses, and so forth. In
+this case one might be interested in the association between each individual input variable and housing price—for instance, how much extra will a
+house be worth if it has a view of the river? This is an inference problem.
+Alternatively, one may simply be interested in predicting the value of a
+home given its characteristics: is this house under- or over-valued? This is
+a prediction problem.
+Depending on whether our ultimate goal is prediction, inference, or a
+combination of the two, different methods for estimating f may be appropriate. For example, linear models allow for relatively simple and inlinear model
+terpretable inference, but may not yield as accurate predictions as some
+other approaches. In contrast, some of the highly non-linear approaches
+that we discuss in the later chapters of this book can potentially provide
+quite accurate predictions for Y , but this comes at the expense of a less
+interpretable model for which inference is more challenging.
+
+2.1.2
+
+How Do We Estimate f ?
+
+Throughout this book, we explore many linear and non-linear approaches
+for estimating f . However, these methods generally share certain characteristics. We provide an overview of these shared characteristics in this
+section. We will always assume that we have observed a set of n different
+data points. For example in Figure 2.2 we observed n = 30 data points.
+These observations are called the training data because we will use these
+training
+observations to train, or teach, our method how to estimate f . Let xij data
+represent the value of the jth predictor, or input, for observation i, where
+i = 1, 2, . . . , n and j = 1, 2, . . . , p. Correspondingly, let yi represent the
+response variable for the ith observation. Then our training data consist of
+{(x1 , y1 ), (x2 , y2 ), . . . , (xn , yn )} where xi = (xi1 , xi2 , . . . , xip )T .
+Our goal is to apply a statistical learning method to the training data
+in order to estimate the unknown function f . In other words, we want to
+find a function fˆ such that Y ≈ fˆ(X) for any observation (X, Y ). Broadly
+speaking, most statistical learning methods for this task can be characterized as either parametric or non-parametric. We now briefly discuss these
+parametric
+two types of approaches.
+nonParametric Methods
+Parametric methods involve a two-step model-based approach.
+1. First, we make an assumption about the functional form, or shape,
+of f . For example, one very 

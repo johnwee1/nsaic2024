@@ -1,0 +1,332 @@
+ typically very poor test set performance
+due to extremely high variance.1 By constraining or shrinking the
+estimated coefficients, we can often substantially reduce the variance
+at the cost of a negligible increase in bias. This can lead to substantial
+improvements in the accuracy with which we can predict the response
+for observations not used in model training.
+• Model Interpretability: It is often the case that some or many of the
+variables used in a multiple regression model are in fact not associated with the response. Including such irrelevant variables leads to
+unnecessary complexity in the resulting model. By removing these
+variables—that is, by setting the corresponding coefficient estimates
+to zero—we can obtain a model that is more easily interpreted. Now
+least squares is extremely unlikely to yield any coefficient estimates
+that are exactly zero. In this chapter, we see some approaches for automatically performing feature selection or variable selection—that is,
+feature
+for excluding irrelevant variables from a multiple regression model. selection
+variable
+
+There are many alternatives, both classical and modern, to using least selection
+squares to fit (6.1). In this chapter, we discuss three important classes of
+methods.
+• Subset Selection. This approach involves identifying a subset of the p
+predictors that we believe to be related to the response. We then fit
+a model using least squares on the reduced set of variables.
+• Shrinkage. This approach involves fitting a model involving all p predictors. However, the estimated coefficients are shrunken towards zero
+relative to the least squares estimates. This shrinkage (also known as
+regularization) has the effect of reducing variance. Depending on what
+type of shrinkage is performed, some of the coefficients may be estimated to be exactly zero. Hence, shrinkage methods can also perform
+variable selection.
+• Dimension Reduction. This approach involves projecting the p predictors into an M -dimensional subspace, where M < p. This is achieved
+by computing M different linear combinations, or projections, of the
+variables. Then these M projections are used as predictors to fit a
+linear regression model by least squares.
+In the following sections we describe each of these approaches in greater detail, along with their advantages and disadvantages. Although this chapter
+describes extensions and modifications to the linear model for regression
+seen in Chapter 3, the same concepts apply to other methods, such as the
+classification models seen in Chapter 4.
+
+1 When p # n, the least squares solution that has the smallest sum of squared coefficients can sometimes perform quite well. See Section 10.8 for a more detailed discussion.
+
+6.1 Subset Selection
+
+6.1
+
+231
+
+Subset Selection
+
+In this section we consider some methods for selecting subsets of predictors.
+These include best subset and stepwise model selection procedures.
+
+6.1.1
+
+Best Subset Selection
+
+To perform best subset selection, we fit a separate least squares regression
+best subset
+for each possible combination of the p predictors.
+That is, we fit all p models selection
+'p (
+that contain exactly one predictor, all 2 = p(p − 1)/2 models that contain
+exactly two predictors, and so forth. We then look at all of the resulting
+models, with the goal of identifying the one that is best.
+The problem of selecting the best model from among the 2p possibilities
+considered by best subset selection is not trivial. This is usually broken up
+into two stages, as described in Algorithm 6.1.
+Algorithm 6.1 Best subset selection
+1. Let M0 denote the null model, which contains no predictors. This
+model simply predicts the sample mean for each observation.
+2. For k = 1, 2, . . . p:
+' (
+(a) Fit all kp models that contain exactly k predictors.
+' (
+(b) Pick the best among these kp models, and call it Mk . Here best
+is defined as having the smallest RSS, or equivalently largest R2 .
+3. Select a single best model from among M0 , . . . , Mp using using the
+prediction error on a validation set, Cp (AIC), BIC, or adjusted R2 .
+Or use the cross-validation method.
+
+In Algorithm 6.1, Step 2 identifies the best model (on the training data)
+for each subset size, in order to reduce the problem from one of 2p possible
+models to one of p + 1 possible models. In Figure 6.1, these models form
+the lower frontier depicted in red.
+Now in order to select a single best model, we must simply choose among
+these p + 1 options. This task must be performed with care, because the
+RSS of these p + 1 models decreases monotonically, and the R2 increases
+monotonically, as the number of features included in the models increases.
+Therefore, if we use these statistics to select the best model, then we will
+always end up with a model involving all of the variables. The problem is
+that a low RSS or a high R2 indicates a model with a low training error,
+whereas we wish to choose a model that has a low test error. (As shown in
+Chapter 2 in Figures 2.9–2.11, training error tends to be quite a bit smaller
+than test error, and a low training error by no means guarantees a low test
+error.) Therefore, in Step 3, we use the error on a validation set, Cp , BIC, or
+adjusted R2 in order to select among M0 , M1 , . . . , Mp . If cross-validation
+is used to select the best model, then Step 2 is repeated on each training
+fold, and the validation errors are averaged to select the best value of k.
+
+1.0
+
+6. Linear Model Selection and Regularization
+
+0.8
+
+R2
+
+0.6
+
+6e+07
+
+0.4
+
+4e+07
+
+0.0
+
+0.2
+
+2e+07
+
+Residual Sum of Squares
+
+8e+07
+
+232
+
+2
+
+4
+
+6
+
+8
+
+Number of Predictors
+
+10
+
+2
+
+4
+
+6
+
+8
+
+10
+
+Number of Predictors
+
+FIGURE 6.1. For each possible model containing a subset of the ten predictors
+in the Credit data set, the RSS and R2 are displayed. The red frontier tracks the
+best model for a given number of predictors, according to RSS and R2 . Though
+the data set contains only ten predictors, the x-axis ranges from 1 to 11, since one
+of the variables is categorical and takes on three values, leading to the creation of
+two dummy variables.
+
+Then the model Mk fit on the full training set is delivered for the chosen
+k. These approaches are discussed in Section 6.1.3.
+An application of best subset selection is shown in Figure 6.1. Each
+plotted point corresponds to a least squares regression model fit using a
+different subset of the 10 predictors in the Credit data set, discussed in
+Chapter 3. Here the variable region is a three-level qualitative variable,
+and so is represented by two dummy variables, which are selected separately in this case. Hence, there are a total of 11 possible variables which
+can be included in the model. We have plotted the RSS and R2 statistics
+for each model, as a function of the number of variables. The red curves
+connect the best models for each model size, according to RSS or R2 . The
+figure shows that, as expected, these quantities improve as the number of
+variables increases; however, from the three-variable model on, there is little
+improvement in RSS and R2 as a result of including additional predictors.
+Although we have presented best subset selection here for least squares
+regression, the same ideas apply to other types of models, such as logistic
+regression. In the case of logistic regression, instead of ordering models by
+RSS in Step 2 of Algorithm 6.1, we instead use the deviance, a measure
+deviance
+that plays the role of RSS for a broader class of models. The deviance is
+negative two times the maximized log-likelihood; the smaller the deviance,
+the better the fit.
+While best subset selection is a simple and conceptually appealing approach, it suffers from computational limitations. The number of possible
+models that must be considered grows rapidly as p increases. In general,
+there are 2p models that involve subsets of p predictors. So if p = 10,
+then there are approximately 1,000 possible models to be considered, and if
+p = 20, then there are over one million possibilities! Consequently, best subset selection becomes computationally infeasible for values of p greater than
+
+6.1 Subset Selection
+
+233
+
+Algorithm 6.2 Forward stepwise selection
+1. Let M0 denote the null model, which contains no predictors.
+2. For k = 0, . . . , p − 1:
+
+(a) Consider all p − k models that augment the predictors in Mk
+with one additional predictor.
+
+(b) Choose the best among these p − k models, and call it Mk+1 .
+Here best is defined as having smallest RSS or highest R2 .
+3. Select a single best model from among M0 , . . . , Mp using the prediction error on a validation set, Cp (AIC), BIC, or adjusted R2 . Or
+use the cross-validation method.
+around 40, even with extremely fast modern computers. There are computational shortcuts—so called branch-and-bound techniques—for eliminating some choices, but these have their limitations as p gets large. They also
+only work for least squares linear regression. We present computationally
+efficient alternatives to best subset selection next.
+
+6.1.2
+
+Stepwise Selection
+
+For computational reasons, best subset selection cannot be applied with
+very large p. Best subset selection may also suffer from statistical problems
+when p is large. The larger the search space, the higher the chance of finding
+models that look good on the training data, even though they might not
+have any predictive power on future data. Thus an enormous search space
+can lead to overfitting and high variance of the coefficient estimates.
+For both of these reasons, stepwise methods, which explore a far more
+restricted set of models, are attractive alternatives to best subset selection.
+
+Forward Stepwise Selection
+Forward stepwise selection is a computationally efficient alternative to best
+forward
+subset selection. While the best subset selection procedure considers all stepwise
+p
+2 possible models containing subsets of the p predictors, forward step- selection
+wise considers a much smaller set of models. Forward stepwise selection
+begins with a model containing no predictors, and then adds predictors
+to the model, one-at-a-time, until all of the predictors are in the model.
+In particular, at each step the variable that gives the greatest additional
+improvement to the fit is added to the model. More formally, the forward
+stepwise selection procedure is given in Algorithm 6.2.
+Unlike best subset selection, which involved fitting 2p models, forward
+stepwise selection involves fitting one null model, along with p − k models
+in
+the kth iteration, for k = 0, . . . , p − 1. This amounts to a total of 1 +
+)p−1
+k=0 (p − k) = 1 + p(p + 1)/2 models. This is a substantial difference: when
+
+234
+
+6. Linear Model Selection and Regularization
+
+# Variables
+One
+Two
+Three
+Four
+
+Best subset
+
+Forward stepwise
+
+rating
+rating, income
+rating, income, student
+cards, income
+student, limit
+
+rating
+rating, income
+rating, income, student
+rating, income,
+student, limit
+
+TABLE 6.1. The first four selected models for best subset selection and forward
+stepwise selection on the Credit data set. The first three models are identical but
+the fourth models differ.
+
+p = 20, best subset selection requires fitting 1,048,576 models, whereas
+forward stepwise selection requires fitting only 211 models.2
+In Step 2(b) of Algorithm 6.2, we must identify the best model from
+among those p−k that augment Mk with one additional predictor. We can
+do this by simply choosing the model with the lowest RSS or the highest
+R2 . However, in Step 3, we must identify the best model among a set of
+models with different numbers of variables. This is more challenging, and
+is discussed in Section 6.1.3.
+Forward stepwise selection’s computational advantage over best subset
+selection is clear. Though forward stepwise tends to do well in practice,
+it is not guaranteed to find the best possible model out of all 2p models containing subsets of the p predictors. For instance, suppose that in a
+given data set with p = 3 predictors, the best possible one-variable model
+contains X1 , and the best possible two-variable model instead contains X2
+and X3 . Then forward stepwise selection will fail to select the best possible
+two-variable model, because M1 will contain X1 , so M2 must also contain
+X1 together with one additional variable.
+Table 6.1, which shows the first four selected models for best subset
+and forward stepwise selection on the Credit data set, illustrates this phenomenon. Both best subset selection and forward stepwise selection choose
+rating for the best one-variable model and then include income and student
+for the two- and three-variable models. However, best subset selection replaces rating by cards in the four-variable model, while forward stepwise
+selection must maintain rating in its four-variable model. In this example,
+Figure 6.1 indicates that there is not much difference between the threeand four-variable models in terms of RSS, so either of the four-variable
+models will likely be adequate.
+Forward stepwise selection can be applied even in the high-dimensional
+setting where n < p; however, in this case, it is possible to construct submodels M0 , . . . , Mn−1 only, since each submodel is fit using least squares,
+which will not yield a unique solution if p ≥ n.
+Backward Stepwise Selection
+Like forward stepwise selection, backward stepwise selection provides an
+
+backward
+stepwise
+2 Though forward stepwise selection considers p(p + 1)/2 + 1 models, it performs a selection
+guided search over model space, and so the effective model space considered contains
+substantially more than p(p + 1)/2 + 1 models.
+
+6.1 Subset Selection
+
+235
+
+efficient alternative to best subset selection. However, unlike forward stepwise selection, it begins with the full least squares model containing all p
+predictors, and then iteratively removes the least useful predictor, one-ata-time. Details are given in Algorithm 6.3.
+Algorithm 6.3 Backward stepwise selection
+1. Let Mp denote the full model, which contains all p predictors.
+2. For k = p, p − 1, . . . , 1:
+
+(a) Consider all k models that contain all but one of the predictors
+in Mk , for a total of k − 1 predictors.
+
+(b) Choose the best among these k models, and call it Mk−1 . Here
+best is defined as having smallest RSS or highest R2 .
+
+3. Select a single best model from among M0 , . . . , Mp using the prediction error on a validation set, Cp (AIC), BIC, or adjusted R2 . Or
+use the cross-validation method.
+Like forward stepwise selection, the backward selection approach searches
+through only 1 + p(p + 1)/2 models, and so can be applied in settings where
+p is too large to apply best subset selection.3 Also like forward stepwise
+selection, backward stepwise selection is not guaranteed to yield the best
+model containing a subset of the p predictors.
+Backward selection requires that the number of samples n is larger than
+the number of variables p (so that the full model can be fit). In contrast,
+forward stepwise can be used even when n < p, and so is the only viable
+subset method when p is very large.
+Hybrid Approaches
+The best subset, forward stepwise, and backward stepwise selection approaches generally give similar but not identical models. As another alternative, hybrid versions of forward and backward stepwise selection are
+available, in which variables are added to the model sequentially, in analogy
+to forward selection. However, after adding each new variable, the method
+may also remove any variables that no longer provide an improvement in
+the model fit. Such an approach attempts to more c

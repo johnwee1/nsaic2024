@@ -1,0 +1,538 @@
+i
+gtv
+stereo[SRT]
+
+Coefficient
+0.18
+0.92
+2.15
+0.89
+0.44
+-0.05
+0.03
+0.18
+
+Std. error
+0.36
+0.64
+0.45
+0.66
+0.70
+0.02
+0.02
+0.60
+
+z-statistic
+0.51
+1.43
+4.78
+1.35
+0.63
+-3.00
+1.54
+0.30
+
+p-value
+0.61
+0.15
+0.00
+0.18
+0.53
+<0.01
+0.12
+0.77
+
+TABLE 11.2. Results for Cox’s proportional hazards model fit to the
+BrainCancer data, which was first described in Section 11.3. The variable
+diagnosis is qualitative with four levels: meningioma, LG glioma, HG glioma,
+or other. The variables sex, loc, and stereo are binary.
+
+11.5.4
+
+Example: Publication Data
+
+Next, we consider the dataset Publication involving the time to publication of journal papers reporting the results of clinical trials funded by the
+National Heart, Lung, and Blood Institute.14 For 244 trials, the time in
+months until publication is recorded. Of the 244 trials, only 156 were published during the study period; the remaining studies were censored. The
+covariates include whether the trial focused on a clinical endpoint (clinend),
+whether the trial involved multiple centers (multi), the funding mechanism
+within the National Institutes of Health (mech), trial sample size (sampsize),
+budget (budget), impact (impact, related to the number of citations), and
+whether the trial produced a positive (significant) result (posres). The last
+covariate is particularly interesting, as a number of studies have suggested
+that positive trials have a higher publication rate.
+14 This dataset is described in the following paper: Gordon et al. (2013) Publication of
+trials funded by the National Heart, Lung, and Blood Institute. New England Journal
+of Medicine, 369(20):1926–1934.
+
+1.0
+
+483
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+Negative Result
+Positive Result
+
+0.0
+
+Probability of Not Being Published
+
+11.5 Regression Models With a Survival Response
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+120
+
+Months
+
+FIGURE 11.5. Survival curves for time until publication for the Publication
+data described in Section 11.5.4, stratified by whether or not the study produced
+a positive result.
+
+Figure 11.5 shows the Kaplan–Meier curves for the time until publication,
+stratified by whether or not the study produced a positive result. We see
+slight evidence that time until publication is lower for studies with a positive
+result. However, the log-rank test yields a very unimpressive p-value of 0.36.
+We now consider a more careful analysis that makes use of all of the
+available predictors. The results of fitting Cox’s proportional hazards model
+using all of the available features are shown in Table 11.3. We find that the
+chance of publication of a study with a positive result is e0.55 = 1.74 times
+higher than the chance of publication of a study with a negative result
+at any point in time, holding all other covariates fixed. The very small
+p-value associated with posres in Table 11.3 indicates that this result is
+highly significant. This is striking, especially in light of our earlier finding
+that a log-rank test comparing time to publication for studies with positive
+versus negative results yielded a p-value of 0.36. How can we explain this
+discrepancy? The answer stems from the fact that the log-rank test did not
+consider any other covariates, whereas the results in Table 11.3 are based
+on a Cox model using all of the available covariates. In other words, after
+we adjust for all of the other covariates, then whether or not the study
+yielded a positive result is highly predictive of the time to publication.
+In order to gain more insight into this result, in Figure 11.6 we display
+estimates of the survival curves associated with positive and negative results, adjusting for the other predictors. To produce these survival curves,
+we estimated the underlying baseline hazard h0 (t). We also needed to select representative values for the other predictors; we used the mean value
+for each predictor, except for the categorical predictor mech, for which we
+used the most prevalent category (R01). Adjusting for the other predictors,
+we now see a clear difference in the survival curves between studies with
+positive versus negative results.
+Other interesting insights can be gleaned from Table 11.3. For example,
+studies with a clinical endpoint are more likely to be published at any
+given point in time than those with a non-clinical endpoint. The funding
+
+484
+
+11. Survival Analysis and Censored Data
+
+posres[Yes]
+multi[Yes]
+clinend[Yes]
+mech[K01]
+mech[K23]
+mech[P01]
+mech[P50]
+mech[R01]
+mech[R18]
+mech[R21]
+mech[R24,K24]
+mech[R42]
+mech[R44]
+mech[RC2]
+mech[U01]
+mech[U54]
+sampsize
+budget
+impact
+
+Coefficient
+0.55
+0.15
+0.51
+1.05
+-0.48
+-0.31
+0.60
+0.10
+1.05
+-0.05
+0.81
+-14.78
+-0.57
+-14.92
+-0.22
+0.47
+0.00
+0.00
+0.06
+
+Std. error
+0.18
+0.31
+0.27
+1.06
+1.05
+0.78
+1.06
+0.32
+1.05
+1.06
+1.05
+3414.38
+0.77
+2243.60
+0.32
+1.07
+0.00
+0.00
+0.01
+
+z-statistic
+3.02
+0.47
+1.89
+1.00
+-0.45
+-0.40
+0.57
+0.30
+0.99
+-0.04
+0.77
+-0.00
+-0.73
+-0.01
+-0.70
+0.44
+0.19
+1.67
+8.23
+
+p-value
+0.00
+0.64
+0.06
+0.32
+0.65
+0.69
+0.57
+0.76
+0.32
+0.97
+0.44
+1.00
+0.46
+0.99
+0.48
+0.66
+0.85
+0.09
+0.00
+
+TABLE 11.3. Results for Cox’s proportional hazards model fit to the
+Publication data, using all of the available features. The features posres, multi,
+and clinend are binary. The feature mech is qualitative with 14 levels; it is coded
+so that the baseline level is Contract.
+
+mechanism did not appear to be significantly associated with time until
+publication.
+
+11.6
+
+Shrinkage for the Cox Model
+
+In this section, we illustrate that the shrinkage methods of Section 6.2
+can be applied to the survival data setting. In particular, motivated by
+the “loss+penalty” formulation of Section 6.2, we consider minimizing a
+penalized version of the negative log partial likelihood in (11.16),
+1)
+2
+
+
+p
+exp
+E
+j=1 xij βj
+1)
+2  + λP (β),
+− log 
+(11.17)
+)
+p
+i:δi =1
+i! :yi! ≥yi exp
+j=1 xi! j βj
+
+)p
+with respect to β = (β1 , . . . , βp )T . We might take P (β) = j=1 βj2 , which
+)p
+corresponds to a ridge penalty, or P (β) = j=1 |βj |, which corresponds to
+a lasso penalty.
+In (11.17), λ is a non-negative tuning parameter; typically we will minimize it over a range of values of λ. When λ = 0, then minimizing (11.17) is
+equivalent to simply maximizing the usual Cox partial likelihood (11.16).
+However, when λ > 0, then minimizing (11.17) yields a shrunken version of
+the coefficient estimates. When λ is large, then using a ridge penalty will
+give small coefficients that are not exactly equal to zero. By contrast, for a
+
+1.0
+
+485
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+Negative Result
+Positive Result
+
+0.0
+
+Probability of Not Being Published
+
+11.6 Shrinkage for the Cox Model
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+120
+
+Months
+
+FIGURE 11.6. For the Publication data, we display survival curves for time
+until publication, stratified by whether or not the study produced a positive result,
+after adjusting for all other covariates.
+
+sufficiently large value of λ, using a lasso penalty will give some coefficients
+that are exactly equal to zero.
+We now apply the lasso-penalized Cox model to the Publication data, described in Section 11.5.4. We first randomly split the 244 trials into equallysized training and test sets. The cross-validation results from the training
+set are shown in Figure 11.7. The “partial likelihood deviance”, shown on
+the y-axis, is twice the cross-validated negative log partial likelihood; it
+plays the role of the cross-validation error.15 Note the “U-shape” of the
+partial likelihood deviance: just as we saw in previous chapters, the crossvalidation error is minimized for an intermediate level of model complexity.
+Specifically, this occurs when just two predictors, budget and impact, have
+non-zero estimated coefficients.
+Now, how do we apply this model to the test set? This brings up an
+important conceptual point: in essence, there is no simple way to compare
+predicted survival times and true survival times on the test set. The first
+problem is that some of the observations are censored, and so the true survival times for those observations are unobserved. The second issue arises
+from the fact that in the Cox model, rather than predicting a single survival time given a covariate vector x, we instead estimate an entire survival
+curve, S(t|x), as a function of t.
+Therefore, to assess the model fit, we must take a different approach,
+which involves stratifying the observations using the coefficient estimates.
+In particular, for each test observation, we compute the “risk” score
+budgeti · β̂budget + impacti · β̂impact ,
+
+where β̂budget and β̂impact are the coefficient estimates for these two features
+from the training set. We then use these risk scores to categorize the observations based on their “risk”. For instance, the high risk group consists of
+the observations for which budgeti · β̂budget + impacti · β̂impact is largest; by
+15 Cross-validation for the Cox model is more involved than for linear or logistic regression, because the objective function is not a sum over the observations.
+
+11. Survival Analysis and Censored Data
+9.0 9.1 9.2 9.3 9.4 9.5 9.6 9.7
+
+Partial Likelihood Deviance
+
+486
+
+2e−04
+
+5e−04
+
+1e−03
+
+2e−03
+
+5e−03
+
+1e−02
+
+!β̂λL!1
+
+!
+
+2e−02
+
+5e−02
+
+1e−01
+
+2e−01
+
+|β̂!1
+
+FIGURE 11.7. For the Publication data described in Section 11.5.4, cross-validation results for the lasso-penalized Cox model are shown. The y-axis displays
+the partial likelihood deviance, which plays the role of the cross-validation error.
+The x-axis displays the &1 norm (that is, the sum of the absolute values) of the
+coefficients of the lasso-penalized Cox model with tuning parameter λ, divided by
+the &1 norm of the coefficients of the unpenalized Cox model. The dashed line
+indicates the minimum cross-validation error.
+
+(11.14), we see that these are the observations for which the instantaneous
+probability of being published at any moment in time is largest. In other
+words, the high risk group consists of the trials that are likely to be published sooner. On the Publication data, we stratify the observations into
+tertiles of low, medium, and high risk. The resulting survival curves for
+each of the three strata are displayed in Figure 11.8. We see that there is
+clear separation between the three strata, and that the strata are correctly
+ordered in terms of low, medium, and high risk of publication.
+
+11.7
+
+Additional Topics
+
+11.7.1
+
+Area Under the Curve for Survival Analysis
+
+In Chapter 4, we introduced the area under the ROC curve — often referred
+to as the “AUC” — as a way to quantify the performance of a two-class classifier. Define the score for the ith observation to be the classifier’s estimate
+of Pr(Y = 1|X = xi ). It turns out that if we consider all pairs consisting of
+one observation in Class 1 and one observation in Class 2, then the AUC
+is the fraction of pairs for which the score for the observation in Class 1
+exceeds the score for the observation in Class 2.
+This suggests a way to generalize the notion of AUC to survival analysis. We calculate an estimated risk score, η̂i = β̂1 xi1 + · · · + β̂p xip , for
+i = 1, . . . , n, using the Cox model coefficients. If η̂i! > η̂i , then the model
+predicts that the i$ th observation has a larger hazard than the ith observation, and thus that the survival time ti will be greater than ti! . Thus, it
+is tempting to try to generalize AUC by computing the proportion of observations for which ti > ti! and η̂i! > η̂i . However, things are not quite so
+easy, because recall that we do not observe t1 , . . . , tn ; instead, we observe
+
+1.0
+
+487
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+Low Risk
+Medium Risk
+High Risk
+
+0.0
+
+Probability of Not Being Published
+
+11.7 Additional Topics
+
+0
+
+20
+
+40
+
+60
+
+80
+
+100
+
+120
+
+Months
+
+FIGURE 11.8. For the Publication data introduced in Section 11.5.4, we
+compute tertiles of “risk” in the test set using coefficients estimated on the training
+set. There is clear separation between the resulting survival curves.
+
+the (possibly-censored) times y1 , . . . , yn , as well as the censoring indicators
+δ1 , . . . , δ n .
+Therefore, Harrell’s concordance index (or C-index) computes the proHarrell’s
+portion of observation pairs for which η̂i! > η̂i and yi > yi! :
+concordance
+index
+)
+i,i! :yi >yi! I(η̂i! > η̂i )δi!
+)
+C=
+,
+i,i! :yi >yi! δi!
+where the indicator variable I(η̂i! > η̂i ) equals one if η̂i! > η̂i , and equals
+zero otherwise. The numerator and denominator are multiplied by the status indicator δi! , since if the i$ th observation is uncensored (i.e. if δi! = 1),
+then yi > yi! implies that ti > ti! . By contrast, if δi! = 0, then yi > yi!
+does not imply that ti > ti! .
+We fit a Cox proportional hazards model on the training set of the
+Publication data, and computed the C-index on the test set. This yielded
+C = 0.733. Roughly speaking, given two random papers from the test set,
+the model can predict with 73.3% accuracy which will be published first.
+
+11.7.2
+
+Choice of Time Scale
+
+In the examples considered thus far in this chapter, it has been fairly clear
+how to define time. For example, in the Publication example, time zero for
+each paper was defined to be the calendar time at the end of the study,
+and the failure time was defined to be the number of months that elapsed
+from the end of the study until the paper was published.
+However, in other settings, the definitions of time zero and failure time
+may be more subtle. For example, when examining the association between
+risk factors and disease occurrence in an epidemiological study, one might
+use the patient’s age to define time, so that time zero is the patient’s date
+of birth. With this choice, the association between age and survival cannot
+be measured; however, there is no need to adjust for age in the analysis.
+When examining covariates associated with disease-free survival (i.e. the
+
+488
+
+11. Survival Analysis and Censored Data
+
+amount of time elapsed between treatment and disease recurrence), one
+might use the date of treatment as time zero.
+
+11.7.3
+
+Time-Dependent Covariates
+
+A powerful feature of the proportional hazards model is its ability to handle
+time-dependent covariates, predictors whose value may change over time.
+For example, suppose we measure a patient’s blood pressure every week
+over the course of a medical study. In this case, we can think of the blood
+pressure for the ith observation not as xi , but rather as xi (t) at time t.
+Because the partial likelihood in (11.16) is constructed sequentially in
+time, dealing with time-dependent covariates is straightforward. In particular, we simply replace xij and xi! j in (11.16) with xij (yi ) and xi! j (yi ),
+respectively; these are the current values of the predictors at time yi . By
+contrast, time-dependent covariates would pose a much greater challenge
+within the context of a traditional parametric approach, such as (11.13).
+One example of time-dependent covariates appears in the analysis of data
+from the Stanford Heart Transplant Program. Patients in need of a heart
+transplant were put on a waiting list. Some patients received a transplant,
+but others died while still on the waiting list. The primary objective of the
+analysis was to determine whether a transplant was associated with longer
+patient survival.
+A naïve approach would use a fixed covariate to represent transplant
+status: that is, xi = 1 if the ith patient ever received a transplant, and xi =
+0 otherwise. But this approach overlooks the fact that patients had to live
+long enough to get a transplant, and hence, on average, healthier patients
+received transplants. This problem can be solved by using a time-dependent
+covariate for transplant: xi (t) = 1 if the patient 

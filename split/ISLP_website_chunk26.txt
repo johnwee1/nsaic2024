@@ -1,0 +1,524 @@
+ionship
+is displayed in the left-hand panel of Figure 4.14. This is a major
+)p violation
+of the assumptions of a linear model, which state that Y = j=1 Xj βj + ",
+where " is a mean-zero error term with variance σ 2 that is constant, and
+not a function of the covariates. Therefore, the heteroscedasticity of the
+data calls into question the suitability of a linear regression model.
+Finally, )
+the response bikers is integer-valued. But under a linear model,
+p
+Y = β0 + j=1 Xj βj + ", where " is a continuous-valued error term. This
+means that in a linear model, the response Y is necessarily continuousvalued (quantitative). Thus, the integer nature of the response bikers suggests that a linear regression model is not entirely satisfactory for this data
+set.
+
+5
+4
+3
+2
+1
+
+Log(Number of Bikers)
+
+6
+
+169
+
+0
+
+0
+
+Number of Bikers
+
+100 200 300 400 500 600
+
+4.6 Generalized Linear Models
+
+5
+
+10
+
+15
+
+20
+
+5
+
+10
+
+Hour
+
+15
+
+20
+
+Hour
+
+FIGURE 4.14. Left: On the Bikeshare dataset, the number of bikers is displayed on the y-axis, and the hour of the day is displayed on the x-axis. Jitter
+was applied for ease of visualization. For the most part, as the mean number of
+bikers increases, so does the variance in the number of bikers. A smoothing spline
+fit is shown in green. Right: The log of the number of bikers is now displayed on
+the y-axis.
+
+Some of the problems that arise when fitting a linear regression model
+to the Bikeshare data can be overcome by transforming the response; for
+instance, we can fit the model
+log(Y ) =
+
+p
+0
+
+Xj βj + ".
+
+j=1
+
+Transforming the response avoids the possibility of negative predictions,
+and it overcomes much of the heteroscedasticity in the untransformed data,
+as is shown in the right-hand panel of Figure 4.14. However, it is not quite
+a satisfactory solution, since predictions and inference are made in terms of
+the log of the response, rather than the response. This leads to challenges
+in interpretation, e.g. “a one-unit increase in Xj is associated with an
+increase in the mean of the log of Y by an amount βj ”. Furthermore, a
+log transformation of the response cannot be applied in settings where the
+response can take on a value of 0. Thus, while fitting a linear model to
+a transformation of the response may be an adequate approach for some
+count-valued data sets, it often leaves something to be desired. We will see
+in the next section that a Poisson regression model provides a much more
+natural and elegant approach for this task.
+
+4.6.2
+
+Poisson Regression on the Bikeshare Data
+
+To overcome the inadequacies of linear regression for analyzing the Bikeshare
+data set, we will make use of an alternative approach, called Poisson
+regression. Before we can talk about Poisson regression, we must first inPoisson
+troduce the Poisson distribution.
+regression
+Suppose that a random variable Y takes on nonnegative integer values, Poisson
+i.e. Y ∈ {0, 1, 2, . . .}. If Y follows the Poisson distribution, then
+distribution
+Pr(Y = k) =
+
+e−λ λk
+for k = 0, 1, 2, . . . .
+k!
+
+(4.35)
+
+170
+
+4. Classification
+
+Here, λ > 0 is the expected value of Y , i.e. E(Y ). It turns out that λ also
+equals the variance of Y , i.e. λ = E(Y ) = Var(Y ). This means that if Y
+follows the Poisson distribution, then the larger the mean of Y , the larger
+its variance. (In (4.35), the notation k!, pronounced “k factorial”, is defined
+as k! = k × (k − 1) × (k − 2) × . . . × 3 × 2 × 1.)
+The Poisson distribution is typically used to model counts; this is a natural choice for a number of reasons, including the fact that counts, like
+the Poisson distribution, take on nonnegative integer values. To see how
+we might use the Poisson distribution in practice, let Y denote the number of users of the bike sharing program during a particular hour of the
+day, under a particular set of weather conditions, and during a particular month of the year. We might model Y as a Poisson distribution with
+mean E(Y ) = λ = 5. This means that the probability of no users dur−5 0
+ing this particular hour is Pr(Y = 0) = e 0!5 = e−5 = 0.0067 (where
+0! = 1 by convention). The probability that there is exactly one user
+−5 1
+is Pr(Y = 1) = e 1!5 = 5e−5 = 0.034, the probability of two users is
+−5 2
+Pr(Y = 2) = e 2!5 = 0.084, and so on.
+Of course, in reality, we expect the mean number of users of the bike
+sharing program, λ = E(Y ), to vary as a function of the hour of the day,
+the month of the year, the weather conditions, and so forth. So rather
+than modeling the number of bikers, Y , as a Poisson distribution with a
+fixed mean value like λ = 5, we would like to allow the mean to vary as a
+function of the covariates. In particular, we consider the following model
+for the mean λ = E(Y ), which we now write as λ(X1 , . . . , Xp ) to emphasize
+that it is a function of the covariates X1 , . . . , Xp :
+log(λ(X1 , . . . , Xp )) = β0 + β1 X1 + · · · + βp Xp
+
+(4.36)
+
+λ(X1 , . . . , Xp ) = eβ0 +β1 X1 +···+βp Xp .
+
+(4.37)
+
+or equivalently
+
+Here, β0 , β1 , . . . , βp are parameters to be estimated. Together, (4.35) and
+(4.36) define the Poisson regression model. Notice that in (4.36), we take
+the log of λ(X1 , . . . , Xp ) to be linear in X1 , . . . , Xp , rather than having
+λ(X1 , . . . , Xp ) itself be linear in X1 , . . . , Xp ; this ensures that λ(X1 , . . . , Xp )
+takes on nonnegative values for all values of the covariates.
+To estimate the coefficients β0 , β1 , . . . , βp , we use the same maximum
+likelihood approach that we adopted for logistic regression in Section 4.3.2.
+Specifically, given n independent observations from the Poisson regression
+model, the likelihood takes the form
+n
+E
+e−λ(xi ) λ(xi )yi
+%(β0 , β1 , . . . , βp ) =
+,
+(4.38)
+yi !
+i=1
+where λ(xi ) = eβ0 +β1 xi1 +···+βp xip , due to (4.37). We estimate the coefficients that maximize the likelihood %(β0 , β1 , . . . , βp ), i.e. that make the
+observed data as likely as possible.
+We now fit a Poisson regression model to the Bikeshare data set. The
+results are shown in Table 4.11 and Figure 4.15. Qualitatively, the results
+are similar to those from linear regression in Section 4.6.1. We again see
+that bike usage is highest in the spring and fall and during rush hour,
+
+4.6 Generalized Linear Models
+
+Intercept
+workingday
+temp
+weathersit[cloudy/misty]
+weathersit[light rain/snow]
+weathersit[heavy rain/snow]
+
+171
+
+Coefficient Std. error z-statistic p-value
+4.12
+0.01
+683.96
+0.00
+0.01
+0.00
+7.5
+0.00
+0.79
+0.01
+68.43
+0.00
+-0.08
+0.00
+-34.53
+0.00
+-0.58
+0.00
+-141.91
+0.00
+-0.93
+0.17
+-5.55
+0.00
+
+TABLE 4.11. Results for a Poisson regression model fit to predict bikers in
+the Bikeshare data. The predictors mnth and hr are omitted from this table due
+to space constraints, and can be seen in Figure 4.15. For the qualitative variable
+weathersit, the baseline corresponds to clear skies.
+
+●
+
+●
+
+●
+
+●
+●
+
+1
+
+0.2
+
+●
+
+●
+
+●
+
+●
+●
+
+●
+
+●
+
+●
+
+●
+●
+
+● ● ● ●
+
+●
+●
+
+0
+
+●
+●
+
+●
+●
+
+−1
+
+Coefficient
+
+−0.2
+−0.6
+
+●
+
+●
+
+●
+
+−0.4
+
+●
+●
+
+●
+
+−2
+
+Coefficient
+
+0.0
+
+●
+
+●
+
+●
+
+J
+
+●
+●
+
+F
+
+M
+
+A
+
+M
+
+J
+
+J
+
+Month
+
+A
+
+S
+
+O
+
+N
+
+D
+
+5
+
+10
+
+15
+
+20
+
+Hour
+
+FIGURE 4.15. A Poisson regression model was fit to predict bikers in the
+Bikeshare data set. Left: The coefficients associated with the month of the year.
+Bike usage is highest in the spring and fall, and lowest in the winter. Right: The
+coefficients associated with the hour of the day. Bike usage is highest during peak
+commute times, and lowest overnight.
+
+and lowest during the winter and in the early morning hours. Moreover,
+bike usage increases as the temperature increases, and decreases as the
+weather worsens. Interestingly, the coefficient associated with workingday
+is statistically significant under the Poisson regression model, but not under
+the linear regression model.
+Some important distinctions between the Poisson regression model and
+the linear regression model are as follows:
+• Interpretation: To interpret the coefficients in the Poisson regression
+model, we must pay close attention to (4.37), which states that an
+increase in Xj by one unit is associated with a change in E(Y ) = λ
+by a factor of exp(βj ). For example, a change in weather from clear
+to cloudy skies is associated with a change in mean bike usage by a
+factor of exp(−0.08) = 0.923, i.e. on average, only 92.3% as many
+people will use bikes when it is cloudy relative to when it is clear.
+If the weather worsens further and it begins to rain, then the mean
+bike usage will further change by a factor of exp(−0.5) = 0.607, i.e.
+on average only 60.7% as many people will use bikes when it is rainy
+relative to when it is cloudy.
+
+172
+
+4. Classification
+
+• Mean-variance relationship: As mentioned earlier, under the Poisson
+model, λ = E(Y ) = Var(Y ). Thus, by modeling bike usage with a
+Poisson regression, we implicitly assume that mean bike usage in a
+given hour equals the variance of bike usage during that hour. By
+contrast, under a linear regression model, the variance of bike usage
+always takes on a constant value. Recall from Figure 4.14 that in the
+Bikeshare data, when biking conditions are favorable, both the mean
+and the variance in bike usage are much higher than when conditions
+are unfavorable. Thus, the Poisson regression model is able to handle
+the mean-variance relationship seen in the Bikeshare data in a way
+that the linear regression model is not.5
+• nonnegative fitted values: There are no negative predictions using the
+Poisson regression model. This is because the Poisson model itself
+only allows for nonnegative values; see (4.35). By contrast, when we
+fit a linear regression model to the Bikeshare data set, almost 10% of
+the predictions were negative.
+
+4.6.3
+
+overdispersion
+
+Generalized Linear Models in Greater Generality
+
+We have now discussed three types of regression models: linear, logistic and
+Poisson. These approaches share some common characteristics:
+1. Each approach uses predictors X1 , . . . , Xp to predict a response Y .
+We assume that, conditional on X1 , . . . , Xp , Y belongs to a certain
+family of distributions. For linear regression, we typically assume that
+Y follows a Gaussian or normal distribution. For logistic regression,
+we assume that Y follows a Bernoulli distribution. Finally, for Poisson
+regression, we assume that Y follows a Poisson distribution.
+2. Each approach models the mean of Y as a function of the predictors.
+In linear regression, the mean of Y takes the form
+E(Y |X1 , . . . , Xp ) = β0 + β1 X1 + · · · + βp Xp ,
+
+(4.39)
+
+i.e. it is a linear function of the predictors. For logistic regression, the
+mean instead takes the form
+E(Y |X1 , . . . , Xp ) =
+=
+
+Pr(Y = 1|X1 , . . . , Xp )
+eβ0 +β1 X1 +···+βp Xp
+,
+1 + eβ0 +β1 X1 +···+βp Xp
+
+(4.40)
+
+while for Poisson regression it takes the form
+E(Y |X1 , . . . , Xp ) = λ(X1 , . . . , Xp ) = eβ0 +β1 X1 +···+βp Xp .
+
+(4.41)
+
+Equations (4.39)–(4.41) can be expressed using a link function, η, which
+5 In fact, the variance in the Bikeshare data appears to be much higher than the
+mean, a situation referred to as overdispersion. This causes the Z-values to be inflated
+in Table 4.11. A more careful analysis should account for this overdispersion to obtain
+more accurate Z-values, and there are a variety of methods for doing this. But they are
+beyond the scope of this book.
+
+link function
+
+4.7 Lab: Logistic Regression, LDA, QDA, and KNN
+
+173
+
+applies a transformation to E(Y |X1 , . . . , Xp ) so that the transformed mean
+is a linear function of the predictors. That is,
+η(E(Y |X1 , . . . , Xp )) = β0 + β1 X1 + · · · + βp Xp .
+
+(4.42)
+
+The link functions for linear, logistic and Poisson regression are η(µ) = µ,
+η(µ) = log(µ/(1 − µ)), and η(µ) = log(µ), respectively.
+The Gaussian, Bernoulli and Poisson distributions are all members of a
+wider class of distributions, known as the exponential family. Other wellexponential
+known members of this family are the exponential distribution, the Gamma family
+distribution, and the negative binomial distribution. In general, we can per- exponential
+form a regression by modeling the response Y as coming from a particular Gamma
+member of the exponential family, and then transforming the mean of the negative
+response so that the transformed mean is a linear function of the predictors binomial
+via (4.42). Any regression approach that follows this very general recipe is
+known as a generalized linear model (GLM). Thus, linear regression, logistic
+generalized
+regression, and Poisson regression are three examples of GLMs. Other ex- linear model
+amples not covered here include Gamma regression and negative binomial
+regression.
+
+4.7
+
+Lab: Logistic Regression, LDA, QDA, and
+KNN
+
+4.7.1
+
+The Stock Market Data
+
+In this lab we will examine the Smarket data, which is part of the ISLP
+library. This data set consists of percentage returns for the S&P 500 stock
+index over 1,250 days, from the beginning of 2001 until the end of 2005.
+For each date, we have recorded the percentage returns for each of the five
+previous trading days, Lag1 through Lag5. We have also recorded Volume
+(the number of shares traded on the previous day, in billions), Today (the
+percentage return on the date in question) and Direction (whether the
+market was Up or Down on this date).
+We start by importing our libraries at this top level; these are all imports
+we have seen in previous labs.
+In [1]: import numpy as np
+import pandas as pd
+from matplotlib.pyplot import subplots
+import statsmodels.api as sm
+from ISLP import load_data
+from ISLP.models import (ModelSpec as MS ,
+summarize)
+
+We also collect together the new imports needed for this lab.
+In [2]: from ISLP import confusion_table
+from ISLP.models import contrast
+from sklearn. discriminant_analysis import \
+(LinearDiscriminantAnalysis as LDA ,
+QuadraticDiscriminantAnalysis as QDA)
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+
+174
+
+4. Classification
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+Now we are ready to load the Smarket data.
+In [3]: Smarket = load_data('Smarket ')
+Smarket
+
+This gives a truncated listing of the data, which we do not show here. We
+can see what the variable names are.
+In [4]: Smarket.columns
+Out[4]: Index (['Year ', 'Lag1 ', 'Lag2 ', 'Lag3 ', 'Lag4 ', 'Lag5 ', 'Volume ',
+'Today ', 'Direction '],
+dtype='object ')
+
+We compute the correlation matrix using the corr() method for data
+.corr()
+frames, which produces a matrix that contains all of the pairwise correlations among the variables. (We suppress the output here.) The pandas
+library does not report a correlation for the Direction variable because it
+is qualitative.
+In [5]: Smarket.corr ()
+
+As one would expect, the correlations between the lagged return variables
+and today’s return are close to zero. The only substantial correlation is
+between Year and Volume. By plotting the data we see that Volume is increasing over time. In other words, the average number of shares traded
+daily increased from 2001 to 2005.
+In [6]: Smarket.plot(y='Volume ');
+
+4.7.2
+
+Logistic Regression
+
+Next, we will fit a logistic regression model in order to predict Direction
+using Lag1 through Lag5 and Volume. The sm.GLM() function fits genersm.GLM()
+alized linear models, a class of models that includes logistic regression.
+generalized
+Alternatively, the function sm.Logit() fits a logistic regression model di- linear model
+rectly. The syntax of sm.GLM() is similar to that of sm.OLS(), except that
+we must pass in the argument family=sm.families.Bino

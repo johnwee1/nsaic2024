@@ -1,0 +1,403 @@
+An Overview of Statistical Learning
+Statistical learning refers to a vast set of tools for understanding data. These
+tools can be classified as supervised or unsupervised. Broadly speaking,
+supervised statistical learning involves building a statistical model for predicting, or estimating, an output based on one or more inputs. Problems of
+this nature occur in fields as diverse as business, medicine, astrophysics, and
+public policy. With unsupervised statistical learning, there are inputs but
+no supervising output; nevertheless we can learn relationships and structure from such data. To provide an illustration of some applications of
+statistical learning, we briefly discuss three real-world data sets that are
+considered in this book.
+
+Wage Data
+In this application (which we refer to as the Wage data set throughout this
+book), we examine a number of factors that relate to wages for a group of
+men from the Atlantic region of the United States. In particular, we wish
+to understand the association between an employee’s age and education, as
+well as the calendar year, on his wage. Consider, for example, the left-hand
+panel of Figure 1.1, which displays wage versus age for each of the individuals in the data set. There is evidence that wage increases with age but then
+decreases again after approximately age 60. The blue line, which provides
+an estimate of the average wage for a given age, makes this trend clearer.
+Given an employee’s age, we can use this curve to predict his wage. However,
+it is also clear from Figure 1.1 that there is a significant amount of variability associated with this average value, and so age alone is unlikely to
+provide an accurate prediction of a particular man’s wage.
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0_1
+
+1
+
+20
+
+40
+
+60
+
+80
+
+Age
+
+300
+200
+50 100
+
+Wage
+
+200
+50 100
+
+Wage
+
+200
+50 100
+
+Wage
+
+300
+
+1. Introduction
+
+300
+
+2
+
+2003
+
+2006
+Year
+
+2009
+
+1
+
+2
+
+3
+
+4
+
+5
+
+Education Level
+
+FIGURE 1.1. Wage data, which contains income survey information for men
+from the central Atlantic region of the United States. Left: wage as a function of
+age. On average, wage increases with age until about 60 years of age, at which
+point it begins to decline. Center: wage as a function of year. There is a slow
+but steady increase of approximately $10,000 in the average wage between 2003
+and 2009. Right: Boxplots displaying wage as a function of education, with 1
+indicating the lowest level (no high school diploma) and 5 the highest level (an
+advanced graduate degree). On average, wage increases with the level of education.
+
+We also have information regarding each employee’s education level and
+the year in which the wage was earned. The center and right-hand panels
+of Figure 1.1, which display wage as a function of both year and education,
+indicate that both of these factors are associated with wage. Wages increase
+by approximately $10,000, in a roughly linear (or straight-line) fashion,
+between 2003 and 2009, though this rise is very slight relative to the variability in the data. Wages are also typically greater for individuals with
+higher education levels: men with the lowest education level (1) tend to
+have substantially lower wages than those with the highest education level
+(5). Clearly, the most accurate prediction of a given man’s wage will be
+obtained by combining his age, his education, and the year. In Chapter 3,
+we discuss linear regression, which can be used to predict wage from this
+data set. Ideally, we should predict wage in a way that accounts for the
+non-linear relationship between wage and age. In Chapter 7, we discuss a
+class of approaches for addressing this problem.
+
+Stock Market Data
+The Wage data involves predicting a continuous or quantitative output value.
+This is often referred to as a regression problem. However, in certain cases
+we may instead wish to predict a non-numerical value—that is, a categorical
+or qualitative output. For example, in Chapter 4 we examine a stock market
+data set that contains the daily movements in the Standard & Poor’s 500
+(S&P) stock index over a 5-year period between 2001 and 2005. We refer
+to this as the Smarket data. The goal is to predict whether the index will
+increase or decrease on a given day, using the past 5 days’ percentage
+changes in the index. Here the statistical learning problem does not involve
+predicting a numerical value. Instead it involves predicting whether a given
+
+1. Introduction
+
+Up
+
+0
+
+2
+
+4
+
+6
+Up
+
+−2
+
+Percentage change in S&P
+Down
+
+Today’s Direction
+
+−4
+
+4
+2
+0
+−2
+
+Percentage change in S&P
+Down
+
+Today’s Direction
+
+−4
+
+4
+2
+0
+−2
+−4
+
+Percentage change in S&P
+
+Three Days Previous
+
+6
+
+Two Days Previous
+
+6
+
+Yesterday
+
+3
+
+Down
+
+Up
+
+Today’s Direction
+
+FIGURE 1.2. Left: Boxplots of the previous day’s percentage change in the S&P
+index for the days for which the market increased or decreased, obtained from the
+Smarket data. Center and Right: Same as left panel, but the percentage changes
+for 2 and 3 days previous are shown.
+
+day’s stock market performance will fall into the Up bucket or the Down
+bucket. This is known as a classification problem. A model that could
+accurately predict the direction in which the market will move would be
+very useful!
+The left-hand panel of Figure 1.2 displays two boxplots of the previous
+day’s percentage changes in the stock index: one for the 648 days for which
+the market increased on the subsequent day, and one for the 602 days for
+which the market decreased. The two plots look almost identical, suggesting that there is no simple strategy for using yesterday’s movement in the
+S&P to predict today’s returns. The remaining panels, which display boxplots for the percentage changes 2 and 3 days previous to today, similarly
+indicate little association between past and present returns. Of course, this
+lack of pattern is to be expected: in the presence of strong correlations between successive days’ returns, one could adopt a simple trading strategy
+to generate profits from the market. Nevertheless, in Chapter 4, we explore
+these data using several different statistical learning methods. Interestingly,
+there are hints of some weak trends in the data that suggest that, at least
+for this 5-year period, it is possible to correctly predict the direction of
+movement in the market approximately 60% of the time (Figure 1.3).
+
+Gene Expression Data
+The previous two applications illustrate data sets with both input and
+output variables. However, another important class of problems involves
+situations in which we only observe input variables, with no corresponding
+output. For example, in a marketing setting, we might have demographic
+information for a number of current or potential customers. We may wish to
+understand which types of customers are similar to each other by grouping
+individuals according to their observed characteristics. This is known as a
+
+1. Introduction
+
+0.50
+0.48
+0.46
+
+Predicted Probability
+
+0.52
+
+4
+
+Down
+
+Up
+
+Today’s Direction
+
+FIGURE 1.3. We fit a quadratic discriminant analysis model to the subset
+of the Smarket data corresponding to the 2001–2004 time period, and predicted
+the probability of a stock market decrease using the 2005 data. On average, the
+predicted probability of decrease is higher for the days in which the market does
+decrease. Based on these results, we are able to correctly predict the direction of
+movement in the market 60% of the time.
+
+clustering problem. Unlike in the previous examples, here we are not trying
+to predict an output variable.
+We devote Chapter 12 to a discussion of statistical learning methods
+for problems in which no natural output variable is available. We consider
+the NCI60 data set, which consists of 6,830 gene expression measurements
+for each of 64 cancer cell lines. Instead of predicting a particular output
+variable, we are interested in determining whether there are groups, or
+clusters, among the cell lines based on their gene expression measurements.
+This is a difficult question to address, in part because there are thousands
+of gene expression measurements per cell line, making it hard to visualize
+the data.
+The left-hand panel of Figure 1.4 addresses this problem by representing each of the 64 cell lines using just two numbers, Z1 and Z2 . These
+are the first two principal components of the data, which summarize the
+6,830 expression measurements for each cell line down to two numbers or
+dimensions. While it is likely that this dimension reduction has resulted in
+some loss of information, it is now possible to visually examine the data
+for evidence of clustering. Deciding on the number of clusters is often a
+difficult problem. But the left-hand panel of Figure 1.4 suggests at least
+four groups of cell lines, which we have represented using separate colors.
+In this particular data set, it turns out that the cell lines correspond
+to 14 different types of cancer. (However, this information was not used
+to create the left-hand panel of Figure 1.4.) The right-hand panel of Figure 1.4 is identical to the left-hand panel, except that the 14 cancer types
+are shown using distinct colored symbols. There is clear evidence that cell
+lines with the same cancer type tend to be located near each other in this
+two-dimensional representation. In addition, even though the cancer information was not used to produce the left-hand panel, the clustering obtained
+does bear some resemblance to some of the actual cancer types observed
+in the right-hand panel. This provides some independent verification of the
+accuracy of our clustering analysis.
+
+Z2
+
+−20
+
+0
+
+20
+
+5
+
+−60
+
+−40
+
+−20
+−60
+
+−40
+
+Z2
+
+0
+
+20
+
+1. Introduction
+
+−40
+
+−20
+
+0
+
+20
+
+40
+
+60
+
+−40
+
+−20
+
+Z1
+
+0
+
+20
+
+40
+
+60
+
+Z1
+
+FIGURE 1.4. Left: Representation of the NCI60 gene expression data set in
+a two-dimensional space, Z1 and Z2 . Each point corresponds to one of the 64
+cell lines. There appear to be four groups of cell lines, which we have represented
+using different colors. Right: Same as left panel except that we have represented
+each of the 14 different types of cancer using a different colored symbol. Cell lines
+corresponding to the same cancer type tend to be nearby in the two-dimensional
+space.
+
+A Brief History of Statistical Learning
+Though the term statistical learning is fairly new, many of the concepts that
+underlie the field were developed long ago. At the beginning of the nineteenth century, the method of least squares was developed, implementing
+the earliest form of what is now known as linear regression. The approach
+was first successfully applied to problems in astronomy. Linear regression
+is used for predicting quantitative values, such as an individual’s salary.
+In order to predict qualitative values, such as whether a patient survives
+or dies, or whether the stock market increases or decreases, linear discriminant analysis was proposed in 1936. In the 1940s, various authors put
+forth an alternative approach, logistic regression. In the early 1970s, the
+term generalized linear model was developed to describe an entire class of
+statistical learning methods that include both linear and logistic regression
+as special cases.
+By the end of the 1970s, many more techniques for learning from data
+were available. However, they were almost exclusively linear methods because fitting non-linear relationships was computationally difficult at the
+time. By the 1980s, computing technology had finally improved sufficiently
+that non-linear methods were no longer computationally prohibitive. In
+the mid 1980s, classification and regression trees were developed, followed
+shortly by generalized additive models. Neural networks gained popularity
+in the 1980s, and support vector machines arose in the 1990s.
+Since that time, statistical learning has emerged as a new subfield in
+statistics, focused on supervised and unsupervised modeling and prediction.
+In recent years, progress in statistical learning has been marked by the
+increasing availability of powerful and relatively user-friendly software, such
+as the popular and freely available Python system. This has the potential to
+continue the transformation of the field from a set of techniques used and
+
+6
+
+1. Introduction
+
+developed by statisticians and computer scientists to an essential toolkit
+for a much broader community.
+
+This Book
+The Elements of Statistical Learning (ESL) by Hastie, Tibshirani, and
+Friedman was first published in 2001. Since that time, it has become an
+important reference on the fundamentals of statistical machine learning.
+Its success derives from its comprehensive and detailed treatment of many
+important topics in statistical learning, as well as the fact that (relative to
+many upper-level statistics textbooks) it is accessible to a wide audience.
+However, the greatest factor behind the success of ESL has been its topical
+nature. At the time of its publication, interest in the field of statistical
+learning was starting to explode. ESL provided one of the first accessible
+and comprehensive introductions to the topic.
+Since ESL was first published, the field of statistical learning has continued to flourish. The field’s expansion has taken two forms. The most
+obvious growth has involved the development of new and improved statistical learning approaches aimed at answering a range of scientific questions
+across a number of fields. However, the field of statistical learning has
+also expanded its audience. In the 1990s, increases in computational power
+generated a surge of interest in the field from non-statisticians who were
+eager to use cutting-edge statistical tools to analyze their data. Unfortunately, the highly technical nature of these approaches meant that the user
+community remained primarily restricted to experts in statistics, computer
+science, and related fields with the training (and time) to understand and
+implement them.
+In recent years, new and improved software packages have significantly
+eased the implementation burden for many statistical learning methods.
+At the same time, there has been growing recognition across a number of
+fields, from business to health care to genetics to the social sciences and
+beyond, that statistical learning is a powerful tool with important practical
+applications. As a result, the field has moved from one of primarily academic
+interest to a mainstream discipline, with an enormous potential audience.
+This trend will surely continue with the increasing availability of enormous
+quantities of data and the software to analyze it.
+The purpose of An Introduction to Statistical Learning (ISL) is to facilitate the transition of statistical learning from an academic to a mainstream
+field. ISL is not intended to replace ESL, which is a far more comprehensive text both in terms of the number of approaches considered and the
+depth to which they are explored. We consider ESL to be an important
+companion for professionals (with graduate degrees in statistics, machine
+learning, or related fields) who need to understand the technical details
+behind statistical learning approaches. However, the community of users of
+statistical learning techniques has expanded to include individuals with a
+wider range of interests and backgrounds. Therefore, there is a place for a
+less technical and more accessible version of ESL.
+
+1. Introduction
+
+7
+
+In teaching these topics over the years, we have discovered that they are
+of interest t

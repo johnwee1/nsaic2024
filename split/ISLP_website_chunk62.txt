@@ -1,0 +1,754 @@
+e, since the publicly-trained model gets
+updated periodically.
+
+10.4 Document Classification
+
+flamingo
+flamingo
+0.83
+spoonbill
+0.17
+white stork
+0.00
+Lhasa Apso
+Tibetan terrier 0.56
+Lhasa
+0.32
+cocker spaniel
+0.03
+
+Cooper’s hawk
+kite
+great grey owl
+robin
+cat
+Old English sheepdog
+Shih-Tzu
+Persian cat
+
+0.60
+0.09
+0.06
+0.82
+0.04
+0.04
+
+413
+
+Cooper’s hawk
+fountain 0.35
+nail
+0.12
+hook
+0.07
+Cape weaver
+jacamar 0.28
+macaw
+0.12
+robin
+0.12
+
+FIGURE 10.10. Classification of six photographs using the resnet50 CNN
+trained on the imagenet corpus. The table below the images displays the true
+(intended) label at the top of each panel, and the top three choices of the classifier
+(out of 100). The numbers are the estimated probabilities for each choice. (A kite
+is a raptor, but not a hawk.)
+
+The vignettes and book12 that accompany the keras package give more
+details on such applications.
+
+10.4
+
+Document Classification
+
+In this section we introduce a new type of example that has important
+applications in industry and science: predicting attributes of documents.
+Examples of documents include articles in medical journals, Reuters news
+feeds, emails, tweets, and so on. Our example will be IMDb (Internet Movie
+Database) ratings — short documents where viewers have written critiques
+of movies.13 The response in this case is the sentiment of the review, which
+will be positive or negative.
+12 Deep Learning with R by F. Chollet and J.J. Allaire, 2018, Manning Publications.
+
+13 For details, see Maas et al. (2011) “Learning word vectors for sentiment analysis”,
+in Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics: Human Language Technologies, pages 142–150.
+
+414
+
+10. Deep Learning
+
+Here is the beginning of a rather amusing negative review:
+This has to be one of the worst films of the 1990s. When my
+friends & I were watching this film (being the target audience it
+was aimed at) we just sat & watched the first half an hour with
+our jaws touching the floor at how bad it really was. The rest
+of the time, everyone else in the theater just started talking to
+each other, leaving or generally crying into their popcorn . . .
+Each review can be a different length, include slang or non-words, have
+spelling errors, etc. We need to find a way to featurize such a document.
+featurize
+This is modern parlance for defining a set of predictors.
+The simplest and most common featurization is the bag-of-words model.
+bag-of-words
+We score each document for the presence or absence of each of the words in
+a language dictionary — in this case an English dictionary. If the dictionary
+contains M words, that means for each document we create a binary feature
+vector of length M , and score a 1 for every word present, and 0 otherwise.
+That can be a very wide feature vector, so we limit the dictionary — in
+this case to the 10,000 most frequently occurring words in the training
+corpus of 25,000 reviews. Fortunately there are nice tools for doing this
+automatically. Here is the beginning of a positive review that has been
+redacted in this way:
+4START 5 this film was just brilliant casting location scenery
+story direction everyone’s really suited the part they played and
+you could just imagine being there robert 4UNK 5 is an amazing
+actor and now the same being director 4UNK 5 father came from
+the same scottish island as myself so i loved . . .
+Here we can see many words have been omitted, and some unknown words
+(UNK) have been marked as such. With this reduction the binary feature
+vector has length 10,000, and consists mostly of 0’s and a smattering of 1’s
+in the positions corresponding to words that are present in the document.
+We have a training set and test set, each with 25,000 examples, and each
+balanced with regard to sentiment. The resulting training feature matrix X
+has dimension 25,000 × 10,000, but only 1.3% of the binary entries are nonzero. We call such a matrix sparse, because most of the values are the same
+(zero in this case); it can be stored efficiently in sparse matrix format.14 sparse
+There are a variety of ways to account for the document length; here we matrix
+only score a word as in or out of the document, but for example one could format
+instead record the relative frequency of words. We split off a validation set
+of size 2,000 from the 25,000 training observations (for model tuning), and
+fit two model sequences:
+• A lasso logistic regression using the glmnet package;
+• A two-class neural network with two hidden layers, each with 16
+ReLU units.
+14 Rather than store the whole matrix, we can store instead the location and values for
+the nonzero entries. In this case, since the nonzero entries are all 1, just the locations
+are stored.
+
+10.4 Document Classification
+
+●
+
+0.6
+
+●
+
+●●●●●●
+
+●
+
+4
+●
+●
+
+6
+
+8
+
+train
+validation
+test
+10
+
+1.0
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+0.8
+
+0.9
+
+●
+
+●
+●
+
+●
+●
+●
+
+●
+●
+
+●
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+●
+
+●
+●
+
+●
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+●
+
+0.7
+
+●
+●●
+●●
+●●
+●●
+●
+●
+
+●
+
+●
+
+0.6
+
+0.8
+
+0.9
+
+●●●●●●●●
+●●●●●●●●
+●●●
+●●
+●●
+●●
+●●
+●●
+●
+●●
+●●
+●●
+●●
+●●
+●●
+●●
+●●
+●
+●
+●●●
+●●●●●●●●●●●●●●
+●●
+●● ●●●●●●●●●
+●●●●●●●●
+●●●●● ●●●●●●●●●●
+●● ●●
+●●
+●●
+● ●●
+●●●●●
+●●
+●●●●●
+●●
+●
+●●
+●●●●
+●●●
+●●
+●●●●● ●●●●●●●●
+●●
+●●
+●●
+●●●●●●●●●
+●●
+●●●
+●●●
+●
+●●
+●●●
+●
+●
+●
+●●
+●●
+●●
+●
+●
+●
+●●●
+●
+●●
+●
+●
+●
+●●●
+●●
+●●
+●●
+●●●
+●●
+●
+●●
+●●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+●
+
+0.7
+
+Accuracy
+
+Neural Net
+
+Accuracy
+
+1.0
+
+Lasso
+
+415
+
+5
+
+12
+
+− log(λ)
+
+10
+
+15
+
+20
+
+Epochs
+
+FIGURE 10.11. Accuracy of the lasso and a two-hidden-layer neural network
+on the IMDb data. For the lasso, the x-axis displays − log(λ), while for the neural
+network it displays epochs (number of times the fitting algorithm passes through
+the training set). Both show a tendency to overfit, and achieve approximately the
+same test accuracy.
+
+Both methods produce a sequence of solutions. The lasso sequence is indexed by the regularization parameter λ. The neural-net sequence is indexed by the number of gradient-descent iterations used in the fitting,
+as measured by training epochs or passes through the training set (Section 10.7). Notice that the training accuracy in Figure 10.11 (black points)
+increases monotonically in both cases. We can use the validation error to
+pick a good solution from each sequence (blue points in the plots), which
+would then be used to make predictions on the test data set.
+Note that a two-class neural network amounts to a nonlinear logistic
+regression model. From (10.12) and (10.13) we can see that
+*
++
+Pr(Y = 1|X)
+log
+= Z1 − Z0
+(10.15)
+Pr(Y = 0|X)
+=
+
+(β10 − β00 ) +
+
+K2
+0
+$=1
+
+(2)
+
+(β1$ − β0$ )A$ .
+
+(This shows the redundancy in the softmax function; for K classes we
+really only need to estimate K − 1 sets of coefficients. See Section 4.3.5.) In
+Figure 10.11 we show accuracy (fraction correct) rather than classification accuracy
+error (fraction incorrect), the former being more popular in the machine
+learning community. Both models achieve a test-set accuracy of about 88%.
+The bag-of-words model summarizes a document by the words present,
+and ignores their context. There are at least two popular ways to take the
+context into account:
+• The bag-of-n-grams model. For example, a bag of 2-grams records
+
+bag-of-ngrams
+
+416
+
+10. Deep Learning
+
+the consecutive co-occurrence of every distinct pair of words. “Blissfully long” can be seen as a positive phrase in a movie review, while
+“blissfully short” a negative.
+• Treat the document as a sequence, taking account of all the words in
+the context of those that preceded and those that follow.
+In the next section we explore models for sequences of data, which have
+applications in weather forecasting, speech recognition, language translation, and time-series prediction, to name a few. We continue with this IMDb
+example there.
+
+10.5
+
+Recurrent Neural Networks
+
+Many data sources are sequential in nature, and call for special treatment
+when building predictive models. Examples include:
+• Documents such as book and movie reviews, newspaper articles, and
+tweets. The sequence and relative positions of words in a document
+capture the narrative, theme and tone, and can be exploited in tasks
+such as topic classification, sentiment analysis, and language translation.
+• Time series of temperature, rainfall, wind speed, air quality, and so
+on. We may want to forecast the weather several days ahead, or climate several decades ahead.
+• Financial time series, where we track market indices, trading volumes,
+stock and bond prices, and exchange rates. Here prediction is often
+difficult, but as we will see, certain indices can be predicted with
+reasonable accuracy.
+• Recorded speech, musical recordings, and other sound recordings. We
+may want to give a text transcription of a speech, or perhaps a language translation. We may want to assess the quality of a piece of
+music, or assign certain attributes.
+• Handwriting, such as doctor’s notes, and handwritten digits such as
+zip codes. Here we want to turn the handwriting into digital text, or
+read the digits (optical character recognition).
+In a recurrent neural network (RNN), the input object X is a sequence. recurrent
+Consider a corpus of documents, such as the collection of IMDb movie re- neural
+views. Each document can be represented as a sequence of L words, so network
+X = {X1 , X2 , . . . , XL }, where each X$ represents a word. The order of
+the words, and closeness of certain words in a sentence, convey semantic
+meaning. RNNs are designed to accommodate and take advantage of the
+sequential nature of such input objects, much like convolutional neural networks accommodate the spatial structure of image inputs. The output Y
+can also be a sequence (such as in language translation), but often is a
+scalar, like the binary sentiment label of a movie review document.
+
+10.5 Recurrent Neural Networks
+Y
+
+417
+
+Y
+
+O!
+
+O1
+
+B
+
+B
+U
+
+A!
+W
+
+X!
+
+O2
+
+=
+
+A1
+W
+
+X1
+
+O3
+
+B
+U
+
+A2
+
+OL-1
+
+B
+U
+
+A3
+
+W
+
+X2
+
+W
+
+X3
+
+OL
+
+B
+U
+
+...
+
+AL-1
+
+B
+U
+
+W
+
+XL-1
+
+AL
+W
+
+XL
+
+FIGURE 10.12. Schematic of a simple recurrent neural network. The input is a
+sequence of vectors {X" }L
+1 , and here the target is a single response. The network
+processes the input sequence X sequentially; each X" feeds into the hidden layer,
+which also has as input the activation vector A"−1 from the previous element in
+the sequence, and produces the current activation vector A" . The same collections
+of weights W, U and B are used as each element of the sequence is processed. The
+output layer produces a sequence of predictions O" from the current activation
+A" , but typically only the last of these, OL , is of relevance. To the left of the equal
+sign is a concise representation of the network, which is unrolled into a more
+explicit version on the right.
+
+Figure 10.12 illustrates the structure of a very basic RNN with a sequence
+X = {X1 , X2 , . . . , XL } as input, a simple output Y , and a hidden-layer
+sequence {A$ }L
+1 = {A1 , A2 , . . . , AL }. Each X$ is a vector; in the document
+example X$ could represent a one-hot encoding for the %th word based on
+the language dictionary for the corpus (see the top panel in Figure 10.13
+for a simple example). As the sequence is processed one vector X$ at a
+time, the network updates the activations A$ in the hidden layer, taking
+as input the vector X$ and the activation vector A$−1 from the previous
+step in the sequence. Each A$ feeds into the output layer and produces a
+prediction O$ for Y . OL , the last of these, is the most relevant.
+In detail, suppose each vector X$ of the input sequence has p components
+X$T = (X$1 , X$2 , . . . , X$p ), and the hidden layer consists of K units AT$ =
+(A$1 , A$2 , . . . , A$K ). As in Figure 10.4, we represent the collection of K ×
+(p + 1) shared weights wkj for the input layer by a matrix W, and similarly
+U is a K × K matrix of the weights uks for the hidden-to-hidden layers,
+and B is a K + 1 vector of weights βk for the output layer. Then
+p
+K
+1
+2
+0
+0
+A$k = g wk0 +
+wkj X$j +
+uks A$−1,s ,
+
+(10.16)
+
+s=1
+
+j=1
+
+and the output O$ is computed as
+
+O$ = β0 +
+
+K
+0
+
+βk A$k
+
+(10.17)
+
+k=1
+
+for a quantitative response, or with an additional sigmoid activation function for a binary response, for example. Here g(·) is an activation function
+such as ReLU. Notice that the same weights W, U and B are used as we
+
+418
+
+10. Deep Learning
+
+process each element in the sequence, i.e. they are not functions of %. This
+is a form of weight sharing used by RNNs, and similar to the use of filters
+weight
+in convolutional neural networks (Section 10.3.1.) As we proceed from be- sharing
+ginning to end, the activations A$ accumulate a history of what has been
+seen before, so that the learned context can be used for prediction.
+For regression problems the loss function for an observation (X, Y ) is
+(10.18)
+
+(Y − OL )2 ,
+
+)K
+
+which only references the final output OL = β0 + k=1 βk ALk . Thus O1 , O2 ,
+. . . , OL−1 are not used. When we fit the model, each element X$ of the input
+sequence X contributes to OL via the chain (10.16), and hence contributes
+indirectly to learning the shared parameters W, U and B via the loss
+(10.18). With n input sequence/response pairs (xi , yi ), the parameters are
+found by minimizing the sum of squares
+n
+0
+i=1
+
+(yi −oiL )2 =
+
+n 1
+0
+i=1
+
+p
+K
+K
+0
+0
+0
+'
+'
+((22
+yi − β 0 +
+βk g wk0 +
+wkj xiLj +
+uks ai,L−1,s
+.
+k=1
+
+j=1
+
+s=1
+
+(10.19)
+Here we use lowercase letters for the observed yi and vector sequences
+xi = {xi1 , xi2 , . . . , xiL },15 as well as the derived activations.
+Since the intermediate outputs O$ are not used, one may well ask why
+they are there at all. First of all, they come for free, since they use the same
+output weights B needed to produce OL , and provide an evolving prediction
+for the output. Furthermore, for some learning tasks the response is also a
+sequence, and so the output sequence {O1 , O2 , . . . , OL } is explicitly needed.
+When used at full strength, recurrent neural networks can be quite complex. We illustrate their use in two simple applications. In the first, we
+continue with the IMDb sentiment analysis of the previous section, where
+we process the words in the reviews sequentially. In the second application,
+we illustrate their use in a financial time series forecasting problem.
+
+10.5.1
+
+Sequential Models for Document Classification
+
+Here we return to our classification task with the IMDb reviews. Our approach in Section 10.4 was to use the bag-of-words model. Here the plan
+is to use instead the sequence of words occurring in a document to make
+predictions about the label for the entire document.
+We have, however, a dimensionality problem: each word in our document
+is represented by a one-hot-encoded vector (dummy variable) with 10,000
+elements (one per word in the dictionary)! An approach that has become
+popular is to represent each word in a much lower-dimensional embedding
+embedding
+space. This means that rather than representing each word by a binary
+vector with 9,999 zeros and a single one in some position, we will represent
+it instead by a set of m real numbers, none of which are typically zero. Here
+m is the embedding dimension, and can be in the low 100s, or even less.
+This means (in our case) that we need a matrix E of dimension m × 10,000,
+15 This is a sequence of vectors; each element x
+
+i" is a p-vector.
+
+419
+
+day
+
+fall
+
+one
+
+starts
+
+film
+
+the
+
+ever
+
+seen
+
+have
+
+I
+
+the
+
+best
+
+actually
+
+films
+
+the
+
+best
+
+of
+
+one
+
+is
+
+Embed
+
+this
+
+One−hot
+
+10.5 Recurrent Neural Networks
+
+FIGURE 10.13. Depiction of a sequence of 20 words representing a single

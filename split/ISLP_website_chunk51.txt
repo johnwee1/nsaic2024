@@ -1,0 +1,571 @@
+n
+prune it back in order to obtain a subtree. How do we determine the best prune
+way to prune the tree? Intuitively, our goal is to select a subtree that subtree
+leads to the lowest test error rate. Given a subtree, we can estimate its
+test error using cross-validation or the validation set approach. However,
+estimating the cross-validation error for every possible subtree would be too
+cumbersome, since there is an extremely large number of possible subtrees.
+Instead, we need a way to select a small set of subtrees for consideration.
+Cost complexity pruning—also known as weakest link pruning—gives us cost
+a way to do just this. Rather than considering every possible subtree, we complexity
+consider a sequence of trees indexed by a nonnegative tuning parameter α. pruning
+For each value of α there corresponds a subtree T ⊂ T0 such that
+weakest link
+|T |
+0
+
+pruning
+
+0
+
+m=1 i: xi ∈Rm
+
+(yi − ŷRm )2 + α|T |
+
+(8.4)
+
+is as small as possible. Here |T | indicates the number of terminal nodes
+of the tree T , Rm is the rectangle (i.e. the subset of predictor space) corresponding to the mth terminal node, and ŷRm is the predicted response
+associated with Rm —that is, the mean of the training observations in Rm .
+The tuning parameter α controls a trade-off between the subtree’s complexity and its fit to the training data. When α = 0, then the subtree T
+will simply equal T0 , because then (8.4) just measures the training error.
+However, as α increases, there is a price to pay for having a tree with
+many terminal nodes, and so the quantity (8.4) will tend to be minimized
+for a smaller subtree. Equation 8.4 is reminiscent of the lasso (6.7) from
+Chapter 6, in which a similar formulation was used in order to control the
+complexity of a linear model.
+It turns out that as we increase α from zero in (8.4), branches get pruned
+from the tree in a nested and predictable fashion, so obtaining the whole
+sequence of subtrees as a function of α is easy. We can select a value of
+α using a validation set or using cross-validation. We then return to the
+full data set and obtain the subtree corresponding to α. This process is
+summarized in Algorithm 8.1.
+Figures 8.4 and 8.5 display the results of fitting and pruning a regression
+tree on the Hitters data, using nine of the features. First, we randomly
+divided the data set in half, yielding 132 observations in the training set
+and 131 observations in the test set. We then built a large regression tree
+on the training data and varied α in (8.4) in order to create subtrees with
+different numbers of terminal nodes. Finally, we performed six-fold crossvalidation in order to estimate the cross-validated MSE of the trees as
+
+8.1 The Basics of Decision Trees
+
+337
+
+Algorithm 8.1 Building a Regression Tree
+1. Use recursive binary splitting to grow a large tree on the training
+data, stopping only when each terminal node has fewer than some
+minimum number of observations.
+2. Apply cost complexity pruning to the large tree in order to obtain a
+sequence of best subtrees, as a function of α.
+3. Use K-fold cross-validation to choose α. That is, divide the training
+observations into K folds. For each k = 1, . . . , K:
+(a) Repeat Steps 1 and 2 on all but the kth fold of the training data.
+(b) Evaluate the mean squared prediction error on the data in the
+left-out kth fold, as a function of α.
+Average the results for each value of α, and pick α to minimize the
+average error.
+4. Return the subtree from Step 2 that corresponds to the chosen value
+of α.
+a function of α. (We chose to perform six-fold cross-validation because
+132 is an exact multiple of six.) The unpruned regression tree is shown
+in Figure 8.4. The green curve in Figure 8.5 shows the CV error as a
+function of the number of leaves,2 while the orange curve indicates the
+test error. Also shown are standard error bars around the estimated errors.
+For reference, the training error curve is shown in black. The CV error
+is a reasonable approximation of the test error: the CV error takes on its
+minimum for a three-node tree, while the test error also dips down at the
+three-node tree (though it takes on its lowest value at the ten-node tree).
+The pruned tree containing three terminal nodes is shown in Figure 8.1.
+
+8.1.2
+
+Classification Trees
+
+A classification tree is very similar to a regression tree, except that it is
+classification
+used to predict a qualitative response rather than a quantitative one. Re- tree
+call that for a regression tree, the predicted response for an observation is
+given by the mean response of the training observations that belong to the
+same terminal node. In contrast, for a classification tree, we predict that
+each observation belongs to the most commonly occurring class of training
+observations in the region to which it belongs. In interpreting the results of
+a classification tree, we are often interested not only in the class prediction
+corresponding to a particular terminal node region, but also in the class
+proportions among the training observations that fall into that region.
+The task of growing a classification tree is quite similar to the task of
+growing a regression tree. Just as in the regression setting, we use recursive
+2 Although CV error is computed as a function of α, it is convenient to display the
+result as a function of |T |, the number of leaves; this is based on the relationship between
+α and |T | in the original tree grown to all the training data.
+
+338
+
+8. Tree-Based Methods
+Years < 4.5
+
+|
+
+RBI < 60.5
+
+Putouts < 82
+
+Hits < 117.5
+
+Years < 3.5
+
+Years < 3.5
+5.394
+
+5.487
+4.622
+
+6.189
+
+5.183
+
+Walks < 43.5
+Runs < 47.5
+6.407
+6.015
+5.571
+
+Walks < 52.5
+6.549
+
+RBI < 80.5
+Years < 6.5
+6.459
+
+7.007
+
+7.289
+
+FIGURE 8.4. Regression tree analysis for the Hitters data. The unpruned tree
+that results from top-down greedy splitting on the training data is shown.
+
+binary splitting to grow a classification tree. However, in the classification
+setting, RSS cannot be used as a criterion for making the binary splits.
+A natural alternative to RSS is the classification error rate. Since we plan
+classification
+to assign an observation in a given region to the most commonly occurring error rate
+class of training observations in that region, the classification error rate is
+simply the fraction of the training observations in that region that do not
+belong to the most common class:
+E = 1 − max(p̂mk ).
+k
+
+(8.5)
+
+Here p̂mk represents the proportion of training observations in the mth
+region that are from the kth class. However, it turns out that classification
+error is not sufficiently sensitive for tree-growing, and in practice two other
+measures are preferable.
+The Gini index is defined by
+G=
+
+K
+0
+
+k=1
+
+p̂mk (1 − p̂mk ),
+
+(8.6)
+
+a measure of total variance across the K classes. It is not hard to see
+that the Gini index takes on a small value if all of the p̂mk ’s are close to
+zero or one. For this reason the Gini index is referred to as a measure of
+
+Gini index
+
+1.0
+
+8.1 The Basics of Decision Trees
+
+339
+
+0.6
+0.4
+0.0
+
+0.2
+
+Mean Squared Error
+
+0.8
+
+Training
+Cross−Validation
+Test
+
+2
+
+4
+
+6
+
+8
+
+10
+
+Tree Size
+
+FIGURE 8.5. Regression tree analysis for the Hitters data. The training,
+cross-validation, and test MSE are shown as a function of the number of terminal
+nodes in the pruned tree. Standard error bands are displayed. The minimum
+cross-validation error occurs at a tree size of three.
+
+node purity—a small value indicates that a node contains predominantly
+observations from a single class.
+An alternative to the Gini index is entropy, given by
+entropy
+D=−
+
+K
+0
+
+p̂mk log p̂mk .
+
+(8.7)
+
+k=1
+
+Since 0 ≤ p̂mk ≤ 1, it follows that 0 ≤ −p̂mk log p̂mk . One can show that
+the entropy will take on a value near zero if the p̂mk ’s are all near zero or
+near one. Therefore, like the Gini index, the entropy will take on a small
+value if the mth node is pure. In fact, it turns out that the Gini index and
+the entropy are quite similar numerically.
+When building a classification tree, either the Gini index or the entropy
+are typically used to evaluate the quality of a particular split, since these
+two approaches are more sensitive to node purity than is the classification
+error rate. Any of these three approaches might be used when pruning the
+tree, but the classification error rate is preferable if prediction accuracy of
+the final pruned tree is the goal.
+Figure 8.6 shows an example on the Heart data set. These data contain a binary outcome HD for 303 patients who presented with chest pain.
+An outcome value of Yes indicates the presence of heart disease based on
+an angiographic test, while No means no heart disease. There are 13 predictors including Age, Sex, Chol (a cholesterol measurement), and other heart
+and lung function measurements. Cross-validation results in a tree with six
+terminal nodes.
+In our discussion thus far, we have assumed that the predictor variables take on continuous values. However, decision trees can be constructed
+even in the presence of qualitative predictor variables. For instance, in the
+Heart data, some of the predictors, such as Sex, Thal (Thallium stress test),
+
+340
+
+8. Tree-Based Methods
+Thal:a
+|
+
+Ca < 0.5
+
+Ca < 0.5
+
+Slope < 1.5
+MaxHR < 161.5
+
+Age < 52
+
+ChestPain:bc
+
+Oldpeak < 1.1
+RestECG < 1
+
+Thal:b
+ChestPain:a
+
+0.6
+
+RestBP < 157
+Chol < 244
+MaxHR < 156
+Yes
+MaxHR < 145.5
+No
+No
+No
+Yes
+
+Yes
+No
+
+Chol < 244
+
+Sex < 0.5
+
+No
+
+No
+
+No
+
+No
+
+Yes
+Yes
+
+No
+No
+
+Yes
+
+Yes
+
+Yes
+
+Thal:a
+|
+
+0.3
+
+Error
+
+0.4
+
+0.5
+
+Training
+Cross−Validation
+Test
+
+Ca < 0.5
+
+0.1
+
+MaxHR < 161.5
+
+0.0
+
+0.2
+
+Ca < 0.5
+
+No
+
+ChestPain:bc
+
+10
+
+Yes
+
+No
+No
+
+5
+
+Yes
+
+Yes
+
+15
+
+Tree Size
+
+FIGURE 8.6. Heart data. Top: The unpruned tree. Bottom Left: Cross-validation error, training, and test error, for different sizes of the pruned tree. Bottom
+Right: The pruned tree corresponding to the minimal cross-validation error.
+
+and ChestPain, are qualitative. Therefore, a split on one of these variables
+amounts to assigning some of the qualitative values to one branch and
+assigning the remaining to the other branch. In Figure 8.6, some of the internal nodes correspond to splitting qualitative variables. For instance, the
+top internal node corresponds to splitting Thal. The text Thal:a indicates
+that the left-hand branch coming out of that node consists of observations
+with the first value of the Thal variable (normal), and the right-hand node
+consists of the remaining observations (fixed or reversible defects). The text
+ChestPain:bc two splits down the tree on the left indicates that the left-hand
+branch coming out of that node consists of observations with the second
+and third values of the ChestPain variable, where the possible values are
+typical angina, atypical angina, non-anginal pain, and asymptomatic.
+Figure 8.6 has a surprising characteristic: some of the splits yield two
+terminal nodes that have the same predicted value. For instance, consider
+the split RestECG<1 near the bottom right of the unpruned tree. Regardless
+of the value of RestECG, a response value of Yes is predicted for those ob-
+
+8.1 The Basics of Decision Trees
+
+341
+
+servations. Why, then, is the split performed at all? The split is performed
+because it leads to increased node purity. That is, all 9 of the observations
+corresponding to the right-hand leaf have a response value of Yes, whereas
+7/11 of those corresponding to the left-hand leaf have a response value of
+Yes. Why is node purity important? Suppose that we have a test observation that belongs to the region given by that right-hand leaf. Then we
+can be pretty certain that its response value is Yes. In contrast, if a test
+observation belongs to the region given by the left-hand leaf, then its response value is probably Yes, but we are much less certain. Even though
+the split RestECG<1 does not reduce the classification error, it improves the
+Gini index and the entropy, which are more sensitive to node purity.
+
+8.1.3
+
+Trees Versus Linear Models
+
+Regression and classification trees have a very different flavor from the more
+classical approaches for regression and classification presented in Chapters 3
+and 4. In particular, linear regression assumes a model of the form
+f (X) = β0 +
+
+p
+0
+
+Xj βj ,
+
+(8.8)
+
+j=1
+
+whereas regression trees assume a model of the form
+f (X) =
+
+M
+0
+
+m=1
+
+cm · 1(X∈Rm )
+
+(8.9)
+
+where R1 , . . . , RM represent a partition of feature space, as in Figure 8.3.
+Which model is better? It depends on the problem at hand. If the relationship between the features and the response is well approximated by
+a linear model as in (8.8), then an approach such as linear regression will
+likely work well, and will outperform a method such as a regression tree
+that does not exploit this linear structure. If instead there is a highly nonlinear and complex relationship between the features and the response as
+indicated by model (8.9), then decision trees may outperform classical approaches. An illustrative example is displayed in Figure 8.7. The relative
+performances of tree-based and classical approaches can be assessed by estimating the test error, using either cross-validation or the validation set
+approach (Chapter 5).
+Of course, other considerations beyond simply test error may come into
+play in selecting a statistical learning method; for instance, in certain settings, prediction using a tree may be preferred for the sake of interpretability and visualization.
+
+8.1.4
+
+Advantages and Disadvantages of Trees
+
+Decision trees for regression and classification have a number of advantages
+over the more classical approaches seen in Chapters 3 and 4:
+! Trees are very easy to explain to people. In fact, they are even easier
+to explain than linear regression!
+
+1
+0
+
+X2
+
+−2
+
+−1
+
+0
+−2
+
+−1
+
+X2
+
+1
+
+2
+
+8. Tree-Based Methods
+
+2
+
+342
+
+−2
+
+−1
+
+0
+
+1
+
+2
+
+−2
+
+−1
+
+1
+
+2
+
+1
+
+2
+
+2
+1
+−2
+
+−1
+
+0
+
+X2
+
+1
+0
+−2
+
+−1
+
+X2
+
+0
+X1
+
+2
+
+X1
+
+−2
+
+−1
+
+0
+X1
+
+1
+
+2
+
+−2
+
+−1
+
+0
+X1
+
+FIGURE 8.7. Top Row: A two-dimensional classification example in which the
+true decision boundary is linear, and is indicated by the shaded regions. A classical
+approach that assumes a linear boundary (left) will outperform a decision tree
+that performs splits parallel to the axes (right). Bottom Row: Here the true decision boundary is non-linear. Here a linear model is unable to capture the true
+decision boundary (left), whereas a decision tree is successful (right).
+
+! Some people believe that decision trees more closely mirror human
+decision-making than do the regression and classification approaches
+seen in previous chapters.
+! Trees can be displayed graphically, and are easily interpreted even by
+a non-expert (especially if they are small).
+! Trees can easily handle qualitative predictors without the need to
+create dummy variables.
+# Unfortunately, trees generally do not have the same level of predictive
+accuracy as some of the other regression and classification approaches
+seen in this book.
+# Additionally, trees can be very non-robust. In other words, a small
+change in the data can cause a large change in the final estimated
+tree.
+However, by aggregating many decision trees, using methods like bagging,
+random forests, and boosting, the predictive performance of trees can be
+substantially improved. We introduce these concepts in the next section.
+
+8.2 Bagging, Random Forests, Boosting, and Bayesian Additive Regression Trees
+
+8.2
+
+343
+
+Bagging, Random Forests, Boosting, and
+Bayesian Additive Regression Trees
+
+An ensemble method is an approach that combines many simple “building
+ensemble
+block” models in order to obtain

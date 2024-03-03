@@ -1,0 +1,459 @@
+; in fact one property of the fitted linear model is
+that it maximizes this correlation among all possible linear models.
+An R2 value close to 1 indicates that the model explains a large portion of the variance in the response variable. As an example, we saw in
+Table 3.6 that for the Advertising data, the model that uses all three advertising media to predict sales has an R2 of 0.8972. On the other hand,
+the model that uses only TV and radio to predict sales has an R2 value
+of 0.89719. In other words, there is a small increase in R2 if we include
+newspaper advertising in the model that already contains TV and radio
+advertising, even though we saw earlier that the p-value for newspaper advertising in Table 3.4 is not significant. It turns out that R2 will always
+increase when more variables are added to the model, even if those variables are only weakly associated with the response. This is due to the fact
+that adding another variable always results in a decrease in the residual
+sum of squares on the training data (though not necessarily the testing
+data). Thus, the R2 statistic, which is also computed on the training data,
+must increase. The fact that adding newspaper advertising to the model
+containing only TV and radio advertising leads to just a tiny increase in
+R2 provides additional evidence that newspaper can be dropped from the
+model. Essentially, newspaper provides no real improvement in the model
+fit to the training samples, and its inclusion will likely lead to poor results
+on independent test samples due to overfitting.
+By contrast, the model containing only TV as a predictor had an R2 of
+0.61 (Table 3.2). Adding radio to the model leads to a substantial improvement in R2 . This implies that a model that uses TV and radio expenditures
+to predict sales is substantially better than one that uses only TV advertising. We could further quantify this improvement by looking at the p-value
+for the radio coefficient in a model that contains only TV and radio as
+predictors.
+The model that contains only TV and radio as predictors has an RSE
+of 1.681, and the model that also contains newspaper as a predictor has
+an RSE of 1.686 (Table 3.6). In contrast, the model that contains only TV
+has an RSE of 3.26 (Table 3.2). This corroborates our previous conclusion
+that a model that uses TV and radio expenditures to predict sales is much
+more accurate (on the training data) than one that only uses TV spending.
+Furthermore, given that TV and radio expenditures are used as predictors,
+there is no point in also using newspaper spending as a predictor in the
+model. The observant reader may wonder how RSE can increase when
+newspaper is added to the model given that RSS must decrease. In general
+RSE is defined as
+9
+1
+RSE =
+RSS,
+(3.25)
+n−p−1
+
+3.2 Multiple Linear Regression
+
+89
+
+Sales
+
+TV
+Radio
+
+FIGURE 3.5. For the Advertising data, a linear regression fit to sales using
+TV and radio as predictors. From the pattern of the residuals, we can see that
+there is a pronounced non-linear relationship in the data. The positive residuals
+(those visible above the surface), tend to lie along the 45-degree line, where TV
+and Radio budgets are split evenly. The negative residuals (most not visible), tend
+to lie away from this line, where budgets are more lopsided.
+
+which simplifies to (3.15) for a simple linear regression. Thus, models with
+more variables can have higher RSE if the decrease in RSS is small relative
+to the increase in p.
+In addition to looking at the RSE and R2 statistics just discussed, it
+can be useful to plot the data. Graphical summaries can reveal problems
+with a model that are not visible from numerical statistics. For example,
+Figure 3.5 displays a three-dimensional plot of TV and radio versus sales.
+We see that some observations lie above and some observations lie below
+the least squares regression plane. In particular, the linear model seems to
+overestimate sales for instances in which most of the advertising money
+was spent exclusively on either TV or radio. It underestimates sales for
+instances where the budget was split between the two media. This pronounced non-linear pattern suggests a synergy or interaction effect between
+interaction
+the advertising media, whereby combining the media together results in a
+bigger boost to sales than using any single medium. In Section 3.3.2, we
+will discuss extending the linear model to accommodate such synergistic
+effects through the use of interaction terms.
+Four: Predictions
+Once we have fit the multiple regression model, it is straightforward to
+apply (3.21) in order to predict the response Y on the basis of a set of
+values for the predictors X1 , X2 , . . . , Xp . However, there are three sorts of
+uncertainty associated with this prediction.
+1. The coefficient estimates β̂0 , β̂1 , . . . , β̂p are estimates for β0 , β1 , . . . , βp .
+That is, the least squares plane
+Ŷ = β̂0 + β̂1 X1 + · · · + β̂p Xp
+
+90
+
+3. Linear Regression
+
+is only an estimate for the true population regression plane
+f (X) = β0 + β1 X1 + · · · + βp Xp .
+The inaccuracy in the coefficient estimates is related to the reducible
+error from Chapter 2. We can compute a confidence interval in order
+to determine how close Ŷ will be to f (X).
+2. Of course, in practice assuming a linear model for f (X) is almost
+always an approximation of reality, so there is an additional source of
+potentially reducible error which we call model bias. So when we use a
+linear model, we are in fact estimating the best linear approximation
+to the true surface. However, here we will ignore this discrepancy,
+and operate as if the linear model were correct.
+3. Even if we knew f (X)—that is, even if we knew the true values
+for β0 , β1 , . . . , βp —the response value cannot be predicted perfectly
+because of the random error " in the model (3.20). In Chapter 2, we
+referred to this as the irreducible error. How much will Y vary from
+Ŷ ? We use prediction intervals to answer this question. Prediction
+intervals are always wider than confidence intervals, because they
+incorporate both the error in the estimate for f (X) (the reducible
+error) and the uncertainty as to how much an individual point will
+differ from the population regression plane (the irreducible error).
+We use a confidence interval to quantify the uncertainty surrounding
+confidence
+the average sales over a large number of cities. For example, given that interval
+$100,000 is spent on TV advertising and $20,000 is spent on radio advertising
+in each city, the 95 % confidence interval is [10,985, 11,528]. We interpret
+this to mean that 95 % of intervals of this form will contain the true value of
+f (X).9 On the other hand, a prediction interval can be used to quantify the
+prediction
+uncertainty surrounding sales for a particular city. Given that $100,000 is interval
+spent on TV advertising and $20,000 is spent on radio advertising in that city
+the 95 % prediction interval is [7,930, 14,580]. We interpret this to mean
+that 95 % of intervals of this form will contain the true value of Y for this
+city. Note that both intervals are centered at 11,256, but that the prediction
+interval is substantially wider than the confidence interval, reflecting the
+increased uncertainty about sales for a given city in comparison to the
+average sales over many locations.
+
+9 In other words, if we collect a large number of data sets like the Advertising data
+set, and we construct a confidence interval for the average sales on the basis of each
+data set (given $100,000 in TV and $20,000 in radio advertising), then 95 % of these
+confidence intervals will contain the true value of average sales.
+
+3.3 Other Considerations in the Regression Model
+
+91
+
+3.3
+
+Other Considerations in the Regression Model
+
+3.3.1
+
+Qualitative Predictors
+
+In our discussion so far, we have assumed that all variables in our linear
+regression model are quantitative. But in practice, this is not necessarily
+the case; often some predictors are qualitative.
+For example, the Credit data set displayed in Figure 3.6 records variables
+for a number of credit card holders. The response is balance (average credit
+card debt for each individual) and there are several quantitative predictors:
+age, cards (number of credit cards), education (years of education), income
+(in thousands of dollars), limit (credit limit), and rating (credit rating).
+Each panel of Figure 3.6 is a scatterplot for a pair of variables whose identities are given by the corresponding row and column labels. For example,
+the scatterplot directly to the right of the word “Balance” depicts balance
+versus age, while the plot directly to the right of “Age” corresponds to
+age versus cards. In addition to these quantitative variables, we also have
+four qualitative variables: own (house ownership), student (student status),
+status (marital status), and region (East, West or South).
+Predictors with Only Two Levels
+Suppose that we wish to investigate differences in credit card balance between those who own a house and those who don’t, ignoring the other variables for the moment. If a qualitative predictor (also known as a factor)
+factor
+only has two levels, or possible values, then incorporating it into a regreslevel
+sion model is very simple. We simply create an indicator or dummy variable
+dummy
+that takes on two possible numerical values.10 For example, based on the variable
+own variable, we can create a new variable that takes the form
+=
+1
+if ith person owns a house
+xi =
+(3.26)
+0
+if ith person does not own a house,
+and use this variable as a predictor in the regression equation. This results
+in the model
+=
+β0 + β1 + " i
+if ith person owns a house
+yi = β 0 + β 1 x i + " i =
+(3.27)
+β0 + " i
+if ith person does not.
+Now β0 can be interpreted as the average credit card balance among those
+who do not own, β0 + β1 as the average credit card balance among those
+who do own their house, and β1 as the average difference in credit card
+balance between owners and non-owners.
+Table 3.7 displays the coefficient estimates and other information associated with the model (3.27). The average credit card debt for non-owners
+is estimated to be $509.80, whereas owners are estimated to carry $19.73
+in additional debt for a total of $509.80 + $19.73 = $529.53. However, we
+10 In the machine learning community, the creation of dummy variables to handle
+qualitative predictors is known as “one-hot encoding”.
+
+92
+
+3. Linear Regression
+
+40
+
+60
+
+80
+
+100
+
+5
+
+10
+
+15
+
+20
+
+2000
+
+8000
+
+14000
+
+1500
+
+20
+
+80
+
+100
+
+0
+
+500
+
+Balance
+
+6
+
+8
+
+20
+
+40
+
+60
+
+Age
+
+15
+
+20
+
+2
+
+4
+
+Cards
+
+150
+
+5
+
+10
+
+Education
+
+8000
+
+14000
+
+50
+
+100
+
+Income
+
+600
+
+1000
+
+2000
+
+Limit
+
+200
+
+Rating
+
+0
+
+500
+
+1500
+
+2
+
+4
+
+6
+
+8
+
+50
+
+100
+
+150
+
+200
+
+600
+
+1000
+
+FIGURE 3.6. The Credit data set contains information about balance, age,
+cards, education, income, limit, and rating for a number of potential customers.
+
+notice that the p-value for the dummy variable is very high. This indicates
+that there is no statistical evidence of a difference in average credit card
+balance based on house ownership.
+The decision to code owners as 1 and non-owners as 0 in (3.27) is arbitrary, and has no effect on the regression fit, but does alter the interpretation of the coefficients. If we had coded non-owners as 1 and owners as 0, then the estimates for β0 and β1 would have been 529.53 and
+−19.73, respectively, leading once again to a prediction of credit card debt
+of $529.53 − $19.73 = $509.80 for non-owners and a prediction of $529.53
+for owners. Alternatively, instead of a 0/1 coding scheme, we could create
+a dummy variable
+=
+1
+if ith person owns a house
+xi =
+−1
+if ith person does not own a house
+and use this variable in the regression equation. This results in the model
+=
+β0 + β1 + " i
+if ith person owns a house
+yi = β0 +β1 xi +"i =
+β0 − β1 + " i
+if ith person does not own a house.
+
+3.3 Other Considerations in the Regression Model
+
+Intercept
+own[Yes]
+
+Coefficient
+509.80
+19.73
+
+Std. error
+33.13
+46.05
+
+t-statistic
+15.389
+0.429
+
+93
+
+p-value
+< 0.0001
+0.6690
+
+TABLE 3.7. Least squares coefficient estimates associated with the regression
+of balance onto own in the Credit data set. The linear model is given in (3.27).
+That is, ownership is encoded as a dummy variable, as in (3.26).
+
+Now β0 can be interpreted as the overall average credit card balance (ignoring the house ownership effect), and β1 is the amount by which house
+owners and non-owners have credit card balances that are above and below
+the average, respectively.11 In this example, the estimate for β0 is $519.665,
+halfway between the non-owner and owner averages of $509.80 and $529.53.
+The estimate for β1 is $9.865, which is half of $19.73, the average difference
+between owners and non-owners. It is important to note that the final predictions for the credit balances of owners and non-owners will be identical
+regardless of the coding scheme used. The only difference is in the way that
+the coefficients are interpreted.
+Qualitative Predictors with More than Two Levels
+When a qualitative predictor has more than two levels, a single dummy
+variable cannot represent all possible values. In this situation, we can create
+additional dummy variables. For example, for the region variable we create
+two dummy variables. The first could be
+=
+1
+if ith person is from the South
+xi1 =
+(3.28)
+0
+if ith person is not from the South,
+and the second could be
+=
+1
+if ith person is from the West
+xi2 =
+0
+if ith person is not from the West.
+
+(3.29)
+
+Then both of these variables can be used in the regression equation, in
+order to obtain the model
+
+
+β0 +β1 +!i
+yi = β0 +β1 xi1 +β2 xi2 +!i = β0 +β2 +!i
+
+
+β0 +!i
+
+if ith person is from the South
+if ith person is from the West
+if ith person is from the East.
+(3.30)
+
+Now β0 can be interpreted as the average credit card balance for individuals
+from the East, β1 can be interpreted as the difference in the average balance
+between people from the South versus the East, and β2 can be interpreted
+as the difference in the average balance between those from the West versus
+the East. There will always be one fewer dummy variable than the number
+of levels. The level with no dummy variable—East in this example—is
+known as the baseline.
+11 Technically β is half the sum of the average debt for house owners and the average
+0
+debt for non-house owners. Hence, β0 is exactly equal to the overall average only if the
+two groups have an equal number of members.
+
+baseline
+
+94
+
+3. Linear Regression
+
+Intercept
+region[South]
+region[West]
+
+Coefficient
+531.00
+−12.50
+−18.69
+
+Std. error
+46.32
+56.68
+65.02
+
+t-statistic
+11.464
+−0.221
+−0.287
+
+p-value
+< 0.0001
+0.8260
+0.7740
+
+TABLE 3.8. Least squares coefficient estimates associated with the regression of
+balance onto region in the Credit data set. The linear model is given in (3.30).
+That is, region is encoded via two dummy variables (3.28) and (3.29).
+
+From Table 3.8, we see that the estimated balance for the baseline, East,
+is $531.00. It is estimated that those in the South will have $18.69 less
+debt than those in the East, and that those in the West will have $12.50
+less debt than those in the East. However, the p-values associated with the
+coefficient estimates for the two dummy variables are very large, suggesting
+no statistical evidence of a real difference in average credit card balance
+between South and East or between West and East.12 Once again, the
+level selected as the baseline category is arbitrary, and the final predictions
+for each group will be the same regardless

@@ -13,5 +13,5 @@ def extract(pdf_path):
     return str(txt_path)
 
 
-dest = os.path.join("textbooks", "machine_learning_yearning.pdf")
+dest = os.path.join("textbooks", "ISLP_website.pdf")
 extract(dest)

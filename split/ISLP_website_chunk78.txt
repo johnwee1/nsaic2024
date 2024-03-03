@@ -1,0 +1,466 @@
+nown clustering approaches: K-means clustering and hierarchical
+K-means
+clustering. In K-means clustering, we seek to partition the observations clustering
+into a pre-specified number of clusters. On the other hand, in hierarchical hierarchical
+clustering, we do not know in advance how many clusters we want; in fact, clustering
+we end up with a tree-like visual representation of the observations, called
+a dendrogram, that allows us to view at once the clusterings obtained for
+dendrogram
+each possible number of clusters, from 1 to n. There are advantages and
+disadvantages to each of these clustering approaches, which we highlight in
+this chapter.
+In general, we can cluster observations on the basis of the features in
+order to identify subgroups among the observations, or we can cluster features on the basis of the observations in order to discover subgroups among
+the features. In what follows, for simplicity we will discuss clustering observations on the basis of the features, though the converse can be performed
+by simply transposing the data matrix.
+
+12.4.1
+
+K-Means Clustering
+
+K-means clustering is a simple and elegant approach for partitioning a
+data set into K distinct, non-overlapping clusters. To perform K-means
+clustering, we must first specify the desired number of clusters K; then the
+K-means algorithm will assign each observation to exactly one of the K
+clusters. Figure 12.7 shows the results obtained from performing K-means
+clustering on a simulated example consisting of 150 observations in two
+dimensions, using three different values of K.
+The K-means clustering procedure results from a simple and intuitive
+mathematical problem. We begin by defining some notation. Let C1 , . . . , CK
+denote sets containing the indices of the observations in each cluster. These
+sets satisfy two properties:
+1. C1 ∪ C2 ∪ · · · ∪ CK = {1, . . . , n}. In other words, each observation
+belongs to at least one of the K clusters.
+2. Ck ∩ Ck! = ∅ for all k =
+% k $ . In other words, the clusters are nonoverlapping: no observation belongs to more than one cluster.
+
+522
+
+12. Unsupervised Learning
+K=2
+
+K=3
+
+K=4
+
+FIGURE 12.7. A simulated data set with 150 observations in two-dimensional
+space. Panels show the results of applying K-means clustering with different values
+of K, the number of clusters. The color of each observation indicates the cluster
+to which it was assigned using the K-means clustering algorithm. Note that there
+is no ordering of the clusters, so the cluster coloring is arbitrary. These cluster
+labels were not used in clustering; instead, they are the outputs of the clustering
+procedure.
+
+For instance, if the ith observation is in the kth cluster, then i ∈ Ck . The
+idea behind K-means clustering is that a good clustering is one for which the
+within-cluster variation is as small as possible. The within-cluster variation
+for cluster Ck is a measure W (Ck ) of the amount by which the observations
+within a cluster differ from each other. Hence we want to solve the problem
+
+minimize
+C1 ,...,CK
+
+=K
+0
+
+k=1
+
+X
+
+W (Ck ) .
+
+(12.15)
+
+In words, this formula says that we want to partition the observations into
+K clusters such that the total within-cluster variation, summed over all K
+clusters, is as small as possible.
+Solving (12.15) seems like a reasonable idea, but in order to make it
+actionable we need to define the within-cluster variation. There are many
+possible ways to define this concept, but by far the most common choice
+involves squared Euclidean distance. That is, we define
+W (Ck ) =
+
+p
+0 0
+1
+(xij − xi! j )2 ,
+|Ck | !
+j=1
+
+(12.16)
+
+i,i ∈Ck
+
+where |Ck | denotes the number of observations in the kth cluster. In other
+words, the within-cluster variation for the kth cluster is the sum of all of
+the pairwise squared Euclidean distances between the observations in the
+kth cluster, divided by the total number of observations in the kth cluster.
+Combining (12.15) and (12.16) gives the optimization problem that defines
+
+12.4 Clustering Methods
+
+523
+
+K-means clustering,
+
+
+p
+K
+0
+
+0 0
+1
+minimize
+(xij − xi! j )2 .
+C1 ,...,CK 
+
+|Ck | !
+j=1
+k=1
+
+(12.17)
+
+i,i ∈Ck
+
+Now, we would like to find an algorithm to solve (12.17)—that is, a
+method to partition the observations into K clusters such that the objective
+of (12.17) is minimized. This is in fact a very difficult problem to solve
+precisely, since there are almost K n ways to partition n observations into K
+clusters. This is a huge number unless K and n are tiny! Fortunately, a very
+simple algorithm can be shown to provide a local optimum—a pretty good
+solution—to the K-means optimization problem (12.17). This approach is
+laid out in Algorithm 12.2.
+Algorithm 12.2 K-Means Clustering
+1. Randomly assign a number, from 1 to K, to each of the observations.
+These serve as initial cluster assignments for the observations.
+2. Iterate until the cluster assignments stop changing:
+(a) For each of the K clusters, compute the cluster centroid. The
+kth cluster centroid is the vector of the p feature means for the
+observations in the kth cluster.
+(b) Assign each observation to the cluster whose centroid is closest
+(where closest is defined using Euclidean distance).
+Algorithm 12.2 is guaranteed to decrease the value of the objective (12.17)
+at each step. To understand why, the following identity is illuminating:
+p
+p
+0 0
+00
+1
+2
+(xij − xi! j ) = 2
+(xij − x̄kj )2 ,
+|Ck | !
+j=1
+j=1
+i,i ∈Ck
+
+(12.18)
+
+i∈Ck
+
+)
+where x̄kj = |C1k | i∈Ck xij is the mean for feature j in cluster Ck .
+In Step 2(a) the cluster means for each feature are the constants that
+minimize the sum-of-squared deviations, and in Step 2(b), reallocating the
+observations can only improve (12.18). This means that as the algorithm
+is run, the clustering obtained will continually improve until the result no
+longer changes; the objective of (12.17) will never increase. When the result
+no longer changes, a local optimum has been reached. Figure 12.8 shows
+the progression of the algorithm on the toy example from Figure 12.7.
+K-means clustering derives its name from the fact that in Step 2(a), the
+cluster centroids are computed as the mean of the observations assigned to
+each cluster.
+Because the K-means algorithm finds a local rather than a global optimum, the results obtained will depend on the initial (random) cluster assignment of each observation in Step 1 of Algorithm 12.2. For this reason,
+it is important to run the algorithm multiple times from different random
+
+524
+
+12. Unsupervised Learning
+Data
+
+Step 1
+
+Iteration 1, Step 2a
+
+Iteration 1, Step 2b
+
+Iteration 2, Step 2a
+
+Final Results
+
+FIGURE 12.8. The progress of the K-means algorithm on the example of
+Figure 12.7 with K=3. Top left: the observations are shown. Top center: in
+Step 1 of the algorithm, each observation is randomly assigned to a cluster. Top
+right: in Step 2(a), the cluster centroids are computed. These are shown as large
+colored disks. Initially the centroids are almost completely overlapping because
+the initial cluster assignments were chosen at random. Bottom left: in Step 2(b),
+each observation is assigned to the nearest centroid. Bottom center: Step 2(a) is
+once again performed, leading to new cluster centroids. Bottom right: the results
+obtained after ten iterations.
+
+initial configurations. Then one selects the best solution, i.e. that for which
+the objective (12.17) is smallest. Figure 12.9 shows the local optima obtained by running K-means clustering six times using six different initial
+cluster assignments, using the toy data from Figure 12.7. In this case, the
+best clustering is the one with an objective value of 235.8.
+As we have seen, to perform K-means clustering, we must decide how
+many clusters we expect in the data. The problem of selecting K is far from
+simple. This issue, along with other practical considerations that arise in
+performing K-means clustering, is addressed in Section 12.4.3.
+
+12.4 Clustering Methods
+320.9
+
+235.8
+
+235.8
+
+235.8
+
+235.8
+
+310.9
+
+525
+
+FIGURE 12.9. K-means clustering performed six times on the data from
+Figure 12.7 with K = 3, each time with a different random assignment of the
+observations in Step 1 of the K-means algorithm. Above each plot is the value
+of the objective (12.17). Three different local optima were obtained, one of which
+resulted in a smaller value of the objective and provides better separation between
+the clusters. Those labeled in red all achieved the same best solution, with an
+objective value of 235.8.
+
+12.4.2
+
+Hierarchical Clustering
+
+One potential disadvantage of K-means clustering is that it requires us to
+pre-specify the number of clusters K. Hierarchical clustering is an alternative approach which does not require that we commit to a particular
+choice of K. Hierarchical clustering has an added advantage over K-means
+clustering in that it results in an attractive tree-based representation of the
+observations, called a dendrogram.
+In this section, we describe bottom-up or agglomerative clustering.
+bottom-up
+This is the most common type of hierarchical clustering, and refers to
+agglomerative
+the fact that a dendrogram (generally depicted as an upside-down tree; see
+Figure 12.11) is built starting from the leaves and combining clusters up to
+the trunk. We will begin with a discussion of how to interpret a dendrogram
+
+12. Unsupervised Learning
+
+2
+−2
+
+0
+
+X2
+
+4
+
+526
+
+−6
+
+−4
+
+−2
+
+0
+
+2
+
+X1
+
+FIGURE 12.10. Forty-five observations generated in two-dimensional space.
+In reality there are three distinct classes, shown in separate colors. However, we
+will treat these class labels as unknown and will seek to cluster the observations
+in order to discover the classes from the data.
+
+and then discuss how hierarchical clustering is actually performed—that is,
+how the dendrogram is built.
+Interpreting a Dendrogram
+We begin with the simulated data set shown in Figure 12.10, consisting of
+45 observations in two-dimensional space. The data were generated from a
+three-class model; the true class labels for each observation are shown in
+distinct colors. However, suppose that the data were observed without the
+class labels, and that we wanted to perform hierarchical clustering of the
+data. Hierarchical clustering (with complete linkage, to be discussed later)
+yields the result shown in the left-hand panel of Figure 12.11. How can we
+interpret this dendrogram?
+In the left-hand panel of Figure 12.11, each leaf of the dendrogram represents one of the 45 observations in Figure 12.10. However, as we move
+up the tree, some leaves begin to fuse into branches. These correspond to
+observations that are similar to each other. As we move higher up the tree,
+branches themselves fuse, either with leaves or other branches. The earlier
+(lower in the tree) fusions occur, the more similar the groups of observations are to each other. On the other hand, observations that fuse later
+(near the top of the tree) can be quite different. In fact, this statement
+can be made precise: for any two observations, we can look for the point in
+the tree where branches containing those two observations are first fused.
+The height of this fusion, as measured on the vertical axis, indicates how
+different the two observations are. Thus, observations that fuse at the very
+bottom of the tree are quite similar to each other, whereas observations
+that fuse close to the top of the tree will tend to be quite different.
+This highlights a very important point in interpreting dendrograms that
+is often misunderstood. Consider the left-hand panel of Figure 12.12, which
+shows a simple dendrogram obtained from hierarchically clustering nine
+
+6
+
+8
+
+10
+
+527
+
+2
+0
+
+4
+
+10
+8
+6
+2
+0
+
+4
+
+2
+0
+
+4
+
+6
+
+8
+
+10
+
+12.4 Clustering Methods
+
+FIGURE 12.11. Left: dendrogram obtained from hierarchically clustering the
+data from Figure 12.10 with complete linkage and Euclidean distance. Center: the
+dendrogram from the left-hand panel, cut at a height of nine (indicated by the
+dashed line). This cut results in two distinct clusters, shown in different colors.
+Right: the dendrogram from the left-hand panel, now cut at a height of five. This
+cut results in three distinct clusters, shown in different colors. Note that the colors
+were not used in clustering, but are simply used for display purposes in this figure.
+
+observations. One can see that observations 5 and 7 are quite similar to
+each other, since they fuse at the lowest point on the dendrogram. Observations 1 and 6 are also quite similar to each other. However, it is tempting
+but incorrect to conclude from the figure that observations 9 and 2 are
+quite similar to each other on the basis that they are located near each
+other on the dendrogram. In fact, based on the information contained in
+the dendrogram, observation 9 is no more similar to observation 2 than it
+is to observations 8, 5, and 7. (This can be seen from the right-hand panel
+of Figure 12.12, in which the raw data are displayed.) To put it mathematically, there are 2n−1 possible reorderings of the dendrogram, where n
+is the number of leaves. This is because at each of the n − 1 points where
+fusions occur, the positions of the two fused branches could be swapped
+without affecting the meaning of the dendrogram. Therefore, we cannot
+draw conclusions about the similarity of two observations based on their
+proximity along the horizontal axis. Rather, we draw conclusions about
+the similarity of two observations based on the location on the vertical axis
+where branches containing those two observations first are fused.
+Now that we understand how to interpret the left-hand panel of Figure 12.11, we can move on to the issue of identifying clusters on the basis
+of a dendrogram. In order to do this, we make a horizontal cut across the
+dendrogram, as shown in the center and right-hand panels of Figure 12.11.
+The distinct sets of observations beneath the cut can be interpreted as clusters. In the center panel of Figure 12.11, cutting the dendrogram at a height
+of nine results in two clusters, shown in distinct colors. In the right-hand
+panel, cutting the dendrogram at a height of five results in three clusters.
+Further cuts can be made as one descends the dendrogram in order to obtain any number of clusters, between 1 (corresponding to no cut) and n
+
+528
+
+12. Unsupervised Learning
+
+X2
+9
+
+−0.5
+
+1.5
+
+2
+
+1.0
+
+8
+
+3
+
+6
+
+−1.5
+
+7
+
+5
+
+6
+
+1
+
+0.0
+
+8
+
+4
+
+−1.0
+
+3
+
+0.5
+
+7
+
+0.0
+
+2.0
+
+2.5
+
+0.5
+
+3.0
+
+9
+
+1
+
+5
+
+2
+
+4
+−1.5
+
+−1.0
+
+−0.5
+
+0.0
+
+0.5
+
+1.0
+
+X1
+
+FIGURE 12.12. An illustration of how to properly interpret a dendrogram
+with nine observations in two-dimensional space. Left: a dendrogram generated
+using Euclidean distance and complete linkage. Observations 5 and 7 are quite
+similar to each other, as are observations 1 and 6. However, observation 9 is no
+more similar to observation 2 than it is to observations 8, 5, and 7, even though
+observations 9 and 2 are close together in terms of horizontal distance. This is
+because observations 2, 8, 5, and 7 all fuse with observation 9 at the same height,
+approximately 1.8. Right: the raw data used to generate the dendrogram can be
+used to confirm that indeed, observation 9 is no more similar to observation 2
+than it is to observations 8, 5, and 7.
+
+(corresponding to a cut at height 0, so that each observation is in its own
+cluster). In other words, the height of the cut to the dendrogram serves
+the same role as the K in K-means clustering: it controls the number of
+clusters obtained.
+Figure 12.11 therefore highlights a very attractive aspect of hierarchical
+clusteri

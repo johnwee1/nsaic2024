@@ -1,0 +1,344 @@
+ coefficient estimate for newspaper
+in the multiple regression model is close to zero, and the corresponding pvalue is no longer significant, with a value around 0.86. This illustrates that
+the simple and multiple regression coefficients can be quite different. This
+difference stems from the fact that in the simple regression case, the slope
+term represents the average increase in product sales associated with a
+$1,000 increase in newspaper advertising, ignoring other predictors such as
+TV and radio. By contrast, in the multiple regression setting, the coefficient
+for newspaper represents the average increase in product sales associated
+with increasing newspaper spending by $1,000 while holding TV and radio
+fixed.
+Does it make sense for the multiple regression to suggest no relationship
+between sales and newspaper while the simple linear regression implies the
+
+3.2 Multiple Linear Regression
+
+Intercept
+TV
+radio
+newspaper
+
+Coefficient
+2.939
+0.046
+0.189
+−0.001
+
+Std. error
+0.3119
+0.0014
+0.0086
+0.0059
+
+t-statistic
+9.42
+32.81
+21.89
+−0.18
+
+83
+
+p-value
+< 0.0001
+< 0.0001
+< 0.0001
+0.8599
+
+TABLE 3.4. For the Advertising data, least squares coefficient estimates of the
+multiple linear regression of number of units sold on TV, radio, and newspaper
+advertising budgets.
+TV
+
+TV
+radio
+newspaper
+sales
+
+1.0000
+
+radio
+
+0.0548
+1.0000
+
+newspaper
+
+0.0567
+0.3541
+1.0000
+
+sales
+
+0.7822
+0.5762
+0.2283
+1.0000
+
+TABLE 3.5. Correlation matrix for TV, radio, newspaper, and sales for the
+Advertising data.
+
+opposite? In fact it does. Consider the correlation matrix for the three
+predictor variables and response variable, displayed in Table 3.5. Notice
+that the correlation between radio and newspaper is 0.35. This indicates
+that markets with high newspaper advertising tend to also have high radio advertising. Now suppose that the multiple regression is correct and
+newspaper advertising is not associated with sales, but radio advertising
+is associated with sales. Then in markets where we spend more on radio
+our sales will tend to be higher, and as our correlation matrix shows, we
+also tend to spend more on newspaper advertising in those same markets. Hence, in a simple linear regression which only examines sales versus
+newspaper, we will observe that higher values of newspaper tend to be associated with higher values of sales, even though newspaper advertising is
+not directly associated with sales. So newspaper advertising is a surrogate
+for radio advertising; newspaper gets “credit” for the association between
+radio on sales.
+This slightly counterintuitive result is very common in many real life
+situations. Consider an absurd example to illustrate the point. Running
+a regression of shark attacks versus ice cream sales for data collected at
+a given beach community over a period of time would show a positive
+relationship, similar to that seen between sales and newspaper. Of course
+no one has (yet) suggested that ice creams should be banned at beaches
+to reduce shark attacks. In reality, higher temperatures cause more people
+to visit the beach, which in turn results in more ice cream sales and more
+shark attacks. A multiple regression of shark attacks onto ice cream sales
+and temperature reveals that, as intuition implies, ice cream sales is no
+longer a significant predictor after adjusting for temperature.
+
+3.2.2
+
+Some Important Questions
+
+When we perform multiple linear regression, we usually are interested in
+answering a few important questions.
+
+84
+
+3. Linear Regression
+
+1. Is at least one of the predictors X1 , X2 , . . . , Xp useful in predicting
+the response?
+2. Do all the predictors help to explain Y , or is only a subset of the
+predictors useful?
+3. How well does the model fit the data?
+4. Given a set of predictor values, what response value should we predict,
+and how accurate is our prediction?
+We now address each of these questions in turn.
+One: Is There a Relationship Between the Response and Predictors?
+Recall that in the simple linear regression setting, in order to determine
+whether there is a relationship between the response and the predictor we
+can simply check whether β1 = 0. In the multiple regression setting with p
+predictors, we need to ask whether all of the regression coefficients are zero,
+i.e. whether β1 = β2 = · · · = βp = 0. As in the simple linear regression
+setting, we use a hypothesis test to answer this question. We test the null
+hypothesis,
+H0 : β 1 = β 2 = · · · = β p = 0
+versus the alternative
+
+Ha : at least one βj is non-zero.
+This hypothesis test is performed by computing the F -statistic,
+F =
+
+(TSS − RSS)/p
+,
+RSS/(n − p − 1)
+
+F -statistic
+
+(3.23)
+
+)
+where,
+as with simple linear regression, TSS =
+(yi − ȳ)2 and RSS =
+)
+2
+(yi − ŷi ) . If the linear model assumptions are correct, one can show that
+E{RSS/(n − p − 1)} = σ 2
+
+and that, provided H0 is true,
+E{(TSS − RSS)/p} = σ 2 .
+Hence, when there is no relationship between the response and predictors,
+one would expect the F -statistic to take on a value close to 1. On the other
+hand, if Ha is true, then E{(TSS − RSS)/p} > σ 2 , so we expect F to be
+greater than 1.
+The F -statistic for the multiple linear regression model obtained by regressing sales onto radio, TV, and newspaper is shown in Table 3.6. In this
+example the F -statistic is 570. Since this is far larger than 1, it provides
+compelling evidence against the null hypothesis H0 . In other words, the
+large F -statistic suggests that at least one of the advertising media must
+be related to sales. However, what if the F -statistic had been closer to
+1? How large does the F -statistic need to be before we can reject H0 and
+
+3.2 Multiple Linear Regression
+
+Quantity
+Residual standard error
+R2
+F -statistic
+
+85
+
+Value
+1.69
+0.897
+570
+
+TABLE 3.6. More information about the least squares model for the regression
+of number of units sold on TV, newspaper, and radio advertising budgets in the
+Advertising data. Other information about this model was displayed in Table 3.4.
+
+conclude that there is a relationship? It turns out that the answer depends
+on the values of n and p. When n is large, an F -statistic that is just a
+little larger than 1 might still provide evidence against H0 . In contrast,
+a larger F -statistic is needed to reject H0 if n is small. When H0 is true
+and the errors "i have a normal distribution, the F -statistic follows an
+F -distribution.6 For any given value of n and p, any statistical software
+package can be used to compute the p-value associated with the F -statistic
+using this distribution. Based on this p-value, we can determine whether
+or not to reject H0 . For the advertising data, the p-value associated with
+the F -statistic in Table 3.6 is essentially zero, so we have extremely strong
+evidence that at least one of the media is associated with increased sales.
+In (3.23) we are testing H0 that all the coefficients are zero. Sometimes
+we want to test that a particular subset of q of the coefficients are zero.
+This corresponds to a null hypothesis
+H0 :
+
+βp−q+1 = βp−q+2 = · · · = βp = 0,
+
+where for convenience we have put the variables chosen for omission at the
+end of the list. In this case we fit a second model that uses all the variables
+except those last q. Suppose that the residual sum of squares for that model
+is RSS0 . Then the appropriate F -statistic is
+F =
+
+(RSS0 − RSS)/q
+.
+RSS/(n − p − 1)
+
+(3.24)
+
+Notice that in Table 3.4, for each individual predictor a t-statistic and
+a p-value were reported. These provide information about whether each
+individual predictor is related to the response, after adjusting for the other
+predictors. It turns out that each of these is exactly equivalent7 to the F test that omits that single variable from the model, leaving all the others
+in—i.e. q=1 in (3.24). So it reports the partial effect of adding that variable
+to the model. For instance, as we discussed earlier, these p-values indicate
+that TV and radio are related to sales, but that there is no evidence that
+newspaper is associated with sales, when TV and radio are held fixed.
+Given these individual p-values for each variable, why do we need to look
+at the overall F -statistic? After all, it seems likely that if any one of the
+p-values for the individual variables is very small, then at least one of the
+predictors is related to the response. However, this logic is flawed, especially
+when the number of predictors p is large.
+6 Even if the errors are not normally-distributed, the F -statistic approximately follows
+an F -distribution provided that the sample size n is large.
+7 The square of each t-statistic is the corresponding F -statistic.
+
+86
+
+3. Linear Regression
+
+For instance, consider an example in which p = 100 and H0 : β1 = β2 =
+· · · = βp = 0 is true, so no variable is truly associated with the response. In
+this situation, about 5 % of the p-values associated with each variable (of
+the type shown in Table 3.4) will be below 0.05 by chance. In other words,
+we expect to see approximately five small p-values even in the absence of
+any true association between the predictors and the response.8 In fact, it
+is likely that we will observe at least one p-value below 0.05 by chance!
+Hence, if we use the individual t-statistics and associated p-values in order
+to decide whether or not there is any association between the variables and
+the response, there is a very high chance that we will incorrectly conclude
+that there is a relationship. However, the F -statistic does not suffer from
+this problem because it adjusts for the number of predictors. Hence, if H0
+is true, there is only a 5 % chance that the F -statistic will result in a pvalue below 0.05, regardless of the number of predictors or the number of
+observations.
+The approach of using an F -statistic to test for any association between
+the predictors and the response works when p is relatively small, and certainly small compared to n. However, sometimes we have a very large number of variables. If p > n then there are more coefficients βj to estimate
+than observations from which to estimate them. In this case we cannot
+even fit the multiple linear regression model using least squares, so the F statistic cannot be used, and neither can most of the other concepts that
+we have seen so far in this chapter. When p is large, some of the approaches
+discussed in the next section, such as forward selection, can be used. This
+high-dimensional setting is discussed in greater detail in Chapter 6.
+
+highdimensional
+
+Two: Deciding on Important Variables
+As discussed in the previous section, the first step in a multiple regression
+analysis is to compute the F -statistic and to examine the associated pvalue. If we conclude on the basis of that p-value that at least one of the
+predictors is related to the response, then it is natural to wonder which are
+the guilty ones! We could look at the individual p-values as in Table 3.4,
+but as discussed (and as further explored in Chapter 13), if p is large we
+are likely to make some false discoveries.
+It is possible that all of the predictors are associated with the response,
+but it is more often the case that the response is only associated with
+a subset of the predictors. The task of determining which predictors are
+associated with the response, in order to fit a single model involving only
+those predictors, is referred to as variable selection. The variable selection
+variable
+problem is studied extensively in Chapter 6, and so here we will provide selection
+only a brief outline of some classical approaches.
+Ideally, we would like to perform variable selection by trying out a lot of
+different models, each containing a different subset of the predictors. For
+instance, if p = 2, then we can consider four models: (1) a model containing no variables, (2) a model containing X1 only, (3) a model containing
+8 This is related to the important concept of multiple testing, which is the focus of
+Chapter 13.
+
+3.2 Multiple Linear Regression
+
+87
+
+X2 only, and (4) a model containing both X1 and X2 . We can then select the best model out of all of the models that we have considered. How
+do we determine which model is best? Various statistics can be used to
+judge the quality of a model. These include Mallow’s Cp , Akaike informaMallow’s Cp
+tion criterion (AIC), Bayesian information criterion (BIC), and adjusted
+Akaike
+R2 . These are discussed in more detail in Chapter 6. We can also deter- information
+mine which model is best by plotting various model outputs, such as the criterion
+residuals, in order to search for patterns.
+Bayesian
+Unfortunately, there are a total of 2p models that contain subsets of p information
+variables. This means that even for moderate p, trying out every possible criterion
+2
+subset of the predictors is infeasible. For instance, we saw that if p = 2, then adjusted R
+2
+there are 2 = 4 models to consider. But if p = 30, then we must consider
+230 = 1,073,741,824 models! This is not practical. Therefore, unless p is very
+small, we cannot consider all 2p models, and instead we need an automated
+and efficient approach to choose a smaller set of models to consider. There
+are three classical approaches for this task:
+• Forward selection. We begin with the null model—a model that conforward
+tains an intercept but no predictors. We then fit p simple linear re- selection
+gressions and add to the null model the variable that results in the null model
+lowest RSS. We then add to that model the variable that results
+in the lowest RSS for the new two-variable model. This approach is
+continued until some stopping rule is satisfied.
+• Backward selection. We start with all variables in the model, and
+backward
+remove the variable with the largest p-value—that is, the variable selection
+that is the least statistically significant. The new (p − 1)-variable
+model is fit, and the variable with the largest p-value is removed. This
+procedure continues until a stopping rule is reached. For instance, we
+may stop when all remaining variables have a p-value below some
+threshold.
+• Mixed selection. This is a combination of forward and backward semixed
+lection. We start with no variables in the model, and as with forward selection
+selection, we add the variable that provides the best fit. We continue to add variables one-by-one. Of course, as we noted with the
+Advertising example, the p-values for variables can become larger as
+new predictors are added to the model. Hence, if at any point the
+p-value for one of the variables in the model rises above a certain
+threshold, then we remove that variable from the model. We continue to perform these forward and backward steps until all variables
+in the model have a sufficiently low p-value, and all variables outside
+the model would have a large p-value if added to the model.
+Backward selection cannot be used if p > n, while forward selection can
+always be used. Forward selection is a greedy approach, and might include
+variables early that later become redundant. Mixed selection can remedy
+this.
+
+88
+
+3. Linear Regression
+
+Three: Model Fit
+Two of the most common numerical measures of model fit are the RSE and
+R2 , the fraction of variance explained. These quantities are computed and
+interpreted in the same fashion as for simple linear regression.
+Recall that in simple regression, R2 is the square of the correlation of the
+response and the variable. In multiple linear regression, it turns out that it
+equals Cor(Y, Ŷ )2 , the square of the correlation between the response and
+the fitted linear model

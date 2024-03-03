@@ -1,0 +1,343 @@
+e do not provide the formula here. The leverage statistic hi is always
+between 1/n and 1, and the average leverage for all the observations is
+always equal to (p + 1)/n. So if a given observation has a leverage statistic
+that greatly exceeds (p+1)/n, then we may suspect that the corresponding
+point has high leverage.
+The right-hand panel of Figure 3.13 provides a plot of the studentized
+residuals versus hi for the data in the left-hand panel of Figure 3.13. Observation 41 stands out as having a very high leverage statistic as well as a
+high studentized residual. In other words, it is an outlier as well as a high
+leverage observation. This is a particularly dangerous combination! This
+plot also reveals the reason that observation 20 had relatively little effect
+on the least squares fit in Figure 3.12: it has low leverage.
+6. Collinearity
+Collinearity refers to the situation in which two or more predictor variables
+collinearity
+are closely related to one another. The concept of collinearity is illustrated
+in Figure 3.14 using the Credit data set. In the left-hand panel of Figure 3.14, the two predictors limit and age appear to have no obvious relationship. In contrast, in the right-hand panel of Figure 3.14, the predictors
+limit and rating are very highly correlated with each other, and we say
+that they are collinear. The presence of collinearity can pose problems in
+the regression context, since it can be difficult to separate out the individual effects of collinear variables on the response. In other words, since
+limit and rating tend to increase or decrease together, it can be difficult to
+determine how each one separately is associated with the response, balance.
+Figure 3.15 illustrates some of the difficulties that can result from collinearity. The left-hand panel of Figure 3.15 is a contour plot of the RSS (3.22)
+associated with different possible coefficient estimates for the regression
+of balance on limit and age. Each ellipse represents a set of coefficients
+
+0
+
+21.8
+
+21
+
+.8
+
+−1
+
+4
+
+21.5
+
+3
+
+21
+.5
+
+2
+
+−2
+
+βRating
+
+21.25
+
+−5
+
+0
+
+−4
+
+1
+
+−3
+
+βAge
+
+107
+
+5
+
+3.3 Other Considerations in the Regression Model
+
+0.16
+
+0.17
+
+0.18
+
+βLimit
+
+0.19
+
+−0.1
+
+0.0
+
+0.1
+
+0.2
+
+βLimit
+
+FIGURE 3.15. Contour plots for the RSS values as a function of the parameters
+β for various regressions involving the Credit data set. In each plot, the black
+dots represent the coefficient values corresponding to the minimum RSS. Left:
+A contour plot of RSS for the regression of balance onto age and limit. The
+minimum value is well defined. Right: A contour plot of RSS for the regression
+of balance onto rating and limit. Because of the collinearity, there are many
+pairs (βLimit , βRating ) with a similar value for RSS.
+
+that correspond to the same RSS, with ellipses nearest to the center taking on the lowest values of RSS. The black dots and associated dashed
+lines represent the coefficient estimates that result in the smallest possible
+RSS—in other words, these are the least squares estimates. The axes for
+limit and age have been scaled so that the plot includes possible coefficient estimates that are up to four standard errors on either side of the
+least squares estimates. Thus the plot includes all plausible values for the
+coefficients. For example, we see that the true limit coefficient is almost
+certainly somewhere between 0.15 and 0.20.
+In contrast, the right-hand panel of Figure 3.15 displays contour plots
+of the RSS associated with possible coefficient estimates for the regression
+of balance onto limit and rating, which we know to be highly collinear.
+Now the contours run along a narrow valley; there is a broad range of
+values for the coefficient estimates that result in equal values for RSS.
+Hence a small change in the data could cause the pair of coefficient values
+that yield the smallest RSS—that is, the least squares estimates—to move
+anywhere along this valley. This results in a great deal of uncertainty in the
+coefficient estimates. Notice that the scale for the limit coefficient now runs
+from roughly −0.2 to 0.2; this is an eight-fold increase over the plausible
+range of the limit coefficient in the regression with age. Interestingly, even
+though the limit and rating coefficients now have much more individual
+uncertainty, they will almost certainly lie somewhere in this contour valley.
+For example, we would not expect the true value of the limit and rating
+coefficients to be −0.1 and 1 respectively, even though such a value is
+plausible for each coefficient individually.
+Since collinearity reduces the accuracy of the estimates of the regression
+coefficients, it causes the standard error for β̂j to grow. Recall that the
+t-statistic for each predictor is calculated by dividing β̂j by its standard
+
+108
+
+3. Linear Regression
+
+Model 1
+Model 2
+
+Intercept
+age
+limit
+Intercept
+rating
+limit
+
+Coefficient
+−173.411
+−2.292
+0.173
+−377.537
+2.202
+0.025
+
+Std. error
+43.828
+0.672
+0.005
+45.254
+0.952
+0.064
+
+t-statistic
+−3.957
+−3.407
+34.496
+−8.343
+2.312
+0.384
+
+p-value
+< 0.0001
+0.0007
+< 0.0001
+< 0.0001
+0.0213
+0.7012
+
+TABLE 3.11. The results for two multiple regression models involving the Credit
+data set are shown. Model 1 is a regression of balance on age and limit, and
+Model 2 a regression of balance on rating and limit. The standard error of
+β̂limit increases 12-fold in the second regression, due to collinearity.
+
+error. Consequently, collinearity results in a decline in the t-statistic. As a
+result, in the presence of collinearity, we may fail to reject H0 : βj = 0. This
+means that the power of the hypothesis test—the probability of correctly power
+detecting a non-zero coefficient—is reduced by collinearity.
+Table 3.11 compares the coefficient estimates obtained from two separate
+multiple regression models. The first is a regression of balance on age and
+limit, and the second is a regression of balance on rating and limit. In the
+first regression, both age and limit are highly significant with very small pvalues. In the second, the collinearity between limit and rating has caused
+the standard error for the limit coefficient estimate to increase by a factor
+of 12 and the p-value to increase to 0.701. In other words, the importance
+of the limit variable has been masked due to the presence of collinearity.
+To avoid such a situation, it is desirable to identify and address potential
+collinearity problems while fitting the model.
+A simple way to detect collinearity is to look at the correlation matrix
+of the predictors. An element of this matrix that is large in absolute value
+indicates a pair of highly correlated variables, and therefore a collinearity
+problem in the data. Unfortunately, not all collinearity problems can be
+detected by inspection of the correlation matrix: it is possible for collinearity to exist between three or more variables even if no pair of variables
+has a particularly high correlation. We call this situation multicollinearity.
+multiInstead of inspecting the correlation matrix, a better way to assess multi- collinearity
+collinearity is to compute the variance inflation factor (VIF). The VIF is
+variance
+the ratio of the variance of β̂j when fitting the full model divided by the inflation
+variance of β̂j if fit on its own. The smallest possible value for VIF is 1, factor
+which indicates the complete absence of collinearity. Typically in practice
+there is a small amount of collinearity among the predictors. As a rule of
+thumb, a VIF value that exceeds 5 or 10 indicates a problematic amount of
+collinearity. The VIF for each variable can be computed using the formula
+VIF(β̂j ) =
+
+1
+,
+2
+1 − RX
+j |X−j
+
+2
+where RX
+is the R2 from a regression of Xj onto all of the other
+j |X−j
+2
+predictors. If RXj |X−j is close to one, then collinearity is present, and so
+the VIF will be large.
+
+3.4 The Marketing Plan
+
+109
+
+In the Credit data, a regression of balance on age, rating, and limit
+indicates that the predictors have VIF values of 1.01, 160.67, and 160.59.
+As we suspected, there is considerable collinearity in the data!
+When faced with the problem of collinearity, there are two simple solutions. The first is to drop one of the problematic variables from the regression. This can usually be done without much compromise to the regression
+fit, since the presence of collinearity implies that the information that this
+variable provides about the response is redundant in the presence of the
+other variables. For instance, if we regress balance onto age and limit,
+without the rating predictor, then the resulting VIF values are close to
+the minimum possible value of 1, and the R2 drops from 0.754 to 0.75.
+So dropping rating from the set of predictors has effectively solved the
+collinearity problem without compromising the fit. The second solution is
+to combine the collinear variables together into a single predictor. For instance, we might take the average of standardized versions of limit and
+rating in order to create a new variable that measures credit worthiness.
+
+3.4
+
+The Marketing Plan
+
+We now briefly return to the seven questions about the Advertising data
+that we set out to answer at the beginning of this chapter.
+1. Is there a relationship between sales and advertising budget?
+This question can be answered by fitting a multiple regression model
+of sales onto TV, radio, and newspaper, as in (3.20), and testing the
+hypothesis H0 : βTV = βradio = βnewspaper = 0. In Section 3.2.2,
+we showed that the F -statistic can be used to determine whether
+or not we should reject this null hypothesis. In this case the p-value
+corresponding to the F -statistic in Table 3.6 is very low, indicating
+clear evidence of a relationship between advertising and sales.
+2. How strong is the relationship?
+We discussed two measures of model accuracy in Section 3.1.3. First,
+the RSE estimates the standard deviation of the response from the
+population regression line. For the Advertising data, the RSE is 1.69
+units while the mean value for the response is 14.022, indicating a
+percentage error of roughly 12 %. Second, the R2 statistic records
+the percentage of variability in the response that is explained by
+the predictors. The predictors explain almost 90 % of the variance in
+sales. The RSE and R2 statistics are displayed in Table 3.6.
+3. Which media are associated with sales?
+To answer this question, we can examine the p-values associated with
+each predictor’s t-statistic (Section 3.1.2). In the multiple linear regression displayed in Table 3.4, the p-values for TV and radio are low,
+but the p-value for newspaper is not. This suggests that only TV and
+radio are related to sales. In Chapter 6 we explore this question in
+greater detail.
+
+110
+
+3. Linear Regression
+
+4. How large is the association between each medium and sales?
+We saw in Section 3.1.2 that the standard error of β̂j can be used to
+construct confidence intervals for βj . For the Advertising data, we
+can use the results in Table 3.4 to compute the 95 % confidence intervals for the coefficients in a multiple regression model using all three
+media budgets as predictors. The confidence intervals are as follows:
+(0.043, 0.049) for TV, (0.172, 0.206) for radio, and (−0.013, 0.011) for
+newspaper. The confidence intervals for TV and radio are narrow and
+far from zero, providing evidence that these media are related to
+sales. But the interval for newspaper includes zero, indicating that
+the variable is not statistically significant given the values of TV and
+radio.
+We saw in Section 3.3.3 that collinearity can result in very wide standard errors. Could collinearity be the reason that the confidence interval associated with newspaper is so wide? The VIF scores are 1.005,
+1.145, and 1.145 for TV, radio, and newspaper, suggesting no evidence
+of collinearity.
+In order to assess the association of each medium individually on
+sales, we can perform three separate simple linear regressions. Results are shown in Tables 3.1 and 3.3. There is evidence of an extremely strong association between TV and sales and between radio
+and sales. There is evidence of a mild association between newspaper
+and sales, when the values of TV and radio are ignored.
+5. How accurately can we predict future sales?
+The response can be predicted using (3.21). The accuracy associated with this estimate depends on whether we wish to predict an
+individual response, Y = f (X) + ", or the average response, f (X)
+(Section 3.2.2). If the former, we use a prediction interval, and if
+the latter, we use a confidence interval. Prediction intervals will always be wider than confidence intervals because they account for the
+uncertainty associated with ", the irreducible error.
+6. Is the relationship linear?
+In Section 3.3.3, we saw that residual plots can be used in order to
+identify non-linearity. If the relationships are linear, then the residual
+plots should display no pattern. In the case of the Advertising data,
+we observe a non-linear effect in Figure 3.5, though this effect could
+also be observed in a residual plot. In Section 3.3.2, we discussed the
+inclusion of transformations of the predictors in the linear regression
+model in order to accommodate non-linear relationships.
+7. Is there synergy among the advertising media?
+The standard linear regression model assumes an additive relationship between the predictors and the response. An additive model
+is easy to interpret because the association between each predictor
+and the response is unrelated to the values of the other predictors.
+However, the additive assumption may be unrealistic for certain data
+sets. In Section 3.3.2, we showed how to include an interaction term
+
+3.5 Comparison of Linear Regression with K-Nearest Neighbors
+
+111
+
+in the regression model in order to accommodate non-additive relationships. A small p-value associated with the interaction term indicates the presence of such relationships. Figure 3.5 suggested that the
+Advertising data may not be additive. Including an interaction term
+in the model results in a substantial increase in R2 , from around 90 %
+to almost 97 %.
+
+3.5
+
+Comparison of Linear Regression
+with K-Nearest Neighbors
+
+As discussed in Chapter 2, linear regression is an example of a parametric
+approach because it assumes a linear functional form for f (X). Parametric
+methods have several advantages. They are often easy to fit, because one
+need estimate only a small number of coefficients. In the case of linear regression, the coefficients have simple interpretations, and tests of statistical
+significance can be easily performed. But parametric methods do have a
+disadvantage: by construction, they make strong assumptions about the
+form of f (X). If the specified functional form is far from the truth, and
+prediction accuracy is our goal, then the parametric method will perform
+poorly. For instance, if we assume a linear relationship between X and Y
+but the true relationship is far from linear, then the resulting model will
+provide a poor fit to the data, and any conclusions drawn from it will be
+suspect.
+In contrast, non-parametric methods do not explicitly assume a parametric form for f (X), and thereby provide an alternative and more flexible approach for performing regression. We discuss various non-parametric
+methods in this book. Here we consider one of the simplest and best-known
+non-parametric methods, K-nearest neighbors regression (KNN regression).
+K-nearest
+The KNN regression method is closely related to the KNN classifier dis- neighbors
+cussed in Chapter 2. Given a valu

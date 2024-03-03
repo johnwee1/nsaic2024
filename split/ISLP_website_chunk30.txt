@@ -1,0 +1,318 @@
+riance of X for these two sets of companies was σ̂ 2 = 36. Finally,
+80 % of companies issued dividends. Assuming that X follows a normal distribution, predict the probability that a company will issue
+a dividend this year given that its percentage profit was X = 4 last
+year.
+Hint: Recall that the density function for a normal random variable
+2
+2
+1
+is f (x) = √2πσ
+e−(x−µ) /2σ . You will need to use Bayes’ theorem.
+2
+8. Suppose that we take a data set, divide it into equally-sized training
+and test sets, and then try out two different classification procedures.
+First we use logistic regression and get an error rate of 20 % on the
+training data and 30 % on the test data. Next we use 1-nearest neighbors (i.e. K = 1) and get an average error rate (averaged over both
+test and training data sets) of 18 %. Based on these results, which
+method should we prefer to use for classification of new observations?
+Why?
+9. This problem has to do with odds.
+(a) On average, what fraction of people with an odds of 0.37 of
+defaulting on their credit card payment will in fact default?
+(b) Suppose that an individual has a 16 % chance of defaulting on
+her credit card payment. What are the odds that she will default?
+
+196
+
+4. Classification
+
+1
+2
+Pr(Y =k|X=x)
+10. Equation 4.32 derived an expression for log Pr(Y
+in the
+=K|X=x)
+setting where p > 1, so that the mean for the kth class, µk , is a pdimensional vector, and the shared covariance Σ is a p × p matrix.
+However, in the setting with p = 1, (4.32) takes a simpler form, since
+the means µ1 , . . . , µK and the variance σ 2 are scalars. In this simpler
+setting, repeat the calculation in (4.32), and provide expressions for
+ak and bkj in terms of πk , πK , µk , µK , and σ 2 .
+11. Work out the detailed forms of ak , bkj , and bkjl in (4.33). Your answer
+should involve πk , πK , µk , µK , Σk , and ΣK .
+12. Suppose that you wish to classify an observation X ∈ R into apples
+and oranges. You fit a logistic regression model and find that
+6
+Pr(Y
+= orange|X = x) =
+
+exp(β̂0 + β̂1 x)
+1 + exp(β̂0 + β̂1 x)
+
+.
+
+Your friend fits a logistic regression model to the same data using the
+softmax formulation in (4.13), and finds that
+6
+Pr(Y
+= orange|X = x) =
+
+exp(α̂orange0 + α̂orange1 x)
+.
+exp(α̂orange0 + α̂orange1 x) + exp(α̂apple0 + α̂apple1 x)
+
+(a) What is the log odds of orange versus apple in your model?
+(b) What is the log odds of orange versus apple in your friend’s
+model?
+(c) Suppose that in your model, β̂0 = 2 and β̂1 = −1. What are
+the coefficient estimates in your friend’s model? Be as specific
+as possible.
+(d) Now suppose that you and your friend fit the same two models
+on a different data set. This time, your friend gets the coefficient
+estimates α̂orange0 = 1.2, α̂orange1 = −2, α̂orange0 = 3, α̂orange1 =
+0.6. What are the coefficient estimates in your model?
+(e) Finally, suppose you apply both models from (d) to a data set
+with 2,000 test observations. What fraction of the time do you
+expect the predicted class labels from your model to agree with
+those from your friend’s model? Explain your answer.
+
+Applied
+13. This question should be answered using the Weekly data set, which
+is part of the ISLP package. This data is similar in nature to the
+Smarket data from this chapter’s lab, except that it contains 1, 089
+weekly returns for 21 years, from the beginning of 1990 to the end of
+2010.
+(a) Produce some numerical and graphical summaries of the Weekly
+data. Do there appear to be any patterns?
+
+4.8 Exercises
+
+197
+
+(b) Use the full data set to perform a logistic regression with
+Direction as the response and the five lag variables plus Volume
+as predictors. Use the summary function to print the results. Do
+any of the predictors appear to be statistically significant? If so,
+which ones?
+(c) Compute the confusion matrix and overall fraction of correct
+predictions. Explain what the confusion matrix is telling you
+about the types of mistakes made by logistic regression.
+(d) Now fit the logistic regression model using a training data period
+from 1990 to 2008, with Lag2 as the only predictor. Compute the
+confusion matrix and the overall fraction of correct predictions
+for the held out data (that is, the data from 2009 and 2010).
+(e) Repeat (d) using LDA.
+(f) Repeat (d) using QDA.
+(g) Repeat (d) using KNN with K = 1.
+(h) Repeat (d) using naive Bayes.
+(i) Which of these methods appears to provide the best results on
+this data?
+(j) Experiment with different combinations of predictors, including possible transformations and interactions, for each of the
+methods. Report the variables, method, and associated confusion matrix that appears to provide the best results on the held
+out data. Note that you should also experiment with values for
+K in the KNN classifier.
+14. In this problem, you will develop a model to predict whether a given
+car gets high or low gas mileage based on the Auto data set.
+(a) Create a binary variable, mpg01, that contains a 1 if mpg contains
+a value above its median, and a 0 if mpg contains a value below
+its median. You can compute the median using the median()
+method of the data frame. Note you may find it helpful to add
+a column mpg01 to the data frame by assignment. Assuming you
+have stored the data frame as Auto, this can be done as follows:
+Auto['mpg01 '] = mpg01
+
+(b) Explore the data graphically in order to investigate the association between mpg01 and the other features. Which of the other
+features seem most likely to be useful in predicting mpg01? Scatterplots and boxplots may be useful tools to answer this question. Describe your findings.
+(c) Split the data into a training set and a test set.
+(d) Perform LDA on the training data in order to predict mpg01
+using the variables that seemed most associated with mpg01 in
+(b). What is the test error of the model obtained?
+
+198
+
+4. Classification
+
+(e) Perform QDA on the training data in order to predict mpg01
+using the variables that seemed most associated with mpg01 in
+(b). What is the test error of the model obtained?
+(f) Perform logistic regression on the training data in order to predict mpg01 using the variables that seemed most associated with
+mpg01 in (b). What is the test error of the model obtained?
+(g) Perform naive Bayes on the training data in order to predict
+mpg01 using the variables that seemed most associated with mpg01
+in (b). What is the test error of the model obtained?
+(h) Perform KNN on the training data, with several values of K, in
+order to predict mpg01. Use only the variables that seemed most
+associated with mpg01 in (b). What test errors do you obtain?
+Which value of K seems to perform the best on this data set?
+15. This problem involves writing functions.
+(a) Write a function, Power(), that prints out the result of raising 2
+to the 3rd power. In other words, your function should compute
+23 and print out the results.
+Hint: Recall that x**a raises x to the power a. Use the print()
+function to display the result.
+(b) Create a new function, Power2(), that allows you to pass any
+two numbers, x and a, and prints out the value of x**a. You can
+do this by beginning your function with the line
+def Power2(x, a):
+
+You should be able to call your function by entering, for instance,
+Power2 (3, 8)
+
+on the command line. This should output the value of 38 , namely,
+6, 561.
+(c) Using the Power2() function that you just wrote, compute 103 ,
+817 , and 1313 .
+(d) Now create a new function, Power3(), that actually returns the
+result x**a as a Python object, rather than simply printing it
+to the screen. That is, if you store the value x**a in an object
+called result within your function, then you can simply return return
+this result, using the following line:
+return result
+
+Note that the line above should be the last line in your function,
+and it should be indented 4 spaces.
+(e) Now using the Power3() function, create a plot of f (x) = x2 .
+The x-axis should display a range of integers from 1 to 10, and
+the y-axis should display x2 . Label the axes appropriately, and
+use an appropriate title for the figure. Consider displaying either
+the x-axis, the y-axis, or both on the log-scale. You can do this
+by using the ax.set_xscale() and ax.set_yscale() methods of
+.set_xscale()
+the axes you are plotting to.
+.set_yscale()
+
+4.8 Exercises
+
+199
+
+(f) Create a function, PlotPower(), that allows you to create a plot
+of x against x**a for a fixed a and a sequence of values of x. For
+instance, if you call
+PlotPower(np.arange (1, 11), 3)
+
+then a plot should be created with an x-axis taking on values
+1, 2, . . . , 10, and a y-axis taking on values 13 , 23 , . . . , 103 .
+16. Using the Boston data set, fit classification models in order to predict
+whether a given suburb has a crime rate above or below the median.
+Explore logistic regression, LDA, naive Bayes, and KNN models using
+various subsets of the predictors. Describe your findings.
+Hint: You will have to create the response variable yourself, using the
+variables that are contained in the Boston data set.
+
+5
+Resampling Methods
+
+Resampling methods are an indispensable tool in modern statistics. They
+involve repeatedly drawing samples from a training set and refitting a model
+of interest on each sample in order to obtain additional information about
+the fitted model. For example, in order to estimate the variability of a linear
+regression fit, we can repeatedly draw different samples from the training
+data, fit a linear regression to each new sample, and then examine the
+extent to which the resulting fits differ. Such an approach may allow us to
+obtain information that would not be available from fitting the model only
+once using the original training sample.
+Resampling approaches can be computationally expensive, because they
+involve fitting the same statistical method multiple times using different
+subsets of the training data. However, due to recent advances in computing
+power, the computational requirements of resampling methods generally
+are not prohibitive. In this chapter, we discuss two of the most commonly
+used resampling methods, cross-validation and the bootstrap. Both methods
+are important tools in the practical application of many statistical learning
+procedures. For example, cross-validation can be used to estimate the test
+error associated with a given statistical learning method in order to evaluate
+its performance, or to select the appropriate level of flexibility. The process
+of evaluating a model’s performance is known as model assessment, whereas
+model
+the process of selecting the proper level of flexibility for a model is known as assessment
+model selection. The bootstrap is used in several contexts, most commonly
+model
+to provide a measure of accuracy of a parameter estimate or of a given selection
+statistical learning method.
+
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0_5
+
+201
+
+202
+
+5. Resampling Methods
+
+5.1
+
+Cross-Validation
+
+In Chapter 2 we discuss the distinction between the test error rate and the
+training error rate. The test error is the average error that results from using
+a statistical learning method to predict the response on a new observation—
+that is, a measurement that was not used in training the method. Given
+a data set, the use of a particular statistical learning method is warranted
+if it results in a low test error. The test error can be easily calculated if a
+designated test set is available. Unfortunately, this is usually not the case.
+In contrast, the training error can be easily calculated by applying the
+statistical learning method to the observations used in its training. But as
+we saw in Chapter 2, the training error rate often is quite different from the
+test error rate, and in particular the former can dramatically underestimate
+the latter.
+In the absence of a very large designated test set that can be used to
+directly estimate the test error rate, a number of techniques can be used
+to estimate this quantity using the available training data. Some methods
+make a mathematical adjustment to the training error rate in order to
+estimate the test error rate. Such approaches are discussed in Chapter 6.
+In this section, we instead consider a class of methods that estimate the
+test error rate by holding out a subset of the training observations from the
+fitting process, and then applying the statistical learning method to those
+held out observations.
+In Sections 5.1.1–5.1.4, for simplicity we assume that we are interested
+in performing regression with a quantitative response. In Section 5.1.5 we
+consider the case of classification with a qualitative response. As we will
+see, the key concepts remain the same regardless of whether the response
+is quantitative or qualitative.
+
+5.1.1
+
+The Validation Set Approach
+
+Suppose that we would like to estimate the test error associated with fitting a particular statistical learning method on a set of observations. The
+validation set approach, displayed in Figure 5.1, is a very simple strategy
+validation
+for this task. It involves randomly dividing the available set of observa- set approach
+tions into two parts, a training set and a validation set or hold-out set. The
+validation
+model is fit on the training set, and the fitted model is used to predict the set
+responses for the observations in the validation set. The resulting validation hold-out set
+set error rate—typically assessed using MSE in the case of a quantitative
+response—provides an estimate of the test error rate.
+We illustrate the validation set approach on the Auto data set. Recall from
+Chapter 3 that there appears to be a non-linear relationship between mpg
+and horsepower, and that a model that predicts mpg using horsepower and
+horsepower2 gives better results than a model that uses only a linear term.
+It is natural to wonder whether a cubic or higher-order fit might provide
+even better results. We answer this question in Chapter 3 by looking at
+the p-values associated with a cubic term and higher-order polynomial
+terms in a linear regression. But we could also answer this question using
+the validation method. We randomly split the 392 observations into two
+
+5.1 Cross-Validation
+
+203
+
+!"#"$""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""%"
+
+&""##""!$"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""'!"
+
+FIGURE 5.1. A schematic display of the validation set approach. A set of n
+observations are randomly split into a training set (shown in blue, containing
+observations 7, 22, and 13, among others) and a validation set (shown in beige,
+and containing observation 91, among others). The statistical learning method is
+fit on the training set, and its performance is evaluated on the validation set.
+
+sets, a training set containing 196 of the data points, and a validation set
+containing the remaining 196 observations. The validation set error rates
+that result from fitting various regression models on the training sample
+and evaluating their performance on the validation sample, using MSE
+as a measure of validation set error, are shown in the left-hand panel of
+Figure 5.2. The validation set MSE for the quadratic fit is considerably
+smaller than for the linear fit. However, the validation set MSE for the cubic
+fit is actually slightly larger than for the quadratic fit. This implies that
+includ

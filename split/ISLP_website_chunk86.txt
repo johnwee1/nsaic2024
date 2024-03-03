@@ -1,0 +1,361 @@
+ low power,
+as in Figure 13.5.
+In practice, when m is large, we may be willing to tolerate a few false
+positives, in the interest of making more discoveries, i.e. more rejections of
+the null hypothesis. This is the motivation behind the false discovery rate,
+which we present next.
+
+13.4
+
+The False Discovery Rate
+
+13.4.1
+
+Intuition for the False Discovery Rate
+
+As we just discussed, when m is large, then trying to prevent any false
+positives (as in FWER control) is simply too stringent. Instead, we might
+try to make sure that the ratio of false positives (V ) to total positives (V +
+S = R) is sufficiently low, so that most of the rejected null hypotheses are
+not false positives. The ratio V /R is known as the false discovery proportion
+false
+(FDP).
+discovery
+It might be tempting to ask the data analyst to control the FDP: to proportion
+make sure that no more than, say, 20% of the rejected null hypotheses are
+false positives. However, in practice, controlling the FDP is an impossible
+task for the data analyst, since she has no way to be certain, on any particular dataset, which hypotheses are true and which are false. This is very
+similar to the fact that the data analyst can control the FWER, i.e. she
+can guarantee that Pr(V ≥ 1) ≤ α for any pre-specified α, but she cannot
+guarantee that V = 0 on any particular dataset (short of failing to reject
+any null hypotheses, i.e. setting R = 0).
+
+574
+
+as
+
+13. Multiple Testing
+
+Therefore, we instead control the false discovery rate (FDR)15 , defined
+FDR = E(FDP) = E(V /R).
+
+(13.9)
+
+When we control the FDR at (say) level q = 20%, we are rejecting as many
+null hypotheses as possible while guaranteeing that no more than 20% of
+those rejected null hypotheses are false positives, on average.
+In the definition of the FDR in (13.9), the expectation is taken over the
+population from which the data are generated. For instance, suppose we
+control the FDR for m null hypotheses at q = 0.2. This means that if we
+repeat this experiment a huge number of times, and each time control the
+FDR at q = 0.2, then we should expect that, on average, 20% of the rejected
+null hypotheses will be false positives. On a given dataset, the fraction of
+false positives among the rejected hypotheses may be greater than or less
+than 20%.
+Thus far, we have motivated the use of the FDR from a pragmatic perspective, by arguing that when m is large, controlling the FWER is simply
+too stringent, and will not lead to “enough” discoveries. An additional motivation for the use of the FDR is that it aligns well with the way that data
+are often collected in contemporary applications. As datasets continue to
+grow in size across a variety of fields, it is increasingly common to conduct a
+huge number of hypothesis tests for exploratory, rather than confirmatory,
+purposes. For instance, a genomic researcher might sequence the genomes
+of individuals with and without some particular medical condition, and
+then, for each of 20,000 genes, test whether sequence variants in that gene
+are associated with the medical condition of interest. This amounts to performing m = 20,000 hypothesis tests. The analysis is exploratory in nature,
+in the sense that the researcher does not have any particular hypothesis
+in mind; instead she wishes to see whether there is modest evidence for
+the association between each gene and the disease, with a plan to further
+investigate any genes for which there is such evidence. She is likely willing
+to tolerate some number of false positives in the set of genes that she will
+investigate further; thus, the FWER is not an appropriate choice. However, some correction for multiple testing is required: it would not be a
+good idea for her to simply investigate all genes with p-values less than
+(say) 0.05, since we would expect 1,000 genes to have such small p-values
+simply by chance, even if no genes are associated with the disease (since
+0.05 × 20,000 = 1,000). Controlling the FDR for her exploratory analysis
+at 20% guarantees that — on average — no more than 20% of the genes
+that she investigates further are false positives.
+It is worth noting that unlike p-values, for which a threshold of 0.05
+is typically viewed as the minimum standard of evidence for a “positive”
+result, and a threshold of 0.01 or even 0.001 is viewed as much more compelling, there is no standard accepted threshold for FDR control. Instead,
+the choice of FDR threshold is typically context-dependent, or even datasetdependent. For instance, the genomic researcher in the previous example
+might seek to control the FDR at a threshold of 10% if the planned follow15 If R = 0, then we replace the ratio V /R with 0, to avoid computing 0/0. Formally,
+FDR = E(V /R|R > 0) Pr(R > 0).
+
+false
+discovery
+rate
+
+13.4 The False Discovery Rate
+
+575
+
+up analysis is time-consuming or expensive. Alternatively, a much larger
+threshold of 30% might be suitable if she plans an inexpensive follow-up
+analysis.
+
+13.4.2
+
+The Benjamini–Hochberg Procedure
+
+We now focus on the task of controlling the FDR: that is, deciding which
+null hypotheses to reject while guaranteeing that the FDR, E(V /R), is less
+than or equal to some pre-specified value q. In order to do this, we need
+some way to connect the p-values, p1 , . . . , pm , from the m null hypotheses
+to the desired FDR value, q. It turns out that a very simple procedure,
+outlined in Algorithm 13.2, can be used to control the FDR.
+Algorithm 13.2 Benjamini–Hochberg Procedure to Control the FDR
+1. Specify q, the level at which to control the FDR.
+2. Compute p-values, p1 , . . . , pm , for the m null hypotheses
+H01 , . . . , H0m .
+3. Order the m p-values so that p(1) ≤ p(2) ≤ · · · ≤ p(m) .
+4. Define
+
+L = max{j : p(j) < qj/m}.
+
+(13.10)
+
+5. Reject all null hypotheses H0j for which pj ≤ p(L) .
+Algorithm 13.2 is known as the Benjamini–Hochberg procedure. The crux
+Benjamini–
+of this procedure lies in (13.10). For example, consider again the first five Hochberg
+managers in the Fund dataset, presented in Table 13.3. (In this example, procedure
+m = 5, although typically we control the FDR in settings involving a much
+greater number of null hypotheses.) We see that p(1) = 0.006 < 0.05 × 1/5,
+p(2) = 0.012 < 0.05 × 2/5, p(3) = 0.601 > 0.05 × 3/5, p(4) = 0.756 >
+0.05 × 4/5, and p(5) = 0.918 > 0.05 × 5/5. Therefore, to control the FDR
+at 5%, we reject the null hypotheses that the first and third fund managers
+perform no better than chance.
+As long as the m p-values are independent or only mildly dependent,
+then the Benjamini–Hochberg procedure guarantees16 that
+FDR ≤ q.
+In other words, this procedure ensures that, on average, no more than a
+fraction q of the rejected null hypotheses are false positives. Remarkably,
+this holds regardless of how many null hypotheses are true, and regardless
+of the distribution of the p-values for the null hypotheses that are false.
+Therefore, the Benjamini–Hochberg procedure gives us a very easy way to
+determine, given a set of m p-values, which null hypotheses to reject in
+order to control the FDR at any pre-specified level q.
+16 However, the proof is well beyond the scope of this book.
+
+13. Multiple Testing
+
+1
+
+5
+
+50
+
+Index
+
+500
+
+1e−01
+
+P−Value
+
+1e−05
+
+P−Value
+
+1e−03
+1e−05
+
+1e−03
+1e−05
+
+P−Value
+
+α = 0.3
+
+1e−01
+
+α = 0.1
+
+1e−01
+
+α = 0.05
+
+1e−03
+
+576
+
+1
+
+5
+
+50
+
+Index
+
+500
+
+1
+
+5
+
+50
+
+500
+
+Index
+
+FIGURE 13.6. Each panel displays the same set of m = 2,000 ordered p-values
+for the Fund data. The green lines indicate the p-value thresholds corresponding
+to FWER control, via the Bonferroni procedure, at levels α = 0.05 (left), α = 0.1
+(center), and α = 0.3 (right). The orange lines indicate the p-value thresholds
+corresponding to FDR control, via Benjamini–Hochberg, at levels q = 0.05 (left),
+q = 0.1 (center), and q = 0.3 (right). When the FDR is controlled at level q = 0.1,
+146 null hypotheses are rejected (center); the corresponding p-values are shown
+in blue. When the FDR is controlled at level q = 0.3, 279 null hypotheses are
+rejected (right); the corresponding p-values are shown in blue.
+
+There is a fundamental difference between the Bonferroni procedure of
+Section 13.3.2 and the Benjamini–Hochberg procedure. In the Bonferroni
+procedure, in order to control the FWER for m null hypotheses at level
+α, we must simply reject null hypotheses for which the p-value is below
+α/m. This threshold of α/m does not depend on anything about the data
+(beyond the value of m), and certainly does not depend on the p-values
+themselves. By contrast, the rejection threshold used in the Benjamini–
+Hochberg procedure is more complicated: we reject all null hypotheses for
+which the p-value is less than or equal to the Lth smallest p-value, where
+L is itself a function of all m p-values, as in (13.10). Therefore, when conducting the Benjamini–Hochberg procedure, we cannot plan out in advance
+what threshold we will use to reject p-values; we need to first see our data.
+For instance, in the abstract, there is no way to know whether we will reject
+a null hypothesis corresponding to a p-value of 0.01 when using an FDR
+threshold of 0.1 with m = 100; the answer depends on the values of the
+other m − 1 p-values. This property of the Benjamini–Hochberg procedure
+is shared by the Holm procedure, which also involves a data-dependent
+p-value threshold.
+Figure 13.6 displays the results of applying the Bonferroni and Benjamini–
+Hochberg procedures on the Fund data set, using the full set of m = 2,000
+fund managers, of which the first five were displayed in Table 13.3. When
+the FWER is controlled at level 0.3 using Bonferroni, only one null hypothesis is rejected; that is, we can conclude only that a single fund manager is
+beating the market. This is despite the fact that a substantial portion of
+
+13.5 A Re-Sampling Approach to p-Values and False Discovery Rates
+
+577
+
+the m = 2,000 fund managers appear to have beaten the market without
+performing correction for multiple testing — for instance, 13 of them have
+p-values below 0.001. By contrast, when the FDR is controlled at level 0.3,
+we can conclude that 279 fund managers are beating the market: we expect
+that no more than around 279×0.3 = 83.7 of these fund managers had good
+performance only due to chance. Thus, we see that FDR control is much
+milder — and more powerful — than FWER control, in the sense that it
+allows us to reject many more null hypotheses, with a cost of substantially
+more false positives.
+The Benjamini–Hochberg procedure has been around since the mid1990s. While a great many papers have been published since then proposing
+alternative approaches for FDR control that can perform better in particular scenarios, the Benjamini–Hochberg procedure remains a very useful
+and widely-applicable approach.
+
+13.5
+
+A Re-Sampling Approach to p-Values and
+False Discovery Rates
+
+Thus far, the discussion in this chapter has assumed that we are interested
+in testing a particular null hypothesis H0 using a test statistic T , which
+has some known (or assumed) distribution under H0 , such as a normal
+distribution, a t-distribution, a χ2 -distribution, or an F -distribution. This
+is referred to as the theoretical null distribution. We typically rely upon
+theoretical
+the availability of a theoretical null distribution in order to obtain a p- null
+value associated with our test statistic. Indeed, for most of the types of distribution
+null hypotheses that we might be interested in testing, a theoretical null
+distribution is available, provided that we are willing to make stringent
+assumptions about our data.
+However, if our null hypothesis H0 or test statistic T is somewhat unusual, then it may be the case that no theoretical null distribution is available. Alternatively, even if a theoretical null distribution exists, then we
+may be wary of relying upon it, perhaps because some assumption that is
+required for it to hold is violated. For instance, maybe the sample size is
+too small.
+In this section, we present a framework for performing inference in this
+setting, which exploits the availability of fast computers in order to approximate the null distribution of T , and thereby to obtain a p-value. While this
+framework is very general, it must be carefully instantiated for a specific
+problem of interest. Therefore, in what follows, we consider a specific example in which we wish to test whether the means of two random variables
+are equal, using a two-sample t-test.
+The discussion in this section is more challenging than the preceding
+sections in this chapter, and can be safely skipped by a reader who is
+content to use the theoretical null distribution to compute p-values for his
+or her test statistics.
+
+578
+
+13.5.1
+
+13. Multiple Testing
+
+A Re-Sampling Approach to the p-Value
+
+We return to the example of Section 13.1.1, in which we wish to test whether
+the mean of a random variable X equals the mean of a random variable Y ,
+i.e. H0 : E(X) = E(Y ), against the alternative Ha : E(X) =
+% E(Y ). Given
+nX independent observations from X and nY independent observations
+from Y , the two-sample t-statistic takes the form
+µ̂X − µ̂Y
+T = G
+s n1X + n1Y
+
+(13.11)
+
+G
+) nX
+) nY
+(nX −1)s2X +(nY −1)s2Y
+where µ̂X = n1X i=1
+xi , µ̂Y = n1Y
+y
+,
+s
+=
+,
+i
+i=1
+nX +nY −2
+2
+2
+and sX and sY are unbiased estimators of the variances in the two groups.
+A large (absolute) value of T provides evidence against H0 .
+If nX and nY are large, then T in (13.11) approximately follows a N (0, 1)
+distribution. But if nX and nY are small, then in the absence of a strong
+assumption about the distribution of X and Y , we do not know the theoretical null distribution of T .17 In this case, it turns out that we can
+approximate the null distribution of T using a re-sampling approach, or
+re-sampling
+more specifically, a permutation approach.
+permutation
+To do this, we conduct a thought experiment. If H0 holds, so that E(X) =
+E(Y ), and we make the stronger assumption that the distributions of X
+and Y are the same, then the distribution of T is invariant under swapping
+observations of X with observations of Y . That is, if we randomly swap
+some of the observations in X with the observations in Y , then the test
+statistic T in (13.11) computed based on this swapped data has the same
+distribution as T based on the original data. This is true only if H0 holds,
+and the distributions of X and Y are the same.
+This suggests that in order to approximate the null distribution of T ,
+we can take the following approach. We randomly permute the nX + nY
+observations B times, for some large value of B, and each time we compute
+(13.11). We let T ∗1 , . . . , T ∗B denote the values of (13.11) on the permuted
+data. These can be viewed as an approximation of the null distribution
+of T under H0 . Recall that by definition, a p-value is the probability of
+observing a test statistic at least this extreme under H0 . Therefore, to
+compute a p-value for T , we can simply compute
+p-value =
+
+)B
+
+b=1 1(|T ∗b |≥|T |)
+
+B
+
+,
+
+(13.12)
+
+the fraction of permuted datasets for which the value of the test statistic
+is at least as extreme as the value observed on the original data. This
+procedure is summarized in Algorithm 13.3.
+17 If we assume that X and Y are normally distributed, then T in (13.11) follows a
+t-distribution with nX + nY − 2 degrees of freedom under H0 . However, in practice, the
+distribution of random variables is rarely known, and so it can be preferable to perform
+a re-sampling approach instead of making strong and unjustified assumptions. If the
+results of the

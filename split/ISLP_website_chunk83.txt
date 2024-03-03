@@ -1,0 +1,321 @@
+instead implemented the algorithm
+using PCA().
+Write a function to implement Algorithm 12.1 that makes use of PCA()
+rather than svd().
+13. On the book website, www.statlearning.com, there is a gene expression data set (Ch12Ex13.csv) that consists of 40 tissue samples with
+measurements on 1,000 genes. The first 20 samples are from healthy
+patients, while the second 20 are from a diseased group.
+(a) Load in the data using pd.read_csv(). You will need to select
+header = None.
+(b) Apply hierarchical clustering to the samples using correlationbased distance, and plot the dendrogram. Do the genes separate
+the samples into the two groups? Do your results depend on the
+type of linkage used?
+(c) Your collaborator wants to know which genes differ the most
+across the two groups. Suggest a way to answer this question,
+and apply it here.
+
+13
+Multiple Testing
+
+Thus far, this textbook has mostly focused on estimation and its close
+cousin, prediction. In this chapter, we instead focus on hypothesis testing,
+which is key to conducting inference. We remind the reader that inference
+was briefly discussed in Chapter 2.
+While Section 13.1 provides a brief review of null hypotheses, p-values,
+test statistics, and other key ideas in hypothesis testing, this chapter assumes that the reader has had previous exposure to these topics. In particular, we will not focus on why or how to conduct a hypothesis test — a
+topic on which entire books can be (and have been) written! Instead, we
+will assume that the reader is interested in testing some particular set of
+null hypotheses, and has a specific plan in mind for how to conduct the
+tests and obtain p-values.
+Much of the emphasis in classical statistics focuses on testing a single null
+hypothesis, such as H0 : the expected blood pressure of mice in the control
+group equals the expected blood pressure of mice in the treatment group. Of
+course, we would probably like to discover that there is a difference between
+the mean blood pressure in the two groups. But for reasons that will become
+clear, we construct a null hypothesis corresponding to no difference.
+In contemporary settings, we are often faced with huge amounts of
+data, and consequently may wish to test a great many null hypotheses.
+For instance, rather than simply testing H0 , we might want to test m
+null hypotheses, H01 , . . . , H0m , where H0j : the expected value of the j th
+biomarker among mice in the control group equals the expected value of the
+j th biomarker among mice in the treatment group. When conducting multiple testing, we need to be very careful about how we interpret the results,
+in order to avoid erroneously rejecting far too many null hypotheses.
+This chapter discusses classical as well as more contemporary ways to
+conduct multiple testing in a big-data setting. In Section 13.2, we highlight
+the challenges associated with multiple testing. Classical solutions to these
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0_13
+
+557
+
+558
+
+13. Multiple Testing
+
+challenges are presented in Section 13.3, and more contemporary solutions
+in Sections 13.4 and 13.5.
+In particular, Section 13.4 focuses on the false discovery rate. The notion of the false discovery rate dates back to the 1990s. It quickly rose in
+popularity in the early 2000s, when large-scale data sets began to come out
+of genomics. These datasets were unique not only because of their large
+size,1 but also because they were typically collected for exploratory purposes: researchers collected these datasets in order to test a huge number
+of null hypotheses, rather than just a very small number of pre-specified
+null hypotheses. Today, of course, huge datasets are collected without a
+pre-specified null hypothesis across virtually all fields. As we will see, the
+false discovery rate is perfectly-suited for this modern-day reality.
+This chapter naturally centers upon the classical statistical technique of
+p-values, used to quantify the results of hypothesis tests. At the time of
+writing of this book (2020), p-values have recently been the topic of extensive commentary in the social science research community, to the extent
+that some social science journals have gone so far as to ban the use of
+p-values altogether! We will simply comment that when properly understood and applied, p-values provide a powerful tool for drawing inferential
+conclusions from our data.
+
+13.1
+
+A Quick Review of Hypothesis Testing
+
+Hypothesis tests provide a rigorous statistical framework for answering
+simple “yes-or-no” questions about data, such as the following:
+1. Is the true coefficient βj in a linear regression of Y onto X1 , . . . , Xp
+equal to zero?2
+2. Is there a difference in the expected blood pressure of laboratory mice
+in the control group and laboratory mice in the treatment group?3
+In Section 13.1.1, we briefly review the steps involved in hypothesis testing. Section 13.1.2 discusses the different types of mistakes, or errors, that
+can occur in hypothesis testing.
+
+13.1.1
+
+Testing a Hypothesis
+
+Conducting a hypothesis test typically proceeds in four steps. First, we define the null and alternative hypotheses. Next, we construct a test statistic
+that summarizes the strength of evidence against the null hypothesis. We
+then compute a p-value that quantifies the probability of having obtained
+1 Microarray data was viewed as “big data” at the time, although by today’s standards,
+this label seems quaint: a microarray dataset can be (and typically was) stored in a
+Microsoft Excel spreadsheet!
+2 This hypothesis test was discussed on page 76 of Chapter 3.
+3 The “treatment group” refers to the set of mice that receive an experimental treatment, and the “control group” refers to those that do not.
+
+13.1 A Quick Review of Hypothesis Testing
+
+559
+
+a comparable or more extreme value of the test statistic under the null
+hypothesis. Finally, based on the p-value, we decide whether to reject the
+null hypothesis. We now briefly discuss each of these steps in turn.
+Step 1: Define the Null and Alternative Hypotheses
+In hypothesis testing, we divide the world into two possibilities: the null
+hypothesis and the alternative hypothesis. The null hypothesis, denoted H0 ,
+null
+is the default state of belief about the world.4 For instance, null hypotheses hypothesis
+associated with the two questions posed earlier in this chapter are as follows: alternative
+1. The true coefficient βj in a linear regression of Y onto X1 , . . . , Xp
+equals zero.
+
+hypothesis
+
+2. There is no difference between the expected blood pressure of mice
+in the control and treatment groups.
+The null hypothesis is boring by construction: it may well be true, but we
+might hope that our data will tell us otherwise.
+The alternative hypothesis, denoted Ha , represents something different
+and unexpected: for instance, that there is a difference between the expected blood pressure of the mice in the two groups. Typically, the alternative hypothesis simply posits that the null hypothesis does not hold: if
+the null hypothesis states that there is no difference between A and B, then
+the alternative hypothesis states that there is a difference between A and
+B.
+It is important to note that the treatment of H0 and Ha is asymmetric.
+H0 is treated as the default state of the world, and we focus on using data
+to reject H0 . If we reject H0 , then this provides evidence in favor of Ha . We
+can think of rejecting H0 as making a discovery about our data: namely, we
+are discovering that H0 does not hold! By contrast, if we fail to reject H0 ,
+then our findings are more nebulous: we will not know whether we failed
+to reject H0 because our sample size was too small (in which case testing
+H0 again on a larger or higher-quality dataset might lead to rejection), or
+whether we failed to reject H0 because H0 really holds.
+Step 2: Construct the Test Statistic
+Next, we wish to use our data in order to find evidence for or against
+the null hypothesis. In order to do this, we must compute a test statistic,
+test statistic
+denoted T , which summarizes the extent to which our data are consistent
+with H0 . The way in which we construct T depends on the nature of the
+null hypothesis that we are testing.
+To make things concrete, let xt1 , . . . , xtnt denote the blood pressure measurements for the nt mice in the treatment group, and let xc1 , . . . , xcnc denote
+the blood pressure measurements for the nc mice in the control group, and
+µt = E(X t ), µc = E(X c ). To test H0 : µt = µc , we make use of a two-sample
+t-statistic,5 defined as
+two-sample
+t-statistic
+
+4H
+
+0 is pronounced “H naught” or “H zero”.
+
+13. Multiple Testing
+
+0.3
+0.1
+
+0.2
+
+T=2.33
+
+0.0
+
+Probability Density Function
+
+0.4
+
+560
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+Value of Test Statistic
+
+FIGURE 13.1. The density function for the N (0, 1) distribution, with the vertical line indicating a value of 2.33. 1% of the area under the curve falls to the
+right of the vertical line, so there is only a 2% chance of observing a N (0, 1) value
+that is greater than 2.33 or less than −2.33. Therefore, if a test statistic has a
+N (0, 1) null distribution, then an observed test statistic of T = 2.33 leads to a
+p-value of 0.02.
+
+where µ̂t = n1t
+
+) nt
+
+µ̂t − µ̂c
+T = G
+s n1t + n1c
+
+(13.1)
+
+(nt − 1)s2t + (nc − 1)s2c
+nt + nc − 2
+
+(13.2)
+
+1
+t
+i=1 xi , µ̂c = nc
+
+s=
+
+@
+
+) nc
+
+c
+i=1 xi , and
+
+is an estimator of the pooled standard deviation of the two samples.6 Here,
+s2t and s2c are unbiased estimators of the variance of the blood pressure in
+the treatment and control groups, respectively. A large (absolute) value of
+T provides evidence against H0 : µt = µc , and hence evidence in support
+of Ha : µt =
+% µc .
+Step 3: Compute the p-Value
+In the previous section, we noted that a large (absolute) value of a twosample t-statistic provides evidence against H0 . This begs the question: how
+large is large? In other words, how much evidence against H0 is provided
+by a given value of the test statistic?
+The notion of a p-value provides us with a way to formalize as well as
+p-value
+answer this question. The p-value is defined as the probability of observing
+a test statistic equal to or more extreme than the observed statistic, under
+the assumption that H0 is in fact true. Therefore, a small p-value provides
+evidence against H0 .
+5 The t-statistic derives its name from the fact that, under H , it follows a t0
+distribution.
+6 Note that (13.2) assumes that the control and treatment groups have equal variance.
+Without this assumption, (13.2) would take a slightly different form.
+
+13.1 A Quick Review of Hypothesis Testing
+
+561
+
+To make this concrete, suppose that T = 2.33 for the test statistic in
+(13.1). Then, we can ask: what is the probability of having observed such
+a large value of T , if indeed H0 holds? It turns out that under H0 , the
+distribution of T in (13.1) follows approximately a N (0, 1) distribution7 —
+that is, a normal distribution with mean 0 and variance 1. This distribution
+is displayed in Figure 13.1. We see that the vast majority — 98% — of the
+N (0, 1) distribution falls between −2.33 and 2.33. This means that under
+H0 , we would expect to see such a large value of |T | only 2% of the time.
+Therefore, the p-value corresponding to T = 2.33 is 0.02.
+The distribution of the test statistic under H0 (also known as the test
+statistic’s null distribution) will depend on the details of what type of
+null
+null hypothesis is being tested, and what type of test statistic is used. In distribution
+general, most commonly-used test statistics follow a well-known statistical
+distribution under the null hypothesis — such as a normal distribution,
+a t-distribution, a χ2 -distribution, or an F -distribution — provided that
+the sample size is sufficiently large and that some other assumptions hold.
+Typically, the R function that is used to compute a test statistic will make
+use of this null distribution in order to output a p-value. In Section 13.5,
+we will see an approach to estimate the null distribution of a test statistic
+using re-sampling; in many contemporary settings, this is a very attractive
+option, as it exploits the availability of fast computers in order to avoid
+having to make potentially problematic assumptions about the data.
+The p-value is perhaps one of the most used and abused notions in all of
+statistics. In particular, it is sometimes said that the p-value is the probability that H0 holds, i.e., that the null hypothesis is true. This is not correct!
+The one and only correct interpretation of the p-value is as the fraction
+of the time that we would expect to see such an extreme value of the test
+statistic8 if we repeated the experiment many many times, provided H0
+holds.
+In Step 2 we computed a test statistic, and noted that a large (absolute)
+value of the test statistic provides evidence against H0 . In Step 3 the test
+statistic was converted to a p-value, with small p-values providing evidence
+against H0 . What, then, did we accomplish by converting the test statistic
+from Step 2 into a p-value in Step 3? To answer this question, suppose
+a data analyst conducts a statistical test, and reports a test statistic of
+T = 17.3. Does this provide strong evidence against H0 ? It’s impossible
+to know, without more information: in particular, we would need to know
+7 More precisely, assuming that the observations are drawn from a normal distribution,
+then T follows a t-distribution with nt + nc − 2 degrees of freedom. Provided that nt +
+nc − 2 is larger than around 40, this is very well-approximated by a N (0, 1) distribution.
+In Section 13.5, we will see an alternative and often more attractive way to approximate
+the null distribution of T , which avoids making stringent assumptions about the data.
+8 A one-sided p-value is the probability of seeing such an extreme value of the test
+statistic; e.g. the probability of seeing a test statistic greater than or equal to T = 2.33.
+A two-sided p-value is the probability of seeing such an extreme value of the absolute
+test statistic; e.g. the probability of seeing a test statistic greater than or equal to 2.33
+or less than or equal to −2.33. The default recommendation is to report a two-sided
+p-value rather than a one-sided p-value, unless there is a clear and compelling reason
+that only one direction of the test statistic is of scientific interest.
+
+562
+
+13. Multiple Testing
+
+Decision
+
+Reject H0
+Do Not Reject H0
+
+Truth
+H0
+Ha
+Type I Error
+Correct
+Correct
+Type II Error
+
+TABLE 13.1. A summary of the possible scenarios associated with testing the
+null hypothesis H0 . Type I errors are also known as false positives, and Type II
+errors as false negatives.
+
+what value of the test statistic should be expected, under H0 . This is exactly
+what a p-value gives us. In other words, a p-value allows us to transform
+our test statistic, which is measured on some arbitrary and uninterpretable
+scale, into a number between 0 and 1 that can be more easily interpreted.
+Step 4: Decide Whether to Reject the Null Hypothesis
+Once we have computed a p-value corresponding to H0 , it remains for
+us to decide whether or not to reject H0 . (We do not usually talk about
+“accepting” H0 : instead, we talk about “failing to reject” H0 .) A small pvalue indicates that such a large value of the test statistic is unlikely to
+occur under H0 , and thereby provides evidence against H0 . If the p-value
+is sufficiently small, then we w

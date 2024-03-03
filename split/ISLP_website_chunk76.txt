@@ -1,0 +1,618 @@
+s the data. The plane is positioned
+to minimize the sum of squared distances to each point. Right: the first two principal component score vectors give the coordinates of the projection of the 90
+observations onto the plane.
+
+useful: principal components provide low-dimensional linear surfaces that
+are closest to the observations. We expand upon that interpretation here.3
+The first principal component loading vector has a very special property:
+it is the line in p-dimensional space that is closest to the n observations
+(using average squared Euclidean distance as a measure of closeness). This
+interpretation can be seen in the left-hand panel of Figure 6.15; the dashed
+lines indicate the distance between each observation and the line defined
+by the first principal component loading vector. The appeal of this interpretation is clear: we seek a single dimension of the data that lies as close
+as possible to all of the data points, since such a line will likely provide a
+good summary of the data.
+The notion of principal components as the dimensions that are closest to the n observations extends beyond just the first principal component. For instance, the first two principal components of a data set
+span the plane that is closest to the n observations, in terms of average
+squared Euclidean distance. An example is shown in the left-hand panel
+of Figure 12.2. The first three principal components of a data set span
+the three-dimensional hyperplane that is closest to the n observations, and
+so forth.
+Using this interpretation, together the first M principal component score
+vectors and the first M principal component loading vectors provide the
+best M -dimensional approximation (in terms of Euclidean distance) to
+3 In this section, we continue to assume that each column of the data matrix X has
+been centered to have mean zero—that is, the column mean has been subtracted from
+each column.
+
+510
+
+12. Unsupervised Learning
+
+the ith observation xij . This representation can be written as
+xij ≈
+
+M
+0
+
+zim φjm .
+
+(12.5)
+
+m=1
+
+We can state this more formally by writing down an optimization problem. Suppose the data matrix
+)M X is column-centered. Out of all approximations of the form xij ≈ m=1 aim bjm , we could ask for the one with the
+smallest residual sum of squares:
+
+>
+?2 
+p 0
+n
+M
+0
+
+0
+minimize
+xij −
+aim bjm
+.
+(12.6)
+
+A∈Rn×M ,B∈Rp×M 
+m=1
+
+j=1 i=1
+
+Here, A is an n × M matrix whose (i, m) element is aim , and B is a p × M
+element whose (j, m) element is bjm .
+It can be shown that for any value of M , the columns of the matrices
+Â and B̂ that solve (12.6) are in fact the first M principal components
+score and loading vectors. In other words, if Â and B̂ solve (12.6), then
+âim = zim and b̂jm = φjm .4 This means that the smallest possible value of
+the objective in (12.6) is
+>
+?2
+p 0
+n
+M
+0
+0
+xij −
+zim φjm .
+(12.7)
+j=1 i=1
+
+m=1
+
+In summary, together the M principal component score vectors and M
+principal component loading vectors can give a good approximation to the
+data when M is sufficiently large. When M = min(n − 1, p), then the
+)M
+representation is exact: xij = m=1 zim φjm .
+
+12.2.3
+
+The Proportion of Variance Explained
+
+In Figure 12.2, we performed PCA on a three-dimensional data set (lefthand panel) and projected the data onto the first two principal component
+loading vectors in order to obtain a two-dimensional view of the data (i.e.
+the principal component score vectors; right-hand panel). We see that this
+two-dimensional representation of the three-dimensional data does successfully capture the major pattern in the data: the orange, green, and cyan
+observations that are near each other in three-dimensional space remain
+nearby in the two-dimensional representation. Similarly, we have seen on
+the USArrests data set that we can summarize the 50 observations and 4
+variables using just the first two principal component score vectors and the
+first two principal component loading vectors.
+We can now ask a natural question: how much of the information in
+a given data set is lost by projecting the observations onto the first few
+principal components? That is, how much of the variance in the data is not
+contained in the first few principal components? More generally, we are
+interested in knowing the proportion of variance explained (PVE) by each
+
+proportion
+of variance
+4 Technically, the solution to (12.6) is not unique. Thus, it is more precise to state explained
+that any solution to (12.6) can be easily transformed to yield the principal components.
+
+12.2 Principal Components Analysis
+
+511
+
+principal component. The total variance present in a data set (assuming
+that the variables have been centered to have mean zero) is defined as
+p
+0
+
+Var(Xj ) =
+
+j=1
+
+p
+n
+0
+10
+
+n i=1
+j=1
+
+x2ij ,
+
+(12.8)
+
+and the variance explained by the mth principal component is
+
+2
+p
+n
+n
+10 2
+1 0 0
+z =
+φjm xij  .
+n i=1 im
+n i=1 j=1
+
+(12.9)
+
+22
+) n 1) p
+)n
+2
+φ
+x
+jm
+ij
+i=1
+j=1
+z
+)p i=1
+)n im 2 =
+)p )n
+.
+2
+x
+j=1
+i=1 ij
+j=1
+i=1 xij
+
+(12.10)
+
+Therefore, the PVE of the mth principal component is given by
+
+The PVE of each principal component is a positive quantity. In order to
+compute the cumulative PVE of the first M principal components, we can
+simply sum (12.10) over each of the first M PVEs. In total, there are
+min(n − 1, p) principal components, and their PVEs sum to one.
+In Section 12.2.2, we showed that the first M principal component loading and score vectors can be interpreted as the best M -dimensional approximation to the data, in terms of residual sum of squares. It turns out that
+the variance of the data can be decomposed into the variance of the first M
+principal components plus the mean squared error of this M -dimensional
+approximation, as follows:
+p
+n
+'
+1'
+j=1
+
+(
+
+n i=1
+)*
+
+x2ij =
+
+Var. of data
+
++
+
+,
+-2
+p
+M
+n
+n
+M
+'
+'
+1' 2
+1 ''
+zim +
+xij −
+zim φjm
+n i=1
+n j=1 i=1
+m=1
+m=1
+(
+)*
++
+(
+)*
++
+
+Var. of first M PCs
+
+(12.11)
+
+MSE of M -dimensional approximation
+
+The three terms in this decomposition are discussed in (12.8), (12.9), and
+(12.7), respectively. Since the first term is fixed, we see that by maximizing
+the variance of the first M principal components, we minimize the mean
+squared error of the M -dimensional approximation, and vice versa. This explains why principal components can be equivalently viewed as minimizing
+the approximation error (as in Section 12.2.2) or maximizing the variance
+(as in Section 12.2.1).
+Moreover, we can use (12.11) to see that the PVE defined in (12.10)
+equals
+22
+)p )n 1
+)M
+j=1
+i=1 xij −
+m=1 zim φjm
+RSS
+)p )n
+1−
+=1−
+,
+2
+TSS
+j=1
+i=1 xij
+where TSS represents the total sum of squared elements of X, and RSS
+represents the residual sum of squares of the M -dimensional approximation given by the principal components. Recalling the definition of R2 from
+(3.17), this means that we can interpret the PVE as the R2 of the approximation for X given by the first M principal components.
+
+0.8
+0.6
+0.4
+0.0
+
+0.2
+
+Cumulative Prop. Variance Explained
+
+0.8
+0.6
+0.4
+0.2
+0.0
+
+Prop. Variance Explained
+
+1.0
+
+12. Unsupervised Learning
+1.0
+
+512
+
+1.0
+
+1.5
+
+2.0
+
+2.5
+
+3.0
+
+Principal Component
+
+3.5
+
+4.0
+
+1.0
+
+1.5
+
+2.0
+
+2.5
+
+3.0
+
+3.5
+
+4.0
+
+Principal Component
+
+FIGURE 12.3. Left: a scree plot depicting the proportion of variance explained
+by each of the four principal components in the USArrests data. Right: the cumulative proportion of variance explained by the four principal components in the
+USArrests data.
+
+In the USArrests data, the first principal component explains 62.0 % of
+the variance in the data, and the next principal component explains 24.7 %
+of the variance. Together, the first two principal components explain almost
+87 % of the variance in the data, and the last two principal components
+explain only 13 % of the variance. This means that Figure 12.1 provides a
+pretty accurate summary of the data using just two dimensions. The PVE
+of each principal component, as well as the cumulative PVE, is shown
+in Figure 12.3. The left-hand panel is known as a scree plot, and will be
+scree plot
+discussed later in this chapter.
+
+12.2.4
+
+More on PCA
+
+Scaling the Variables
+We have already mentioned that before PCA is performed, the variables
+should be centered to have mean zero. Furthermore, the results obtained
+when we perform PCA will also depend on whether the variables have
+been individually scaled (each multiplied by a different constant). This is in
+contrast to some other supervised and unsupervised learning techniques,
+such as linear regression, in which scaling the variables has no effect. (In
+linear regression, multiplying a variable by a factor of c will simply lead to
+multiplication of the corresponding coefficient estimate by a factor of 1/c,
+and thus will have no substantive effect on the model obtained.)
+For instance, Figure 12.1 was obtained after scaling each of the variables
+to have standard deviation one. This is reproduced in the left-hand plot in
+Figure 12.4. Why does it matter that we scaled the variables? In these data,
+the variables are measured in different units; Murder, Rape, and Assault are
+reported as the number of occurrences per 100, 000 people, and UrbanPop is
+the percentage of the state’s population that lives in an urban area. These
+four variables have variances of 18.97, 87.73, 6945.16, and 209.5, respectively. Consequently, if we perform PCA on the unscaled variables, then
+
+12.2 Principal Components Analysis
+
+−0.5
+
+1.0
+
+UrbanPop
+
+*
+*
+** *
+* *
+* **
+*
+** * *
+*
+*
+*
+
+Rape
+** *
+** * * **
+*Murder
+* * *
+*
+
+*
+**
+*
+*
+* *
+* * Assault
+* * *
+* *
+*
+
+−0.5
+
+0
+
+50
+
+0.5
+
+100
+
+150
+
+*
+
+0.5
+
+−100
+
+*
+
+0.0
+
+−3
+
+*
+
+−50
+
+0.5
+
+*
+**
+*
+* Rape
+*
+*
+*
+*
+*
+*
+Assault
+* *
+*
+*
+*
+Murder
+
+0.0
+
+*
+
+*
+
+*
+*
+* *
+*
+*
+* ** *
+*
+**
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+*
+
+−0.5
+
+−1
+
+0
+
+1
+
+** **
+*
+
+Second Principal Component
+
+2
+
+3
+
+UrbanPop
+
+0.0
+
+0.5
+
+−2
+
+Second Principal Component
+
+Unscaled
+
+0.0
+
+1.0
+
+Scaled
+−0.5
+
+513
+
+−3
+
+−2
+
+−1
+
+0
+
+1
+
+First Principal Component
+
+2
+
+3
+
+−100
+
+−50
+
+0
+
+50
+
+100
+
+150
+
+First Principal Component
+
+FIGURE 12.4. Two principal component biplots for the USArrests data. Left:
+the same as Figure 12.1, with the variables scaled to have unit standard deviations.
+Right: principal components using unscaled data. Assault has by far the largest
+loading on the first principal component because it has the highest variance among
+the four variables. In general, scaling the variables to have standard deviation one
+is recommended.
+
+the first principal component loading vector will have a very large loading
+for Assault, since that variable has by far the highest variance. The righthand plot in Figure 12.4 displays the first two principal components for the
+USArrests data set, without scaling the variables to have standard deviation one. As predicted, the first principal component loading vector places
+almost all of its weight on Assault, while the second principal component
+loading vector places almost all of its weight on UrbanPop. Comparing this
+to the left-hand plot, we see that scaling does indeed have a substantial
+effect on the results obtained.
+However, this result is simply a consequence of the scales on which the
+variables were measured. For instance, if Assault were measured in units
+of the number of occurrences per 100 people (rather than number of occurrences per 100, 000 people), then this would amount to dividing all of
+the elements of that variable by 1, 000. Then the variance of the variable
+would be tiny, and so the first principal component loading vector would
+have a very small value for that variable. Because it is undesirable for the
+principal components obtained to depend on an arbitrary choice of scaling,
+we typically scale each variable to have standard deviation one before we
+perform PCA.
+In certain settings, however, the variables may be measured in the same
+units. In this case, we might not wish to scale the variables to have standard deviation one before performing PCA. For instance, suppose that the
+variables in a given data set correspond to expression levels for p genes.
+Then since expression is measured in the same “units” for each gene, we
+might choose not to scale the genes to each have standard deviation one.
+
+514
+
+12. Unsupervised Learning
+
+Uniqueness of the Principal Components
+While in theory the principal components need not be unique, in almost all
+practical settings they are (up to sign flips). This means that two different
+software packages will yield the same principal component loading vectors,
+although the signs of those loading vectors may differ. The signs may differ
+because each principal component loading vector specifies a direction in pdimensional space: flipping the sign has no effect as the direction does not
+change. (Consider Figure 6.14—the principal component loading vector is
+a line that extends in either direction, and flipping its sign would have no
+effect.) Similarly, the score vectors are unique up to a sign flip, since the
+variance of Z is the same as the variance of −Z. It is worth noting that
+when we use (12.5) to approximate xij we multiply zim by φjm . Hence, if
+the sign is flipped on both the loading and score vectors, the final product
+of the two quantities is unchanged.
+
+Deciding How Many Principal Components to Use
+In general, an n × p data matrix X has min(n − 1, p) distinct principal
+components. However, we usually are not interested in all of them; rather,
+we would like to use just the first few principal components in order to
+visualize or interpret the data. In fact, we would like to use the smallest
+number of principal components required to get a good understanding of the
+data. How many principal components are needed? Unfortunately, there is
+no single (or simple!) answer to this question.
+We typically decide on the number of principal components required
+to visualize the data by examining a scree plot, such as the one shown
+in the left-hand panel of Figure 12.3. We choose the smallest number of
+principal components that are required in order to explain a sizable amount
+of the variation in the data. This is done by eyeballing the scree plot, and
+looking for a point at which the proportion of variance explained by each
+subsequent principal component drops off. This drop is often referred to
+as an elbow in the scree plot. For instance, by inspection of Figure 12.3,
+one might conclude that a fair amount of variance is explained by the first
+two principal components, and that there is an elbow after the second
+component. After all, the third principal component explains less than ten
+percent of the variance in the data, and the fourth principal component
+explains less than half that and so is essentially worthless.
+However, this type of visual analysis is inherently ad hoc. Unfortunately,
+there is no well-accepted objective way to decide how many principal components are enough. In fact, the question of how many principal components are enough is inherently ill-defined, and will depend on the specific
+area of application and the specific data set. In practice, we tend to look
+at the first few principal components in order to find interesting patterns
+in the data. If no interesting patterns are found in the first few principal
+components, then further principal components are unlikely to be of interest. Conversely, if the first few principal components are interesting, then
+we typically continue to look at subsequent principal components until no
+further interesting patterns are found. This is admittedly a subjective ap-
+
+12.3 Missing Values and Matrix Completion
+
+515
+
+proach, and is reflective

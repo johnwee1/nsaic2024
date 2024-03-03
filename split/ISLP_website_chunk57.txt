@@ -1,0 +1,589 @@
+roduce the
+support vector machine, which does this in an automatic way.
+
+2
+
+X2
+0
+−2
+−4
+
+−4
+
+−2
+
+0
+
+X2
+
+2
+
+4
+
+9. Support Vector Machines
+
+4
+
+378
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+−4
+
+X1
+
+−2
+
+0
+
+2
+
+4
+
+X1
+
+FIGURE 9.8. Left: The observations fall into two classes, with a non-linear boundary between them. Right: The support vector classifier seeks a linear
+boundary, and consequently performs very poorly.
+
+9.3.1
+
+Classification with Non-Linear Decision Boundaries
+
+The support vector classifier is a natural approach for classification in the
+two-class setting, if the boundary between the two classes is linear. However, in practice we are sometimes faced with non-linear class boundaries.
+For instance, consider the data in the left-hand panel of Figure 9.8. It is
+clear that a support vector classifier or any linear classifier will perform
+poorly here. Indeed, the support vector classifier shown in the right-hand
+panel of Figure 9.8 is useless here.
+In Chapter 7, we are faced with an analogous situation. We see there
+that the performance of linear regression can suffer when there is a nonlinear relationship between the predictors and the outcome. In that case,
+we consider enlarging the feature space using functions of the predictors,
+such as quadratic and cubic terms, in order to address this non-linearity.
+In the case of the support vector classifier, we could address the problem of possibly non-linear boundaries between classes in a similar way, by
+enlarging the feature space using quadratic, cubic, and even higher-order
+polynomial functions of the predictors. For instance, rather than fitting a
+support vector classifier using p features
+X1 , X 2 , . . . , X p ,
+we could instead fit a support vector classifier using 2p features
+X1 , X12 , X2 , X22 , . . . , Xp , Xp2 .
+
+9.3 Support Vector Machines
+
+379
+
+Then (9.12)–(9.15) would become
+maximize
+
+
+subject to yi β0 +
+n
+0
+i=1
+
+"i ≤ C, "i ≥ 0,
+
+p
+0
+
+(9.16)
+
+M
+
+β0 ,β11 ,β12 ,...,βp1 ,βp2 ,&1 ,...,&n , M
+
+βj1 xij +
+
+j=1
+
+p
+0
+j=1
+
+p 0
+2
+0
+
+
+
+βj2 x2ij  ≥ M (1 − "i ),
+
+2
+βjk
+= 1.
+
+j=1 k=1
+
+Why does this lead to a non-linear decision boundary? In the enlarged
+feature space, the decision boundary that results from (9.16) is in fact linear. But in the original feature space, the decision boundary is of the form
+q(x) = 0, where q is a quadratic polynomial, and its solutions are generally non-linear. One might additionally want to enlarge the feature space
+with higher-order polynomial terms, or with interaction terms of the form
+Xj Xj ! for j %= j $ . Alternatively, other functions of the predictors could
+be considered rather than polynomials. It is not hard to see that there
+are many possible ways to enlarge the feature space, and that unless we
+are careful, we could end up with a huge number of features. Then computations would become unmanageable. The support vector machine, which
+we present next, allows us to enlarge the feature space used by the support
+vector classifier in a way that leads to efficient computations.
+
+9.3.2
+
+The Support Vector Machine
+
+The support vector machine (SVM) is an extension of the support vector support
+classifier that results from enlarging the feature space in a specific way, vector
+using kernels. We will now discuss this extension, the details of which are machine
+somewhat complex and beyond the scope of this book. However, the main kernel
+idea is described in Section 9.3.1: we may want to enlarge our feature space
+in order to accommodate a non-linear boundary between the classes. The
+kernel approach that we describe here is simply an efficient computational
+approach for enacting this idea.
+We have not discussed exactly how the support vector classifier is computed because the details become somewhat technical. However, it turns
+out that the solution to the support vector classifier problem (9.12)–(9.15)
+involves only the inner products of the observations (as opposed to the
+observations themselves).
+The inner product of two r-vectors a and b is
+)r
+defined as 4a, b5 = i=1 ai bi . Thus the inner product of two observations
+xi , xi! is given by
+p
+0
+!
+4xi , xi 5 =
+xij xi! j .
+(9.17)
+j=1
+
+It can be shown that
+
+• The linear support vector classifier can be represented as
+f (x) = β0 +
+
+n
+0
+i=1
+
+αi 4x, xi 5,
+
+(9.18)
+
+380
+
+9. Support Vector Machines
+
+where there are n parameters αi , i = 1, . . . , n, one per training
+observation.
+• 'To( estimate the parameters α1 , . . . , αn and β0 , all we need are the
+n
+!
+2 inner products
+'n( 4xi , xi 5 between all pairs of training observations.
+(The notation 2 means n(n − 1)/2, and gives the number of pairs
+among a set of n items.)
+
+Notice that in (9.18), in order to evaluate the function f (x), we need to
+compute the inner product between the new point x and each of the training
+points xi . However, it turns out that αi is nonzero only for the support
+vectors in the solution—that is, if a training observation is not a support
+vector, then its αi equals zero. So if S is the collection of indices of these
+support points, we can rewrite any solution function of the form (9.18) as
+0
+f (x) = β0 +
+αi 4x, xi 5,
+(9.19)
+i∈S
+
+which typically involves far fewer terms than in (9.18).2
+To summarize, in representing the linear classifier f (x), and in computing
+its coefficients, all we need are inner products.
+Now suppose that every time the inner product (9.17) appears in the
+representation (9.18), or in a calculation of the solution for the support
+vector classifier, we replace it with a generalization of the inner product of
+the form
+K(xi , xi! ),
+(9.20)
+where K is some function that we will refer to as a kernel. A kernel is a
+kernel
+function that quantifies the similarity of two observations. For instance, we
+could simply take
+p
+0
+K(xi , xi! ) =
+xij xi! j ,
+(9.21)
+j=1
+
+which would just give us back the support vector classifier. Equation 9.21
+is known as a linear kernel because the support vector classifier is linear
+in the features; the linear kernel essentially quantifies the similarity of a
+pair of observations using Pearson (standard) correlation. But one could
+instead choose another
+form for (9.20). For instance, one could replace
+)p
+every instance of j=1 xij xi! j with the quantity
+K(xi , xi! ) = (1 +
+
+p
+0
+
+xij xi! j )d .
+
+(9.22)
+
+j=1
+
+This is known as a polynomial kernel of degree d, where d is a positive
+polynomial
+integer. Using such a kernel with d > 1, instead of the standard linear kernel
+kernel (9.21), in the support vector classifier algorithm leads to a much more
+flexible decision boundary. It essentially amounts to fitting a support vector
+2 By expanding each of the inner products in (9.19), it is easy to see that f (x) is
+a linear function of the coordinates of x. Doing so also establishes the correspondence
+between the αi and the original parameters βj .
+
+−2
+
+0
+
+X2
+
+2
+
+4
+
+381
+
+−4
+
+−4
+
+−2
+
+0
+
+X2
+
+2
+
+4
+
+9.3 Support Vector Machines
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+−4
+
+−2
+
+X1
+
+0
+
+2
+
+4
+
+X1
+
+FIGURE 9.9. Left: An SVM with a polynomial kernel of degree 3 is applied to
+the non-linear data from Figure 9.8, resulting in a far more appropriate decision
+rule. Right: An SVM with a radial kernel is applied. In this example, either kernel
+is capable of capturing the decision boundary.
+
+classifier in a higher-dimensional space involving polynomials of degree d,
+rather than in the original feature space. When the support vector classifier
+is combined with a non-linear kernel such as (9.22), the resulting classifier is
+known as a support vector machine. Note that in this case the (non-linear)
+function has the form
+0
+f (x) = β0 +
+αi K(x, xi ).
+(9.23)
+i∈S
+
+The left-hand panel of Figure 9.9 shows an example of an SVM with a
+polynomial kernel applied to the non-linear data from Figure 9.8. The fit is
+a substantial improvement over the linear support vector classifier. When
+d = 1, then the SVM reduces to the support vector classifier seen earlier in
+this chapter.
+The polynomial kernel shown in (9.22) is one example of a possible
+non-linear kernel, but alternatives abound. Another popular choice is the
+radial kernel, which takes the form
+K(xi , xi! ) = exp(−γ
+
+p
+0
+j=1
+
+(xij − xi! j )2 ).
+
+(9.24)
+
+In (9.24), γ is a positive constant. The right-hand panel of Figure 9.9 shows
+an example of an SVM with a radial kernel on this non-linear data; it also
+does a good job in separating the two classes.
+How does the radial kernel (9.24) actually work? If a given test observation x∗ = (x∗1 , . . . , x∗p )T)
+is far from a training observation xi in terms of
+p
+Euclidean distance, then j=1 (x∗j − xij )2 will be large, and so K(x∗ , xi ) =
+)p
+exp(−γ j=1 (x∗j − xij )2 ) will be tiny. This means that in (9.23), xi will
+play virtually no role in f (x∗ ). Recall that the predicted class label for the
+test observation x∗ is based on the sign of f (x∗ ). In other words, training
+observations that are far from x∗ will play essentially no role in the predicted class label for x∗ . This means that the radial kernel has very local
+
+radial kernel
+
+0.8
+0.6
+0.2
+
+0.4
+
+True positive rate
+
+0.6
+0.4
+0.0
+
+Support Vector Classifier
+LDA
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+False positive rate
+
+0.8
+
+1.0
+
+Support Vector Classifier
+SVM: γ=10−3
+SVM: γ=10−2
+SVM: γ=10−1
+
+0.0
+
+0.2
+
+True positive rate
+
+0.8
+
+1.0
+
+9. Support Vector Machines
+1.0
+
+382
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+False positive rate
+
+FIGURE 9.10. ROC curves for the Heart data training set. Left: The support
+vector classifier and LDA are compared. Right: The support vector classifier is
+compared to an SVM using a radial basis kernel with γ = 10−3 , 10−2 , and 10−1 .
+
+behavior, in the sense that only nearby training observations have an effect
+on the class label of a test observation.
+What is the advantage of using a kernel rather than simply enlarging
+the feature space using functions of the original features, as in (9.16)? One
+advantage is computational, and it amounts
+' ( to the fact that using kernels,
+one need only compute K(xi , x$i ) for all n2 distinct pairs i, i$ . This can be
+done without explicitly working in the enlarged feature space. This is important because in many applications of SVMs, the enlarged feature space
+is so large that computations are intractable. For some kernels, such as the
+radial kernel (9.24), the feature space is implicit and infinite-dimensional,
+so we could never do the computations there anyway!
+
+9.3.3
+
+An Application to the Heart Disease Data
+
+In Chapter 8 we apply decision trees and related methods to the Heart data.
+The aim is to use 13 predictors such as Age, Sex, and Chol in order to predict
+whether an individual has heart disease. We now investigate how an SVM
+compares to LDA on this data. After removing 6 missing observations, the
+data consist of 297 subjects, which we randomly split into 207 training and
+90 test observations.
+We first fit LDA and the support vector classifier to the training data.
+Note that the support vector classifier is equivalent to an SVM using a polynomial kernel of degree d = 1. The left-hand panel of Figure 9.10 displays
+ROC curves (described in Section 4.4.2) for the training set predictions for
+both LDA and the support vector classifier. Both classifiers compute scores
+of the form fˆ(X) = β̂0 + β̂1 X1 + β̂2 X2 + · · · + β̂p Xp for each observation.
+For any given cutoff t, we classify observations into the heart disease or
+no heart disease categories depending on whether fˆ(X) < t or fˆ(X) ≥ t.
+The ROC curve is obtained by forming these predictions and computing
+the false positive and true positive rates for a range of values of t. An optimal classifier will hug the top left corner of the ROC plot. In this instance
+
+0.6
+
+0.8
+
+1.0
+
+383
+
+0.2
+
+0.4
+
+True positive rate
+
+0.6
+0.4
+0.0
+
+Support Vector Classifier
+LDA
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+False positive rate
+
+0.8
+
+1.0
+
+Support Vector Classifier
+SVM: γ=10−3
+SVM: γ=10−2
+SVM: γ=10−1
+
+0.0
+
+0.2
+
+True positive rate
+
+0.8
+
+1.0
+
+9.4 SVMs with More than Two Classes
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+False positive rate
+
+FIGURE 9.11. ROC curves for the test set of the Heart data. Left: The support
+vector classifier and LDA are compared. Right: The support vector classifier is
+compared to an SVM using a radial basis kernel with γ = 10−3 , 10−2 , and 10−1 .
+
+LDA and the support vector classifier both perform well, though there is a
+suggestion that the support vector classifier may be slightly superior.
+The right-hand panel of Figure 9.10 displays ROC curves for SVMs using
+a radial kernel, with various values of γ. As γ increases and the fit becomes
+more non-linear, the ROC curves improve. Using γ = 10−1 appears to give
+an almost perfect ROC curve. However, these curves represent training
+error rates, which can be misleading in terms of performance on new test
+data. Figure 9.11 displays ROC curves computed on the 90 test observations. We observe some differences from the training ROC curves. In the
+left-hand panel of Figure 9.11, the support vector classifier appears to have
+a small advantage over LDA (although these differences are not statistically significant). In the right-hand panel, the SVM using γ = 10−1 , which
+showed the best results on the training data, produces the worst estimates
+on the test data. This is once again evidence that while a more flexible
+method will often produce lower training error rates, this does not necessarily lead to improved performance on test data. The SVMs with γ = 10−2
+and γ = 10−3 perform comparably to the support vector classifier, and all
+three outperform the SVM with γ = 10−1 .
+
+9.4
+
+SVMs with More than Two Classes
+
+So far, our discussion has been limited to the case of binary classification:
+that is, classification in the two-class setting. How can we extend SVMs
+to the more general case where we have some arbitrary number of classes?
+It turns out that the concept of separating hyperplanes upon which SVMs
+are based does not lend itself naturally to more than two classes. Though
+a number of proposals for extending SVMs to the K-class case have been
+made, the two most popular are the one-versus-one and one-versus-all
+approaches. We briefly discuss those two approaches here.
+
+384
+
+9. Support Vector Machines
+
+9.4.1
+
+One-Versus-One Classification
+
+Suppose that we would like to perform classification using SVMs, and there
+' (
+are K > 2 classes. A one-versus-one or all-pairs approach constructs K
+2
+one-versusSVMs, each of which compares a pair of classes. For example, one such one
+$
+SVM might compare the kth class, coded as +1, to the
+'Kk( th class, coded
+as −1. We classify a test observation using each of the 2 classifiers, and
+we tally the number of times that the test observation is assigned to each
+of the K classes. The final classification is performed by assigning the test
+observation
+to the class to which it was most frequently assigned in these
+'K (
+pairwise
+classifications.
+2
+
+9.4.2
+
+One-Versus-All Classification
+
+The one-versus-all approach (also referred to as one-versus-rest) is an al- one-versusternative procedure for applying SVMs in the case of K > 2 classes. We all
+fit K SVMs, each time comparing one of the K classes to the remaining one-versusK − 1 classes. Let β0k , β1k , . . . , βpk denote the parameters that result from rest
+fitting an SVM comparing the kth class (coded as +1) to the others (coded
+as −1). Let x∗ denote a test observation. We assign the observation to the
+class for which β0k + β1k x∗1 + β2k x∗2 + · · · + βpk x∗p is largest, as this amounts
+to a high level of confidence that the test observation belongs to the kth
+class rather than to any of the other classes.
+
+9.5
+
+Relationship to Logis

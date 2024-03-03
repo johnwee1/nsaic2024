@@ -1,0 +1,422 @@
+ be 7% − 5% = 2%.
+
+568
+
+13. Multiple Testing
+
+so this procedure controls the FWER at level α. For instance, in order to
+control the FWER at level 0.1 while testing m = 100 null hypotheses, the
+Bonferroni procedure requires us to control the Type I error for each null
+hypothesis at level 0.1/100 = 0.001, i.e. to reject all null hypotheses for
+which the p-value is below 0.001.
+We now consider the Fund dataset in Table 13.3. If we control the Type
+I error at level α = 0.05 for each fund manager separately, then we will
+conclude that the first and third managers have significantly non-zero excess returns; in other words, we will reject H01 : µ1 = 0 and H03 : µ3 = 0.
+However, as discussed in previous sections, this procedure does not account
+for the fact that we have tested multiple hypotheses, and therefore it will
+lead to a FWER greater than 0.05. If we instead wish to control the FWER
+at level 0.05, then, using a Bonferroni correction, we must control the Type
+I error for each individual manager at level α/m = 0.05/5 = 0.01. Consequently, we will reject the null hypothesis only for the first manager, since
+the p-values for all other managers exceed 0.01. The Bonferroni correction
+gives us peace of mind that we have not falsely rejected too many null
+hypotheses, but for a price: we reject few null hypotheses, and thus will
+typically make quite a few Type II errors.
+The Bonferroni correction is by far the best-known and most commonlyused multiplicity correction in all of statistics. Its ubiquity is due in large
+part to the fact that it is very easy to understand and simple to implement,
+and also from the fact that it successfully controls Type I error regardless
+of whether the m hypothesis tests are independent. However, as we will see,
+it is typically neither the most powerful nor the best approach for multiple
+testing correction. In particular, the Bonferroni correction can be quite
+conservative, in the sense that the true FWER is often quite a bit lower
+than the nominal (or target) FWER; this results from the inequality in
+(13.6). By contrast, a less conservative procedure might allow us to control
+the FWER while rejecting more null hypotheses, and therefore making
+fewer Type II errors.
+Holm’s Step-Down Procedure
+Holm’s method, also known as Holm’s step-down procedure or the Holm–
+Holm’s
+Bonferroni method, is an alternative to the Bonferroni procedure. Holm’s method
+method controls the FWER, but it is less conservative than Bonferroni, in
+the sense that it will reject more null hypotheses, typically resulting in fewer
+Type II errors and hence greater power. The procedure is summarized in
+Algorithm 13.1. The proof that this method controls the FWER is similar
+to, but slightly more complicated than, the argument in (13.6) that the
+Bonferroni method controls the FWER. It is worth noting that in Holm’s
+procedure, the threshold that we use to reject each null hypothesis — p(L)
+in Step 5 — actually depends on the values of all m of the p-values. (See the
+definition of L in (13.7).) This is in contrast to the Bonferroni procedure,
+in which to control the FWER at level α, we reject any null hypotheses for
+which the p-value is below α/m, regardless of the other p-values. Holm’s
+method makes no independence assumptions about the m hypothesis tests,
+and is uniformly more powerful than the Bonferroni method — it will
+
+13.3 The Family-Wise Error Rate
+
+569
+
+Algorithm 13.1 Holm’s Step-Down Procedure to Control the FWER
+1. Specify α, the level at which to control the FWER.
+2. Compute p-values, p1 , . . . , pm , for the m null hypotheses
+H01 , . . . , H0m .
+3. Order the m p-values so that p(1) ≤ p(2) ≤ · · · ≤ p(m) .
+4. Define
+
+K
+L = min j : p(j) >
+
+α
+m+1−j
+
+Z
+
+.
+
+(13.7)
+
+5. Reject all null hypotheses H0j for which pj < p(L) .
+
+always reject at least as many null hypotheses as Bonferroni — and so it
+should always be preferred.
+We now consider applying Holm’s method to the first five fund managers
+in the Fund dataset in Table 13.3, while controlling the FWER at level 0.05.
+The ordered p-values are p(1) = 0.006, p(2) = 0.012, p(3) = 0.601, p(4) =
+0.756 and p(5) = 0.918. The Holm procedure rejects the first two null
+hypotheses, because p(1) = 0.006 < 0.05/(5 + 1 − 1) = 0.01 and p(2) =
+0.012 < 0.05/(5 + 1 − 2) = 0.0125, but p(3) = 0.601 > 0.05/(5 + 1 − 3) =
+0.0167, which implies that L = 3. We note that, in this setting, Holm is
+more powerful than Bonferroni: the former rejects the null hypotheses for
+the first and third managers, whereas the latter rejects the null hypothesis
+only for the first manager.
+Figure 13.3 provides an illustration of the Bonferroni and Holm methods
+on three simulated data sets in a setting involving m = 10 hypothesis tests,
+of which m0 = 2 of the null hypotheses are true. Each panel displays the
+ten corresponding p-values, ordered from smallest to largest, and plotted
+on a log scale. The eight red points represent the false null hypotheses, and
+the two black points represent the true null hypotheses. We wish to control
+the FWER at level 0.05. The Bonferroni procedure requires us to reject all
+null hypotheses for which the p-value is below 0.005; this is represented by
+the black horizontal line. The Holm procedure requires us to reject all null
+hypotheses that fall below the blue line. The blue line always lies above the
+black line, so Holm will always reject more tests than Bonferroni; the region
+between the two lines corresponds to the hypotheses that are only rejected
+by Holm. In the left-hand panel, both Bonferroni and Holm successfully
+reject seven of the eight false null hypotheses. In the center panel, Holm
+successfully rejects all eight of the false null hypotheses, while Bonferroni
+fails to reject one. In the right-hand panel, Bonferroni only rejects three of
+the false null hypotheses, while Holm rejects all eight. Neither Bonferroni
+nor Holm makes any Type I errors in these examples.
+Two Special Cases: Tukey’s Method and Scheffé’s Method
+Bonferroni’s method and Holm’s method can be used in virtually any setting in which we wish to control the FWER for m null hypotheses: they
+
+4
+
+6
+
+8
+
+10
+
+1e−02
+1e−03
+
+p−values (log scale)
+
+1e−05
+
+1e−07
+2
+
+Ordering of p−values
+
+1e−04
+
+1e−03
+
+p−values (log scale)
+
+1e−05
+
+1e−02
+1e−03
+
+p−values (log scale)
+
+1e−04
+1e−05
+
+1e−01
+
+1e−01
+
+13. Multiple Testing
+
+1e−01
+
+570
+
+2
+
+4
+
+6
+
+8
+
+Ordering of p−values
+
+10
+
+2
+
+4
+
+6
+
+8
+
+10
+
+Ordering of p−values
+
+FIGURE 13.3. Each panel displays, for a separate simulation, the sorted
+p-values for tests of m = 10 null hypotheses. The p-values corresponding to
+the m0 = 2 true null hypotheses are displayed in black, and the rest are in red.
+When controlling the FWER at level 0.05, the Bonferroni procedure rejects all
+null hypotheses that fall below the black line, and the Holm procedure rejects all
+null hypotheses that fall below the blue line. The region between the blue and black
+lines indicates null hypotheses that are rejected using the Holm procedure but not
+using the Bonferroni procedure. In the center panel, the Holm procedure rejects
+one more null hypothesis than the Bonferroni procedure. In the right-hand panel,
+it rejects five more null hypotheses.
+
+make no assumptions about the nature of the null hypotheses, the type
+of test statistic used, or the (in)dependence of the p-values. However, in
+certain very specific settings, we can achieve higher power by controlling
+the FWER using approaches that are more tailored to the task at hand.
+Tukey’s method and Scheffé’s method provide two such examples.
+Table 13.3 indicates that for the Fund dataset, Managers One and Two
+have the greatest difference in their sample mean returns. This finding
+might motivate us to test the null hypothesis H0 : µ1 = µ2 , where µj is the
+(population) mean return for the jth fund manager. A two-sample t-test
+(13.1) for H0 yields a p-value of 0.0349, suggesting modest evidence against
+H0 . However, this p-value is misleading, since we decided to compare the
+average returns of Managers One and Two only after having examined the
+returns for all five managers; this essentially amounts to having performed
+m = 5 × (5 − 1)/2 = 10 hypothesis tests, and selecting the one with the
+smallest p-value. This suggests that in order to control the FWER at level
+0.05, we should make a Bonferroni correction for m = 10 hypothesis tests,
+and therefore should only reject a null hypothesis for which the p-value
+is below 0.005. If we do this, then we will be unable to reject the null
+hypothesis that Managers One and Two have identical performance.
+However, in this setting, a Bonferroni correction is actually a bit too
+stringent, since it fails to consider the fact that the m = 10 hypothesis
+tests are all somewhat related: for instance, Managers Two and Five have
+similar mean returns, as do Managers Two and Four; this guarantees that
+the mean returns of Managers Four and Five are similar. Stated another
+way, the m p-values for the m pairwise comparisons are not independent.
+Therefore, it should be possible to control the FWER in a way that is
+
+1e−02
+
+1e−01
+
+1e+00
+
+571
+
+1e−06
+
+1e−04
+
+1e−03
+
+p−values (log scale)
+
+1e+00
+1e−02
+1e−04
+
+p−values (log scale)
+
+1e−01
+1e−02
+1e−03
+1e−04
+
+p−values (log scale)
+
+1e+00
+
+13.3 The Family-Wise Error Rate
+
+2
+
+4
+
+6
+
+8
+
+10 12 14
+
+Ordering of p−values
+
+2
+
+4
+
+6
+
+8
+
+10 12 14
+
+Ordering of p−values
+
+2
+
+4
+
+6
+
+8
+
+10 12 14
+
+Ordering of p−values
+
+FIGURE 13.4. Each panel displays, for a separate simulation, the sorted
+p-values for tests of m = 15 hypotheses, corresponding to pairwise tests for the
+equality of G = 6 means. The m0 = 10 true null hypotheses are displayed in black,
+and the rest are in red. When controlling the FWER at level 0.05, the Bonferroni
+procedure rejects all null hypotheses that fall below the black line, whereas Tukey
+rejects all those that fall below the blue line. Thus, Tukey’s method has slightly
+higher power than Bonferroni’s method. Controlling the Type I error without
+adjusting for multiple testing involves rejecting all those that fall below the green
+line.
+
+less conservative. This is exactly the idea behind Tukey’s method: when
+Tukey’s
+performing m = G(G − 1)/2 pairwise comparisons of G means, it allows method
+us to control the FWER at level α while rejecting all null hypotheses for
+which the p-value falls below αT , for some αT > α/m.
+Figure 13.4 illustrates Tukey’s method on three simulated data sets in a
+setting with G = 6 means, with µ1 = µ2 = µ3 = µ4 = µ5 =
+% µ6 . Therefore,
+of the m = G(G − 1)/2 = 15 null hypotheses of the form H0 : µj = µk ,
+ten are true and five are false. In each panel, the true null hypotheses
+are displayed in black, and the false ones are in red. The horizontal lines
+indicate that Tukey’s method always results in at least as many rejections
+as Bonferroni’s method. In the left-hand panel, Tukey correctly rejects two
+more null hypotheses than Bonferroni.
+Now, suppose that we once again examine the data in Table 13.3, and notice that Managers One and Three have higher mean returns than Managers
+Two, Four, and Five. This might motivate us to test the null hypothesis
+H0 :
+
+1
+1
+(µ1 + µ3 ) = (µ2 + µ4 + µ5 ) .
+2
+3
+
+(13.8)
+
+(Recall that µj is the population mean return for the jth hedge fund manager.) It turns out that we could test (13.8) using a variant of the twosample t-test presented in (13.1), leading to a p-value of 0.004. This suggests strong evidence of a difference between Managers One and Three
+compared to Managers Two, Four, and Five. However, there is a problem:
+we decided to test the null hypothesis in (13.8) only after peeking at the
+data in Table 13.3. In a sense, this means that we have conducted multiple
+testing. In this setting, using Bonferroni to control the FWER at level α
+
+572
+
+13. Multiple Testing
+
+would require a p-value threshold of α/m, for an extremely large value of
+m14 .
+Scheffé’s method is designed for exactly this setting. It allows us to comScheffé’s
+pute a value αS such that rejecting the null hypothesis H0 in (13.8) if the method
+p-value is below αS will control the Type I error at level α. It turns out that
+for the Fund example, in order to control the Type I error at level α = 0.05,
+we must set αS = 0.002. Therefore, we are unable to reject H0 in (13.8), despite the apparently very small p-value of 0.004. An important advantage of
+Scheffé’s method is that we can use this same threshold of αS = 0.002 in order to perform a pairwise comparison of any split of the managers into two
+groups: for instance, we could also test H0 : 31 (µ1 + µ2 + µ3 ) = 12 (µ4 + µ5 )
+and H0 : 14 (µ1 + µ2 + µ3 + µ4 ) = µ5 using the same threshold of 0.002,
+without needing to further adjust for multiple testing.
+To summarize, Holm’s procedure and Bonferroni’s procedure are very
+general approaches for multiple testing correction that can be applied under all circumstances. However, in certain special cases, more powerful procedures for multiple testing correction may be available, in order to control
+the FWER while achieving higher power (i.e. committing fewer Type II
+errors) than would be possible using Holm or Bonferroni. In this section,
+we have illustrated two such examples.
+
+13.3.3
+
+Trade-Off Between the FWER and Power
+
+In general, there is a trade-off between the FWER threshold that we choose,
+and our power to reject the null hypotheses. Recall that power is defined
+as the number of false null hypotheses that we reject divided by the total
+number of false null hypotheses, i.e. S/(m − m0 ) using the notation of Table 13.2. Figure 13.5 illustrates the results of a simulation setting involving
+m null hypotheses, of which 90% are true and the remaining 10% are false;
+power is displayed as a function of the FWER. In this particular simulation
+setting, when m = 10, a FWER of 0.05 corresponds to power of approximately 60%. However, as m increases, the power decreases. With m = 500,
+the power is below 0.2 at a FWER of 0.05, so that we successfully reject
+only 20% of the false null hypotheses.
+Figure 13.5 indicates that it is reasonable to control the FWER when m
+takes on a small value, like 5 or 10. However, for m = 100 or m = 1,000,
+attempting to control the FWER will make it almost impossible to reject
+any of the false null hypotheses. In other words, the power will be extremely
+low.
+Why is this the case? Recall that, using the notation in Table 13.2, the
+FWER is defined as Pr(V ≥ 1) (13.3). In other other words, controlling the
+FWER at level α guarantees that the data analyst is very unlikely (with
+probability no more than α) to reject any true null hypotheses, i.e. to have
+any false positives. In order to make good on this guarantee when m is
+large, the data analyst may be forced to reject very few null hypotheses, or
+perhaps even none at all (since if R = 0 then also V = 0; see Table 13.2).
+14 In fact, calculating the “correct” value of m is quite technical, and outside the scope
+of this book.
+
+573
+
+0.4
+
+Power
+
+0.6
+
+0.8
+
+1.0
+
+13.4 The False Discovery Rate
+
+0.0
+
+0.2
+
+m = 10
+m = 100
+m = 500
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+Family−Wise Error Rate
+
+FIGURE 13.5. In a simulation setting in which 90% of the m null hypotheses are
+true, we display the power (the fraction of false null hypotheses that we successfully
+reject) as a function of the family-wise error rate. The curves correspond to
+m = 10 (orange), m = 100 (blue), and m = 500 (purple). As the value of m
+increases, the power decreases. The vertical dashed line indicates a FWER of
+0.05.
+
+This is scientifically uninteresting, and typically results in very

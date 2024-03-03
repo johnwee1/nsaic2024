@@ -1,0 +1,462 @@
+he mean squared error. When M = p = 45,
+then PCR amounts simply to a least squares fit using all of the original
+predictors. The figure indicates that performing PCR with an appropriate
+choice of M can result in a substantial improvement over least squares, especially in the left-hand panel. However, by examining the ridge regression
+and lasso results in Figures 6.5, 6.8, and 6.9, we see that PCR does not
+perform as well as the two shrinkage methods in this example.
+The relatively worse performance of PCR in Figure 6.18 is a consequence
+of the fact that the data were generated in such a way that many principal components are required in order to adequately model the response.
+In contrast, PCR will tend to do well in cases when the first few principal
+components are sufficient to capture most of the variation in the predictors
+as well as the relationship with the response. The left-hand panel of Figure 6.19 illustrates the results from another simulated data set designed to
+be more favorable to PCR. Here the response was generated in such a way
+that it depends exclusively on the first five principal components. Now the
+bias drops to zero rapidly as M , the number of principal components used
+in PCR, increases. The mean squared error displays a clear minimum at
+M = 5. The right-hand panel of Figure 6.19 displays the results on these
+data using ridge regression and the lasso. All three methods offer a significant improvement over least squares. However, PCR and ridge regression
+slightly outperform the lasso.
+We note that even though PCR provides a simple way to perform regression using M < p predictors, it is not a feature selection method. This
+is because each of the M principal components used in the regression is a
+linear combination of all p of the original features. For instance, in (6.19),
+Z1 was a linear combination of both pop and ad. Therefore, while PCR often performs quite well in many practical settings, it does not result in the
+
+60000
+40000
+
+Cross−Validation MSE
+
+300
+200
+100
+0
+−100
+
+Standardized Coefficients
+
+−300
+
+20000
+
+Income
+Limit
+Rating
+Student
+
+80000
+
+6. Linear Model Selection and Regularization
+
+400
+
+260
+
+2
+
+4
+
+6
+
+8
+
+10
+
+Number of Components
+
+2
+
+4
+
+6
+
+8
+
+10
+
+Number of Components
+
+FIGURE 6.20. Left: PCR standardized coefficient estimates on the Credit data
+set for different values of M . Right: The ten-fold cross-validation MSE obtained
+using PCR, as a function of M .
+
+development of a model that relies upon a small set of the original features.
+In this sense, PCR is more closely related to ridge regression than to the
+lasso. In fact, one can show that PCR and ridge regression are very closely
+related. One can even think of ridge regression as a continuous version of
+PCR!8
+In PCR, the number of principal components, M , is typically chosen by
+cross-validation. The results of applying PCR to the Credit data set are
+shown in Figure 6.20; the right-hand panel displays the cross-validation errors obtained, as a function of M . On these data, the lowest cross-validation
+error occurs when there are M = 10 components; this corresponds to almost no dimension reduction at all, since PCR with M = 11 is equivalent
+to simply performing least squares.
+When performing PCR, we generally recommend standardizing each predictor, using (6.6), prior to generating the principal components. This standardization ensures that all variables are on the same scale. In the absence
+of standardization, the high-variance variables will tend to play a larger
+role in the principal components obtained, and the scale on which the variables are measured will ultimately have an effect on the final PCR model.
+However, if the variables are all measured in the same units (say, kilograms,
+or inches), then one might choose not to standardize them.
+
+6.3.2
+
+Partial Least Squares
+
+The PCR approach that we just described involves identifying linear combinations, or directions, that best represent the predictors X1 , . . . , Xp . These
+directions are identified in an unsupervised way, since the response Y is
+not used to help determine the principal component directions. That is,
+the response does not supervise the identification of the principal components. Consequently, PCR suffers from a drawback: there is no guarantee
+8 More details can be found in Section 3.5 of The Elements of Statistical Learning by
+Hastie, Tibshirani, and Friedman.
+
+261
+
+25
+20
+15
+5
+
+10
+
+Ad Spending
+
+30
+
+6.3 Dimension Reduction Methods
+
+20
+
+30
+
+40
+
+50
+
+60
+
+Population
+
+FIGURE 6.21. For the advertising data, the first PLS direction (solid line)
+and first PCR direction (dotted line) are shown.
+
+that the directions that best explain the predictors will also be the best
+directions to use for predicting the response. Unsupervised methods are
+discussed further in Chapter 12.
+We now present partial least squares (PLS), a supervised alternative to
+partial least
+PCR. Like PCR, PLS is a dimension reduction method, which first identifies squares
+a new set of features Z1 , . . . , ZM that are linear combinations of the original
+features, and then fits a linear model via least squares using these M new
+features. But unlike PCR, PLS identifies these new features in a supervised
+way—that is, it makes use of the response Y in order to identify new
+features that not only approximate the old features well, but also that are
+related to the response. Roughly speaking, the PLS approach attempts to
+find directions that help explain both the response and the predictors.
+We now describe how the first PLS direction is computed. After standardizing the p predictors, PLS computes the first direction Z1 by setting
+each φj1 in (6.16) equal to the coefficient from the simple linear regression
+of Y onto Xj . One can show that this coefficient is proportional
+to the cor)p
+relation between Y and Xj . Hence, in computing Z1 = j=1 φj1 Xj , PLS
+places the highest weight on the variables that are most strongly related to
+the response.
+Figure 6.21 displays an example of PLS on a synthetic dataset with Sales
+in each of 100 regions as the response, and two predictors; Population Size
+and Advertising Spending. The solid green line indicates the first PLS direction, while the dotted line shows the first principal component direction.
+PLS has chosen a direction that has less change in the ad dimension per
+unit change in the pop dimension, relative to PCA. This suggests that pop
+is more highly correlated with the response than is ad. The PLS direction
+does not fit the predictors as closely as does PCA, but it does a better job
+explaining the response.
+To identify the second PLS direction we first adjust each of the variables
+for Z1 , by regressing each variable on Z1 and taking residuals. These residuals can be interpreted as the remaining information that has not been
+explained by the first PLS direction. We then compute Z2 using this or-
+
+262
+
+6. Linear Model Selection and Regularization
+
+thogonalized data in exactly the same fashion as Z1 was computed based
+on the original data. This iterative approach can be repeated M times to
+identify multiple PLS components Z1 , . . . , ZM . Finally, at the end of this
+procedure, we use least squares to fit a linear model to predict Y using
+Z1 , . . . , ZM in exactly the same fashion as for PCR.
+As with PCR, the number M of partial least squares directions used in
+PLS is a tuning parameter that is typically chosen by cross-validation. We
+generally standardize the predictors and response before performing PLS.
+PLS is popular in the field of chemometrics, where many variables arise
+from digitized spectrometry signals. In practice it often performs no better
+than ridge regression or PCR. While the supervised dimension reduction
+of PLS can reduce bias, it also has the potential to increase variance, so
+that the overall benefit of PLS relative to PCR is a wash.
+
+6.4
+
+Considerations in High Dimensions
+
+6.4.1
+
+High-Dimensional Data
+
+Most traditional statistical techniques for regression and classification are
+intended for the low-dimensional setting in which n, the number of oblowservations, is much greater than p, the number of features. This is due in dimensional
+part to the fact that throughout most of the field’s history, the bulk of scientific problems requiring the use of statistics have been low-dimensional.
+For instance, consider the task of developing a model to predict a patient’s
+blood pressure on the basis of his or her age, sex, and body mass index
+(BMI). There are three predictors, or four if an intercept is included in the
+model, and perhaps several thousand patients for whom blood pressure
+and age, sex, and BMI are available. Hence n + p, and so the problem is
+low-dimensional. (By dimension here we are referring to the size of p.)
+In the past 20 years, new technologies have changed the way that data
+are collected in fields as diverse as finance, marketing, and medicine. It is
+now commonplace to collect an almost unlimited number of feature measurements (p very large). While p can be extremely large, the number of
+observations n is often limited due to cost, sample availability, or other
+considerations. Two examples are as follows:
+1. Rather than predicting blood pressure on the basis of just age, sex,
+and BMI, one might also collect measurements for half a million single nucleotide polymorphisms (SNPs; these are individual DNA mutations that are relatively common in the population) for inclusion in
+the predictive model. Then n ≈ 200 and p ≈ 500,000.
+
+2. A marketing analyst interested in understanding people’s online shopping patterns could treat as features all of the search terms entered
+by users of a search engine. This is sometimes known as the “bag-ofwords” model. The same researcher might have access to the search
+histories of only a few hundred or a few thousand search engine users
+who have consented to share their information with the researcher.
+For a given user, each of the p search terms is scored present (0) or
+
+6.4 Considerations in High Dimensions
+
+263
+
+absent (1), creating a large binary feature vector. Then n ≈ 1,000
+and p is much larger.
+Data sets containing more features than observations are often referred
+to as high-dimensional. Classical approaches such as least squares linear
+highregression are not appropriate in this setting. Many of the issues that arise dimensional
+in the analysis of high-dimensional data were discussed earlier in this book,
+since they apply also when n > p: these include the role of the bias-variance
+trade-off and the danger of overfitting. Though these issues are always relevant, they can become particularly important when the number of features
+is very large relative to the number of observations.
+We have defined the high-dimensional setting as the case where the number of features p is larger than the number of observations n. But the considerations that we will now discuss certainly also apply if p is slightly
+smaller than n, and are best always kept in mind when performing supervised learning.
+
+6.4.2
+
+What Goes Wrong in High Dimensions?
+
+In order to illustrate the need for extra care and specialized techniques
+for regression and classification when p > n, we begin by examining what
+can go wrong if we apply a statistical technique not intended for the highdimensional setting. For this purpose, we examine least squares regression.
+But the same concepts apply to logistic regression, linear discriminant analysis, and other classical statistical approaches.
+When the number of features p is as large as, or larger than, the number
+of observations n, least squares as described in Chapter 3 cannot (or rather,
+should not) be performed. The reason is simple: regardless of whether or
+not there truly is a relationship between the features and the response,
+least squares will yield a set of coefficient estimates that result in a perfect
+fit to the data, such that the residuals are zero.
+An example is shown in Figure 6.22 with p = 1 feature (plus an intercept)
+in two cases: when there are 20 observations, and when there are only
+two observations. When there are 20 observations, n > p and the least
+squares regression line does not perfectly fit the data; instead, the regression
+line seeks to approximate the 20 observations as well as possible. On the
+other hand, when there are only two observations, then regardless of the
+values of those observations, the regression line will fit the data exactly.
+This is problematic because this perfect fit will almost certainly lead to
+overfitting of the data. In other words, though it is possible to perfectly fit
+the training data in the high-dimensional setting, the resulting linear model
+will perform extremely poorly on an independent test set, and therefore
+does not constitute a useful model. In fact, we can see that this happened
+in Figure 6.22: the least squares line obtained in the right-hand panel will
+perform very poorly on a test set comprised of the observations in the lefthand panel. The problem is simple: when p > n or p ≈ n, a simple least
+squares regression line is too flexible and hence overfits the data.
+Figure 6.23 further illustrates the risk of carelessly applying least squares
+when the number of features p is large. Data were simulated with n = 20
+observations, and regression was performed with between 1 and 20 features,
+
+5
+−10
+
+−5
+
+0
+
+Y
+−10
+
+−5
+
+0
+
+Y
+
+5
+
+10
+
+6. Linear Model Selection and Regularization
+
+10
+
+264
+
+−1.5 −1.0 −0.5
+
+0.0
+
+0.5
+
+1.0
+
+−1.5 −1.0 −0.5
+
+X
+
+0.0
+
+0.5
+
+1.0
+
+X
+
+5
+
+10
+
+15
+
+Number of Variables
+
+500
+5
+
+50
+
+Test MSE
+
+0.6
+
+1
+
+0.0
+
+0.2
+
+0.2
+
+0.4
+
+Training MSE
+
+0.6
+0.4
+
+R2
+
+0.8
+
+0.8
+
+1.0
+
+FIGURE 6.22. Left: Least squares regression in the low-dimensional setting.
+Right: Least squares regression with n = 2 observations and two parameters to be
+estimated (an intercept and a coefficient).
+
+5
+
+10
+
+15
+
+Number of Variables
+
+5
+
+10
+
+15
+
+Number of Variables
+
+FIGURE 6.23. On a simulated example with n = 20 training observations,
+features that are completely unrelated to the outcome are added to the model.
+Left: The R2 increases to 1 as more features are included. Center: The training
+set MSE decreases to 0 as more features are included. Right: The test set MSE
+increases as more features are included.
+
+each of which was completely unrelated to the response. As shown in the
+figure, the model R2 increases to 1 as the number of features included in the
+model increases, and correspondingly the training set MSE decreases to 0
+as the number of features increases, even though the features are completely
+unrelated to the response. On the other hand, the MSE on an independent
+test set becomes extremely large as the number of features included in the
+model increases, because including the additional predictors leads to a vast
+increase in the variance of the coefficient estimates. Looking at the test
+set MSE, it is clear that the best model contains at most a few variables.
+However, someone who carelessly examines only the R2 or the training set
+MSE might erroneously conclude that the model with the greatest number
+of variables is best. This indicates the importance of applying extra care
+when analyzing data sets with a large number of variables, and of always
+evaluating model performance on an independent test set.
+
+6.4 Considerations in High Dimensions
+
+1
+
+16
+
+21
+
+Degrees of Freedom
+
+4
+0
+
+1
+
+2
+
+3
+
+4
+3
+2
+1
+0
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+p = 2000
+
+5
+
+p = 50
+
+5
+
+p = 20
+
+265
+
+1
+
+28
+
+51
+
+Degrees of Freedom
+
+1
+
+70
+
+111
+
+Degrees of Freedom
+
+FIGURE 6.24. The lasso was performed with n = 100 obs

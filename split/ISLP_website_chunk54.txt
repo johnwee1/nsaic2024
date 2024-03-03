@@ -1,0 +1,566 @@
+in the mth terminal node that
+belong to the kth class.
+In [7]: resid_dev = np.sum(log_loss(High , clf.predict_proba(X)))
+resid_dev
+Out[7]: 0.4711
+
+This is closely related to the entropy, defined in (8.7). A small deviance
+indicates a tree that provides a good fit to the (training) data.
+One of the most attractive properties of trees is that they can be graphically displayed. Here we use the plot() function to display the tree structure
+(not shown here).
+In [8]: ax = subplots(figsize =(12 ,12))[1]
+plot_tree(clf ,
+feature_names=feature_names ,
+ax=ax);
+
+The most important indicator of Sales appears to be ShelveLoc.
+We can see a text representation of the tree using export_text(), which
+export_text()
+displays the split criterion (e.g. Price <= 92.5) for each branch. For leaf
+nodes it shows the overall prediction (Yes or No). We can also see the number
+of observations in that leaf that take on values of Yes and No by specifying
+show_weights=True.
+In [9]: print(export_text(clf ,
+feature_names=feature_names ,
+show_weights=True))
+Out[9]: |--- ShelveLoc[Good] <= 0.50
+|
+|--- Price <= 92.50
+|
+|
+|--- Income <= 57.00
+|
+|
+|
+|--- weights: [7.00 , 3.00] class: No
+|
+|
+|--- Income > 57.00
+|
+|
+|
+|--- weights: [7.00 , 29.00] class: Yes
+|
+|--- Price > 92.50
+|
+|
+|--- Advertising <= 13.50
+|
+|
+|
+|--- weights: [183.00 , 41.00] class: No
+|
+|
+|--- Advertising > 13.50
+|
+|
+|
+|--- weights: [20.00 , 25.00] class: Yes
+|--- ShelveLoc[Good] > 0.50
+|
+|--- Price <= 135.00
+|
+|
+|--- US[Yes] <= 0.50
+|
+|
+|
+|--- weights: [6.00 , 11.00] class: Yes
+|
+|
+|--- US[Yes] > 0.50
+|
+|
+|
+|--- weights: [2.00 , 49.00] class: Yes
+|
+|--- Price > 135.00
+|
+|
+|--- Income <= 46.00
+|
+|
+|
+|--- weights: [6.00 , 0.00] class: No
+|
+|
+|--- Income > 46.00
+|
+|
+|
+|--- weights: [5.00 , 6.00] class: Yes
+
+8.3 Lab: Tree-Based Methods
+
+357
+
+In order to properly evaluate the performance of a classification tree on
+these data, we must estimate the test error rather than simply computing
+the training error. We split the observations into a training set and a test
+set, build the tree using the training set, and evaluate its performance
+on the test data. This pattern is similar to that in Chapter 6, with the
+linear models replaced here by decision trees — the code for validation is
+almost identical. This approach leads to correct predictions for 68.5% of
+the locations in the test data set.
+In [10]: validation = skm.ShuffleSplit(n_splits =1,
+test_size =200,
+random_state =0)
+results = skm.cross_validate(clf ,
+D,
+High ,
+cv=validation)
+results['test_score ']
+Out[10]: array ([0.685])
+
+Next, we consider whether pruning the tree might lead to improved classification performance. We first split the data into a training and test set.
+We will use cross-validation to prune the tree on the training set, and then
+evaluate the performance of the pruned tree on the test set.
+In [11]: (X_train ,
+X_test ,
+High_train ,
+High_test) = skm. train_test_split(X,
+High ,
+test_size =0.5,
+random_state =0)
+
+We first refit the full tree on the training set; here we do not set a max_depth
+parameter, since we will learn that through cross-validation.
+In [12]: clf = DTC(criterion='entropy ', random_state =0)
+clf.fit(X_train , High_train)
+accuracy_score(High_test , clf.predict(X_test))
+Out[12]: 0.735
+
+Next we use the cost_complexity_pruning_path() method of clf to extract cost_
+cost-complexity values.
+complexity_
+In [13]: ccp_path = clf. cost_complexity_pruning_path (X_train , High_train)
+kfold = skm.KFold (10,
+random_state =1,
+shuffle=True)
+
+This yields a set of impurities and α values from which we can extract an
+optimal one by cross-validation.
+In [14]: grid = skm.GridSearchCV(clf ,
+{'ccp_alpha ': ccp_path.ccp_alphas},
+refit=True ,
+
+pruning_
+path()
+
+358
+
+8. Tree-Based Methods
+
+cv=kfold ,
+scoring='accuracy ')
+grid.fit(X_train , High_train)
+grid.best_score_
+Out[14]: 0.685
+
+Let’s take a look at the pruned true.
+In [15]: ax = subplots(figsize =(12, 12))[1]
+best_ = grid.best_estimator_
+plot_tree(best_ ,
+feature_names=feature_names ,
+ax=ax);
+
+This is quite a bushy tree. We could count the leaves, or query best_ instead.
+In [16]: best_.tree_.n_leaves
+Out[16]: 30
+
+The tree with 30 terminal nodes results in the lowest cross-validation error
+rate, with an accuracy of 68.5%. How well does this pruned tree perform
+on the test data set? Once again, we apply the predict() function.
+In [17]: print(accuracy_score(High_test ,
+best_.predict(X_test)))
+confusion = confusion_table(best_.predict(X_test),
+High_test)
+confusion
+Out[17]: 0.72
+Truth
+Predicted
+No
+Yes
+
+No
+
+Yes
+
+108
+10
+
+61
+21
+
+Now 72.0% of the test observations are correctly classified, which is
+slightly worse than the error for the full tree (with 35 leaves). So crossvalidation has not helped us much here; it only pruned off 5 leaves, at
+a cost of a slightly worse error. These results would change if we were to
+change the random number seeds above; even though cross-validation gives
+an unbiased approach to model selection, it does have variance.
+
+8.3.2
+
+Fitting Regression Trees
+
+Here we fit a regression tree to the Boston data set. The steps are similar
+to those for classification trees.
+In [18]: Boston = load_data("Boston")
+model = MS(Boston.columns.drop('medv '), intercept=False)
+D = model.fit_transform(Boston)
+feature_names = list(D.columns)
+X = np.asarray(D)
+
+8.3 Lab: Tree-Based Methods
+
+359
+
+First, we split the data into training and test sets, and fit the tree to the
+training data. Here we use 30% of the data for the test set.
+In [19]: (X_train ,
+X_test ,
+y_train ,
+y_test) = skm.train_test_split(X,
+Boston['medv '],
+test_size =0.3,
+random_state =0)
+
+Having formed our training and test data sets, we fit the regression tree.
+In [20]: reg = DTR(max_depth =3)
+reg.fit(X_train , y_train)
+ax = subplots(figsize =(12 ,12))[1]
+plot_tree(reg ,
+feature_names=feature_names ,
+ax=ax);
+
+The variable lstat measures the percentage of individuals with lower
+socioeconomic status. The tree indicates that lower values of lstat correspond to more expensive houses. The tree predicts a median house price
+of $12,042 for small-sized homes (rm < 6.8), in suburbs in which residents
+have low socioeconomic status (lstat > 14.4) and the crime-rate is moderate (crim > 5.8).
+Now we use the cross-validation function to see whether pruning the tree
+will improve performance.
+In [21]: ccp_path = reg. cost_complexity_pruning_path (X_train , y_train)
+kfold = skm.KFold(5,
+shuffle=True ,
+random_state =10)
+grid = skm.GridSearchCV(reg ,
+{'ccp_alpha ': ccp_path.ccp_alphas},
+refit=True ,
+cv=kfold ,
+scoring='neg_mean_squared_error ')
+G = grid.fit(X_train , y_train)
+
+In keeping with the cross-validation results, we use the pruned tree to
+make predictions on the test set.
+In [22]: best_ = grid.best_estimator_
+np.mean (( y_test - best_.predict(X_test))**2)
+Out[22]: 28.07
+
+In other words, the test set MSE associated with the regression tree is
+28.07. The square root of the MSE is therefore around 5.30, indicating that
+this model leads to test predictions that are within around $5300 of the
+true median home value for the suburb.
+Let’s plot the best tree to see how interpretable it is.
+In [23]: ax = subplots(figsize =(12 ,12))[1]
+plot_tree(G.best_estimator_ ,
+feature_names=feature_names ,
+ax=ax);
+
+360
+
+8. Tree-Based Methods
+
+8.3.3
+
+Bagging and Random Forests
+
+Here we apply bagging and random forests to the Boston data, using the
+RandomForestRegressor() from the sklearn.ensemble package. Recall that
+RandomForest
+bagging is simply a special case of a random forest with m = p. Therefore, Regressor()
+the RandomForestRegressor() function can be used to perform both bagging sklearn.
+and random forests. We start with bagging.
+ensemble
+In [24]: bag_boston = RF(max_features=X_train.shape [1], random_state =0)
+bag_boston.fit(X_train , y_train)
+Out[24]: RandomForestRegressor (max_features =12, random_state =0)
+
+The argument max_features indicates that all 12 predictors should be
+considered for each split of the tree — in other words, that bagging should
+be done. How well does this bagged model perform on the test set?
+In [25]: ax = subplots(figsize =(8 ,8))[1]
+y_hat_bag = bag_boston.predict(X_test)
+ax.scatter(y_hat_bag , y_test)
+np.mean (( y_test - y_hat_bag)**2)
+Out[25]: 14.63
+
+The test set MSE associated with the bagged regression tree is 14.63, about
+half that obtained using an optimally-pruned single tree. We could change
+the number of trees grown from the default of 100 by using the n_estimators
+argument:
+In [26]: bag_boston = RF(max_features=X_train.shape [1],
+n_estimators =500,
+random_state =0).fit(X_train , y_train)
+y_hat_bag = bag_boston.predict(X_test)
+np.mean (( y_test - y_hat_bag)**2)
+Out[26]: 14.61
+
+There is not much change. Bagging and random forests cannot overfit by
+increasing the number of trees, but can underfit if the number is too small.
+Growing a random forest proceeds in exactly the same way, except
+that we use a smaller value of the max_features argument. By default,
+RandomForestRegressor() uses p variables when building a random forest of
+regression trees (i.e. it defaults to bagging), and RandomForestClassifier()
+√
+uses p variables when building a random forest of classification trees. Here
+we use max_features=6.
+In [27]: RF_boston = RF(max_features =6,
+random_state =0).fit(X_train , y_train)
+y_hat_RF = RF_boston.predict(X_test)
+np.mean (( y_test - y_hat_RF)**2)
+Out[27]: 20.04
+
+The test set MSE is 20.04; this indicates that random forests did somewhat worse than bagging in this case. Extracting the feature_importances_
+values from the fitted model, we can view the importance of each variable.
+
+8.3 Lab: Tree-Based Methods
+
+361
+
+In [28]: feature_imp = pd.DataFrame(
+{'importance ':RF_boston.feature_importances_},
+index=feature_names)
+feature_imp.sort_values(by='importance ', ascending=False)
+Out[28]:
+
+lstat
+rm
+ptratio
+indus
+crim
+dis
+nox
+age
+tax
+rad
+zn
+chas
+
+importance
+0.368683
+0.333842
+0.057306
+0.053303
+0.052426
+0.042493
+0.034410
+0.024327
+0.022368
+0.005048
+0.003238
+0.002557
+
+This is a relative measure of the total decrease in node impurity that results
+from splits over that variable, averaged over all trees (this was plotted in
+Figure 8.9 for a model fit to the Heart data).
+The results indicate that across all of the trees considered in the random
+forest, the wealth level of the community (lstat) and the house size (rm)
+are by far the two most important variables.
+
+8.3.4
+
+Boosting
+
+Here we use GradientBoostingRegressor() from sklearn.ensemble to fit Gradient
+boosted regression trees to the Boston data set. For classification we would Boosting
+use GradientBoostingClassifier(). The argument n_estimators=5000 indi- Regressor()
+cates that we want 5000 trees, and the option max_depth=3 limits the depth Gradient
+of each tree. The argument learning_rate is the λ mentioned earlier in the Boosting
+Classifier()
+description of boosting.
+In [29]: boost_boston = GBR(n_estimators =5000 ,
+learning_rate =0.001 ,
+max_depth =3,
+random_state =0)
+boost_boston.fit(X_train , y_train)
+
+We can see how the training error decreases with the train_score_ attribute. To get an idea of how the test error decreases we can use the
+staged_predict() method to get the predicted values along the path.
+In [30]: test_error = np.zeros_like(boost_boston.train_score_)
+for idx , y_ in enumerate(boost_boston.staged_predict(X_test)):
+test_error[idx] = np.mean (( y_test - y_)**2)
+plot_idx = np.arange(boost_boston.train_score_.shape [0])
+ax = subplots(figsize =(8 ,8))[1]
+ax.plot(plot_idx ,
+boost_boston.train_score_ ,
+'b',
+label='Training ')
+
+362
+
+8. Tree-Based Methods
+
+ax.plot(plot_idx ,
+test_error ,
+'r',
+label='Test ')
+ax.legend ();
+
+We now use the boosted model to predict medv on the test set:
+In [31]: y_hat_boost = boost_boston.predict(X_test);
+np.mean (( y_test - y_hat_boost)**2)
+Out[31]: 14.48
+
+The test MSE obtained is 14.48, similar to the test MSE for bagging. If we
+want to, we can perform boosting with a different value of the shrinkage
+parameter λ in (8.10). The default value is 0.001, but this is easily modified.
+Here we take λ = 0.2.
+In [32]: boost_boston = GBR(n_estimators =5000 ,
+learning_rate =0.2,
+max_depth =3,
+random_state =0)
+boost_boston.fit(X_train ,
+y_train)
+y_hat_boost = boost_boston.predict(X_test);
+np.mean (( y_test - y_hat_boost)**2)
+Out[32]: 14.50
+
+In this case, using λ = 0.2 leads to a almost the same test MSE as when
+using λ = 0.001.
+
+8.3.5
+
+Bayesian Additive Regression Trees
+
+In this section we demonstrate a Python implementation of BART found in
+the ISLP.bart package. We fit a model to the Boston housing data set. This
+BART() estimator is designed for quantitative outcome variables, though
+BART()
+other implementations are available for fitting logistic and probit models
+to categorical outcomes.
+In [33]: bart_boston = BART(random_state =0, burnin =5, ndraw =15)
+bart_boston.fit(X_train , y_train)
+Out[33]: BART(burnin =5, ndraw =15, random_state =0)
+
+On this data set, with this split into test and training, we see that the
+test error of BART is similar to that of random forest.
+In [34]: yhat_test = bart_boston.predict(X_test.astype(np.float32))
+np.mean (( y_test - yhat_test)**2)
+Out[34]: 20.92
+
+We can check how many times each variable appeared in the collection
+of trees. This gives a summary similar to the variable importance plot for
+boosting and random forests.
+
+8.4 Exercises
+
+363
+
+In [35]: var_inclusion = pd.Series(bart_boston.variable_inclusion_.mean (0),
+index=D.columns)
+var_inclusion
+Out[35]:
+
+crim
+25.333333
+zn
+27.000000
+indus
+21.266667
+chas
+20.466667
+nox
+25.400000
+rm
+32.400000
+age
+26.133333
+dis
+25.666667
+rad
+24.666667
+tax
+23.933333
+ptratio
+25.000000
+lstat
+31.866667
+dtype: float64
+
+8.4
+
+Exercises
+
+Conceptual
+1. Draw an example (of your own invention) of a partition of twodimensional feature space that could result from recursive binary
+splitting. Your example should contain at least six regions. Draw a
+decision tree corresponding to this partition. Be sure to label all aspects of your figures, including the regions R1 , R2 , . . ., the cutpoints
+t1 , t2 , . . ., and so forth.
+Hint: Your result should look something like Figures 8.1 and 8.2.
+2. It is mentioned in Section 8.2.3 that boosting using depth-one trees
+(or stumps) leads to an additive model: that is, a model of the form
+f (X) =
+
+p
+0
+
+fj (Xj ).
+
+j=1
+
+Explain why this is the case. You can begin with (8.12) in
+Algorithm 8.2.
+3. Consider the Gini index, classification error, and entropy in a simple
+classification setting with two classes. Create a single plot that displays each of these quantities as a function of p̂m1 . The x-axis should
+display p̂m1 , ranging from 0 to 1, and the y-axis should display the
+value of the Gini index, classification error, and entropy.
+Hint: In a setting with two classes, p̂m1 = 1 − p̂m2 . You could make
+this plot by hand, but it will be much easier to make in R.
+4. This question relates to the plots in Figure 8.14.
+
+364
+
+8. Tree-Based Methods
+X2 < 1
+|
+
+15
+X2
+
+1
+
+5
+
+0
+0
+
+3
+
+10
+0
+
+X2 < 2
+
+X1 < 1
+
+X1 < 0
+
+1
+
+2.49
+
+X1
+-1.80
+
+0.63
+
+-1.06
+
+0.21
+
+FIGURE 8.14. Left: A partition of the predictor space corresponding to Exercise 4a. Right: A tree corresponding to Exercise 4b.
+
+(a) Sketch the tree corresponding to the partition of the predictor
+space illustrated in the left-hand panel of Figure 8.14. The numbers inside the boxes indicate the mean of Y within each region.
+(b) Create a diagram similar to the left-hand panel of Figure 8.14,
+using the tree illustrated in the right-hand panel of the same
+figure. You should divide up the predictor space

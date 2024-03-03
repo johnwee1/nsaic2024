@@ -1,0 +1,492 @@
+ng: one single dendrogram can be used to obtain any number of
+clusters. In practice, people often look at the dendrogram and select by eye
+a sensible number of clusters, based on the heights of the fusion and the
+number of clusters desired. In the case of Figure 12.11, one might choose
+to select either two or three clusters. However, often the choice of where to
+cut the dendrogram is not so clear.
+The term hierarchical refers to the fact that clusters obtained by cutting
+the dendrogram at a given height are necessarily nested within the clusters
+obtained by cutting the dendrogram at any greater height. However, on
+an arbitrary data set, this assumption of hierarchical structure might be
+unrealistic. For instance, suppose that our observations correspond to a
+group of men and women, evenly split among Americans, Japanese, and
+French. We can imagine a scenario in which the best division into two
+groups might split these people by gender, and the best division into three
+groups might split them by nationality. In this case, the true clusters are
+not nested, in the sense that the best division into three groups does not
+result from taking the best division into two groups and splitting up one
+of those groups. Consequently, this situation could not be well-represented
+by hierarchical clustering. Due to situations such as this one, hierarchical
+clustering can sometimes yield worse (i.e. less accurate) results than Kmeans clustering for a given number of clusters.
+
+12.4 Clustering Methods
+
+529
+
+Algorithm 12.3 Hierarchical Clustering
+1. Begin with n observations
+and a measure (such as Euclidean dis' (
+tance) of all the n2 = n(n − 1)/2 pairwise dissimilarities. Treat each
+observation as its own cluster.
+2. For i = n, n − 1, . . . , 2:
+
+(a) Examine all pairwise inter-cluster dissimilarities among the i
+clusters and identify the pair of clusters that are least dissimilar
+(that is, most similar). Fuse these two clusters. The dissimilarity
+between these two clusters indicates the height in the dendrogram at which the fusion should be placed.
+
+(b) Compute the new pairwise inter-cluster dissimilarities among
+the i − 1 remaining clusters.
+The Hierarchical Clustering Algorithm
+The hierarchical clustering dendrogram is obtained via an extremely simple
+algorithm. We begin by defining some sort of dissimilarity measure between
+each pair of observations. Most often, Euclidean distance is used; we will
+discuss the choice of dissimilarity measure later in this chapter. The algorithm proceeds iteratively. Starting out at the bottom of the dendrogram,
+each of the n observations is treated as its own cluster. The two clusters
+that are most similar to each other are then fused so that there now are
+n − 1 clusters. Next the two clusters that are most similar to each other are
+fused again, so that there now are n − 2 clusters. The algorithm proceeds
+in this fashion until all of the observations belong to one single cluster, and
+the dendrogram is complete. Figure 12.13 depicts the first few steps of the
+algorithm, for the data from Figure 12.12. To summarize, the hierarchical
+clustering algorithm is given in Algorithm 12.3.
+This algorithm seems simple enough, but one issue has not been addressed. Consider the bottom right panel in Figure 12.13. How did we
+determine that the cluster {5, 7} should be fused with the cluster {8}?
+We have a concept of the dissimilarity between pairs of observations, but
+how do we define the dissimilarity between two clusters if one or both of
+the clusters contains multiple observations? The concept of dissimilarity
+between a pair of observations needs to be extended to a pair of groups
+of observations. This extension is achieved by developing the notion of
+linkage, which defines the dissimilarity between two groups of observalinkage
+tions. The four most common types of linkage—complete, average, single,
+and centroid—are briefly described in Table 12.3. Average, complete, and
+single linkage are most popular among statisticians. Average and complete
+linkage are generally preferred over single linkage, as they tend to yield
+more balanced dendrograms. Centroid linkage is often used in genomics,
+but suffers from a major drawback in that an inversion can occur, whereby
+inversion
+two clusters are fused at a height below either of the individual clusters in
+the dendrogram. This can lead to difficulties in visualization as well as in interpretation of the dendrogram. The dissimilarities computed in Step 2(b)
+
+530
+
+12. Unsupervised Learning
+
+Linkage
+Complete
+
+Single
+
+Average
+
+Centroid
+
+Description
+Maximal intercluster dissimilarity. Compute all pairwise
+dissimilarities between the observations in cluster A and the
+observations in cluster B, and record the largest of these dissimilarities.
+Minimal intercluster dissimilarity. Compute all pairwise dissimilarities between the observations in cluster A and the
+observations in cluster B, and record the smallest of these
+dissimilarities. Single linkage can result in extended, trailing
+clusters in which single observations are fused one-at-a-time.
+Mean intercluster dissimilarity. Compute all pairwise dissimilarities between the observations in cluster A and the
+observations in cluster B, and record the average of these
+dissimilarities.
+Dissimilarity between the centroid for cluster A (a mean
+vector of length p) and the centroid for cluster B. Centroid
+linkage can result in undesirable inversions.
+
+TABLE 12.3. A summary of the four most commonly-used types of linkage in
+hierarchical clustering.
+
+of the hierarchical clustering algorithm will depend on the type of linkage
+used, as well as on the choice of dissimilarity measure. Hence, the resulting
+dendrogram typically depends quite strongly on the type of linkage used,
+as is shown in Figure 12.14.
+Choice of Dissimilarity Measure
+Thus far, the examples in this chapter have used Euclidean distance as the
+dissimilarity measure. But sometimes other dissimilarity measures might
+be preferred. For example, correlation-based distance considers two observations to be similar if their features are highly correlated, even though the
+observed values may be far apart in terms of Euclidean distance. This is
+an unusual use of correlation, which is normally computed between variables; here it is computed between the observation profiles for each pair
+of observations. Figure 12.15 illustrates the difference between Euclidean
+and correlation-based distance. Correlation-based distance focuses on the
+shapes of observation profiles rather than their magnitudes.
+The choice of dissimilarity measure is very important, as it has a strong
+effect on the resulting dendrogram. In general, careful attention should be
+paid to the type of data being clustered and the scientific question at hand.
+These considerations should determine what type of dissimilarity measure
+is used for hierarchical clustering.
+For instance, consider an online retailer interested in clustering shoppers
+based on their past shopping histories. The goal is to identify subgroups
+of similar shoppers, so that shoppers within each subgroup can be shown
+items and advertisements that are particularly likely to interest them. Suppose the data takes the form of a matrix where the rows are the shoppers
+and the columns are the items available for purchase; the elements of the
+data matrix indicate the number of times a given shopper has purchased a
+
+12.4 Clustering Methods
+9
+
+0.5
+
+0.5
+
+9
+
+7
+
+0.0
+
+X2
+
+3
+
+5
+
+−0.5
+
+−0.5
+
+X2
+
+0.0
+
+7
+8
+
+8
+
+3
+
+1
+
+4
+−0.5
+
+0.0
+
+0.5
+
+1.0
+
+4
+−1.5
+
+−1.0
+
+−0.5
+
+0.0
+
+X1
+
+X1
+
+9
+
+9
+
+0.5
+
+1.0
+
+5
+
+−0.5
+
+3
+
+X2
+
+8
+
+7
+
+0.0
+
+7
+
+0.0
+
+X2
+−0.5
+
+1
+
+0.5
+
+−1.0
+
+0.5
+
+−1.5
+
+6
+
+−1.5
+
+−1.5
+
+6
+
+5
+
+2
+−1.0
+
+−1.0
+
+2
+
+8
+
+3
+
+1
+
+−1.5
+
+6
+4
+−1.5
+
+−1.0
+
+−0.5
+
+0.0
+
+X1
+
+5
+
+2
+−1.0
+
+−1.0
+
+2
+
+−1.5
+
+531
+
+0.5
+
+1.0
+
+6
+
+1
+
+4
+−1.5
+
+−1.0
+
+−0.5
+
+0.0
+
+0.5
+
+1.0
+
+X1
+
+FIGURE 12.13. An illustration of the first few steps of the hierarchical
+clustering algorithm, using the data from Figure 12.12, with complete linkage
+and Euclidean distance. Top Left: initially, there are nine distinct clusters,
+{1}, {2}, . . . , {9}. Top Right: the two clusters that are closest together, {5} and
+{7}, are fused into a single cluster. Bottom Left: the two clusters that are closest
+together, {6} and {1}, are fused into a single cluster. Bottom Right: the two clusters that are closest together using complete linkage, {8} and the cluster {5, 7},
+are fused into a single cluster.
+
+given item (i.e. a 0 if the shopper has never purchased this item, a 1 if the
+shopper has purchased it once, etc.) What type of dissimilarity measure
+should be used to cluster the shoppers? If Euclidean distance is used, then
+shoppers who have bought very few items overall (i.e. infrequent users of
+the online shopping site) will be clustered together. This may not be desirable. On the other hand, if correlation-based distance is used, then shoppers
+with similar preferences (e.g. shoppers who have bought items A and B but
+never items C or D) will be clustered together, even if some shoppers with
+these preferences are higher-volume shoppers than others. Therefore, for
+this application, correlation-based distance may be a better choice.
+In addition to carefully selecting the dissimilarity measure used, one must
+also consider whether or not the variables should be scaled to have standard deviation one before the dissimilarity between the observations is computed. To illustrate this point, we continue with the online shopping ex-
+
+532
+
+12. Unsupervised Learning
+Average Linkage
+
+Complete Linkage
+
+Single Linkage
+
+FIGURE 12.14. Average, complete, and single linkage applied to an example
+data set. Average and complete linkage tend to yield more balanced clusters.
+
+ample just described. Some items may be purchased more frequently than
+others; for instance, a shopper might buy ten pairs of socks a year, but a
+computer very rarely. High-frequency purchases like socks therefore tend
+to have a much larger effect on the inter-shopper dissimilarities, and hence
+on the clustering ultimately obtained, than rare purchases like computers.
+This may not be desirable. If the variables are scaled to have standard deviation one before the inter-observation dissimilarities are computed, then
+each variable will in effect be given equal importance in the hierarchical
+clustering performed. We might also want to scale the variables to have
+standard deviation one if they are measured on different scales; otherwise,
+the choice of units (e.g. centimeters versus kilometers) for a particular variable will greatly affect the dissimilarity measure obtained. It should come
+as no surprise that whether or not it is a good decision to scale the variables
+before computing the dissimilarity measure depends on the application at
+hand. An example is shown in Figure 12.16. We note that the issue of
+whether or not to scale the variables before performing clustering applies
+to K-means clustering as well.
+
+12.4.3
+
+Practical Issues in Clustering
+
+Clustering can be a very useful tool for data analysis in the unsupervised
+setting. However, there are a number of issues that arise in performing
+clustering. We describe some of these issues here.
+Small Decisions with Big Consequences
+In order to perform clustering, some decisions must be made.
+
+20
+
+12.4 Clustering Methods
+
+533
+
+10
+
+15
+
+Observation 1
+Observation 2
+Observation 3
+
+5
+
+2
+
+3
+0
+
+1
+5
+
+10
+
+15
+
+20
+
+Variable Index
+
+FIGURE 12.15. Three observations with measurements on 20 variables are
+shown. Observations 1 and 3 have similar values for each variable and so there
+is a small Euclidean distance between them. But they are very weakly correlated,
+so they have a large correlation-based distance. On the other hand, observations
+1 and 2 have quite different values for each variable, and so there is a large
+Euclidean distance between them. But they are highly correlated, so there is a
+small correlation-based distance between them.
+
+• Should the observations or features first be standardized in some way?
+For instance, maybe the variables should be scaled to have standard
+deviation one.
+• In the case of hierarchical clustering,
+– What dissimilarity measure should be used?
+– What type of linkage should be used?
+– Where should we cut the dendrogram in order to obtain clusters?
+• In the case of K-means clustering, how many clusters should we look
+for in the data?
+Each of these decisions can have a strong impact on the results obtained.
+In practice, we try several different choices, and look for the one with
+the most useful or interpretable solution. With these methods, there is no
+single right answer—any solution that exposes some interesting aspects of
+the data should be considered.
+Validating the Clusters Obtained
+Any time clustering is performed on a data set we will find clusters. But we
+really want to know whether the clusters that have been found represent
+true subgroups in the data, or whether they are simply a result of clustering
+the noise. For instance, if we were to obtain an independent set of observations, then would those observations also display the same set of clusters?
+This is a hard question to answer. There exist a number of techniques for
+assigning a p-value to a cluster in order to assess whether there is more
+
+12. Unsupervised Learning
+
+Socks
+
+Computers
+
+1000
+500
+0
+
+0
+
+0.0
+
+0.2
+
+2
+
+0.4
+
+4
+
+0.6
+
+6
+
+0.8
+
+8
+
+1.0
+
+1500
+
+1.2
+
+10
+
+534
+
+Socks
+
+Computers
+
+Socks
+
+Computers
+
+FIGURE 12.16. An eclectic online retailer sells two items: socks and computers.
+Left: the number of pairs of socks, and computers, purchased by eight online shoppers is displayed. Each shopper is shown in a different color. If inter-observation
+dissimilarities are computed using Euclidean distance on the raw variables, then
+the number of socks purchased by an individual will drive the dissimilarities obtained, and the number of computers purchased will have little effect. This might
+be undesirable, since (1) computers are more expensive than socks and so the
+online retailer may be more interested in encouraging shoppers to buy computers
+than socks, and (2) a large difference in the number of socks purchased by two
+shoppers may be less informative about the shoppers’ overall shopping preferences
+than a small difference in the number of computers purchased. Center: the same
+data are shown, after scaling each variable by its standard deviation. Now the
+two products will have a comparable effect on the inter-observation dissimilarities
+obtained. Right: the same data are displayed, but now the y-axis represents the
+number of dollars spent by each online shopper on socks and on computers. Since
+computers are much more expensive than socks, now computer purchase history
+will drive the inter-observation dissimilarities obtained.
+
+evidence for the cluster than one would expect due to chance. However,
+there has been no consensus on a single best approach. More details can
+be found in ESL.8
+Other Considerations in Clustering
+Both K-means and hierarchical clustering will assign each observation to
+a cluster. However, sometimes this might not be appropriate. For instance,
+suppose that most of the observations truly belong to a small number of
+(unknown) subgroups, and a small subset of the observations are quite
+different from each other and from all other observations. Then since Kmeans and hierarchical clustering force every observation into a cluster, the
+clusters found may be heavily distorted due to the presence of outliers that
+do not belong to any cluster. Mixture models are an attractive approach
+fo

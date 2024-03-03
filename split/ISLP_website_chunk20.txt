@@ -1,0 +1,463 @@
+np.concatenate ([x2 , [0.8]])
+y = np.concatenate ([y, [6]])
+
+Re-fit the linear models from (c) to (e) using this new data. What
+effect does this new observation have on the each of the models?
+In each model, is this observation an outlier? A high-leverage
+point? Both? Explain your answers.
+15. This problem involves the Boston data set, which we saw in the lab
+for this chapter. We will now try to predict per capita crime rate
+using the other variables in this data set. In other words, per capita
+crime rate is the response, and the other variables are the predictors.
+(a) For each predictor, fit a simple linear regression model to predict
+the response. Describe your results. In which of the models is
+there a statistically significant association between the predictor
+and the response? Create some plots to back up your assertions.
+(b) Fit a multiple regression model to predict the response using
+all of the predictors. Describe your results. For which predictors
+can we reject the null hypothesis H0 : βj = 0?
+(c) How do your results from (a) compare to your results from (b)?
+Create a plot displaying the univariate regression coefficients
+from (a) on the x-axis, and the multiple regression coefficients
+from (b) on the y-axis. That is, each predictor is displayed as a
+single point in the plot. Its coefficient in a simple linear regression model is shown on the x-axis, and its coefficient estimate
+in the multiple linear regression model is shown on the y-axis.
+
+134
+
+3. Linear Regression
+
+(d) Is there evidence of non-linear association between any of the
+predictors and the response? To answer this question, for each
+predictor X, fit a model of the form
+Y = β0 + β1 X + β2 X 2 + β3 X 3 + ".
+
+4
+Classification
+
+The linear regression model discussed in Chapter 3 assumes that the response variable Y is quantitative. But in many situations, the response
+variable is instead qualitative. For example, eye color is qualitative. Ofqualitative
+ten qualitative variables are referred to as categorical; we will use these
+terms interchangeably. In this chapter, we study approaches for predicting
+qualitative responses, a process that is known as classification. Predicting
+classification
+a qualitative response for an observation can be referred to as classifying
+that observation, since it involves assigning the observation to a category,
+or class. On the other hand, often the methods used for classification first
+predict the probability that the observation belongs to each of the categories of a qualitative variable, as the basis for making the classification.
+In this sense they also behave like regression methods.
+There are many possible classification techniques, or classifiers, that one
+classifier
+might use to predict a qualitative response. We touched on some of these
+in Sections 2.1.5 and 2.2.3. In this chapter we discuss some widely-used
+classifiers: logistic regression, linear discriminant analysis, quadratic dislogistic
+criminant analysis, naive Bayes, and K-nearest neighbors. The discussion regression
+of logistic regression is used as a jumping-off point for a discussion of gen- linear
+eralized linear models, and in particular, Poisson regression. We discuss discriminant
+more computer-intensive classification methods in later chapters: these in- analysis
+clude generalized additive models (Chapter 7); trees, random forests, and quadratic
+discriminant
+boosting (Chapter 8); and support vector machines (Chapter 9).
+analysis
+
+naive Bayes
+
+4.1
+
+K-nearest
+neighbors
+
+An Overview of Classification
+
+Classification problems occur often, perhaps even more so than regression
+problems. Some examples include:
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0_4
+
+135
+
+generalized
+linear
+models
+Poisson
+regression
+
+136
+
+4. Classification
+
+1. A person arrives at the emergency room with a set of symptoms
+that could possibly be attributed to one of three medical conditions.
+Which of the three conditions does the individual have?
+2. An online banking service must be able to determine whether or not
+a transaction being performed on the site is fraudulent, on the basis
+of the user’s IP address, past transaction history, and so forth.
+3. On the basis of DNA sequence data for a number of patients with
+and without a given disease, a biologist would like to figure out which
+DNA mutations are deleterious (disease-causing) and which are not.
+Just as in the regression setting, in the classification setting we have a
+set of training observations (x1 , y1 ), . . . , (xn , yn ) that we can use to build
+a classifier. We want our classifier to perform well not only on the training
+data, but also on test observations that were not used to train the classifier.
+In this chapter, we will illustrate the concept of classification using the
+simulated Default data set. We are interested in predicting whether an
+individual will default on his or her credit card payment, on the basis of
+annual income and monthly credit card balance. The data set is displayed
+in Figure 4.1. In the left-hand panel of Figure 4.1, we have plotted annual
+income and monthly credit card balance for a subset of 10, 000 individuals.
+The individuals who defaulted in a given month are shown in orange, and
+those who did not in blue. (The overall default rate is about 3 %, so we
+have plotted only a fraction of the individuals who did not default.) It
+appears that individuals who defaulted tended to have higher credit card
+balances than those who did not. In the center and right-hand panels of
+Figure 4.1, two pairs of boxplots are shown. The first shows the distribution
+of balance split by the binary default variable; the second is a similar plot
+for income. In this chapter, we learn how to build a model to predict default
+(Y ) for any given value of balance (X1 ) and income (X2 ). Since Y is not
+quantitative, the simple linear regression model of Chapter 3 is not a good
+choice: we will elaborate on this further in Section 4.2.
+It is worth noting that Figure 4.1 displays a very pronounced relationship between the predictor balance and the response default. In most real
+applications, the relationship between the predictor and the response will
+not be nearly so strong. However, for the sake of illustrating the classification procedures discussed in this chapter, we use an example in which the
+relationship between the predictor and the response is somewhat exaggerated.
+
+4.2
+
+Why Not Linear Regression?
+
+We have stated that linear regression is not appropriate in the case of a
+qualitative response. Why not?
+Suppose that we are trying to predict the medical condition of a patient
+in the emergency room on the basis of her symptoms. In this simplified
+example, there are three possible diagnoses: stroke, drug overdose, and
+
+137
+
+0
+
+500
+
+1000
+
+1500
+
+Balance
+
+2000
+
+2500
+
+60000
+
+Income
+
+0
+
+0
+
+0
+
+500
+
+20000
+
+40000
+
+2000
+1500
+
+Balance
+
+1000
+
+40000
+20000
+
+Income
+
+60000
+
+2500
+
+4.2 Why Not Linear Regression?
+
+No
+
+Yes
+
+Default
+
+No
+
+Yes
+
+Default
+
+FIGURE 4.1. The Default data set. Left: The annual incomes and monthly
+credit card balances of a number of individuals. The individuals who defaulted on
+their credit card payments are shown in orange, and those who did not are shown
+in blue. Center: Boxplots of balance as a function of default status. Right:
+Boxplots of income as a function of default status.
+epileptic seizure. We could consider encoding these values as a quantita-
+
+tive response variable, Y , as follows:
+
+
+1 if stroke;
+Y = 2 if drug overdose;
+
+
+3 if epileptic seizure.
+
+Using this coding, least squares could be used to fit a linear regression model
+to predict Y on the basis of a set of predictors X1 , . . . , Xp . Unfortunately,
+this coding implies an ordering on the outcomes, putting drug overdose in
+between stroke and epileptic seizure, and insisting that the difference
+between stroke and drug overdose is the same as the difference between
+drug overdose and epileptic seizure. In practice there is no particular
+reason that this needs to be the case. For instance, one could choose an
+equally reasonable coding,
+
+
+1 if epileptic seizure;
+Y = 2 if stroke;
+
+
+3 if drug overdose,
+which would imply a totally different relationship among the three conditions. Each of these codings would produce fundamentally different linear
+models that would ultimately lead to different sets of predictions on test
+observations.
+If the response variable’s values did take on a natural ordering, such as
+mild, moderate, and severe, and we felt the gap between mild and moderate
+was similar to the gap between moderate and severe, then a 1, 2, 3 coding
+would be reasonable. Unfortunately, in general there is no natural way to
+
+138
+
+4. Classification
+
+convert a qualitative response variable with more than two levels into a
+quantitative response that is ready for linear regression.
+For a binary (two level) qualitative response, the situation is better. For
+binary
+instance, perhaps there are only two possibilities for the patient’s medical
+condition: stroke and drug overdose. We could then potentially use the
+dummy variable approach from Section 3.3.1 to code the response as follows:
+=
+0 if stroke;
+Y =
+1 if drug overdose.
+We could then fit a linear regression to this binary response, and predict
+drug overdose if Ŷ > 0.5 and stroke otherwise. In the binary case it is not
+hard to show that even if we flip the above coding, linear regression will
+produce the same final predictions.
+For a binary response with a 0/1 coding as above, regression by least
+squares is not completely unreasonable: it can be shown that the X β̂ obtained using linear regression is in fact an estimate of Pr(drug overdose|X)
+in this special case. However, if we use linear regression, some of our estimates might be outside the [0, 1] interval (see Figure 4.2), making them
+hard to interpret as probabilities! Nevertheless, the predictions provide an
+ordering and can be interpreted as crude probability estimates. Curiously,
+it turns out that the classifications that we get if we use linear regression
+to predict a binary response will be the same as for the linear discriminant
+analysis (LDA) procedure we discuss in Section 4.4.
+To summarize, there are at least two reasons not to perform classification using a regression method: (a) a regression method cannot accommodate a qualitative response with more than two classes; (b) a regression
+method will not provide meaningful estimates of Pr(Y |X), even with just
+two classes. Thus, it is preferable to use a classification method that is
+truly suited for qualitative response values. In the next section, we present
+logistic regression, which is well-suited for the case of a binary qualitative response; in later sections we will cover classification methods that are
+appropriate when the qualitative response has two or more classes.
+
+4.3
+
+Logistic Regression
+
+Consider again the Default data set, where the response default falls into
+one of two categories, Yes or No. Rather than modeling this response Y
+directly, logistic regression models the probability that Y belongs to a particular category.
+For the Default data, logistic regression models the probability of default.
+For example, the probability of default given balance can be written as
+Pr(default = Yes|balance).
+The values of Pr(default = Yes|balance), which we abbreviate p(balance),
+will range between 0 and 1. Then for any given value of balance, a prediction
+can be made for default. For example, one might predict default = Yes
+
+0
+
+500
+
+1000
+
+1500
+
+2000
+
+| ||
+
+2500
+
+1.0
+0.0
+
+0.8
+0.6
+0.4
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||
+||||||||||||||
+|||||||||||||||||||||||||||||
+|||||||||||||
+||||||||||||||||||||||||||||||||||
+||||||||||||
+|||||||||||||||||||
+||||||||||||
+|||||||||||||||||
+||||||||||||
+|||||||||||||||||||
+|||||
+||||
+||||||||||||
+|||||||||
+||||
+||||||||||||||
+|||||||||||||||||||||||||||||||||||||||||||||||||||||
+|||||||||||||||||||||||||
+|||||||||||||||||||||||
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| |||||| || || |||| |
+
+| |
+
+|
+
+| || | ||||| || ||| ||||||||||| ||||| |||||||||||||||||| |||||||| ||||||||||| ||||||||||||||||||||||||||| ||||||||||||||||||||||||| | |||| | | | |
+
+|
+
+|
+
+0.8
+
+|
+
+0.6
+
+|
+
+0.4
+
+| || | ||||| || ||| ||||||||||| ||||| |||||||||||||||||| |||||||| ||||||||||| |||||||||||||||||||||||||||| |||||||||||||||||||||||||| | |||| | | | |
+
+139
+
+0.2
+
+|
+
+Probability of Default
+
+| |
+
+0.2
+0.0
+
+Probability of Default
+
+1.0
+
+4.3 Logistic Regression
+
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+|||||||||||||
+||||||||||||||||||||||||||||||||||
+||||||||||||
+|||||||||||||||||||
+||||||||||||
+|||
+||||||||||||||||
+||||||||||||
+|||||||||||||||||||
+|||||
+||||
+||||||||||||
+|||||||||
+||||
+||||||||||||||
+|||||||||||||||||||||||||||||||||||||||||||||||||||||
+|||||||||||||||||||||||||
+|||||||||||||||||||||||
+|||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| |||||| || || |||| |
+
+0
+
+Balance
+
+500
+
+1000
+
+1500
+
+2000
+
+| ||
+
+2500
+
+Balance
+
+FIGURE 4.2. Classification using the Default data. Left: Estimated probability
+of default using linear regression. Some estimated probabilities are negative! The
+orange ticks indicate the 0/1 values coded for default(No or Yes). Right: Predicted
+probabilities of default using logistic regression. All probabilities lie between 0
+and 1.
+
+for any individual for whom p(balance) > 0.5. Alternatively, if a company
+wishes to be conservative in predicting individuals who are at risk for default, then they may choose to use a lower threshold, such as p(balance) >
+0.1.
+
+4.3.1
+
+The Logistic Model
+
+How should we model the relationship between p(X) = Pr(Y = 1|X) and
+X? (For convenience we are using the generic 0/1 coding for the response.)
+In Section 4.2 we considered using a linear regression model to represent
+these probabilities:
+p(X) = β0 + β1 X.
+(4.1)
+If we use this approach to predict default=Yes using balance, then we
+obtain the model shown in the left-hand panel of Figure 4.2. Here we see
+the problem with this approach: for balances close to zero we predict a
+negative probability of default; if we were to predict for very large balances,
+we would get values bigger than 1. These predictions are not sensible, since
+of course the true probability of default, regardless of credit card balance,
+must fall between 0 and 1. This problem is not unique to the credit default
+data. Any time a straight line is fit to a binary response that is coded as
+0 or 1, in principle we can always predict p(X) < 0 for some values of X
+and p(X) > 1 for others (unless the range of X is limited).
+To avoid this problem, we must model p(X) using a function that gives
+outputs between 0 and 1 for all values of X. Many functions meet this
+description. In logistic regression, we use the logistic function,
+β0 +β1 X
+
+p(X) =
+
+e
+.
+1 + eβ0 +β1 X
+
+(4.2)
+
+logistic
+function
+
+To fit the model (4.2), we use a method called maximum likelihood, which
+maximum
+we discuss in the next section. The right-hand panel of Figure 4.2 illustrates likelihood
+the fit of the logistic regression model to the Default data. Notice that for
+
+140
+
+4. Classification
+
+low balances we now predict the probability of default as close to, but never
+below, zero. Likewise, for high balances we predict a default probability
+close to, but never above, one. The logistic function wi

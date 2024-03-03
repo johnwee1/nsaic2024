@@ -1,0 +1,551 @@
+t_nci('Complete ', ax)
+ax = axes [1]; hc_avg = plot_nci('Average ', ax)
+ax = axes [2]; hc_sing = plot_nci('Single ', ax)
+
+The results are shown in Figure 12.19. We see that the choice of linkage
+certainly does affect the results obtained. Typically, single linkage will tend
+to yield trailing clusters: very large clusters onto which individual observations attach one-by-one. On the other hand, complete and average linkage
+tend to yield more balanced, attractive clusters. For this reason, complete
+and average linkage are generally preferred to single linkage. Clearly cell
+lines within a single cancer type do tend to cluster together, although the
+clustering is not perfect. We will use complete linkage hierarchical clustering for the analysis that follows.
+
+100
+
+LEUKEMIA
+RENAL
+BREAST
+
+80
+
+CNS
+LEUKEMIA
+
+MELANOMA
+MELANOMA
+MELANOMA
+MELANOMA
+MELANOMA
+BREAST
+OVARIAN
+COLON
+MCF7A−repro
+BREAST
+MCF7D−repro
+UNKNOWN
+OVARIAN
+NSCLC
+NSCLC
+PROSTATE
+MELANOMA
+COLON
+OVARIAN
+NSCLC
+RENAL
+COLON
+PROSTATE
+COLON
+OVARIAN
+COLON
+COLON
+NSCLC
+NSCLC
+RENAL
+NSCLC
+RENAL
+RENAL
+RENAL
+RENAL
+RENAL
+CNS
+CNS
+CNS
+
+NSCLC
+LEUKEMIA
+OVARIAN
+NSCLC
+CNS
+BREAST
+NSCLC
+OVARIAN
+COLON
+BREAST
+MELANOMA
+RENAL
+MELANOMA
+
+LEUKEMIA
+K562B−repro
+K562A−repro
+
+BREAST
+BREAST
+
+60
+
+LEUKEMIA
+LEUKEMIA
+
+40
+
+60
+
+80
+
+100 120
+
+LEUKEMIA
+LEUKEMIA
+LEUKEMIA
+LEUKEMIA
+LEUKEMIA
+LEUKEMIA
+K562B−repro
+K562A−repro
+RENAL
+NSCLC
+BREAST
+NSCLC
+BREAST
+MCF7A−repro
+BREAST
+MCF7D−repro
+COLON
+COLON
+COLON
+RENAL
+MELANOMA
+MELANOMA
+BREAST
+BREAST
+MELANOMA
+MELANOMA
+MELANOMA
+MELANOMA
+MELANOMA
+OVARIAN
+OVARIAN
+NSCLC
+OVARIAN
+UNKNOWN
+OVARIAN
+NSCLC
+MELANOMA
+CNS
+CNS
+CNS
+RENAL
+RENAL
+RENAL
+RENAL
+RENAL
+RENAL
+RENAL
+PROSTATE
+NSCLC
+NSCLC
+NSCLC
+NSCLC
+OVARIAN
+PROSTATE
+NSCLC
+COLON
+COLON
+OVARIAN
+COLON
+COLON
+CNS
+CNS
+BREAST
+BREAST
+
+40
+
+80
+
+BREAST
+BREAST
+CNS
+CNS
+RENAL
+BREAST
+NSCLC
+RENAL
+MELANOMA
+OVARIAN
+OVARIAN
+NSCLC
+OVARIAN
+COLON
+COLON
+OVARIAN
+PROSTATE
+NSCLC
+NSCLC
+NSCLC
+PROSTATE
+NSCLC
+MELANOMA
+RENAL
+RENAL
+RENAL
+OVARIAN
+UNKNOWN
+OVARIAN
+NSCLC
+CNS
+CNS
+CNS
+NSCLC
+RENAL
+RENAL
+RENAL
+RENAL
+NSCLC
+MELANOMA
+MELANOMA
+MELANOMA
+MELANOMA
+MELANOMA
+MELANOMA
+BREAST
+BREAST
+COLON
+COLON
+COLON
+COLON
+COLON
+BREAST
+MCF7A−repro
+BREAST
+MCF7D−repro
+LEUKEMIA
+LEUKEMIA
+LEUKEMIA
+LEUKEMIA
+K562B−repro
+K562A−repro
+LEUKEMIA
+LEUKEMIA
+
+40
+
+120
+
+160
+
+550
+12. Unsupervised Learning
+
+Complete Linkage
+
+Average Linkage
+
+Single Linkage
+
+FIGURE 12.19. The NCI60 cancer cell line microarray data, clustered with
+average, complete, and single linkage, and using Euclidean distance as the dissimilarity measure. Complete and average linkage tend to yield evenly sized clusters
+whereas single linkage tends to yield extended clusters to which single leaves are
+fused one by one.
+
+12.5 Lab: Unsupervised Learning
+
+551
+
+We can cut the dendrogram at the height that will yield a particular
+number of clusters, say four:
+In [55]: linkage_comp = compute_linkage (hc_comp)
+comp_cut = cut_tree(linkage_comp , n_clusters =4).reshape (-1)
+pd.crosstab(nci_labs['label '],
+pd.Series(comp_cut.reshape (-1), name='Complete '))
+
+There are some clear patterns. All the leukemia cell lines fall in one
+cluster, while the breast cancer cell lines are spread out over three different
+clusters.
+We can plot a cut on the dendrogram that produces these four clusters:
+In [56]: fig , ax = plt.subplots(figsize =(10 ,10))
+plot_nci('Complete ', ax , cut =140)
+ax.axhline (140, c='r', linewidth =4);
+
+The axhline() function draws a horizontal line line on top of any existing
+set of axes. The argument 140 plots a horizontal line at height 140 on the
+dendrogram; this is a height that results in four distinct clusters. It is easy
+to verify that the resulting clusters are the same as the ones we obtained
+in comp_cut.
+We claimed earlier in Section 12.4.2 that K-means clustering and hierarchical clustering with the dendrogram cut to obtain the same number
+of clusters can yield very different results. How do these NCI60 hierarchical
+clustering results compare to what we get if we perform K-means clustering
+with K = 4?
+In [57]: nci_kmeans = KMeans(n_clusters =4,
+random_state =0,
+n_init =20).fit(nci_scaled)
+pd.crosstab(pd.Series(comp_cut , name='HClust '),
+pd.Series(nci_kmeans.labels_ , name='K-means '))
+Out[57]: K-means
+HClust
+0
+1
+2
+3
+
+0
+
+1
+
+2
+
+3
+
+28
+7
+0
+0
+
+3
+0
+0
+9
+
+9
+0
+0
+0
+
+0
+0
+8
+0
+
+We see that the four clusters obtained using hierarchical clustering and
+K-means clustering are somewhat different. First we note that the labels
+in the two clusterings are arbitrary. That is, swapping the identifier of the
+cluster does not change the clustering. We see here Cluster 3 in K-means
+clustering is identical to cluster 2 in hierarchical clustering. However, the
+other clusters differ: for instance, cluster 0 in K-means clustering contains
+a portion of the observations assigned to cluster 0 by hierarchical clustering, as well as all of the observations assigned to cluster 1 by hierarchical
+clustering.
+Rather than performing hierarchical clustering on the entire data matrix, we can also perform hierarchical clustering on the first few principal
+component score vectors, regarding these first few components as a less
+noisy version of the data.
+
+552
+
+12. Unsupervised Learning
+
+In [58]: hc_pca = HClust(n_clusters=None ,
+distance_threshold =0,
+linkage='complete '
+).fit(nci_scores [: ,:5])
+linkage_pca = compute_linkage(hc_pca)
+fig , ax = plt.subplots(figsize =(8 ,8))
+dendrogram(linkage_pca ,
+labels=np.asarray(nci_labs),
+leaf_font_size =10,
+ax=ax ,
+** cargs)
+ax.set_title("Hier. Clust. on First Five Score Vectors")
+pca_labels = pd.Series(cut_tree(linkage_pca ,
+n_clusters =4).reshape (-1),
+name='Complete -PCA')
+pd.crosstab(nci_labs['label '], pca_labels)
+
+12.6 Exercises
+Conceptual
+1. This problem involves the K-means clustering algorithm.
+(a) Prove (12.18).
+(b) On the basis of this identity, argue that the K-means clustering
+algorithm (Algorithm 12.2) decreases the objective (12.17) at
+each iteration.
+2. Suppose that we have four observations, for which we compute a
+dissimilarity matrix, given by
+
+
+0.3 0.4 0.7
+ 0.3
+0.5 0.8 
+
+.
+ 0.4 0.5
+0.45 
+0.7 0.8 0.45
+For instance, the dissimilarity between the first and second observations is 0.3, and the dissimilarity between the second and fourth
+observations is 0.8.
+
+(a) On the basis of this dissimilarity matrix, sketch the dendrogram
+that results from hierarchically clustering these four observations using complete linkage. Be sure to indicate on the plot the
+height at which each fusion occurs, as well as the observations
+corresponding to each leaf in the dendrogram.
+(b) Repeat (a), this time using single linkage clustering.
+(c) Suppose that we cut the dendrogram obtained in (a) such that
+two clusters result. Which observations are in each cluster?
+(d) Suppose that we cut the dendrogram obtained in (b) such that
+two clusters result. Which observations are in each cluster?
+
+12.6 Exercises
+
+553
+
+(e) It is mentioned in this chapter that at each fusion in the dendrogram, the position of the two clusters being fused can be
+swapped without changing the meaning of the dendrogram. Draw
+a dendrogram that is equivalent to the dendrogram in (a), for
+which two or more of the leaves are repositioned, but for which
+the meaning of the dendrogram is the same.
+3. In this problem, you will perform K-means clustering manually, with
+K = 2, on a small example with n = 6 observations and p = 2
+features. The observations are as follows.
+Obs.
+1
+2
+3
+4
+5
+6
+
+X1
+1
+1
+0
+5
+6
+4
+
+X2
+4
+3
+4
+1
+2
+0
+
+(a) Plot the observations.
+(b) Randomly assign a cluster label to each observation. You can use
+the np.random.choice() function to do this. Report the cluster
+labels for each observation.
+(c) Compute the centroid for each cluster.
+(d) Assign each observation to the centroid to which it is closest, in
+terms of Euclidean distance. Report the cluster labels for each
+observation.
+(e) Repeat (c) and (d) until the answers obtained stop changing.
+(f) In your plot from (a), color the observations according to the
+cluster labels obtained.
+4. Suppose that for a particular data set, we perform hierarchical clustering using single linkage and using complete linkage. We obtain two
+dendrograms.
+(a) At a certain point on the single linkage dendrogram, the clusters {1, 2, 3} and {4, 5} fuse. On the complete linkage dendrogram, the clusters {1, 2, 3} and {4, 5} also fuse at a certain point.
+Which fusion will occur higher on the tree, or will they fuse at
+the same height, or is there not enough information to tell?
+(b) At a certain point on the single linkage dendrogram, the clusters
+{5} and {6} fuse. On the complete linkage dendrogram, the clusters {5} and {6} also fuse at a certain point. Which fusion will
+occur higher on the tree, or will they fuse at the same height, or
+is there not enough information to tell?
+5. In words, describe the results that you would expect if you performed
+K-means clustering of the eight shoppers in Figure 12.16, on the
+basis of their sock and computer purchases, with K = 2. Give three
+answers, one for each of the variable scalings displayed. Explain.
+
+554
+
+12. Unsupervised Learning
+
+6. We saw in Section 12.2.2 that the principal component loading and
+score vectors provide an approximation to a matrix, in the sense of
+(12.5). Specifically, the principal component score and loading vectors
+solve the optimization problem given in (12.6).
+Now, suppose that the M principal component score vectors zim , m =
+1, . . . , M , are known. Using (12.6), explain that each of the first M
+principal component loading vectors φjm , m = 1, . . . , M , can be obtained by performing p separate least squares linear regressions. In
+each regression, the principal component score vectors are the predictors, and one of the features of the data matrix is the response.
+
+Applied
+7. In this chapter, we mentioned the use of correlation-based distance
+and Euclidean distance as dissimilarity measures for hierarchical clustering. It turns out that these two measures are almost equivalent: if
+each observation has been centered to have mean zero and standard
+deviation one, and if we let rij denote the correlation between the ith
+and jth observations, then the quantity 1 − rij is proportional to the
+squared Euclidean distance between the ith and jth observations.
+On the USArrests data, show that this proportionality holds.
+Hint: The Euclidean distance can be calculated using the
+pairwise_distances() function from the sklearn.metrics module, and
+pairwise_
+correlations can be calculated using the np.corrcoef() function.
+distances()
+8. In Section 12.2.3, a formula for calculating PVE was given in Equation 12.10. We also saw that the PVE can be obtained using the
+explained_variance_ratio_ attribute of a fitted PCA() estimator.
+On the USArrests data, calculate PVE in two ways:
+(a) Using the explained_variance_ratio_ output of the fitted PCA()
+estimator, as was done in Section 12.2.3.
+(b) By applying Equation 12.10 directly. The loadings are stored
+as the components_ attribute of the fitted PCA() estimator. Use
+those loadings in Equation 12.10 to obtain the PVE.
+These two approaches should give the same results.
+Hint: You will only obtain the same results in (a) and (b) if the same
+data is used in both cases. For instance, if in (a) you performed PCA()
+using centered and scaled variables, then you must center and scale
+the variables before applying Equation 12.10 in (b).
+9. Consider the USArrests data. We will now perform hierarchical clustering on the states.
+(a) Using hierarchical clustering with complete linkage and
+Euclidean distance, cluster the states.
+(b) Cut the dendrogram at a height that results in three distinct
+clusters. Which states belong to which clusters?
+
+12.6 Exercises
+
+555
+
+(c) Hierarchically cluster the states using complete linkage and Euclidean distance, after scaling the variables to have standard deviation one.
+(d) What effect does scaling the variables have on the hierarchical
+clustering obtained? In your opinion, should the variables be
+scaled before the inter-observation dissimilarities are computed?
+Provide a justification for your answer.
+10. In this problem, you will generate simulated data, and then perform
+PCA and K-means clustering on the data.
+(a) Generate a simulated data set with 20 observations in each of
+three classes (i.e. 60 observations total), and 50 variables.
+Hint: There are a number of functions in Python that you can
+use to generate data. One example is the normal() method of
+the random() function in numpy; the uniform() method is another
+option. Be sure to add a mean shift to the observations in each
+class so that there are three distinct classes.
+(b) Perform PCA on the 60 observations and plot the first two principal component score vectors. Use a different color to indicate
+the observations in each of the three classes. If the three classes
+appear separated in this plot, then continue on to part (c). If
+not, then return to part (a) and modify the simulation so that
+there is greater separation between the three classes. Do not
+continue to part (c) until the three classes show at least some
+separation in the first two principal component score vectors.
+(c) Perform K-means clustering of the observations with K = 3.
+How well do the clusters that you obtained in K-means clustering compare to the true class labels?
+Hint: You can use the pd.crosstab() function in Python to compare the true class labels to the class labels obtained by clustering. Be careful how you interpret the results: K-means clustering
+will arbitrarily number the clusters, so you cannot simply check
+whether the true class labels and clustering labels are the same.
+(d) Perform K-means clustering with K = 2. Describe your results.
+(e) Now perform K-means clustering with K = 4, and describe your
+results.
+(f) Now perform K-means clustering with K = 3 on the first two
+principal component score vectors, rather than on the raw data.
+That is, perform K-means clustering on the 60 × 2 matrix of
+which the first column is the first principal component score
+vector, and the second column is the second principal component
+score vector. Comment on the results.
+(g) Using the StandardScaler() estimator, perform K-means clustering with K = 3 on the data after scaling each variable to have
+standard deviation one. How do these results compare to those
+obtained in (b)? Explain.
+
+556
+
+12. Unsupervised Learning
+
+11. Write a Python function to perform matrix completion as in Algorithm 12.1, and as outlined in Section 12.5.2. In each iteration, the
+function should keep track of the relative error, as well as the iteration count. Iterations should continue until the relative error is small
+enough or until some maximum number of iterations is reached (set a
+default value for this maximum number). Furthermore, there should
+be an option to print out the progress in each iteration.
+Test your function on the Boston data. First, standardize the features
+to have mean zero and standard deviation one using the
+StandardScaler() function. Run an experiment where you randomly
+leave out an increasing (and nested) number of observations from 5%
+to 30%, in steps of 5%. Apply Algorithm 12.1 with M = 1, 2, . . . , 8.
+Display the approximation error as a function of the fraction of observations that are missing, and the value of M , averaged over 10
+repetitions of the experiment.
+12. In Section 12.5.2, Algorithm 12.1 was implemented using the
+svd() function from the np.linalg module. However, given the connection between the svd() function and the PCA() estimator highlighted in the lab, we could have 

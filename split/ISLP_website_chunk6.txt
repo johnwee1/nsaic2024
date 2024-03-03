@@ -1,0 +1,791 @@
+t the test error rate may be quite high. In
+general, as we use more flexible classification methods, the training error
+rate will decline but the test error rate may not. In Figure 2.17, we have
+plotted the KNN test and training errors as a function of 1/K. As 1/K increases, the method becomes more flexible. As in the regression setting, the
+training error rate consistently declines as the flexibility increases. However,
+the test error exhibits a characteristic U-shape, declining at first (with a
+minimum at approximately K = 10) before increasing again when the
+method becomes excessively flexible and overfits.
+
+38
+
+2. Statistical Learning
+
+o
+
+o
+o
+
+o
+
+o
+
+o
+o
+
+o
+
+o
+
+o
+
+o
+
+o
+o
+
+o
+
+o
+
+o
+
+o
+
+o
+
+o
+
+o
+o
+
+o
+
+o
+
+o
+
+FIGURE 2.14. The KNN approach, using K = 3, is illustrated in a simple
+situation with six blue observations and six orange observations. Left: a test
+observation at which a predicted class label is desired is shown as a black cross.
+The three closest points to the test observation are identified, and it is predicted
+that the test observation belongs to the most commonly-occurring class, in this
+case blue. Right: The KNN decision boundary for this example is shown in black.
+The blue grid indicates the region in which a test observation will be assigned to
+the blue class, and the orange grid indicates the region in which it will be assigned
+to the orange class.
+KNN: K=10
+
+oo o
+o
+o
+o
+o
+oo oo o
+o
+o
+o
+o
+o oo
+o
+oo oo
+oo o
+oo
+o oo o
+oo o o
+o
+o
+oo o
+o oo
+oo
+o
+o o o oo
+o
+o
+o
+oo
+o
+o o
+o
+o
+o o
+o oo o
+o o
+o
+o
+o o
+oo
+o o
+o o
+o
+o o oooo o
+ooo o o o o
+o
+o
+o
+o
+o o oo o o o
+o
+oo
+o
+o o
+o
+oo o oo o
+oo o
+o
+o
+o
+o o
+o o o
+o oo
+o
+o o o oo o oo o
+o
+o
+oo o
+o
+o ooooo o
+oo
+oo
+o
+o oo o o
+o
+o o
+oo oo o
+o
+oo o
+oo
+o
+o
+o
+o
+o
+o
+o
+o
+oo o
+o
+o
+o o
+
+X2
+
+oo
+
+X1
+
+FIGURE 2.15. The black curve indicates the KNN decision boundary on the
+data from Figure 2.13, using K = 10. The Bayes decision boundary is shown as
+a purple dashed line. The KNN and Bayes decision boundaries are very similar.
+
+In both the regression and classification settings, choosing the correct
+level of flexibility is critical to the success of any statistical learning method.
+The bias-variance tradeoff, and the resulting U-shape in the test error, can
+make this a difficult task. In Chapter 5, we return to this topic and discuss
+
+2.2 Assessing Model Accuracy
+KNN: K=1
+
+oo
+
+o
+o
+o
+oo
+
+KNN: K=100
+
+o
+o
+
+o
+o
+o
+o
+o
+oo oo o o
+oo
+o
+o
+o
+o
+o
+oo
+o oo
+oo o o
+o
+o
+oo o
+o
+oo
+oo
+o
+o
+o
+o
+o
+o
+o o
+o
+o
+o
+o
+o o
+o
+o
+o o
+o oo o
+o o
+o
+o o
+o
+o oo
+o
+o
+o
+o o
+o
+o o ooo o
+ooo o
+o
+ooo
+oo
+o
+o
+o
+o
+o o ooooo o
+oo
+o
+o
+o o o
+oo o
+o o oo o
+oo o
+o
+o o o oo
+o oo o
+o o o
+o
+o
+oo
+o o o
+o
+oo
+oooo ooo
+o
+o
+o oo o o
+o
+o o
+oo oo o
+o
+oo o
+o
+o
+oooo
+oo
+o
+o
+oo o
+o
+o
+
+oo
+
+o
+
+o
+
+39
+
+oo
+
+o
+o
+o
+oo
+
+o
+o
+
+o
+o
+o
+o
+oo oo o o
+oo
+o
+o
+o
+o
+oo
+o oo
+oo o o
+o
+o
+oo o
+o
+oo
+oo
+o
+o
+o
+o
+o
+o
+o o
+o
+o
+o
+o
+o o
+o
+o
+o o
+o oo o
+o o
+o
+o o
+o
+o oo
+o
+o
+o
+o o
+o
+o o ooo o
+ooo o
+o
+ooo
+oo
+o
+o
+o
+o
+o o ooooo o
+oo
+o
+o
+o o o
+oo o
+o o oo o
+oo o
+o
+o o o oo
+o oo o
+o o o
+o
+o
+oo
+o o o
+o
+oo
+oooo ooo
+o
+o
+o oo o o
+o
+o o
+oo oo o
+o
+oo o
+o
+o
+oooo
+oo
+o
+o
+oo o
+o
+o
+
+o
+
+oo
+
+o
+
+o
+
+o
+
+o
+
+o
+
+0.10
+0.05
+
+Error Rate
+
+0.15
+
+0.20
+
+FIGURE 2.16. A comparison of the KNN decision boundaries (solid black
+curves) obtained using K = 1 and K = 100 on the data from Figure 2.13. With
+K = 1, the decision boundary is overly flexible, while with K = 100 it is not
+sufficiently flexible. The Bayes decision boundary is shown as a purple dashed
+line.
+
+0.00
+
+Training Errors
+Test Errors
+0.01
+
+0.02
+
+0.05
+
+0.10
+
+0.20
+
+0.50
+
+1.00
+
+1/K
+
+FIGURE 2.17. The KNN training error rate (blue, 200 observations) and test
+error rate (orange, 5,000 observations) on the data from Figure 2.13, as the level
+of flexibility (assessed using 1/K on the log scale) increases, or equivalently as
+the number of neighbors K decreases. The black dashed line indicates the Bayes
+error rate. The jumpiness of the curves is due to the small size of the training
+data set.
+
+various methods for estimating test error rates and thereby choosing the
+optimal level of flexibility for a given statistical learning method.
+
+40
+
+2. Statistical Learning
+
+2.3
+
+Lab: Introduction to Python
+
+2.3.1
+
+Getting Started
+
+To run the labs in this book, you will need two things:
+1. An installation of Python3, which is the specific version of Python used
+in the labs.
+2. Access to Jupyter, a very popular Python interface that runs code
+through a file called a notebook.
+
+notebook
+
+You can download and install Python3 by following the instructions available at anaconda.com.
+There are a number of ways to get access to Jupyter. Here are just a few:
+1. Using Google’s Colaboratory service: colab.research.google.com/.
+2. Using JupyterHub, available at jupyter.org/hub.
+3. Using your own jupyter installation. Installation instructions are
+available at jupyter.org/install.
+Please see the Python resources page on the book website statlearning.com
+for up-to-date information about getting Python and Jupyter working on
+your computer.
+You will need to install the ISLP package, which provides access to the
+datasets and custom-built functions that we provide. Inside a macOS or
+Linux terminal type pip install ISLP; this also installs most other packages needed in the labs. The Python resources page has a link to the ISLP
+documentation website.
+To run this lab, download the file Ch2-statlearn-lab.ipynb from the
+Python resources page. Now run the following code at the command line:
+jupyter lab Ch2-statlearn-lab.ipynb.
+If you’re using Windows, you can use the start menu to access anaconda,
+and follow the links. For example, to install ISLP and run this lab, you can
+run the same code above in an anaconda shell.
+
+2.3.2
+
+Basic Commands
+
+In this lab, we will introduce some simple Python commands. For more
+resources about Python in general, readers may want to consult the tutorial
+at docs.python.org/3/tutorial/.
+Like most programming languages, Python uses functions to perform opfunction
+erations. To run a function called fun, we type fun(input1,input2), where
+the inputs (or arguments) input1 and input2 tell Python how to run the
+function. A function can have any number of inputs. For example, the argument
+print() function outputs a text representation of all of its arguments to
+print()
+the console.
+In [1]: print('fit a model with ', 11, 'variables ')
+
+2.3 Lab: Introduction to Python
+
+41
+
+fit a model with 11 variables
+
+The following command will provide information about the print() function.
+In [2]: print?
+
+Adding two integers in Python is pretty intuitive.
+In [3]: 3 + 5
+
+Out[3]: 8
+
+In Python, textual data is handled using strings. For instance, "hello" and
+string
+'hello' are strings. We can concatenate them using the addition + symbol.
+In [4]: "hello" + " " + "world"
+
+Out[4]: 'hello world '
+
+A string is actually a type of sequence: this is a generic term for an ordered sequence
+list. The three most important types of sequences are lists, tuples, and
+strings. We introduce lists now.
+The following command instructs Python to join together the numbers 3,
+4, and 5, and to save them as a list named x. When we type x, it gives us
+list
+back the list.
+In [5]: x = [3, 4, 5]
+x
+
+Out[5]: [3, 4, 5]
+
+Note that we used the brackets [] to construct this list.
+We will often want to add two sets of numbers together. It is reasonable
+to try the following code, though it will not produce the desired results.
+In [6]: y = [4, 9, 7]
+x + y
+
+Out[6]: [3, 4, 5, 4, 9, 7]
+
+The result may appear slightly counterintuitive: why did Python not add
+the entries of the lists element-by-element? In Python, lists hold arbitrary
+objects, and are added using concatenation. In fact, concatenation is the concatenatbehavior that we saw earlier when we entered "hello" + " " + "world".
+ion
+This example reflects the fact that Python is a general-purpose programming language. Much of Python’s data-specific functionality comes from
+other packages, notably numpy and pandas. In the next section, we will introduce the numpy package. See docs.scipy.org/doc/numpy/user/quickstart.html
+for more information about numpy.
+
+42
+
+2. Statistical Learning
+
+2.3.3
+
+Introduction to Numerical Python
+
+As mentioned earlier, this book makes use of functionality that is contained
+in the numpy library, or package. A package is a collection of modules that numpy
+are not necessarily included in the base Python distribution. The name numpy package
+is an abbreviation for numerical Python.
+To access numpy, we must first import it.
+import
+In [7]: import numpy as np
+
+In the previous line, we named the numpy module np; an abbreviation for
+module
+easier referencing.
+In numpy, an array is a generic term for a multidimensional set of numbers. array
+We use the np.array() function to define x and y, which are one-dimensional
+np.array()
+arrays, i.e. vectors.
+In [8]: x = np.array ([3, 4, 5])
+y = np.array ([4, 9, 7])
+
+Note that if you forgot to run the import numpy as np command earlier,
+then you will encounter an error in calling the np.array() function in
+the previous line. The syntax np.array() indicates that the function being called is part of the numpy package, which we have abbreviated as np.
+Since x and y have been defined using np.array(), we get a sensible result
+when we add them together. Compare this to our results in the previous
+section, when we tried to add two lists without using numpy.
+In [9]: x + y
+Out[9]: array ([ 7, 13, 12])
+
+In numpy, matrices are typically represented as two-dimensional arrays,
+and vectors as one-dimensional arrays.1 We can create a two-dimensional
+array as follows.
+In [10]: x = np.array ([[1, 2], [3, 4]])
+x
+Out[10]: array ([[1, 2],
+[3, 4]])
+
+The object x has several attributes, or associated objects. To access an
+attribute
+attribute of x, we type x.attribute, where we replace attribute with the
+name of the attribute. For instance, we can access the ndim attribute of x ndim
+as follows.
+In [11]: x.ndim
+Out[11]: 2
+
+The output indicates that x is a two-dimensional array. Similarly, x.dtype
+is the data type attribute of the object x. This indicates that x is comprised
+data type
+of 64-bit integers:
+1 While
+
+it is also possible to create matrices using np.matrix(), we will use
+
+np.array() throughout the labs in this book.
+
+2.3 Lab: Introduction to Python
+
+43
+
+In [12]: x.dtype
+Out[12]: dtype('int64 ')
+
+Why is x comprised of integers? This is because we created x by passing
+in exclusively integers to the np.array() function. If we had passed in any
+decimals, then we would have obtained an array of floating point numbers
+floating
+(i.e. real-valued numbers).
+point
+In [13]: np.array ([[1, 2], [3.0, 4]]).dtype
+Out[13]: dtype('float64 ')
+
+Typing fun? will cause Python to display documentation associated with
+the function fun, if it exists. We can try this for np.array().
+In [14]: np.array?
+
+This documentation indicates that we could create a floating point array
+by passing a dtype argument into np.array().
+dtype
+In [15]: np.array ([[1, 2], [3, 4]], float).dtype
+Out[15]: dtype('float64 ')
+
+The array x is two-dimensional. We can find out the number of rows and
+columns by looking at its shape attribute.
+shape
+In [16]: x.shape
+Out[16]: (2, 2)
+
+A method is a function that is associated with an object. For instance,
+method
+given an array x, the expression x.sum() sums all of its elements, using the
+sum() method for arrays. The call x.sum() automatically provides x as the
+.sum()
+first argument to its sum() method.
+In [17]: x = np.array ([1, 2, 3, 4])
+x.sum()
+Out[17]: 10
+
+We could also sum the elements of x by passing in x as an argument to the
+np.sum() function.
+
+np.sum()
+
+In [18]: x = np.array ([1, 2, 3, 4])
+np.sum(x)
+Out[18]: 10
+
+As another example, the reshape() method returns a new array with the
+.reshape()
+same elements as x, but a different shape. We do this by passing in a tuple
+tuple
+
+44
+
+2. Statistical Learning
+
+in our call to reshape(), in this case (2, 3). This tuple specifies that we
+would like to create a two-dimensional array with 2 rows and 3 columns.2
+In what follows, the \n character creates a new line.
+In [19]: x = np.array ([1, 2, 3, 4, 5, 6])
+print('beginning x:\n', x)
+x_reshape = x.reshape ((2, 3))
+print('reshaped x:\n', x_reshape)
+beginning x:
+[1 2 3 4 5 6]
+reshaped x:
+[[1 2 3]
+[4 5 6]]
+
+The previous output reveals that numpy arrays are specified as a sequence
+of rows. This is called row-major ordering, as opposed to column-major
+ordering.
+Python (and hence numpy) uses 0-based indexing. This means that to
+access the top left element of x_reshape, we type in x_reshape[0,0].
+In [20]: x_reshape [0, 0]
+Out[20]: 1
+
+Similarly, x_reshape[1,2] yields the element in the second row and the
+third column of x_reshape.
+In [21]: x_reshape [1, 2]
+Out[21]: 6
+
+Similarly, x[2] yields the third entry of x.
+Now, let’s modify the top left element of x_reshape. To our surprise, we
+discover that the first element of x has been modified as well!
+In [22]: print('x before we modify x_reshape :\n', x)
+print('x_reshape before we modify x_reshape :\n', x_reshape)
+x_reshape [0, 0] = 5
+print('x_reshape after we modify its top left element :\n',
+x_reshape)
+print('x after we modify top left element of x_reshape :\n', x)
+Out[22]: x before we modify x_reshape:
+[1 2 3 4 5 6]
+x_reshape before we modify x_reshape:
+[[1 2 3]
+[4 5 6]]
+x_reshape after we modify its top left element:
+[[5 2 3]
+2 Like lists, tuples represent a sequence of objects. Why do we need more than one way
+to create a sequence? There are a few differences between tuples and lists, but perhaps
+the most important is that elements of a tuple cannot be modified, whereas elements of
+a list can be.
+
+2.3 Lab: Introduction to Python
+
+45
+
+[4 5 6]]
+x after we modify top left element of x_reshape:
+[5 2 3 4 5 6]
+
+Modifying x_reshape also modified x because the two objects occupy the
+same space in memory.
+We just saw that we can modify an element of an array. Can we also modify a tuple? It turns out that we cannot — and trying to do so introduces
+an exception, or error.
+
+exception
+
+In [23]: my_tuple = (3, 4, 5)
+my_tuple [0] = 2
+TypeError: 'tuple ' object does not support item assignment
+
+We now briefly mention some attributes of arrays that will come in handy.
+An array’s shape attribute contains its dimension; this is always a tuple.
+The ndim attribute yields the number of dimensions, and T provides its
+transpose.
+In [24]: x_reshape.shape , x_reshape.ndim , x_reshape.T
+Out[24]: ((2, 3),
+2,
+array ([[5, 4],
+[2, 5],
+[3, 6]]))
+
+Notice that the three individual outputs (2,3), 2, and array([[5, 4],[2,
+5], [3,6]]) are themselves output as a tuple.
+We will often want to apply functions to arrays. For instance, we can
+compute the square root of the entries using the np.sqrt() function:
+
+np.sqrt()
+
+In [25]: np.sqrt(x)
+Out[25]: array ([2.24 , 1.41, 1.73, 2., 2.24, 2.45])
+
+We can also square the elements:
+In [26]: x**2
+Out[26]: array ([25, 4, 9, 16, 25, 36])
+
+We can compute the square roots using the same notation, raising to the
+power of 1/2 instead of 2.
+In [27]: x**0.5
+Out[27]: array ([2.24 , 1.41, 1.73, 2., 2.24, 2.45])
+
+Throughout this book, we will often want to generate random data. The
+
+np.random.normal() function generates a vector of random normal variables.
+
+np.random.
+
+We can learn more about this function by looking at the help page, via a call normal()
+to np.random.normal?. The first line of the help page reads normal(loc=0.0,
+scale=1.0, size=None). This signature line tells us that the function’s ar-
+
+signature
+
+46
+
+2. Statistical Learning
+
+guments are loc, scale, and size. These are keyword arguments, which
+keywor

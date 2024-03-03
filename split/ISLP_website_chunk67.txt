@@ -1,0 +1,483 @@
+
+interval.26 This transformation, along with some reordering of the axes, is
+performed by the ToTensor() transform from the torchvision.transforms
+package.
+As in our Hitters example, we form a data module from the training and
+test datasets, setting aside 20% of the training images for validation.
+In [34]: mnist_dm = SimpleDataModule (mnist_train ,
+mnist_test ,
+validation =0.2,
+num_workers=max_num_workers ,
+batch_size =256)
+
+26 Note: eight bits means 28 , which equals 256. Since the convention is to start at 0,
+the possible values range from 0 to 255.
+
+10.9 Lab: Deep Learning
+
+445
+
+Let’s take a look at the data that will get fed into our network. We loop
+through the first few chunks of the test dataset, breaking after 2 batches:
+In [35]: for idx , (X_ ,Y_) in enumerate(mnist_dm.train_dataloader ()):
+print('X: ', X_.shape)
+print('Y: ', Y_.shape)
+if idx >= 1:
+break
+X:
+Y:
+X:
+Y:
+
+torch.Size ([256 , 1, 28, 28])
+torch.Size ([256])
+torch.Size ([256 , 1, 28, 28])
+torch.Size ([256])
+
+We see that the X for each batch consists of 256 images of size 1x28x28.
+Here the 1 indicates a single channel (greyscale). For RGB images such as
+CIFAR100 below, we will see that the 1 in the size will be replaced by 3 for
+the three RGB channels.
+Now we are ready to specify our neural network.
+In [36]: class MNISTModel(nn.Module):
+def __init__(self):
+super(MNISTModel , self).__init__ ()
+self.layer1 = nn.Sequential(
+nn.Flatten (),
+nn.Linear (28*28 , 256) ,
+nn.ReLU (),
+nn.Dropout (0.4))
+self.layer2 = nn.Sequential(
+nn.Linear (256, 128) ,
+nn.ReLU (),
+nn.Dropout (0.3))
+self._forward = nn.Sequential(
+self.layer1 ,
+self.layer2 ,
+nn.Linear (128, 10))
+def forward(self , x):
+return self._forward(x)
+
+We see that in the first layer, each 1x28x28 image is flattened, then
+mapped to 256 dimensions where we apply a ReLU activation with 40%
+dropout. A second layer maps the first layer’s output down to 128 dimensions, applying a ReLU activation with 30% dropout. Finally, the 128
+dimensions are mapped down to 10, the number of classes in the MNIST
+data.
+In [37]: mnist_model = MNISTModel ()
+
+We can check that the model produces output of expected size based on
+our existing batch X_ above.
+In [38]: mnist_model(X_).size ()
+Out[38]: torch.Size ([256 , 10])
+
+Let’s take a look at the summary of the model. Instead of an input_size
+we can pass a tensor of correct shape. In this case, we pass through the
+final batched X_ from above.
+
+446
+
+10. Deep Learning
+
+In [39]: summary(mnist_model ,
+input_data=X_ ,
+col_names =['input_size ',
+'output_size ',
+'num_params '])
+Out[39]: =====================================================================
+Layer (type:depth -idx)
+Input Shape
+Output Shape Param #
+=====================================================================
+MNISTModel
+[256, 1, 28, 28] [256, 10]
+-Sequential: 1-1
+[256, 1, 28, 28] [256, 10]
+-Sequential: 2-1
+[256, 1, 28, 28] [256, 256]
+-Flatten: 3-1
+[256, 1, 28, 28] [256, 784]
+-Linear: 3-2
+[256, 784]
+[256, 256]
+200 ,960
+ReLU: 3-3
+[256, 256]
+[256, 256]
+-Dropout: 3-4
+[256, 256]
+[256, 256]
+-Sequential: 2-2
+[256, 256]
+[256, 128]
+-Linear: 3-5
+[256, 256]
+[256, 128]
+32 ,896
+ReLU: 3-6
+[256, 128]
+[256, 128]
+-Dropout: 3-7
+[256, 128]
+[256, 128]
+-Linear: 2-3
+[256, 128]
+[256, 10]
+1,290
+=====================================================================
+Total params: 235 ,146
+Trainable params: 235 ,146
+
+Having set up both the model and the data module, fitting this model is
+now almost identical to the Hitters example. In contrast to our regression
+model, here we will use the SimpleModule.classification() method which SimpleModule.
+uses the cross-entropy loss function instead of mean squared error.
+classifiIn [40]: mnist_module = SimpleModule.classification(mnist_model)
+mnist_logger = CSVLogger('logs ', name='MNIST ')
+
+Now we are ready to go. The final step is to supply training data, and
+fit the model.
+In [41]: mnist_trainer = Trainer(deterministic=True ,
+max_epochs =30,
+logger=mnist_logger ,
+callbacks =[ ErrorTracker ()])
+mnist_trainer.fit(mnist_module ,
+datamodule=mnist_dm)
+
+We have suppressed the output here, which is a progress report on the
+fitting of the model, grouped by epoch. This is very useful, since on large
+datasets fitting can take time. Fitting this model took 245 seconds on a
+MacBook Pro with an Apple M1 Pro chip with 10 cores and 16 GB of
+RAM. Here we specified a validation split of 20%, so training is actually
+performed on 80% of the 60,000 observations in the training set. This is an
+alternative to actually supplying validation data, like we did for the Hitters
+data. SGD uses batches of 256 observations in computing the gradient, and
+doing the arithmetic, we see that an epoch corresponds to 188 gradient
+steps.
+SimpleModule.classification() includes an accuracy metric by default.
+Other classification metrics can be added from torchmetrics. We will use
+our summary_plot() function to display accuracy across epochs.
+
+cation()
+
+10.9 Lab: Deep Learning
+
+447
+
+In [42]: mnist_results = pd.read_csv(mnist_logger.experiment.
+metrics_file_path )
+fig , ax = subplots (1, 1, figsize =(6, 6))
+summary_plot(mnist_results ,
+ax ,
+col='accuracy ',
+ylabel='Accuracy ')
+ax.set_ylim ([0.5 , 1])
+ax.set_ylabel('Accuracy ')
+ax.set_xticks(np.linspace (0, 30, 7).astype(int));
+
+Once again we evaluate the accuracy using the test() method of our
+trainer. This model achieves 97% accuracy on the test data.
+In [43]: mnist_trainer.test(mnist_module ,
+datamodule=mnist_dm)
+Out[43]: [{'test_loss ': 0.1471 , 'test_accuracy ': 0.9681}]
+
+Table 10.1 also reports the error rates resulting from LDA (Chapter 4) and
+multiclass logistic regression. For LDA we refer the reader to Section 4.7.3.
+Although we could use the sklearn function LogisticRegression() to fit
+multiclass logistic regression, we are set up here to fit such a model with
+torch. We just have an input layer and an output layer, and omit the hidden
+layers!
+In [44]: class MNIST_MLR(nn.Module):
+def __init__(self):
+super(MNIST_MLR , self).__init__ ()
+self.linear = nn.Sequential(nn.Flatten (),
+nn.Linear (784, 10))
+def forward(self , x):
+return self.linear(x)
+mlr_model = MNIST_MLR ()
+mlr_module = SimpleModule.classification(mlr_model)
+mlr_logger = CSVLogger('logs ', name='MNIST_MLR ')
+In [45]: mlr_trainer = Trainer(deterministic=True ,
+max_epochs =30,
+callbacks =[ ErrorTracker ()])
+mlr_trainer.fit(mlr_module , datamodule=mnist_dm)
+
+We fit the model just as before and compute the test results.
+In [46]: mlr_trainer.test(mlr_module ,
+datamodule=mnist_dm)
+Out[46]: [{'test_loss ': 0.3187 , 'test_accuracy ': 0.9241}]
+
+The accuracy is above 90% even for this pretty simple model.
+As in the Hitters example, we delete some of the objects we created
+above.
+In [47]: del(mnist_test ,
+mnist_train ,
+
+448
+
+10. Deep Learning
+mnist_model ,
+mnist_dm ,
+mnist_trainer ,
+mnist_module ,
+mnist_results ,
+mlr_model ,
+mlr_module ,
+mlr_trainer)
+
+10.9.3
+
+Convolutional Neural Networks
+
+In this section we fit a CNN to the CIFAR100 data, which is available in the
+torchvision package. It is arranged in a similar fashion as the MNIST data.
+In [48]: (cifar_train ,
+cifar_test) = [CIFAR100(root="data",
+train=train ,
+download=True)
+for train in [True , False ]]
+In [49]: transform = ToTensor ()
+cifar_train_X = torch.stack ([ transform(x) for x in
+cifar_train.data ])
+cifar_test_X = torch.stack ([ transform(x) for x in
+cifar_test.data ])
+cifar_train = TensorDataset(cifar_train_X ,
+torch.tensor(cifar_train.targets))
+cifar_test = TensorDataset(cifar_test_X ,
+torch.tensor(cifar_test.targets))
+
+The CIFAR100 dataset consists of 50,000 training images, each represented
+by a three-dimensional tensor: each three-color image is represented as a
+set of three channels, each of which consists of 32 × 32 eight-bit pixels. We
+standardize as we did for the digits, but keep the array structure. This is
+accomplished with the ToTensor() transform.
+Creating the data module is similar to the MNIST example.
+In [50]: cifar_dm = SimpleDataModule(cifar_train ,
+cifar_test ,
+validation =0.2,
+num_workers=max_num_workers ,
+batch_size =128)
+
+We again look at the shape of typical batches in our data loaders.
+In [51]: for idx , (X_ ,Y_) in enumerate(cifar_dm.train_dataloader ()):
+print('X: ', X_.shape)
+print('Y: ', Y_.shape)
+if idx >= 1:
+break
+X:
+Y:
+X:
+Y:
+
+torch.Size ([128 , 3, 32, 32])
+torch.Size ([128])
+torch.Size ([128 , 3, 32, 32])
+torch.Size ([128])
+
+10.9 Lab: Deep Learning
+
+449
+
+Before we start, we look at some of the training images; similar code
+produced Figure 10.5 on page 406. The example below also illustrates that
+TensorDataset objects can be indexed with integers — we are choosing random images from the training data by indexing cifar_train. In order to display correctly, we must reorder the dimensions by a call to np.transpose().
+In [52]: fig , axes = subplots (5, 5, figsize =(10 ,10))
+rng = np.random.default_rng (4)
+indices = rng.choice(np.arange(len(cifar_train)), 25,
+replace=False).reshape ((5 ,5))
+for i in range (5):
+for j in range (5):
+idx = indices[i,j]
+axes[i,j]. imshow(np.transpose(cifar_train[idx ][0],
+[1,2 ,0]),
+interpolation=None)
+axes[i,j]. set_xticks ([])
+axes[i,j]. set_yticks ([])
+
+Here the imshow() method recognizes from the shape of its argument that
+.imshow()
+it is a 3-dimensional array, with the last dimension indexing the three RGB
+color channels.
+We specify a moderately-sized CNN for demonstration purposes, similar in structure to Figure 10.8. We use several layers, each consisting of
+convolution, ReLU, and max-pooling steps. We first define a module that
+defines one of these layers. As in our previous examples, we overwrite the
+__init__() and forward() methods of nn.Module. This user-defined module
+can now be used in ways just like nn.Linear() or nn.Dropout().
+In [53]: class BuildingBlock(nn.Module):
+def __init__(self ,
+in_channels ,
+out_channels):
+super(BuildingBlock , self).__init__ ()
+self.conv = nn.Conv2d(in_channels=in_channels ,
+out_channels=out_channels ,
+kernel_size =(3 ,3),
+padding='same ')
+self.activation = nn.ReLU ()
+self.pool = nn.MaxPool2d(kernel_size =(2 ,2))
+def forward(self , x):
+return self.pool(self.activation(self.conv(x)))
+
+Notice that we used the padding = "same" argument to nn.Conv2d(),
+which ensures that the output channels have the same dimension as the
+input channels. There are 32 channels in the first hidden layer, in contrast
+to the three channels in the input layer. We use a 3 × 3 convolution filter for each channel in all the layers. Each convolution is followed by a
+max-pooling layer over 2 × 2 blocks.
+In forming our deep learning model for the CIFAR100 data, we use several
+of our BuildingBlock() modules sequentially. This simple example illustrates some of the power of torch. Users can define modules of their own,
+
+450
+
+10. Deep Learning
+
+which can be combined in other modules. Ultimately, everything is fit by
+a generic trainer.
+In [54]: class CIFARModel(nn.Module):
+def __init__(self):
+super(CIFARModel , self).__init__ ()
+sizes = [(3 ,32) ,
+(32 ,64) ,
+(64 ,128) ,
+(128 ,256)]
+self.conv = nn.Sequential (*[ BuildingBlock(in_ , out_)
+for in_ , out_ in sizes ])
+self.output = nn.Sequential(nn.Dropout (0.5) ,
+nn.Linear (2*2*256 , 512) ,
+nn.ReLU (),
+nn.Linear (512, 100))
+def forward(self , x):
+val = self.conv(x)
+val = torch.flatten(val , start_dim =1)
+return self.output(val)
+
+We build the model and look at the summary. (We had created examples
+of X_ earlier.)
+In [55]: cifar_model = CIFARModel ()
+summary(cifar_model ,
+input_data=X_ ,
+col_names =['input_size ',
+'output_size ',
+'num_params '])
+
+Out[55]: ======================================================================
+Layer (type:depth -idx) Input Shape
+Output Shape
+Param #
+======================================================================
+CIFARModel
+[128, 3, 32, 32]
+[128, 100]
+-Sequential: 1-1
+[128, 3, 32, 32]
+[128, 256, 2, 2]
+-BuildingBlock: 2-1 [128, 3, 32, 32]
+[128, 32, 16, 16] -Conv2d: 3-1
+[128, 3, 32, 32]
+[128, 32, 32, 32] 896
+ReLU: 3-2
+[128, 32, 32, 32] [128, 32, 32, 32] -MaxPool2d: 3-3 [128, 32, 32, 32] [128, 32, 16, 16] -BuildingBlock: 2-2 [128, 32, 16, 16] [128, 64, 8, 8]
+-Conv2d: 3-4
+[128, 32, 16, 16] [128, 64, 16, 16] 18 ,496
+ReLU: 3-5
+[128, 64, 16, 16] [128, 64, 16, 16] -MaxPool2d: 3-6 [128, 64, 16, 16] [128, 64, 8, 8]
+-BuildingBlock: 2-3 [128, 64, 8, 8]
+[128, 128, 4, 4]
+-Conv2d: 3-7
+[128, 64, 8, 8]
+[128, 128, 8, 8]
+73 ,856
+ReLU: 3-8
+[128, 128, 8, 8]
+[128, 128, 8, 8]
+-MaxPool2d: 3-9 [128, 128, 8, 8]
+[128, 128, 4, 4]
+-BuildingBlock: 2-4 [128, 128, 4, 4]
+[128, 256, 2, 2]
+-Conv2d: 3-10
+[128, 128, 4, 4]
+[128, 256, 4, 4]
+295 ,168
+ReLU: 3-11
+[128, 256, 4, 4]
+[128, 256, 4, 4]
+-MaxPool2d: 3-12 [128, 256, 4, 4]
+[128, 256, 2, 2]
+-Sequential: 1-2
+[128, 1024]
+[128, 100]
+-Dropout: 2-5
+[128, 1024]
+[128, 1024]
+-Linear: 2-6
+[128, 1024]
+[128, 512]
+524 ,800
+
+10.9 Lab: Deep Learning
+
+451
+
+ReLU: 2-7
+[128, 512]
+[128, 512]
+-Linear: 2-8
+[128, 512]
+[128, 100]
+51 ,300
+======================================================================
+Total params: 964 ,516
+Trainable params: 964 ,516
+
+The total number of trainable parameters is 964,516. By studying the size
+of the parameters, we can see that the channels halve in both dimensions
+after each of these max-pooling operations. After the last of these we have
+a layer with 256 channels of dimension 2 × 2. These are then flattened to
+a dense layer of size 1,024; in other words, each of the 2 × 2 matrices is
+turned into a 4-vector, and put side-by-side in one layer. This is followed
+by a dropout regularization layer, then another dense layer of size 512, and
+finally, the output layer.
+Up to now, we have been using a default optimizer in SimpleModule(). For
+these data, experiments show that a smaller learning rate performs better
+than the default 0.01. We use a custom optimizer here with a learning rate
+of 0.001. Besides this, the logging and training follow a similar pattern
+to our previous examples. The optimizer takes an argument params that
+informs the optimizer which parameters are involved in SGD (stochastic
+gradient descent).
+We saw earlier that entries of a module’s parameters are tensors. In
+passing the parameters to the optimizer we are doing more than simply
+passing arrays; part of the structure of the graph is encoded in the tensors
+themselves.
+In [56]: cifar_optimizer = RMSprop(cifar_model.parameters (), lr =0.001)
+cifar_module = SimpleModule.classification(cifar_model ,
+optimizer=cifar_optimizer)
+cifar_logger = CSVLogger('logs ', name='CIFAR100 ')
+In [57]: cifar_trainer = Trainer(deterministic=True ,
+max_epochs =30,
+logger=cifar_logger ,
+callbacks =[ ErrorTracker ()])
+cifar_trainer.fit(cifar_module ,
+datamodule=cifar_dm)
+
+This model takes 10 minutes or more to run and achieves about 42%
+accuracy on the test data. Although this is not terrible for 100-class data
+(a random classifier gets 1% accuracy), searching the web we see results
+around 75%. Typically it takes a lot of architecture carpentry, fiddling with
+regularization, and time, to achieve such results.
+Let’s take a look at the validation and training accuracy across epochs.
+In [58]: log_path = cifar_logger.experiment.metrics_file_path
+cifar_results = pd.read_csv(log_path)
+fig , ax = subplots (1, 1, figsize =(6, 6))
+summary_plot(cifar_results ,
+ax ,
+col='accuracy ',
+ylabel='Accuracy ')
+ax.set_xticks(np.linspace (0, 10, 6).astype(int))
+ax.set_ylabel('Accuracy ')
+ax.set_ylim ([0, 1]);
+
+452
+
+10. Deep Learning
+
+Finally, we evaluate our model on our test data.
+In [59]: cifar_trainer.test(cifar_module ,
+datamodule=cifar_dm)
+Out[59]: [{'test_loss ': 2.

@@ -1,0 +1,471 @@
+f baseline, but the fitted values (predictions), the log odds between
+any pair of classes, and the other key model outputs will remain the same.
+Nonetheless, interpretation of the coefficients in a multinomial logistic
+regression model must be done with care, since it is tied to the choice
+of baseline. For example, if we set epileptic seizure to be the baseline,
+then we can interpret βstroke0 as the log odds of stroke versus epileptic
+seizure, given that x1 = · · · = xp = 0. Furthermore, a one-unit increase
+in Xj is associated with a βstrokej increase in the log odds of stroke over
+epileptic seizure. Stated another way, if Xj increases by one unit, then
+Pr(Y = stroke|X = x)
+Pr(Y = epileptic seizure|X = x)
+
+increases by eβstrokej .
+We now briefly present an alternative coding for multinomial logistic
+regression, known as the softmax coding. The softmax coding is equivalent
+softmax
+to the coding just described in the sense that the fitted values, log odds
+between any pair of classes, and other key model outputs will remain the
+same, regardless of coding. But the softmax coding is used extensively in
+some areas of the machine learning literature (and will appear again in
+Chapter 10), so it is worth being aware of it. In the softmax coding, rather
+than selecting a baseline class, we treat all K classes symmetrically, and
+assume that for k = 1, . . . , K,
+eβk0 +βk1 x1 +···+βkp xp
+Pr(Y = k|X = x) = )K
+.
+βl0 +βl1 x1 +···+βlp xp
+l=1 e
+
+(4.13)
+
+146
+
+4. Classification
+
+Thus, rather than estimating coefficients for K − 1 classes, we actually
+estimate coefficients for all K classes. It is not hard to see that as a result
+of (4.13), the log odds ratio between the kth and k $ th classes equals
+log
+
+%
+
+4.4
+
+Pr(Y = k|X = x)
+Pr(Y = k! |X = x)
+
+&
+
+= (βk0 − βk! 0 ) + (βk1 − βk! 1 )x1 + · · · + (βkp − βk! p )xp .
+(4.14)
+
+Generative Models for Classification
+
+Logistic regression involves directly modeling Pr(Y = k|X = x) using the
+logistic function, given by (4.7) for the case of two response classes. In
+statistical jargon, we model the conditional distribution of the response Y ,
+given the predictor(s) X. We now consider an alternative and less direct
+approach to estimating these probabilities. In this new approach, we model
+the distribution of the predictors X separately in each of the response
+classes (i.e. for each value of Y ). We then use Bayes’ theorem to flip these
+around into estimates for Pr(Y = k|X = x). When the distribution of X
+within each class is assumed to be normal, it turns out that the model is
+very similar in form to logistic regression.
+Why do we need another method, when we have logistic regression?
+There are several reasons:
+• When there is substantial separation between the two classes, the
+parameter estimates for the logistic regression model are surprisingly
+unstable. The methods that we consider in this section do not suffer
+from this problem.
+• If the distribution of the predictors X is approximately normal in
+each of the classes and the sample size is small, then the approaches
+in this section may be more accurate than logistic regression.
+• The methods in this section can be naturally extended to the case
+of more than two response classes. (In the case of more than two
+response classes, we can also use multinomial logistic regression from
+Section 4.3.5.)
+Suppose that we wish to classify an observation into one of K classes,
+where K ≥ 2. In other words, the qualitative response variable Y can take
+on K possible distinct and unordered values. Let πk represent the overall
+or prior probability that a randomly chosen observation comes from the
+prior
+kth class. Let fk (X) ≡ Pr(X|Y = k)1 denote the density function of X
+density
+for an observation that comes from the kth class. In other words, fk (x) is function
+relatively large if there is a high probability that an observation in the kth
+class has X ≈ x, and fk (x) is small if it is very unlikely that an observation
+in the kth class has X ≈ x. Then Bayes’ theorem states that
+Bayes’
+theorem
+
+1 Technically, this definition is only correct if X is a qualitative random variable. If
+X is quantitative, then fk (x)dx corresponds to the probability of X falling in a small
+region dx around x.
+
+4.4 Generative Models for Classification
+
+πk fk (x)
+Pr(Y = k|X = x) = )K
+.
+l=1 πl fl (x)
+
+147
+
+(4.15)
+
+In accordance with our earlier notation, we will use the abbreviation pk (x) =
+Pr(Y = k|X = x); this is the posterior probability that an observation
+posterior
+X = x belongs to the kth class. That is, it is the probability that the
+observation belongs to the kth class, given the predictor value for that
+observation.
+Equation 4.15 suggests that instead of directly computing the posterior
+probability pk (x) as in Section 4.3.1, we can simply plug in estimates of πk
+and fk (x) into (4.15). In general, estimating πk is easy if we have a random
+sample from the population: we simply compute the fraction of the training
+observations that belong to the kth class. However, estimating the density
+function fk (x) is much more challenging. As we will see, to estimate fk (x),
+we will typically have to make some simplifying assumptions.
+We know from Chapter 2 that the Bayes classifier, which classifies an
+observation x to the class for which pk (x) is largest, has the lowest possible
+error rate out of all classifiers. (Of course, this is only true if all of the
+terms in (4.15) are correctly specified.) Therefore, if we can find a way to
+estimate fk (x), then we can plug it into (4.15) in order to approximate the
+Bayes classifier.
+In the following sections, we discuss three classifiers that use different
+estimates of fk (x) in (4.15) to approximate the Bayes classifier: linear discriminant analysis, quadratic discriminant analysis, and naive Bayes.
+
+4.4.1
+
+Linear Discriminant Analysis for p = 1
+
+For now, assume that p = 1—that is, we have only one predictor. We would
+like to obtain an estimate for fk (x) that we can plug into (4.15) in order to
+estimate pk (x). We will then classify an observation to the class for which
+pk (x) is greatest. To estimate fk (x), we will first make some assumptions
+about its form.
+In particular, we assume that fk (x) is normal or Gaussian. In the onenormal
+dimensional setting, the normal density takes the form
+Gaussian
++
+*
+1
+1
+(4.16)
+fk (x) = √
+exp − 2 (x − µk )2 ,
+2σk
+2πσk
+
+where µk and σk2 are the mean and variance parameters for the kth class.
+2
+For now, let us further assume that σ12 = · · · = σK
+: that is, there is a shared
+variance term across all K classes, which for simplicity we can denote by
+σ 2 . Plugging (4.16) into (4.15), we find that
+'
+(
+1
+πk √2πσ
+exp − 2σ1 2 (x − µk )2
+pk (x) = )K
+(4.17)
+' 1
+(.
+2
+√1
+l=1 πl 2πσ exp − 2σ 2 (x − µl )
+
+(Note that in (4.17), πk denotes the prior probability that an observation
+belongs to the kth class, not to be confused with π ≈ 3.14159, the mathematical constant.) The Bayes classifier2 involves assigning an observation
+2 Recall that the Bayes classifier assigns an observation to the class for which p (x)
+k
+is largest. This is different from Bayes’ theorem in (4.15), which allows us to manipulate
+conditional distributions.
+
+4. Classification
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+148
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+−3
+
+−2
+
+−1
+
+0
+
+1
+
+2
+
+3
+
+4
+
+FIGURE 4.4. Left: Two one-dimensional normal density functions are shown.
+The dashed vertical line represents the Bayes decision boundary. Right: 20 observations were drawn from each of the two classes, and are shown as histograms.
+The Bayes decision boundary is again shown as a dashed vertical line. The solid
+vertical line represents the LDA decision boundary estimated from the training
+data.
+
+X = x to the class for which (4.17) is largest. Taking the log of (4.17) and
+rearranging the terms, it is not hard to show3 that this is equivalent to
+assigning the observation to the class for which
+µk
+µ2
+− k2 + log(πk )
+(4.18)
+2
+σ
+2σ
+is largest. For instance, if K = 2 and π1 = π2 , then the Bayes classifier
+assigns an observation to class 1 if 2x (µ1 − µ2 ) > µ21 − µ22 , and to class
+2 otherwise. The Bayes decision boundary is the point for which δ1 (x) =
+δ2 (x); one can show that this amounts to
+δk (x) = x ·
+
+x=
+
+µ21 − µ22
+µ1 + µ2
+=
+.
+2(µ1 − µ2 )
+2
+
+(4.19)
+
+An example is shown in the left-hand panel of Figure 4.4. The two normal
+density functions that are displayed, f1 (x) and f2 (x), represent two distinct
+classes. The mean and variance parameters for the two density functions
+are µ1 = −1.25, µ2 = 1.25, and σ12 = σ22 = 1. The two densities overlap,
+and so given that X = x, there is some uncertainty about the class to which
+the observation belongs. If we assume that an observation is equally likely
+to come from either class—that is, π1 = π2 = 0.5—then by inspection of
+(4.19), we see that the Bayes classifier assigns the observation to class 1
+if x < 0 and class 2 otherwise. Note that in this case, we can compute
+the Bayes classifier because we know that X is drawn from a Gaussian
+distribution within each class, and we know all of the parameters involved.
+In a real-life situation, we are not able to calculate the Bayes classifier.
+In practice, even if we are quite certain of our assumption that X is
+drawn from a Gaussian distribution within each class, to apply the Bayes
+classifier we still have to estimate the parameters µ1 , . . . , µK , π1 , . . . , πK ,
+and σ 2 . The linear discriminant analysis (LDA) method approximates the
+linear
+Bayes classifier by plugging estimates for πk , µk , and σ 2 into (4.18). In discriminant
+analysis
+
+3 See Exercise 2 at the end of this chapter.
+
+4.4 Generative Models for Classification
+
+149
+
+particular, the following estimates are used:
+1 0
+µ̂k =
+xi
+nk
+i:yi =k
+
+K
+
+σ̂ 2
+
+=
+
+1 0 0
+(xi − µ̂k )2
+n−K
+
+(4.20)
+
+k=1 i:yi =k
+
+where n is the total number of training observations, and nk is the number
+of training observations in the kth class. The estimate for µk is simply the
+average of all the training observations from the kth class, while σ̂ 2 can
+be seen as a weighted average of the sample variances for each of the K
+classes. Sometimes we have knowledge of the class membership probabilities π1 , . . . , πK , which can be used directly. In the absence of any additional
+information, LDA estimates πk using the proportion of the training observations that belong to the kth class. In other words,
+π̂k = nk /n.
+
+(4.21)
+
+The LDA classifier plugs the estimates given in (4.20) and (4.21) into (4.18),
+and assigns an observation X = x to the class for which
+µ̂k
+µ̂2k
+−
++ log(π̂k )
+(4.22)
+σ̂ 2
+2σ̂ 2
+is largest. The word linear in the classifier’s name stems from the fact
+that the discriminant functions δ̂k (x) in (4.22) are linear functions of x (as
+discriminant
+opposed to a more complex function of x).
+function
+The right-hand panel of Figure 4.4 displays a histogram of a random
+sample of 20 observations from each class. To implement LDA, we began
+by estimating πk , µk , and σ 2 using (4.20) and (4.21). We then computed the
+decision boundary, shown as a black solid line, that results from assigning
+an observation to the class for which (4.22) is largest. All points to the left
+of this line will be assigned to the green class, while points to the right of
+this line are assigned to the purple class. In this case, since n1 = n2 = 20,
+we have π̂1 = π̂2 . As a result, the decision boundary corresponds to the
+midpoint between the sample means for the two classes, (µ̂1 + µ̂2 )/2. The
+figure indicates that the LDA decision boundary is slightly to the left of
+the optimal Bayes decision boundary, which instead equals (µ1 + µ2 )/2 =
+0. How well does the LDA classifier perform on this data? Since this is
+simulated data, we can generate a large number of test observations in order
+to compute the Bayes error rate and the LDA test error rate. These are
+10.6 % and 11.1 %, respectively. In other words, the LDA classifier’s error
+rate is only 0.5 % above the smallest possible error rate! This indicates that
+LDA is performing pretty well on this data set.
+To reiterate, the LDA classifier results from assuming that the observations within each class come from a normal distribution with a classspecific mean and a common variance σ 2 , and plugging estimates for these
+parameters into the Bayes classifier. In Section 4.4.3, we will consider a less
+stringent set of assumptions, by allowing the observations in the kth class
+to have a class-specific variance, σk2 .
+δ̂k (x) = x ·
+
+4. Classification
+
+x1
+
+x2
+
+x2
+
+150
+
+x1
+
+FIGURE 4.5. Two multivariate Gaussian density functions are shown, with
+p = 2. Left: The two predictors are uncorrelated. Right: The two variables have
+a correlation of 0.7.
+
+4.4.2
+
+Linear Discriminant Analysis for p >1
+
+We now extend the LDA classifier to the case of multiple predictors. To
+do this, we will assume that X = (X1 , X2 , . . . , Xp ) is drawn from a multivariate Gaussian (or multivariate normal) distribution, with a class-specific
+multivariate
+mean vector and a common covariance matrix. We begin with a brief review Gaussian
+of this distribution.
+The multivariate Gaussian distribution assumes that each individual predictor follows a one-dimensional normal distribution, as in (4.16), with some
+correlation between each pair of predictors. Two examples of multivariate
+Gaussian distributions with p = 2 are shown in Figure 4.5. The height of
+the surface at any particular point represents the probability that both X1
+and X2 fall in a small region around that point. In either panel, if the surface is cut along the X1 axis or along the X2 axis, the resulting cross-section
+will have the shape of a one-dimensional normal distribution. The left-hand
+panel of Figure 4.5 illustrates an example in which Var(X1 ) = Var(X2 ) and
+Cor(X1 , X2 ) = 0; this surface has a characteristic bell shape. However, the
+bell shape will be distorted if the predictors are correlated or have unequal
+variances, as is illustrated in the right-hand panel of Figure 4.5. In this
+situation, the base of the bell will have an elliptical, rather than circular,
+shape. To indicate that a p-dimensional random variable X has a multivariate Gaussian distribution, we write X ∼ N (µ, Σ). Here E(X) = µ is
+the mean of X (a vector with p components), and Cov(X) = Σ is the
+p × p covariance matrix of X. Formally, the multivariate Gaussian density
+is defined as
+*
++
+1
+1
+T −1
+f (x) =
+exp
+−
+(x
+−
+µ)
+Σ
+(x
+−
+µ)
+.
+(4.23)
+2
+(2π)p/2 |Σ|1/2
+In the case of p > 1 predictors, the LDA classifier assumes that the
+observations in the kth class are drawn from a multivariate Gaussian distribution N (µk , Σ), where µk is a class-specific mean vector, and Σ is a
+covariance matrix that is common to all K classes. Plugging the density
+function for the kth class, fk (X = x), into (4.15) and performing a little
+bit of algebra reveals that the Bayes classifier assigns an observation X = x
+
+−2
+
+0
+
+X2
+
+2
+
+4
+
+151
+
+−4
+
+−4
+
+−2
+
+0
+
+X2
+
+2
+
+4
+
+4.4 Generative Models for Classification
+
+−4
+
+−2
+
+0
+
+2
+
+X1
+
+4
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+X1
+
+FIGURE 4.6. An example with three classes. The observations from each class
+are drawn from a multivariate Gaussian distribution with p = 2, with a class-specific mean vector and a common covariance matrix. Left: Ellipses that contain
+95 % of the probability for each of the three classes are shown. The dashed lines
+are the Bayes decision boundaries. Right: 20 observations were generated from
+each class, and the corresponding LDA decision boundaries are indicated using
+solid black lines. The Bayes decision boundaries are once again shown as dashed
+lines.
+
+to the c

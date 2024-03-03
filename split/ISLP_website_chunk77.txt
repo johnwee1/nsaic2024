@@ -1,0 +1,748 @@
+ of the fact that PCA is generally used as a tool for
+exploratory data analysis.
+On the other hand, if we compute principal components for use in a
+supervised analysis, such as the principal components regression presented
+in Section 6.3.1, then there is a simple and objective way to determine how
+many principal components to use: we can treat the number of principal
+component score vectors to be used in the regression as a tuning parameter
+to be selected via cross-validation or a related approach. The comparative
+simplicity of selecting the number of principal components for a supervised
+analysis is one manifestation of the fact that supervised analyses tend to
+be more clearly defined and more objectively evaluated than unsupervised
+analyses.
+
+12.2.5
+
+Other Uses for Principal Components
+
+We saw in Section 6.3.1 that we can perform regression using the principal
+component score vectors as features. In fact, many statistical techniques,
+such as regression, classification, and clustering, can be easily adapted to
+use the n × M matrix whose columns are the first M 0 p principal component score vectors, rather than using the full n × p data matrix. This
+can lead to less noisy results, since it is often the case that the signal (as
+opposed to the noise) in a data set is concentrated in its first few principal
+components.
+
+12.3
+
+Missing Values and Matrix Completion
+
+Often datasets have missing values, which can be a nuisance. For example,
+suppose that we wish to analyze the USArrests data, and discover that 20
+of the 200 values have been randomly corrupted and marked as missing.
+Unfortunately, the statistical learning methods that we have seen in this
+book cannot handle missing values. How should we proceed?
+We could remove the rows that contain missing observations and perform our data analysis on the complete rows. But this seems wasteful, and
+depending on the fraction missing, unrealistic. Alternatively, if xij is missing, then we could replace it by the mean of the jth column (using the
+non-missing entries to compute the mean). Although this is a common and
+convenient strategy, often we can do better by exploiting the correlation
+between the variables.
+In this section we show how principal components can be used to impute
+impute
+the missing values, through a process known as matrix completion. The
+imputation
+completed matrix can then be used in a statistical learning method, such matrix
+as linear regression or LDA.
+completion
+This approach for imputing missing data is appropriate if the missingness
+is random. For example, it is suitable if a patient’s weight is missing because
+missing at
+the battery of the electronic scale was flat at the time of his exam. By random
+contrast, if the weight is missing because the patient was too heavy to
+climb on the scale, then this is not missing at random; the missingness is
+
+516
+
+12. Unsupervised Learning
+
+informative, and the approach described here for handling missing data is
+not suitable.
+Sometimes data is missing by necessity. For example, if we form a matrix
+of the ratings (on a scale from 1 to 5) that n customers have given to the
+entire Netflix catalog of p movies, then most of the matrix will be missing,
+since no customer will have seen and rated more than a tiny fraction of the
+catalog. If we can impute the missing values well, then we will have an idea
+of what each customer will think of movies they have not yet seen. Hence
+matrix completion can be used to power recommender systems.
+Principal Components with Missing Values
+In Section 12.2.2, we showed that the first M principal component score
+and loading vectors provide the “best” approximation to the data matrix
+X, in the sense of (12.6). Suppose that some of the observations xij are
+missing. We now show how one can both impute the missing values and
+solve the principal component problem at the same time. We return to a
+modified form of the optimization problem (12.6),
+
+>
+?2 
+M
+ 0
+
+0
+minimize
+xij −
+aim bjm
+,
+(12.12)
+
+A∈Rn×M ,B∈Rp×M 
+(i,j)∈O
+
+m=1
+
+where O is the set of all observed pairs of indices (i, j), a subset of the
+possible n × p pairs.
+Once we solve this problem:
+)M
+• we can estimate a missing observation xij using x̂ij = m=1 âim b̂jm ,
+where âim and b̂jm are the (i, m) and (j, m) elements, respectively,
+of the matrices Â and B̂ that solve (12.12); and
+• we can (approximately) recover the M principal component scores
+and loadings, as we did when the data were complete.
+
+It turns out that solving (12.12) exactly is difficult, unlike in the case of
+complete data: the eigen decomposition no longer applies. But the simple iterative approach in Algorithm 12.1, which is demonstrated in Section 12.5.2, typically provides a good solution.56
+We illustrate Algorithm 12.1 on the USArrests data. There are p = 4
+variables and n = 50 observations (states). We first standardized the data
+so each variable has mean zero and standard deviation one. We then randomly selected 20 of the 50 states, and then for each of these we randomly
+set one of the four variables to be missing. Thus, 10% of the elements of the
+data matrix were missing. We applied Algorithm 12.1 with M = 1 principal
+component. Figure 12.5 shows that the recovery of the missing elements
+5 This algorithm is referred to as “Hard-Impute” in Mazumder, Hastie, and Tibshirani (2010) “Spectral regularization algorithms for learning large incomplete matrices”,
+published in Journal of Machine Learning Research, pages 2287–2322.
+6 Each iteration of Step 2 of this algorithm decreases the objective (12.14). However,
+the algorithm is not guaranteed to achieve the global optimum of (12.12).
+
+recommender
+systems
+
+12.3 Missing Values and Matrix Completion
+
+517
+
+Algorithm 12.1 Iterative Algorithm for Matrix Completion
+1. Create a complete data matrix X̃ of dimension n × p of which the
+(i, j) element equals
+K
+xij if (i, j) ∈ O
+x̃ij =
+x̄j if (i, j) ∈
+/ O,
+where x̄j is the average of the observed values for the jth variable in
+the incomplete data matrix X. Here, O indexes the observations that
+are observed in X.
+2. Repeat steps (a)–(c) until the objective (12.14) fails to decrease:
+(a) Solve
+minimize
+
+
+>
+p 0
+n
+0
+
+A∈Rn×M ,B∈Rp×M 
+
+j=1 i=1
+
+x̃ij −
+
+M
+0
+
+aim bjm
+
+m=1
+
+?2 
+
+
+
+(12.13)
+
+by computing the principal components of X̃.
+)M
+m=1 âim b̂jm .
+
+(b) For each element (i, j) ∈
+/ O, set x̃ij ←
+(c) Compute the objective
+0
+
+(i,j)∈O
+
+>
+
+xij −
+
+M
+0
+
+m=1
+
+âim b̂jm
+
+?2
+
+.
+
+(12.14)
+
+3. Return the estimated missing entries x̃ij , (i, j) ∈
+/ O.
+is pretty accurate. Over 100 random runs of this experiment, the average
+correlation between the true and imputed values of the missing elements
+is 0.63, with a standard deviation of 0.11. Is this good performance? To
+answer this question, we can compare this correlation to what we would
+have gotten if we had estimated these 20 values using the complete data
+— that is, if we had simply computed x̂ij = zi1 φj1 , where zi1 and φj1 are
+elements of the first principal component score and loading vectors of the
+complete data.7 Using the complete data in this way results in an average
+correlation of 0.79 between the true and estimated values for these 20 elements, with a standard deviation of 0.08. Thus, our imputation method
+does worse than the method that uses all of the data (0.63 ± 0.11 versus
+0.79 ± 0.08), but its performance is still pretty good. (And of course, the
+method that uses all of the data cannot be applied in a real-world setting
+with missing data.)
+Figure 12.6 further indicates that Algorithm 12.1 performs fairly well on
+this dataset.
+7 This is an unattainable gold standard, in the sense that with missing data, we of
+course cannot compute the principal components of the complete data.
+
+12. Unsupervised Learning
+●
+
+1.5
+
+518
+
+GA
+
+1.0
+
+●
+
+AK
+
+MD
+●
+
+TN
+
+●
+
+●
+●
+
+WA
+
+MO
+
+●
+
+●
+
+0.0
+
+VA
+
+OR
+●
+
+●
+
+WY
+
+● MA
+
+UT
+
+●
+
+PA
+●
+ID
+
+NY
+●
+
+●
+
+−0.5
+
+Imputed Value
+
+0.5
+
+TX
+AL
+
+●
+
+●
+
+MT
+
+MN
+
+●
+
+−1.0
+
+●
+
+Murder
+Assault
+● UrbanPop
+● Rape
+●
+
+−1.5
+
+●
+
+●
+−1.5
+
+−1.0
+
+−0.5
+
+0.0
+
+0.5
+
+1.0
+
+1.5
+
+Original Value
+
+FIGURE 12.5. Missing value imputation on the USArrests data. Twenty values
+(10% of the total number of matrix elements) were artificially set to be missing,
+and then imputed via Algorithm 12.1 with M = 1. The figure displays the true
+value xij and the imputed value x̂ij for all twenty missing values. For each of the
+twenty missing values, the color indicates the variable, and the label indicates the
+state. The correlation between the true and imputed values is around 0.63.
+
+We close with a few observations:
+• The USArrests data has only four variables, which is on the low end
+for methods like Algorithm 12.1 to work well. For this reason, for this
+demonstration we randomly set at most one variable per state to be
+missing, and only used M = 1 principal component.
+• In general, in order to apply Algorithm 12.1, we must select M , the
+number of principal components to use for the imputation. One approach is to randomly leave out a few additional elements from the
+matrix, and select M based on how well those known values are recovered. This is closely related to the validation-set approach seen in
+Chapter 5.
+Recommender Systems
+Digital streaming services like Netflix and Amazon use data about the content that a customer has viewed in the past, as well as data from other
+customers, to suggest other content for the customer. As a concrete example, some years back, Netflix had customers rate each movie that they
+had seen with a score from 1–5. This resulted in a very big n × p matrix
+for which the (i, j) element is the rating given by the ith customer to the
+
+−2
+
+8
+
+Imputed PC Variances
+
+●
+●
+●
+●
+●●
+●
+●●
+●
+●
+
+●
+
+●
+
+6
+
+2
+1
+−1
+
+0
+
+●
+●
+●
+●●
+●
+●
+●
+●
+●
+●●
+●
+●
+●
+●
+
+10
+
+●
+
+●
+●●
+
+●
+●●
+
+●
+●
+
+●
+
+2
+
+●●
+
+−3
+
+519
+
+12
+
+●
+
+4
+
+●
+●
+●
+●
+●●
+●
+●
+
+−3
+
+Imputed First Principal Component
+
+3
+
+12.3 Missing Values and Matrix Completion
+
+−2
+
+−1
+
+0
+
+1
+
+2
+
+True First Principal Component
+
+3
+
+2
+
+4
+
+6
+
+8
+
+10
+
+12
+
+True PC Variances
+
+FIGURE 12.6. As described in the text, in each of 100 trials, we left out 20
+elements of the USArrests dataset. In each trial, we applied Algorithm 12.1 with
+M = 1 to impute the missing elements and compute the principal components.
+Left: For each of the 50 states, the imputed first principal component scores
+(averaged over 100 trials, and displayed with a standard deviation bar) are plotted
+against the first principal component scores computed using all the data. Right:
+The imputed principal component loadings (averaged over 100 trials, and displayed
+with a standard deviation bar) are plotted against the true principal component
+loadings.
+
+jth movie. One specific early example of this matrix had n = 480,189 customers and p = 17,770 movies. However, on average each customer had seen
+around 200 movies, so 99% of the matrix had missing elements. Table 12.2
+illustrates the setup.
+In order to suggest a movie that a particular customer might like, Netflix
+needed a way to impute the missing values of this data matrix. The key idea
+is as follows: the set of movies that the ith customer has seen will overlap
+with those that other customers have seen. Furthermore, some of those
+other customers will have similar movie preferences to the ith customer.
+Thus, it should be possible to use similar customers’ ratings of movies that
+the ith customer has not seen to predict whether the ith customer will like
+those movies.
+More concretely, by applying Algorithm 12.1,
+can predict the ith cus)we
+M
+tomer’s rating for the jth movie using x̂ij = m=1 âim b̂jm . Furthermore,
+we can interpret the M components in terms of “cliques” and “genres”:
+• âim represents the strength with which the ith user belongs to the
+mth clique, where a clique is a group of customers that enjoys movies
+of the mth genre;
+
+• b̂jm represents the strength with which the jth movie belongs to the
+mth genre.
+Examples of genres include Romance, Western, and Action.
+Principal component models similar to Algorithm 12.1 are at the heart
+of many recommender systems. Although the data matrices involved are
+
+12. Unsupervised Learning
+
+Je
+rr
+
+y
+O Ma
+ce
+g
+an uir
+e
+s
+R
+oa
+d
+A to P
+Fo
+er
+d
+r
+C tu n i ti o
+at
+at
+n
+ch
+e
+M Ma
+D
+n
+riv e I
+fY
+in
+g
+o
+T
+he Mi u C
+s
+an
+s
+T
+T wo Da
+he
+Po isy
+L
+p
+C aun es
+od
+dr
+e
+om
+T 8
+at
+he
+So
+c
+· · ial
+·
+N
+et
+w
+or
+k
+
+520
+
+Customer 1
+Customer 2
+Customer 3
+Customer 4
+Customer 5
+Customer 6
+Customer 7
+Customer 8
+Customer 9
+..
+.
+
+•
+•
+•
+3
+5
+•
+•
+•
+3
+..
+.
+
+•
+•
+2
+•
+1
+•
+•
+•
+•
+..
+.
+
+•
+3
+•
+•
+•
+•
+5
+•
+•
+..
+.
+
+•
+•
+4
+•
+•
+•
+•
+•
+•
+..
+.
+
+4
+•
+•
+•
+4
+•
+•
+•
+5
+..
+.
+
+•
+•
+•
+•
+•
+2
+•
+•
+•
+..
+.
+
+•
+3
+•
+•
+•
+4
+•
+•
+•
+..
+.
+
+•
+•
+•
+•
+•
+•
+3
+•
+1
+..
+.
+
+•
+•
+2
+•
+•
+•
+•
+•
+•
+..
+.
+
+•
+3
+•
+•
+•
+•
+•
+•
+•
+..
+.
+
+···
+···
+···
+···
+···
+···
+···
+···
+···
+..
+.
+
+TABLE 12.2. Excerpt of the Netflix movie rating data. The movies are rated
+from 1 (worst) to 5 (best). The symbol • represents a missing value: a movie that
+was not rated by the corresponding customer.
+
+typically massive, algorithms have been developed that can exploit the high
+level of missingness in order to perform efficient computations.
+
+12.4
+
+Clustering Methods
+
+Clustering refers to a very broad set of techniques for finding subgroups, or
+clustering
+clusters, in a data set. When we cluster the observations of a data set, we
+seek to partition them into distinct groups so that the observations within
+each group are quite similar to each other, while observations in different
+groups are quite different from each other. Of course, to make this concrete,
+we must define what it means for two or more observations to be similar
+or different. Indeed, this is often a domain-specific consideration that must
+be made based on knowledge of the data being studied.
+For instance, suppose that we have a set of n observations, each with p
+features. The n observations could correspond to tissue samples for patients
+with breast cancer, and the p features could correspond to measurements
+collected for each tissue sample; these could be clinical measurements, such
+as tumor stage or grade, or they could be gene expression measurements.
+We may have a reason to believe that there is some heterogeneity among
+the n tissue samples; for instance, perhaps there are a few different unknown subtypes of breast cancer. Clustering could be used to find these
+subgroups. This is an unsupervised problem because we are trying to discover structure—in this case, distinct clusters—on the basis of a data set.
+The goal in supervised problems, on the other hand, is to try to predict
+some outcome vector such as survival time or response to drug treatment.
+Both clustering and PCA seek to simplify the data via a small number
+of summaries, but their mechanisms are different:
+
+12.4 Clustering Methods
+
+521
+
+• PCA looks to find a low-dimensional representation of the observations that explain a good fraction of the variance;
+• Clustering looks to find homogeneous subgroups among the observations.
+Another application of clustering arises in marketing. We may have access to a large number of measurements (e.g. median household income,
+occupation, distance from nearest urban area, and so forth) for a large
+number of people. Our goal is to perform market segmentation by identifying subgroups of people who might be more receptive to a particular form
+of advertising, or more likely to purchase a particular product. The task of
+performing market segmentation amounts to clustering the people in the
+data set.
+Since clustering is popular in many fields, there exist a great number of clustering methods. In this section we focus on perhaps the two
+best-k

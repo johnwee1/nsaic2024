@@ -1,0 +1,611 @@
+that we perform are independent.
+What is the family-wise error rate associated with these m tests?
+Hint: If two events A and B are independent, then Pr(A ∩ B) =
+Pr(A) Pr(B).
+(c) Suppose that m = 2, and that the p-values for the two tests are
+positively correlated, so that if one is small then the other will
+tend to be small as well, and if one is large then the other will
+tend to be large. How does the family-wise error rate associated
+with these m = 2 tests qualitatively compare to the answer in
+(b) with m = 2?
+Hint: First, suppose that the two p-values are perfectly correlated.
+(d) Suppose again that m = 2, but that now the p-values for the
+two tests are negatively correlated, so that if one is large then
+the other will tend to be small. How does the family-wise error
+rate associated with these m = 2 tests qualitatively compare to
+the answer in (b) with m = 2?
+Hint: First, suppose that whenever one p-value is less than α,
+then the other will be greater than α. In other words, we can
+never reject both null hypotheses.
+
+594
+
+13. Multiple Testing
+
+2. Suppose that we test m hypotheses, and control the Type I error for
+each hypothesis at level α. Assume that all m p-values are independent, and that all null hypotheses are true.
+(a) Let the random variable Aj equal 1 if the jth null hypothesis is
+rejected, and 0 otherwise. What is the distribution of Aj ?
+)m
+(b) What is the distribution of j=1 Aj ?
+
+(c) What is the standard deviation of the number of Type I errors
+that we will make?
+
+3. Suppose we test m null hypotheses, and control the Type I error for
+the jth null hypothesis at level αj , for j )
+= 1, . . . , m. Argue that the
+m
+family-wise error rate is no greater than j=1 αj .
+Null Hypothesis
+H01
+H02
+H03
+H04
+H05
+H06
+H07
+H08
+H09
+H10
+
+p-value
+0.0011
+0.031
+0.017
+0.32
+0.11
+0.90
+0.07
+0.006
+0.004
+0.0009
+
+TABLE 13.4. p-values for Exercise 4.
+
+4. Suppose we test m = 10 hypotheses, and obtain the p-values shown
+in Table 13.4.
+(a) Suppose that we wish to control the Type I error for each null
+hypothesis at level α = 0.05. Which null hypotheses will we
+reject?
+(b) Now suppose that we wish to control the FWER at level α =
+0.05. Which null hypotheses will we reject? Justify your answer.
+(c) Now suppose that we wish to control the FDR at level q = 0.05.
+Which null hypotheses will we reject? Justify your answer.
+(d) Now suppose that we wish to control the FDR at level q = 0.2.
+Which null hypotheses will we reject? Justify your answer.
+(e) Of the null hypotheses rejected at FDR level q = 0.2, approximately how many are false positives? Justify your answer.
+5. For this problem, you will make up p-values that lead to a certain
+number of rejections using the Bonferroni and Holm procedures.
+(a) Give an example of five p-values (i.e. five numbers between 0 and
+1 which, for the purpose of this problem, we will interpret as pvalues) for which both Bonferroni’s method and Holm’s method
+
+13.7 Exercises
+
+595
+
+reject exactly one null hypothesis when controlling the FWER
+at level 0.1.
+(b) Now give an example of five p-values for which Bonferroni rejects one null hypothesis and Holm rejects more than one null
+hypothesis at level 0.1.
+6. For each of the three panels in Figure 13.3, answer the following
+questions:
+(a) How many false positives, false negatives, true positives, true
+negatives, Type I errors, and Type II errors result from applying
+the Bonferroni procedure to control the FWER at level α =
+0.05?
+(b) How many false positives, false negatives, true positives, true
+negatives, Type I errors, and Type II errors result from applying
+the Holm procedure to control the FWER at level α = 0.05?
+(c) What is the false discovery proportion associated with using the
+Bonferroni procedure to control the FWER at level α = 0.05?
+(d) What is the false discovery proportion associated with using the
+Holm procedure to control the FWER at level α = 0.05?
+(e) How would the answers to (a) and (c) change if we instead used
+the Bonferroni procedure to control the FWER at level α =
+0.001?
+
+Applied
+7. This problem makes use of the Carseats dataset in the ISLP package.
+(a) For each quantitative variable in the dataset besides Sales, fit
+a linear model to predict Sales using that quantitative variable.
+Report the p-values associated with the coefficients for the variables. That is, for each model of the form Y = β0 + β1 X + ",
+report the p-value associated with the coefficient β1 . Here, Y
+represents Sales and X represents one of the other quantitative
+variables.
+(b) Suppose we control the Type I error at level α = 0.05 for the
+p-values obtained in (a). Which null hypotheses do we reject?
+(c) Now suppose we control the FWER at level 0.05 for the p-values.
+Which null hypotheses do we reject?
+(d) Finally, suppose we control the FDR at level 0.2 for the p-values.
+Which null hypotheses do we reject?
+8. In this problem, we will simulate data from m = 100 fund managers.
+rng = np.random.default_rng (1)
+n, m = 20, 100
+X = rng.normal(size =(n, m))
+
+596
+
+13. Multiple Testing
+
+These data represent each fund manager’s percentage returns for each
+of n = 20 months. We wish to test the null hypothesis that each
+fund manager’s percentage returns have population mean equal to
+zero. Notice that we simulated the data in such a way that each fund
+manager’s percentage returns do have population mean zero; in other
+words, all m null hypotheses are true.
+(a) Conduct a one-sample t-test for each fund manager, and plot a
+histogram of the p-values obtained.
+(b) If we control Type I error for each null hypothesis at level α =
+0.05, then how many null hypotheses do we reject?
+(c) If we control the FWER at level 0.05, then how many null hypotheses do we reject?
+(d) If we control the FDR at level 0.05, then how many null hypotheses do we reject?
+(e) Now suppose we “cherry-pick” the 10 fund managers who perform the best in our data. If we control the FWER for just these
+10 fund managers at level 0.05, then how many null hypotheses do we reject? If we control the FDR for just these 10 fund
+managers at level 0.05, then how many null hypotheses do we
+reject?
+(f) Explain why the analysis in (e) is misleading.
+Hint: The standard approaches for controlling the FWER and
+FDR assume that all tested null hypotheses are adjusted for multiplicity, and that no “cherry-picking” of the smallest p-values
+has occurred. What goes wrong if we cherry-pick?
+
+Index
+
+accuracy, 415
+activation, 400
+activation function, 401
+additive, 11, 94–98, 110–111
+additivity, 305, 306
+adjusted R2 , 87, 231, 232, 236–
+238
+Advertising data set, 15, 16, 19,
+69, 71–73, 77, 78, 80, 82,
+83, 85, 87–90, 95, 96, 109–
+111
+agglomerative clustering, 525
+Akaike information criterion, 87,
+231, 232, 236–238
+alternative hypothesis, 76, 559
+analysis of variance, 312
+ANOVA, 587
+area under the curve, 155, 486–
+487
+argument, 40
+array, 42
+attribute, 42
+AUC, 155
+Auto data set, 12, 66, 98–101, 129,
+197, 202–207, 327, 398
+auto-correlation, 421
+autoregression, 423
+axes, 48
+backfitting, 307, 328
+
+backpropagation, 429
+backward stepwise selection, 87,
+234–235
+bag-of-n-grams, 415
+bag-of-words, 414
+bagging, 11, 24, 331, 343–346, 354,
+360–361
+BART, 343, 350, 353, 354, 362–
+363
+baseline, 93, 145, 161
+basis function, 293–294, 296
+Bayes
+classifier, 35–37, 147
+decision boundary, 148
+error, 35–37
+Bayes’ theorem, 146, 250
+Bayesian, 250–251, 353
+Bayesian additive regression trees,
+331, 343, 350, 350, 353,
+354, 362–363
+Bayesian information criterion, 87,
+231, 232, 236–238
+Benjamini–Hochberg procedure, 575–
+577
+Bernoulli distribution, 172
+best subset selection, 231, 246
+bias, 31–34, 74, 90, 159, 405
+bias-variance
+decomposition, 32
+
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0
+
+597
+
+598
+
+Index
+
+trade-off, 31–34, 38, 111–112,
+157, 159, 163, 164, 242,
+254, 263, 266, 301, 336,
+376, 385
+bidirectional, 425
+Bikeshare data set, 12, 167–172
+binary, 27, 138
+biplot, 507, 508
+Bonferroni method, 575–577, 585
+Boolean, 53, 176
+boosting, 11, 24, 331, 343, 347–
+350, 354, 361–362
+bootstrap, 11, 201, 212–214, 343
+Boston data set, 12, 67, 117, 122,
+133, 199, 227, 287, 327,
+364, 556
+bottom-up clustering, 525
+boxplot, 62
+BrainCancer data set, 12, 472–
+474, 476, 482
+branch, 333
+burn-in, 352
+C-index, 487
+Caravan data set, 12, 184, 366
+Carseats data set, 12, 126, 130,
+364
+categorical, 2, 27
+censored data, 469–502
+censoring
+independent, 471
+interval, 471
+left, 471
+mechanism, 471
+non-informative, 471
+right, 471
+time, 470
+chain rule, 429
+channel, 407
+CIFAR100 data set, 406, 409–411,
+448, 449
+classification, 2, 11, 27, 34–39, 135–
+199, 367–382
+error rate, 338
+tree, 337–341, 355–358
+classifier, 135
+cluster analysis, 25–26
+clustering, 4, 25–26, 520–535
+agglomerative, 525
+
+bottom-up, 525
+hierarchical, 521, 525–535
+K-means, 11, 521–524
+Cochran–Mantel–Haenszel test, 475
+coefficient, 71
+College data set, 12, 65, 286, 328
+collinearity, 106–110
+concatenation, 41
+conditional probability, 35
+confidence interval, 75–76, 90, 110,
+292
+confounding, 144
+confusion matrix, 153, 176
+continuous, 2
+contour, 246
+contour plot, 50
+contrast, 94
+convenience function, 53
+convolution filter, 407
+convolution layer, 407
+convolutional neural network, 406–
+413
+correlation, 79, 82–83, 530
+count data, 167, 170
+Cox’s proportional hazards model,
+480, 483–486
+Cp , 87, 231, 232, 236–238
+Credit data set, 12, 91, 92, 94,
+97, 98, 106–109
+cross-entropy, 405
+cross-validation, 11, 31, 34, 201–
+211, 231, 252, 270
+k-fold, 206–209
+leave-one-out, 204–206
+curse of dimensionality, 115, 193,
+266
+data augmentation, 411
+data frame, 55
+Data sets
+Advertising, 15, 16, 19, 69,
+71–73, 77, 78, 80, 82, 83,
+85, 87–90, 95, 96, 109–
+111
+Auto, 12, 66, 98–101, 129, 197,
+202–207, 327, 398
+Bikeshare, 12, 167–172
+
+Index
+
+Boston, 12, 67, 117, 122, 133,
+199, 227, 287, 327, 364,
+556
+BrainCancer, 12, 472–474, 476,
+482
+Caravan, 12, 184, 366
+Carseats, 12, 126, 130, 364
+CIFAR100, 406, 409–411, 448,
+449
+College, 12, 65, 286, 328
+Credit, 12, 91, 92, 94, 97, 98,
+106–109
+Default, 12, 136–139, 141–
+144, 152–156, 160, 161,
+225, 226, 466
+Fund, 12, 567–570, 572, 575,
+576, 585, 588, 589
+Heart, 339, 340, 344–347, 352,
+353, 382, 383
+Hitters, 12, 332, 333, 336,
+338, 339, 366, 425, 426,
+437, 446
+IMDb, 413, 415, 416, 418, 420,
+437, 458, 467
+Income, 16–18, 21–23
+Khan, 12, 579–581, 583, 590,
+593
+MNIST, 402–404, 406, 430, 431,
+441, 444, 445, 448
+NCI60, 4, 5, 12, 546, 548–550
+NYSE, 12, 422–424, 466, 467
+OJ, 12, 365, 398
+Portfolio, 12
+Publication, 12, 482–487
+Smarket, 2, 3, 12, 173, 184,
+196
+USArrests, 12, 507, 508, 510,
+512, 513, 515, 516, 518,
+519
+Wage, 1, 2, 8, 9, 12, 290, 291,
+293, 295, 297–300, 302–
+306, 309, 315, 327
+Weekly, 12, 196, 226
+data type, 42
+decision function, 387
+decision tree, 11, 331–342
+deep learning, 399
+
+599
+
+Default data set, 12, 136–139, 141–
+144, 152–156, 160, 161,
+225, 226, 466
+degrees of freedom, 30, 266, 295,
+296, 301
+dendrogram, 521, 525–530
+density function, 146
+dependent variable, 15
+derivative, 296, 300
+detector layer, 410
+deviance, 232
+dictionary, 66
+dimension reduction, 230, 253–262
+discriminant function, 149
+discriminant method, 146–161
+dissimilarity, 530–532
+distance
+correlation-based, 530–532, 554
+Euclidean, 509, 522, 523, 529–
+532
+double descent, 431–435
+double-exponential distribution, 251
+dropout, 406, 431
+dummy variable, 91–94, 138, 142,
+292
+early stopping, 430
+effective degrees of freedom, 301
+eigen decomposition, 506, 516
+elbow, 548
+embedding, 418
+embedding layer, 419
+ensemble, 343–354
+entropy, 337–339, 363
+epochs, 430
+error
+irreducible, 17, 30
+rate, 34
+reducible, 17
+term, 16
+Euclidean distance, 509, 522, 523,
+529–532, 554
+event time, 470
+exception, 45
+expected value, 18
+exploratory data analysis, 504
+exponential, 173
+exponential family, 173
+F-statistic, 84
+
+600
+
+Index
+
+factor, 92
+factorial, 170
+failure time, 470
+false
+discovery proportion, 155, 573
+discovery rate, 558, 573–577,
+579–582
+negative, 155, 562
+positive, 155, 562, 563
+positive rate, 155, 156, 382
+family-wise error rate, 565–573, 577
+feature, 15
+feature map, 406
+feature selection, 230
+featurize, 414
+feed-forward neural network, 400
+figure, 48
+fit, 21
+fitted value, 101
+flattening, 424
+flexible, 21
+floating point, 43
+forward stepwise selection, 86, 87,
+233–234, 268
+function, 40
+Fund data set, 12, 567–570, 572,
+575, 576, 585, 588, 589
+Gamma, 173
+Gaussian (normal) distribution, 146,
+147, 150, 172, 561
+generalized additive model, 5, 24,
+162, 289, 290, 305–309,
+319
+generalized linear model, 5, 135,
+167–174, 217
+generative model, 146–161
+Gini index, 337–339, 345, 346, 363
+global minimum, 427
+gradient, 428
+gradient descent, 427
+Harrell’s concordance index, 487
+hazard function, 476–478
+baseline, 478
+hazard rate, 476
+Heart data set, 339, 340, 344–347,
+352, 353, 382, 383
+heatmap, 50
+helper, 311
+
+heteroscedasticity, 103, 168
+hidden layer, 400
+hidden units, 400
+hierarchical clustering, 525–530
+dendrogram, 525–528
+inversion, 529
+linkage, 529–530
+hierarchical principle, 96
+high-dimensional, 86, 234, 263
+hinge loss, 385
+Hitters data set, 12, 332, 333,
+336, 338, 339, 366, 425,
+426, 437, 446
+hold-out set, 202
+Holm’s method, 568, 576, 585
+hypergeometric distribution, 501
+hyperparameter, 187
+hyperplane, 367–372
+hypothesis test, 76–77, 84, 103,
+558–583
+IMDb data set, 413, 415, 416, 418,
+420, 437, 458, 467
+imputation, 515
+Income data set, 16–18, 21–23
+increment, 60
+independent variable, 15
+indexable, 186
+indicator function, 292
+inference, 17, 18
+inner product, 379, 380
+input layer, 400
+input variable, 15
+integral, 301
+interaction, 70, 89, 95–98, 110–
+111, 308
+intercept, 71, 72
+interpolate, 432
+interpretability, 229
+inversion, 529
+irreducible error, 17, 36, 90, 110
+iterator, 312
+joint distribution, 158
+K-means clustering, 11, 521–524
+K-nearest neighbors, 135, 164–167
+classifier, 11, 36–37
+regression, 111–115
+
+Index
+
+Kaplan–Meier survival curve, 472–
+474, 483
+kernel, 379–382, 384, 394
+linear, 380
+non-linear, 377–382
+polynomial, 380, 382
+radial, 381–383, 390
+kernel density estimator, 159
+keyword, 46
+Khan data set, 12, 579–581, 583,
+590, 593
+knot, 290, 294, 296–299
+%1 norm, 244
+%2 norm, 242
+lag, 422
+Laplace distribution, 251
+lasso, 11, 24, 244–251, 265–266,
+336, 385, 484
+leaf, 333, 526
+learning rate, 429
+least squares, 5, 21, 71–72, 140,
+141, 229
+line, 73
+weighted, 103
+level, 92
+leverage, 104–106
+likelihood function, 141
+linear, 2, 69–115
+linear combination, 128, 230, 253,
+505
+linear discriminant analysis, 5, 11,
+135, 138, 147–155, 164–
+167, 377, 382
+linear kernel, 380
+linear model, 20, 69–115
+linear regression, 5, 11, 69–115,
+172–173
+multiple, 80–90
+simple, 70–80
+link function, 172, 173
+linkage, 529–530, 548
+average, 529–530
+centroid, 529–530
+complete, 526, 529–530
+single, 529–530
+list, 41
+list comprehension, 123
+local minimum, 427
+
+601
+
+local regression, 290
+log odds, 145
+log-rank test, 474–476, 483
+logistic function, 139
+logistic regression, 5, 11, 25, 135,
+138–144, 164–167, 172–
+173, 308–309, 377, 384–
+385
+multinomial, 145, 163
+multiple, 142–144
+logit, 140
+loss function, 300, 385
+low-dimensional, 262
+LSTM RNN, 420
+main effects, 96
+majority vote, 344
+Mallow’s Cp , 87, 231, 232, 236–
+238
+Mantel–Haenszel test, 475
+margin, 370, 385
+marginal distribution, 158
+Markov chain Monte Carlo, 353
+matrix completion, 515
+matrix multiplication, 10
+maximal margin
+classifier, 367–372
+hyperplane, 370
+maximum likelihood, 139–141, 143,
+170
+mean squared error, 28
+mesh, 53
+method, 43
+minibatch, 429
+misclassification error, 35
+missing at random, 515
+missing data, 56, 515–520
+mixed selection, 87
+MNIS

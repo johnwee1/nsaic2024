@@ -1,0 +1,385 @@
+ill want to reject H0 (and, therefore, make
+a “discovery”). But how small is small enough to reject H0 ?
+It turns out that the answer to this question is very much in the eyes
+of the beholder, or more specifically, the data analyst. The smaller the pvalue, the stronger the evidence against H0 . In some fields, it is typical to
+reject H0 if the p-value is below 0.05; this means that, if H0 holds, we would
+expect to see such a small p-value no more than 5% of the time.9 However,
+in other fields, a much higher burden of proof is required: for example, in
+some areas of physics, it is typical to reject H0 only if the p-value is below
+10−9 !
+In the example displayed in Figure 13.1, if we use a threshold of 0.05 as
+our cut-off for rejecting the null hypothesis, then we will reject the null. By
+contrast, if we use a threshold of 0.01, then we will fail to reject the null.
+These ideas are formalized in the next section.
+
+13.1.2
+
+Type I and Type II Errors
+
+If the null hypothesis holds, then we say that it is a true null hypothesis;
+true null
+otherwise, it is a false null hypothesis. For instance, if we test H0 : µt = µc hypothesis
+as in Section 13.1.1, and there is indeed no difference in the population false null
+mean blood pressure for mice in the treatment group and mice in the hypothesis
+control group, then H0 is true; otherwise, it is false. Of course, we do not
+know a priori whether H0 is true or whether it is false: this is why we need
+to conduct a hypothesis test!
+9 Though a threshold of 0.05 to reject H is ubiquitous in some areas of science, we
+0
+advise against blind adherence to this arbitrary choice. Furthermore, a data analyst
+should typically report the p-value itself, rather than just whether or not it exceeds a
+specified threshold value.
+
+13.2 The Challenge of Multiple Testing
+
+563
+
+Table 13.1 summarizes the possible scenarios associated with testing the
+null hypothesis H0 .10 Once the hypothesis test is performed, the row of the
+table is known (based on whether or not we have rejected H0 ); however, it
+is impossible for us to know which column we are in. If we reject H0 when
+H0 is false (i.e., when Ha is true), or if we do not reject H0 when it is true,
+then we arrived at the correct result. However, if we erroneously reject H0
+when H0 is in fact true, then we have committed a Type I error. The Type I
+Type I error
+error rate is defined as the probability of making a Type I error given that
+Type I error
+H0 holds, i.e., the probability of incorrectly rejecting H0 . Alternatively, if rate
+we do not reject H0 when H0 is in fact false, then we have committed a
+Type II error. The power of the hypothesis test is defined as the probability
+Type II
+of not making a Type II error given that Ha holds, i.e., the probability of error
+correctly rejecting H0 .
+power
+Ideally we would like both the Type I and Type II error rates to be small.
+But in practice, this is hard to achieve! There typically is a trade-off: we
+can make the Type I error small by only rejecting H0 if we are quite sure
+that it doesn’t hold; however, this will result in an increase in the Type II
+error. Alternatively, we can make the Type II error small by rejecting H0
+in the presence of even modest evidence that it does not hold, but this will
+cause the Type I error to be large. In practice, we typically view Type I
+errors as more “serious” than Type II errors, because the former involves
+declaring a scientific finding that is not correct. Hence, when we perform
+hypothesis testing, we typically require a low Type I error rate — e.g.,
+at most α = 0.05 — while trying to make the Type II error small (or,
+equivalently, the power large).
+It turns out that there is a direct correspondence between the p-value
+threshold that causes us to reject H0 , and the Type I error rate. By only
+rejecting H0 when the p-value is below α, we ensure that the Type I error
+rate will be less than or equal to α.
+
+13.2
+
+The Challenge of Multiple Testing
+
+In the previous section, we saw that rejecting H0 if the p-value is below
+(say) 0.01 provides us with a simple way to control the Type I error for H0
+at level 0.01: if H0 is true, then there is no more than a 1% probability that
+we will reject it. But now suppose that we wish to test m null hypotheses,
+H01 , . . . , H0m . Will it do to simply reject all null hypotheses for which the
+corresponding p-value falls below (say) 0.01? Stated another way, if we
+reject all null hypotheses for which the p-value falls below 0.01, then how
+many Type I errors should we expect to make?
+As a first step towards answering this question, consider a stockbroker
+who wishes to drum up new clients by convincing them of her trading
+10 There are parallels between Table 13.1 and Table 4.6, which has to do with the
+output of a binary classifier. In particular, recall from Table 4.6 that a false positive
+results from predicting a positive (non-null) label when the true label is in fact negative
+(null). This is closely related to a Type I error, which results from rejecting the null
+hypothesis when in fact the null hypothesis holds.
+
+564
+
+13. Multiple Testing
+
+acumen. She tells 1,024 (1,024 = 210 ) potential new clients that she can
+correctly predict whether Apple’s stock price will increase or decrease for 10
+days running. There are 210 possibilities for how Apple’s stock price might
+change over the course of these 10 days. Therefore, she emails each client
+one of these 210 possibilities. The vast majority of her potential clients
+will find that the stockbroker’s predictions are no better than chance (and
+many will find them to be even worse than chance). But a broken clock is
+right twice a day, and one of her potential clients will be really impressed
+to find that her predictions were correct for all 10 of the days! And so the
+stockbroker gains a new client.
+What happened here? Does the stockbroker have any actual insight into
+whether Apple’s stock price will increase or decrease? No. How, then, did
+she manage to predict Apple’s stock price perfectly for 10 days running?
+The answer is that she made a lot of guesses, and one of them happened
+to be exactly right.
+How does this relate to multiple testing? Suppose that we flip 1,024 fair
+coins11 ten times each. Then we would expect (on average) one coin to
+come up all tails. (There’s a 1/210 = 1/1,024 chance that any single coin
+will come up all tails. So if we flip 1,024 coins, then we expect one coin to
+come up all tails, on average.) If one of our coins comes up all tails, then
+we might therefore conclude that this particular coin is not fair. In fact, a
+standard hypothesis test for the null hypothesis that this particular coin
+is fair would lead to a p-value below 0.002!12 But it would be incorrect to
+conclude that the coin is not fair: in fact, the null hypothesis holds, and we
+just happen to have gotten ten tails in a row by chance.
+These examples illustrate the main challenge of multiple testing: when
+multiple
+testing a huge number of null hypotheses, we are bound to get some very testing
+small p-values by chance. If we make a decision about whether to reject each
+null hypothesis without accounting for the fact that we have performed a
+very large number of tests, then we may end up rejecting a great number
+of true null hypotheses — that is, making a large number of Type I errors.
+How severe is the problem? Recall from the previous section that if we
+reject a single null hypothesis, H0 , if its p-value is less than, say, α = 0.01,
+then there is a 1% chance of making a false rejection if H0 is in fact true.
+Now what if we test m null hypotheses, H01 , . . . , H0m , all of which are true?
+There’s a 1% chance of rejecting any individual null hypothesis; therefore,
+we expect to falsely reject approximately 0.01 × m null hypotheses. If m =
+10,000, then that means that we expect to falsely reject 100 null hypotheses
+by chance! That is a lot of Type I errors.
+The crux of the issue is as follows: rejecting a null hypothesis if the p-value
+is below α controls the probability of falsely rejecting that null hypothesis
+at level α. However, if we do this for m null hypotheses, then the chance of
+falsely rejecting at least one of the m null hypotheses is quite a bit higher!
+11 A fair coin is one that has an equal chance of landing heads or tails.
+
+12 Recall that the p-value is the probability of observing data at least this extreme,
+under the null hypothesis. If the coin is fair, then the probability of observing at least
+ten tails is (1/2)10 = 1/1,024 < 0.001. The p-value is therefore 2/1,024 < 0.002, since
+this is the probability of observing ten heads or ten tails.
+
+13.3 The Family-Wise Error Rate
+
+Reject H0
+Do Not Reject H0
+Total
+
+H0 is True
+V
+U
+m0
+
+H0 is False
+S
+W
+m − m0
+
+565
+
+Total
+R
+m−R
+m
+
+TABLE 13.2. A summary of the results of testing m null hypotheses. A given
+null hypothesis is either true or false, and a test of that null hypothesis can either
+reject or fail to reject it. In practice, the individual values of V , S, U , and W are
+unknown. However, we do have access to V + S = R and U + W = m − R, which
+are the numbers of null hypotheses rejected and not rejected, respectively.
+
+We will investigate this issue in greater detail, and pose a solution to it, in
+Section 13.3.
+
+13.3
+
+The Family-Wise Error Rate
+
+In the following sections, we will discuss testing multiple hypotheses while
+controlling the probability of making at least one Type I error.
+
+13.3.1
+
+What is the Family-Wise Error Rate?
+
+Recall that the Type I error rate is the probability of rejecting H0 if H0 is
+true. The family-wise error rate (FWER) generalizes this notion to the setfamily-wise
+ting of m null hypotheses, H01 , . . . , H0m , and is defined as the probability error rate
+of making at least one Type I error. To state this idea more formally, consider Table 13.2, which summarizes the possible outcomes when performing
+m hypothesis tests. Here, V represents the number of Type I errors (also
+known as false positives or false discoveries), S the number of true positives, U the number of true negatives, and W the number of Type II errors
+(also known as false negatives). Then the family-wise error rate is given by
+FWER = Pr(V ≥ 1).
+
+(13.3)
+
+A strategy of rejecting any null hypothesis for which the p-value is below
+α (i.e. controlling the Type I error for each null hypothesis at level α) leads
+to a FWER of
+FWER(α) = 1 − Pr(V = 0)
+= 1 − Pr(do not falsely reject any null hypotheses)
+1Y
+2
+m
+= 1 − Pr j=1 {do not falsely reject H0j } .
+(13.4)
+
+Recall from basic probability that if two events A and B are independent,
+then Pr(A ∩ B) = Pr(A) Pr(B). Therefore, if we make the additional rather
+strong assumptions that the m tests are independent and that all m null
+hypotheses are true, then
+FWER(α) = 1 −
+
+m
+E
+
+j=1
+
+(1 − α) = 1 − (1 − α)m .
+
+(13.5)
+
+13. Multiple Testing
+1.0
+
+566
+
+0.6
+0.4
+0.0
+
+0.2
+
+Family−Wise Error Rate
+
+0.8
+
+α = 0.05
+α = 0.01
+α = 0.001
+
+1
+
+2
+
+5
+
+10
+
+20
+
+50
+
+100
+
+200
+
+500
+
+Number of Hypotheses
+
+FIGURE 13.2. The family-wise error rate, as a function of the number of
+hypotheses tested (displayed on the log scale), for three values of α: α = 0.05
+(orange), α = 0.01 (blue), and α = 0.001 (purple). The dashed line indicates
+0.05. For example, in order to control the FWER at 0.05 when testing m = 50
+null hypotheses, we must control the Type I error for each null hypothesis at level
+α = 0.001.
+
+Hence, if we test only one null hypothesis, then FWER(α) = 1 − (1 − α)1 =
+α, so the Type I error rate and the FWER are equal. However, if we perform
+m = 100 independent tests, then FWER(α) = 1 − (1 − α)100 . For instance,
+taking α = 0.05 leads to a FWER of 1 − (1 − 0.05)100 = 0.994. In other
+words, we are virtually guaranteed to make at least one Type I error!
+Figure 13.2 displays (13.5) for various values of m, the number of hypotheses, and α, the Type I error. We see that setting α = 0.05 results in
+a high FWER even for moderate m. With α = 0.01, we can test no more
+than five null hypotheses before the FWER exceeds 0.05. Only for very
+small values, such as α = 0.001, do we manage to ensure a small FWER,
+at least for moderately-sized m.
+We now briefly return to the example in Section 13.1.1, in which we
+consider testing a single null hypothesis of the form H0 : µt = µc using a
+two-sample t-statistic. Recall from Figure 13.1 that in order to guarantee
+that the Type I error does not exceed 0.02, we decide whether or not to
+reject H0 using a cutpoint of 2.33 (i.e. we reject H0 if |T | ≥ 2.33). Now,
+what if we wish to test 10 null hypotheses using two-sample t-statistics,
+instead of just one? We will see in Section 13.3.2 that we can guarantee
+that the FWER does not exceed 0.02 by rejecting only null hypotheses
+for which the p-value falls below 0.002. This corresponds to a much more
+stringent cutpoint of 3.09 (i.e. we should reject H0j only if its test statistic
+|Tj | ≥ 3.09, for j = 1, . . . , 10). In other words, controlling the FWER at
+level α amounts to a much higher bar, in terms of evidence required to
+reject any given null hypothesis, than simply controlling the Type I error
+for each null hypothesis at level α.
+
+13.3 The Family-Wise Error Rate
+
+Manager
+One
+Two
+Three
+Four
+Five
+
+Mean, x̄
+3.0
+-0.1
+2.8
+0.5
+0.3
+
+Standard Deviation, s
+7.4
+6.9
+7.5
+6.7
+6.8
+
+t-statistic
+2.86
+-0.10
+2.62
+0.53
+0.31
+
+567
+
+p-value
+0.006
+0.918
+0.012
+0.601
+0.756
+
+TABLE 13.3. The first two columns correspond to the sample mean and sample
+standard deviation of the percentage excess return, over n = 50 months, for the
+first five managers in the Fund dataset. The last two columns provide the t-statistic
+√
+( n · X̄/S) and associated p-value for testing H0j : µj = 0, the null hypothesis
+that the (population) mean return for the jth hedge fund manager equals zero.
+
+13.3.2
+
+Approaches to Control the Family-Wise Error Rate
+
+In this section, we briefly survey some approaches to control the FWER.
+We will illustrate these approaches on the Fund dataset, which records the
+monthly percentage excess returns for 2,000 fund managers over n = 50
+months.13 Table 13.3 provides relevant summary statistics for the first five
+managers.
+We first present the Bonferroni method and Holm’s step-down procedure, which are very general-purpose approaches for controlling the FWER
+that can be applied whenever m p-values have been computed, regardless
+of the form of the null hypotheses, the choice of test statistics, or the
+(in)dependence of the p-values. We then briefly discuss Tukey’s method
+and Scheffé’s method in order to illustrate the fact that, in certain situations, more specialized approaches for controlling the FWER may be
+preferable.
+The Bonferroni Method
+As in the previous section, suppose we wish to test H01 , . . . , H0m . Let Aj
+denote the event that we make a Type I error for the jth null hypothesis,
+for j = 1, . . . , m. Then
+FWER = Pr(falsely reject at least one null hypothesis)
+= Pr(∪m
+j=1 Aj )
+m
+0
+≤
+Pr(Aj ).
+
+(13.6)
+
+j=1
+
+In (13.6), the inequality results from the fact that for any two events A
+and B, Pr(A ∪ B) ≤ Pr(A) + Pr(B), regardless of whether A and B are
+independent. The Bonferroni method, or Bonferroni correction, sets the
+threshold for rejecting each hypothesis test to α/m, so that Pr(Aj ) ≤ α/m.
+Equation 13.6 implies that
+α
+FWER(α/m) ≤ m ×
+= α,
+m
+13 Excess returns correspond to the additional return the fund manager achieves beyond
+the market’s overall return. So if the market increases by 5% during a given period and
+the fund manager achieves a 7% return, their excess return would

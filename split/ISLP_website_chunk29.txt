@@ -1,0 +1,532 @@
+ve times better than random guessing!
+In [62]: logit_labels = np.where(logit_pred [: ,1] >0.25 , 'Yes', 'No')
+confusion_table(logit_labels , y_test)
+Out[62]:
+
+Truth
+Predicted
+No
+Yes
+
+No
+
+Yes
+
+913
+20
+
+58
+9
+
+In [63]: 9/(20+9)
+Out[63]: 0.310
+
+4.7.7
+
+Linear and Poisson Regression on the Bikeshare Data
+
+Here we fit linear and Poisson regression models to the Bikeshare data, as
+described in Section 4.6. The response bikers measures the number of bike
+rentals per hour in Washington, DC in the period 2010–2012.
+In [64]: Bike = load_data('Bikeshare ')
+
+Let’s have a peek at the dimensions and names of the variables in this
+dataframe.
+In [65]: Bike.shape , Bike.columns
+
+4.7 Lab: Logistic Regression, LDA, QDA, and KNN
+
+189
+
+Out[65]: ((8645 , 15),
+Index (['season ', 'mnth ', 'day', 'hr', 'holiday ', 'weekday ',
+'workingday ', 'weathersit ', 'temp ', 'atemp ', 'hum',
+'windspeed ', 'casual ', 'registered ', 'bikers '],
+dtype='object '))
+
+Linear Regression
+We begin by fitting a linear regression model to the data.
+In [66]: X = MS(['mnth ',
+'hr',
+'workingday ',
+'temp ',
+'weathersit ']).fit_transform(Bike)
+Y = Bike['bikers ']
+M_lm = sm.OLS(Y, X).fit()
+summarize(M_lm)
+Out[66]:
+
+intercept
+mnth[Feb]
+mnth[March]
+mnth[April]
+mnth[May]
+mnth[June]
+mnth[July]
+mnth[Aug]
+mnth[Sept]
+mnth[Oct]
+mnth[Nov]
+mnth[Dec]
+hr[1]
+hr[2]
+hr[3]
+.....
+
+coef
+-68.6317
+6.8452
+16.5514
+41.4249
+72.5571
+67.8187
+45.3245
+53.2430
+66.6783
+75.8343
+60.3100
+46.4577
+-14.5793
+-21.5791
+-31.1408
+.......
+
+std err
+t
+5.307 -12.932
+4.287
+1.597
+4.301
+3.848
+4.972
+8.331
+5.641 12.862
+6.544 10.364
+7.081
+6.401
+6.640
+8.019
+5.925 11.254
+4.950 15.319
+4.610 13.083
+4.271 10.878
+5.699 -2.558
+5.733 -3.764
+5.778 -5.389
+.....
+.....
+
+P>|t|
+0.000
+0.110
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+0.011
+0.000
+0.000
+.....
+
+There are 24 levels in hr and 40 rows in all, so we have truncated the
+summary. In M_lm, the first levels hr[0] and mnth[Jan] are treated as the
+baseline values, and so no coefficient estimates are provided for them: implicitly, their coefficient estimates are zero, and all other levels are measured
+relative to these baselines. For example, the Feb coefficient of 6.845 signifies that, holding all other variables constant, there are on average about
+7 more riders in February than in January. Similarly there are about 16.5
+more riders in March than in January.
+The results seen in Section 4.6.1 used a slightly different coding of the
+variables hr and mnth, as follows:
+In [67]: hr_encode = contrast('hr', 'sum')
+mnth_encode = contrast('mnth ', 'sum')
+
+Refitting again:
+In [68]: X2 = MS([ mnth_encode ,
+hr_encode ,
+'workingday ',
+'temp ',
+
+190
+
+4. Classification
+
+'weathersit ']).fit_transform(Bike)
+M2_lm = sm.OLS(Y, X2).fit()
+S2 = summarize(M2_lm)
+S2
+Out[68]:
+
+coef
+intercept
+73.5974
+mnth[Jan]
+-46.0871
+mnth[Feb]
+-39.2419
+mnth[March] -29.5357
+mnth[April]
+-4.6622
+mnth[May]
+26.4700
+mnth[June]
+21.7317
+mnth[July]
+-0.7626
+mnth[Aug]
+7.1560
+mnth[Sept]
+20.5912
+mnth[Oct]
+29.7472
+mnth[Nov]
+14.2229
+hr[0]
+-96.1420
+hr[1]
+-110.7213
+hr[2]
+-117.7212
+.....
+.......
+
+std err
+5.132
+4.085
+3.539
+3.155
+2.741
+2.851
+3.465
+3.908
+3.535
+3.046
+2.700
+2.860
+3.955
+3.966
+4.016
+.....
+
+t
+14.340
+-11.281
+-11.088
+-9.361
+-1.701
+9.285
+6.272
+-0.195
+2.024
+6.761
+11.019
+4.972
+-24.307
+-27.916
+-29.310
+......
+
+P>|t|
+0.000
+0.000
+0.000
+0.000
+0.089
+0.000
+0.000
+0.845
+0.043
+0.000
+0.000
+0.000
+0.000
+0.000
+0.000
+.....
+
+What is the difference between the two codings? In M2_lm, a coefficient estimate is reported for all but level 23 of hr and level Dec of mnth. Importantly,
+in M2_lm, the (unreported) coefficient estimate for the last level of mnth is
+not zero: instead, it equals the negative of the sum of the coefficient estimates for all of the other levels. Similarly, in M2_lm, the coefficient estimate
+for the last level of hr is the negative of the sum of the coefficient estimates
+for all of the other levels. This means that the coefficients of hr and mnth
+in M2_lm will always sum to zero, and can be interpreted as the difference
+from the mean level. For example, the coefficient for January of −46.087
+indicates that, holding all other variables constant, there are typically 46
+fewer riders in January relative to the yearly average.
+It is important to realize that the choice of coding really does not matter,
+provided that we interpret the model output correctly in light of the coding
+used. For example, we see that the predictions from the linear model are
+the same regardless of coding:
+In [69]: np.sum(( M_lm.fittedvalues - M2_lm.fittedvalues)**2)
+Out[69]: 1.53e-20
+
+The sum of squared differences is zero. We can also see this using the
+np.allclose() function:
+In [70]: np.allclose(M_lm.fittedvalues , M2_lm.fittedvalues)
+Out[70]: True
+
+To reproduce the left-hand side of Figure 4.13 we must first obtain the
+coefficient estimates associated with mnth. The coefficients for January
+through November can be obtained directly from the M2_lm object. The
+coefficient for December must be explicitly computed as the negative sum
+of all the other months. We first extract all the coefficients for month from
+the coefficients of M2_lm.
+
+np.allclose()
+
+4.7 Lab: Logistic Regression, LDA, QDA, and KNN
+
+191
+
+In [71]: coef_month = S2[S2.index.str.contains('mnth ')]['coef ']
+coef_month
+Out[71]: mnth[Jan]
+-46.0871
+mnth[Feb]
+-39.2419
+mnth[March]
+-29.5357
+mnth[April]
+-4.6622
+mnth[May]
+26.4700
+21.7317
+mnth[June]
+mnth[July]
+-0.7626
+mnth[Aug]
+7.1560
+mnth[Sept]
+20.5912
+mnth[Oct]
+29.7472
+mnth[Nov]
+14.2229
+Name: coef , dtype: float64
+
+Next, we append Dec as the negative of the sum of all other months.
+In [72]: months = Bike['mnth ']. dtype.categories
+coef_month = pd.concat ([
+coef_month ,
+pd.Series ([- coef_month.sum()],
+index =['mnth[Dec]'
+])
+])
+coef_month
+Out[72]: mnth[Jan]
+-46.0871
+mnth[Feb]
+-39.2419
+mnth[March]
+-29.5357
+mnth[April]
+-4.6622
+mnth[May]
+26.4700
+mnth[June]
+21.7317
+mnth[July]
+-0.7626
+mnth[Aug]
+7.1560
+mnth[Sept]
+20.5912
+mnth[Oct]
+29.7472
+mnth[Nov]
+14.2229
+mnth[Dec]
+0.3705
+Name: coef , dtype: float64
+
+Finally, to make the plot neater, we’ll just use the first letter of each month,
+which is the 6th entry of each of the labels in the index.
+In [73]: fig_month , ax_month = subplots(figsize =(8 ,8))
+x_month = np.arange(coef_month.shape [0])
+ax_month.plot(x_month , coef_month , marker='o', ms =10)
+ax_month.set_xticks(x_month)
+ax_month.set_xticklabels ([l[5] for l in coef_month.index], fontsize
+=20)
+ax_month.set_xlabel('Month ', fontsize =20)
+ax_month.set_ylabel('Coefficient ', fontsize =20);
+
+Reproducing the right-hand plot in Figure 4.13 follows a similar process.
+In [74]: coef_hr = S2[S2.index.str.contains('hr')]['coef ']
+coef_hr = coef_hr.reindex (['hr [{0}] '.format(h) for h in range (23) ])
+coef_hr = pd.concat ([ coef_hr ,
+
+192
+
+4. Classification
+pd.Series ([- coef_hr.sum()], index =['hr [23] '])
+])
+
+We now make the hour plot.
+In [75]: fig_hr , ax_hr = subplots(figsize =(8 ,8))
+x_hr = np.arange(coef_hr.shape [0])
+ax_hr.plot(x_hr , coef_hr , marker='o', ms =10)
+ax_hr.set_xticks(x_hr [::2])
+ax_hr.set_xticklabels (range (24) [::2] , fontsize =20)
+ax_hr.set_xlabel('Hour ', fontsize =20)
+ax_hr.set_ylabel('Coefficient ', fontsize =20);
+
+Poisson Regression
+Now we fit instead a Poisson regression model to the Bikeshare data. Very
+little changes, except that we now use the function sm.GLM() with the Poisson family specified:
+In [76]: M_pois = sm.GLM(Y, X2 , family=sm.families.Poisson ()).fit()
+
+We can plot the coefficients associated with mnth and hr, in order to
+reproduce Figure 4.15. We first complete these coefficients as before.
+In [77]: S_pois = summarize(M_pois)
+coef_month = S_pois[S_pois.index.str.contains('mnth ')]['coef ']
+coef_month = pd.concat ([ coef_month ,
+pd.Series ([- coef_month.sum()],
+index =['mnth[Dec]'])])
+coef_hr = S_pois[S_pois.index.str.contains('hr')]['coef ']
+coef_hr = pd.concat ([ coef_hr ,
+pd.Series ([- coef_hr.sum()],
+index =['hr [23] '])])
+
+The plotting is as before.
+In [78]: fig_pois , (ax_month , ax_hr) = subplots (1, 2, figsize =(16 ,8))
+ax_month.plot(x_month , coef_month , marker='o', ms =10)
+ax_month.set_xticks(x_month)
+ax_month.set_xticklabels ([l[5] for l in coef_month.index], fontsize
+=20)
+ax_month.set_xlabel('Month ', fontsize =20)
+ax_month.set_ylabel('Coefficient ', fontsize =20)
+ax_hr.plot(x_hr , coef_hr , marker='o', ms =10)
+ax_hr.set_xticklabels (range (24) [::2] , fontsize =20)
+ax_hr.set_xlabel('Hour ', fontsize =20)
+ax_hr.set_ylabel('Coefficient ', fontsize =20);
+
+We compare the fitted values of the two models. The fitted values are stored
+in the fittedvalues attribute returned by the fit() method for both the
+linear regression and the Poisson fits. The linear predictors are stored as
+the attribute lin_pred.
+In [79]: fig , ax = subplots(figsize =(8, 8))
+ax.scatter(M2_lm.fittedvalues ,
+M_pois.fittedvalues ,
+s=20)
+ax.set_xlabel('Linear Regression Fit', fontsize =20)
+
+4.8 Exercises
+
+193
+
+ax.set_ylabel('Poisson Regression Fit', fontsize =20)
+ax.axline ([0,0], c='black ', linewidth =3,
+linestyle='--', slope =1);
+
+The predictions from the Poisson regression model are correlated with
+those from the linear model; however, the former are non-negative. As a
+result the Poisson regression predictions tend to be larger than those from
+the linear model for either very low or very high levels of ridership.
+In this section, we fit Poisson regression models using the sm.GLM() function with the argument family=sm.families.Poisson(). Earlier in this lab
+we used the sm.GLM() function with family=sm.families.Binomial() to perform logistic regression. Other choices for the family argument can be used
+to fit other types of GLMs. For instance, family=sm.families.Gamma() fits
+a Gamma regression model.
+
+4.8
+
+Exercises
+
+Conceptual
+1. Using a little bit of algebra, prove that (4.2) is equivalent to (4.3). In
+other words, the logistic function representation and logit representation for the logistic regression model are equivalent.
+2. It was stated in the text that classifying an observation to the class
+for which (4.17) is largest is equivalent to classifying an observation
+to the class for which (4.18) is largest. Prove that this is the case. In
+other words, under the assumption that the observations in the kth
+class are drawn from a N (µk , σ 2 ) distribution, the Bayes classifier
+assigns an observation to the class for which the discriminant function
+is maximized.
+3. This problem relates to the QDA model, in which the observations
+within each class are drawn from a normal distribution with a classspecific mean vector and a class specific covariance matrix. We consider the simple case where p = 1; i.e. there is only one feature.
+Suppose that we have K classes, and that if an observation belongs
+to the kth class then X comes from a one-dimensional normal distribution, X ∼ N (µk , σk2 ). Recall that the density function for the
+one-dimensional normal distribution is given in (4.16). Prove that in
+this case, the Bayes classifier is not linear. Argue that it is in fact
+quadratic.
+Hint: For this problem, you should follow the arguments laid out in
+2
+Section 4.4.1, but without making the assumption that σ12 = · · · = σK
+.
+
+4. When the number of features p is large, there tends to be a deterioration in the performance of KNN and other local approaches that
+perform prediction using only observations that are near the test observation for which a prediction must be made. This phenomenon is
+known as the curse of dimensionality, and it ties into the fact that
+curse of dinon-parametric approaches often perform poorly when p is large. We mensionality
+will now investigate this curse.
+
+194
+
+4. Classification
+
+(a) Suppose that we have a set of observations, each with measurements on p = 1 feature, X. We assume that X is uniformly
+(evenly) distributed on [0, 1]. Associated with each observation
+is a response value. Suppose that we wish to predict a test observation’s response using only observations that are within 10 % of
+the range of X closest to that test observation. For instance, in
+order to predict the response for a test observation with X = 0.6,
+we will use observations in the range [0.55, 0.65]. On average,
+what fraction of the available observations will we use to make
+the prediction?
+(b) Now suppose that we have a set of observations, each with
+measurements on p = 2 features, X1 and X2 . We assume that
+(X1 , X2 ) are uniformly distributed on [0, 1] × [0, 1]. We wish to
+predict a test observation’s response using only observations that
+are within 10 % of the range of X1 and within 10 % of the range
+of X2 closest to that test observation. For instance, in order to
+predict the response for a test observation with X1 = 0.6 and
+X2 = 0.35, we will use observations in the range [0.55, 0.65] for
+X1 and in the range [0.3, 0.4] for X2 . On average, what fraction
+of the available observations will we use to make the prediction?
+(c) Now suppose that we have a set of observations on p = 100 features. Again the observations are uniformly distributed on each
+feature, and again each feature ranges in value from 0 to 1. We
+wish to predict a test observation’s response using observations
+within the 10 % of each feature’s range that is closest to that test
+observation. What fraction of the available observations will we
+use to make the prediction?
+(d) Using your answers to parts (a)–(c), argue that a drawback of
+KNN when p is large is that there are very few training observations “near” any given test observation.
+(e) Now suppose that we wish to make a prediction for a test observation by creating a p-dimensional hypercube centered around
+the test observation that contains, on average, 10 % of the training observations. For p = 1, 2, and 100, what is the length of each
+side of the hypercube? Comment on your answer.
+Note: A hypercube is a generalization of a cube to an arbitrary
+number of dimensions. When p = 1, a hypercube is simply a line
+segment, when p = 2 it is a square, and when p = 100 it is a
+100-dimensional cube.
+5. We now examine the differences between LDA and QDA.
+(a) If the Bayes decision boundary is linear, do we expect LDA or
+QDA to perform better on the training set? On the test set?
+(b) If the Bayes decision boundary is non-linear, do we expect LDA
+or QDA to perform better on the training set? On the test set?
+
+4.8 Exercises
+
+195
+
+(c) In general, as the sample size n increases, do we expect the test
+prediction accuracy of QDA relative to LDA to improve, decline,
+or be unchanged? Why?
+(d) True or False: Even if the Bayes decision boundary for a given
+problem is linear, we will probably achieve a superior test error rate using QDA rather than LDA because QDA is flexible
+enough to model a linear decision boundary. Justify your answer.
+6. Suppose we collect data for a group of students in a statistics class
+with variables X1 = hours studied, X2 = undergrad GPA, and Y =
+receive an A. We fit a logistic regression and produce estimated
+coefficient, β̂0 = −6, β̂1 = 0.05, β̂2 = 1.
+(a) Estimate the probability that a student who studies for 40 h and
+has an undergrad GPA of 3.5 gets an A in the class.
+(b) How many hours would the student in part (a) need to study to
+have a 50 % chance of getting an A in the class?
+7. Suppose that we wish to predict whether a given stock will issue a
+dividend this year (“Yes” or “No”) based on X, last year’s percent
+profit. We examine a large number of companies and discover that the
+mean value of X for companies that issued a dividend was X̄ = 10,
+while the mean for those that didn’t was X̄ = 0. In addition, the
+va

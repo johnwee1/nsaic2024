@@ -1,0 +1,517 @@
+tic Regression
+
+When SVMs were first introduced in the mid-1990s, they made quite a
+splash in the statistical and machine learning communities. This was due
+in part to their good performance, good marketing, and also to the fact
+that the underlying approach seemed both novel and mysterious. The idea
+of finding a hyperplane that separates the data as well as possible, while allowing some violations to this separation, seemed distinctly different from
+classical approaches for classification, such as logistic regression and linear discriminant analysis. Moreover, the idea of using a kernel to expand
+the feature space in order to accommodate non-linear class boundaries appeared to be a unique and valuable characteristic.
+However, since that time, deep connections between SVMs and other
+more classical statistical methods have emerged. It turns out that one can
+rewrite the criterion (9.12)–(9.15) for fitting the support vector classifier
+f (X) = β0 + β1 X1 + · · · + βp Xp as
+
+
+p
+n
+0
+
+0
+minimize
+max [0, 1 − yi f (xi )] + λ
+βj2 ,
+(9.25)
+
+β0 ,β1 ,...,βp 
+i=1
+
+j=1
+
+where λ is a nonnegative tuning parameter. When λ is large then β1 , . . . , βp
+are small, more violations to the margin are tolerated, and a low-variance
+but high-bias classifier will result. When λ is small then few violations
+to the margin will occur; this amounts to a high-variance but low-bias
+
+9.5 Relationship to Logistic Regression
+
+385
+
+classifier. Thus, a small value
+)p of λ in (9.25) amounts to a small value of C
+in (9.15). Note that the λ j=1 βj2 term in (9.25) is the ridge penalty term
+from Section 6.2.1, and plays a similar role in controlling the bias-variance
+trade-off for the support vector classifier.
+Now (9.25) takes the “Loss + Penalty” form that we have seen repeatedly
+throughout this book:
+minimize {L(X, y, β) + λP (β)} .
+
+β0 ,β1 ,...,βp
+
+(9.26)
+
+In (9.26), L(X, y, β) is some loss function quantifying the extent to which
+the model, parametrized by β, fits the data (X, y), and P (β) is a penalty
+function on the parameter vector β whose effect is controlled by a nonnegative tuning parameter λ. For instance, ridge regression and the lasso both
+take this form with
+
+2
+p
+n
+0
+0
+y i − β 0 −
+L(X, y, β) =
+xij βj 
+i=1
+
+j=1
+
+)p
+)p
+and with P (β) = j=1 βj2 for ridge regression and P (β) = j=1 |βj | for
+the lasso. In the case of (9.25) the loss function instead takes the form
+L(X, y, β) =
+
+n
+0
+i=1
+
+max [0, 1 − yi (β0 + β1 xi1 + · · · + βp xip )] .
+
+This is known as hinge loss, and is depicted in Figure 9.12. However, it
+hinge loss
+turns out that the hinge loss function is closely related to the loss function
+used in logistic regression, also shown in Figure 9.12.
+An interesting characteristic of the support vector classifier is that only
+support vectors play a role in the classifier obtained; observations on the
+correct side of the margin do not affect it. This is due to the fact that the
+loss function shown in Figure 9.12 is exactly zero for observations for which
+yi (β0 + β1 xi1 + · · · + βp xip ) ≥ 1; these correspond to observations that are
+on the correct side of the margin.3 In contrast, the loss function for logistic
+regression shown in Figure 9.12 is not exactly zero anywhere. But it is very
+small for observations that are far from the decision boundary. Due to the
+similarities between their loss functions, logistic regression and the support
+vector classifier often give very similar results. When the classes are well
+separated, SVMs tend to behave better than logistic regression; in more
+overlapping regimes, logistic regression is often preferred.
+When the support vector classifier and SVM were first introduced, it was
+thought that the tuning parameter C in (9.15) was an unimportant “nuisance” parameter that could be set to some default value, like 1. However,
+the “Loss + Penalty” formulation (9.25) for the support vector classifier
+indicates that this is not the case. The choice of tuning parameter is very
+important and determines the extent to which the model underfits or overfits the data, as illustrated, for example, in Figure 9.7.
+3 With this hinge-loss + penalty representation, the margin corresponds to the value
+! 2
+one, and the width of the margin is determined by
+βj .
+
+9. Support Vector Machines
+8
+
+386
+
+4
+0
+
+2
+
+Loss
+
+6
+
+SVM Loss
+Logistic Regression Loss
+
+−6
+
+−4
+
+−2
+
+0
+
+2
+
+yi(β0 + β1xi1 + . . . + βpxip)
+
+FIGURE 9.12. The SVM and logistic regression loss functions are compared,
+as a function of yi (β0 + β1 xi1 + · · · + βp xip ). When yi (β0 + β1 xi1 + · · · + βp xip ) is
+greater than 1, then the SVM loss is zero, since this corresponds to an observation
+that is on the correct side of the margin. Overall, the two loss functions have quite
+similar behavior.
+
+We have established that the support vector classifier is closely related
+to logistic regression and other preexisting statistical methods. Is the SVM
+unique in its use of kernels to enlarge the feature space to accommodate
+non-linear class boundaries? The answer to this question is “no”. We could
+just as well perform logistic regression or many of the other classification
+methods seen in this book using non-linear kernels; this is closely related
+to some of the non-linear approaches seen in Chapter 7. However, for historical reasons, the use of non-linear kernels is much more widespread in
+the context of SVMs than in the context of logistic regression or other
+methods.
+Though we have not addressed it here, there is in fact an extension
+of the SVM for regression (i.e. for a quantitative rather than a qualitative response), called support vector regression. In Chapter 3, we saw that support
+least squares regression seeks coefficients β0 , β1 , . . . , βp such that the sum vector
+of squared residuals is as small as possible. (Recall from Chapter 3 that regression
+residuals are defined as yi − β0 − β1 xi1 − · · · − βp xip .) Support vector
+regression instead seeks coefficients that minimize a different type of loss,
+where only residuals larger in absolute value than some positive constant
+contribute to the loss function. This is an extension of the margin used in
+support vector classifiers to the regression setting.
+
+9.6 Lab: Support Vector Machines
+
+9.6
+
+387
+
+Lab: Support Vector Machines
+
+In this lab, we use the sklearn.svm library to demonstrate the support
+vector classifier and the support vector machine.
+We import some of our usual libraries.
+In [1]: import numpy as np
+from matplotlib.pyplot import subplots , cm
+import sklearn.model_selection as skm
+from ISLP import load_data , confusion_table
+
+We also collect the new imports needed for this lab.
+In [2]: from sklearn.svm import SVC
+from ISLP.svm import plot as plot_svm
+from sklearn.metrics import RocCurveDisplay
+
+We will use the function RocCurveDisplay.from_estimator() to produce RocCurve
+several ROC plots, using a shorthand roc_curve.
+Display.from_
+In [3]: roc_curve = RocCurveDisplay.from_estimator # shorthand
+
+estimator()
+
+9.6.1 Support Vector Classifier
+We now use the SupportVectorClassifier() function (abbreviated SVC()) SupportVector
+from sklearn to fit the support vector classifier for a given value of the Classifier()
+parameter C. The C argument allows us to specify the cost of a violation
+to the margin. When the cost argument is small, then the margins will be
+wide and many support vectors will be on the margin or will violate the
+margin. When the C argument is large, then the margins will be narrow and
+there will be few support vectors on the margin or violating the margin.
+Here we demonstrate the use of SVC() on a two-dimensional example, so
+that we can plot the resulting decision boundary. We begin by generating
+the observations, which belong to two classes, and checking whether the
+classes are linearly separable.
+In [4]: rng = np.random.default_rng (1)
+X = rng.standard_normal ((50, 2))
+y = np.array ([ -1]*25+[1]*25)
+X[y==1] += 1
+fig , ax = subplots(figsize =(8 ,8))
+ax.scatter(X[:,0],
+X[:,1],
+c=y,
+cmap=cm.coolwarm);
+
+They are not. We now fit the classifier.
+In [5]: svm_linear = SVC(C=10, kernel='linear ')
+svm_linear.fit(X, y)
+Out[5]: SVC(C=10, kernel='linear ')
+
+The support vector classifier with two features can be visualized by plotting values of its decision function. We have included a function for this in
+decision
+the ISLP package (inspired by a similar example in the sklearn docs).
+function
+
+388
+
+9. Support Vector Machines
+
+In [6]: fig , ax = subplots(figsize =(8 ,8))
+plot_svm(X,
+y,
+svm_linear ,
+ax=ax)
+
+The decision boundary between the two classes is linear (because we
+used the argument kernel='linear'). The support vectors are marked with
++ and the remaining observations are plotted as circles.
+What if we instead used a smaller value of the cost parameter?
+In [7]: svm_linear_small = SVC(C=0.1, kernel='linear ')
+svm_linear_small.fit(X, y)
+fig , ax = subplots(figsize =(8 ,8))
+plot_svm(X,
+y,
+svm_linear_small ,
+ax=ax)
+
+With a smaller value of the cost parameter, we obtain a larger number of
+support vectors, because the margin is now wider. For linear kernels, we
+can extract the coefficients of the linear decision boundary as follows:
+In [8]: svm_linear.coef_
+Out[8]: array ([[1.173
+
+, 0.7734]])
+
+Since the support vector machine is an estimator in sklearn, we can use
+the usual machinery to tune it.
+In [9]: kfold = skm.KFold(5,
+random_state =0,
+shuffle=True)
+grid = skm.GridSearchCV(svm_linear ,
+{'C':[0.001 ,0.01 ,0.1 ,1 ,5 ,10 ,100]} ,
+refit=True ,
+cv=kfold ,
+scoring='accuracy ')
+grid.fit(X, y)
+grid.best_params_
+Out[9]: {'C': 1}
+
+We can easily access the cross-validation errors for each of these models in
+
+grid.cv_results_. This prints out a lot of detail, so we extract the accuracy
+
+results only.
+
+In [10]: grid.cv_results_ [('mean_test_score ')]
+Out[10]: array ([0.46 , 0.46, 0.72, 0.74, 0.74, 0.74, 0.74])
+
+We see that C=1 results in the highest cross-validation accuracy of 0.74,
+though the accuracy is the same for several values of C. The classifier
+grid.best_estimator_ can be used to predict the class label on a set of
+test observations. Let’s generate a test data set.
+
+9.6 Lab: Support Vector Machines
+
+389
+
+In [11]: X_test = rng.standard_normal ((20, 2))
+y_test = np.array ([ -1]*10+[1]*10)
+X_test[y_test ==1] += 1
+
+Now we predict the class labels of these test observations. Here we use the
+best model selected by cross-validation in order to make the predictions.
+In [12]: best_ = grid.best_estimator_
+y_test_hat = best_.predict(X_test)
+confusion_table(y_test_hat , y_test)
+Out[12]:
+
+Truth
+Predicted
+-1
+1
+
+-1
+
+1
+
+8
+2
+
+4
+6
+
+Thus, with this value of C, 70% of the test observations are correctly classified. What if we had instead used C=0.001?
+In [13]: svm_ = SVC(C=0.001 ,
+kernel='linear ').fit(X, y)
+y_test_hat = svm_.predict(X_test)
+confusion_table(y_test_hat , y_test)
+Out[13]:
+
+Truth
+Predicted
+-1
+1
+
+-1
+
+1
+
+2
+8
+
+0
+10
+
+In this case 60% of test observations are correctly classified.
+We now consider a situation in which the two classes are linearly separable. Then we can find an optimal separating hyperplane using the SVC()
+estimator. We first further separate the two classes in our simulated data
+so that they are linearly separable:
+In [14]: X[y==1] += 1.9;
+fig , ax = subplots(figsize =(8 ,8))
+ax.scatter(X[:,0], X[:,1], c=y, cmap=cm.coolwarm);
+
+Now the observations are just barely linearly separable.
+In [15]: svm_ = SVC(C=1e5 , kernel='linear ').fit(X, y)
+y_hat = svm_.predict(X)
+confusion_table(y_hat , y)
+Out[15]:
+
+Truth
+Predicted
+-1
+1
+
+-1
+
+1
+
+25
+0
+
+0
+25
+
+We fit the support vector classifier and plot the resulting hyperplane, using
+a very large value of C so that no observations are misclassified.
+In [16]: fig , ax = subplots(figsize =(8 ,8))
+plot_svm(X,
+y,
+svm_ ,
+ax=ax)
+
+390
+
+9. Support Vector Machines
+
+Indeed no training errors were made and only three support vectors were
+used. In fact, the large value of C also means that these three support points
+are on the margin, and define it. One may wonder how good the classifier
+could be on test data that depends on only three data points! We now try
+a smaller value of C.
+In [17]: svm_ = SVC(C=0.1, kernel='linear ').fit(X, y)
+y_hat = svm_.predict(X)
+confusion_table(y_hat , y)
+Out[17]:
+
+Truth
+Predicted
+-1
+1
+
+-1
+
+1
+
+25
+0
+
+0
+25
+
+Using C=0.1, we again do not misclassify any training observations, but we
+also obtain a much wider margin and make use of twelve support vectors.
+These jointly define the orientation of the decision boundary, and since
+there are more of them, it is more stable. It seems possible that this model
+will perform better on test data than the model with C=1e5 (and indeed, a
+simple experiment with a large test set would bear this out).
+In [18]: fig , ax = subplots(figsize =(8 ,8))
+plot_svm(X,
+y,
+svm_ ,
+ax=ax)
+
+9.6.2
+
+Support Vector Machine
+
+In order to fit an SVM using a non-linear kernel, we once again use the
+SVC() estimator. However, now we use a different value of the parameter
+kernel. To fit an SVM with a polynomial kernel we use kernel="poly", and
+to fit an SVM with a radial kernel we use kernel="rbf". In the former case
+we also use the degree argument to specify a degree for the polynomial
+kernel (this is d in (9.22)), and in the latter case we use gamma to specify a
+value of γ for the radial basis kernel (9.24).
+We first generate some data with a non-linear class boundary, as follows:
+In [19]: X = rng.standard_normal ((200 , 2))
+X[:100] += 2
+X[100:150] -= 2
+y = np.array ([1]*150+[2]*50)
+
+Plotting the data makes it clear that the class boundary is indeed nonlinear.
+In [20]: fig , ax = subplots(figsize =(8 ,8))
+ax.scatter(X[:,0],
+X[:,1],
+c=y,
+cmap=cm.coolwarm)
+Out[20]: <matplotlib.collections.PathCollection at 0x7faa9ba52eb0 >
+
+9.6 Lab: Support Vector Machines
+
+391
+
+The data is randomly split into training and testing groups. We then fit
+the training data using the SVC() estimator with a radial kernel and γ = 1:
+In [21]: (X_train ,
+X_test ,
+y_train ,
+y_test) = skm.train_test_split(X,
+y,
+test_size =0.5,
+random_state =0)
+svm_rbf = SVC(kernel="rbf", gamma=1, C=1)
+svm_rbf.fit(X_train , y_train)
+
+The plot shows that the resulting SVM has a decidedly non-linear boundary.
+In [22]: fig , ax = subplots(figsize =(8 ,8))
+plot_svm(X_train ,
+y_train ,
+svm_rbf ,
+ax=ax)
+
+We can see from the figure that there are a fair number of training errors
+in this SVM fit. If we increase the value of C, we can reduce the number
+of training errors. However, this comes at the price of a more irregular
+decision boundary that seems to be at risk of overfitting the data.
+In [23]: svm_rbf = SVC(kernel="rbf", gamma=1, C=1e5)
+svm_rbf.fit(X_train , y_train)
+fig , ax = subplots(figsize =(8 ,8))
+plot_svm(X_train ,
+y_train ,
+svm_rbf ,
+ax=ax)
+
+We can perform cross-validation using skm.GridSearchCV() to select the
+best choice of γ and C for an SVM with a radial kernel:
+In [24]: kfold = skm.KFold(5,
+random_state =0,
+shuffle=True)
+grid = skm.GridSearchCV(svm_rbf ,
+{'C':[0.1 ,1 ,10 ,100 ,1000] ,
+'gamma ':[0.5 ,1,2 ,3,4]},
+refit=True ,
+cv=kfold ,
+scoring='accuracy ');
+grid.fit(X_train , y_train)
+grid.best_params_
+Out[24]: {'C': 100, 'gamma ': 1}
+
+The best choice of parameters under five-fold CV is achieved at C=1 and
+gamma=0.5, though several other values also achieve the same value.
+In [25]: best_svm = grid.best_estimator_
+fig , ax = subplots(figsize =(8 ,8))
+plot_svm(X_train ,
+
+392
+
+9. Support Vector Machines
+y_train ,
+best_svm ,
+ax=ax)
+
+y_hat_test = best_svm.predict(X_test)
+confusion_table(y_hat_test , y_test)
+Out[25]:
+
+Truth
+Predicted
+1
+2
+
+1
+
+2
+
+69
+6
+
+6
+19
+
+With these parameters, 12

@@ -1,0 +1,415 @@
+e expected test MSE at x0 ,
+expected
+and refers to the average test MSE that we would obtain if we repeatedly test MSE
+estimated f using a large number of training sets, and tested each at x0 . The
+1
+22
+overall expected test MSE can be computed by averaging E y0 − fˆ(x0 )
+over all possible values of x0 in the test set.
+Equation 2.7 tells us that in order to minimize the expected test error,
+we need to select a statistical learning method that simultaneously achieves
+low variance and low bias. Note that variance is inherently a nonnegative
+quantity, and squared bias is also nonnegative. Hence, we see that the
+expected test MSE can never lie below Var("), the irreducible error from
+(2.3).
+What do we mean by the variance and bias of a statistical learning
+method? Variance refers to the amount by which fˆ would change if we
+estimated it using a different training data set. Since the training data
+are used to fit the statistical learning method, different training data sets
+will result in a different fˆ. But ideally the estimate for f should not vary
+too much between training sets. However, if a method has high variance
+then small changes in the training data can result in large changes in fˆ. In
+general, more flexible statistical methods have higher variance. Consider the
+green and orange curves in Figure 2.9. The flexible green curve is following
+the observations very closely. It has high variance because changing any
+one of these data points may cause the estimate fˆ to change considerably.
+
+MSE
+Bias
+Var
+
+15
+
+2.0
+
+20
+
+2.5
+
+33
+
+0.5
+2
+
+5
+
+10
+Flexibility
+
+20
+
+0
+
+0.0
+
+0.0
+
+0.5
+
+5
+
+1.0
+
+1.0
+
+10
+
+1.5
+
+1.5
+
+2.0
+
+2.5
+
+2.2 Assessing Model Accuracy
+
+2
+
+5
+
+10
+Flexibility
+
+20
+
+2
+
+5
+
+10
+
+20
+
+Flexibility
+
+FIGURE 2.12. Squared bias (blue curve), variance (orange curve), Var(!)
+(dashed line), and test MSE (red curve) for the three data sets in Figures 2.9–2.11.
+The vertical dotted line indicates the flexibility level corresponding to the smallest
+test MSE.
+
+In contrast, the orange least squares line is relatively inflexible and has low
+variance, because moving any single observation will likely cause only a
+small shift in the position of the line.
+On the other hand, bias refers to the error that is introduced by approximating a real-life problem, which may be extremely complicated, by a much
+simpler model. For example, linear regression assumes that there is a linear
+relationship between Y and X1 , X2 , . . . , Xp . It is unlikely that any real-life
+problem truly has such a simple linear relationship, and so performing linear regression will undoubtedly result in some bias in the estimate of f . In
+Figure 2.11, the true f is substantially non-linear, so no matter how many
+training observations we are given, it will not be possible to produce an
+accurate estimate using linear regression. In other words, linear regression
+results in high bias in this example. However, in Figure 2.10 the true f
+is very close to linear, and so given enough data, it should be possible for
+linear regression to produce an accurate estimate. Generally, more flexible
+methods result in less bias.
+As a general rule, as we use more flexible methods, the variance will
+increase and the bias will decrease. The relative rate of change of these
+two quantities determines whether the test MSE increases or decreases. As
+we increase the flexibility of a class of methods, the bias tends to initially
+decrease faster than the variance increases. Consequently, the expected
+test MSE declines. However, at some point increasing flexibility has little
+impact on the bias but starts to significantly increase the variance. When
+this happens the test MSE increases. Note that we observed this pattern
+of decreasing test MSE followed by increasing test MSE in the right-hand
+panels of Figures 2.9–2.11.
+The three plots in Figure 2.12 illustrate Equation 2.7 for the examples in
+Figures 2.9–2.11. In each case the blue solid curve represents the squared
+bias, for different levels of flexibility, while the orange curve corresponds to
+the variance. The horizontal dashed line represents Var("), the irreducible
+error. Finally, the red curve, corresponding to the test set MSE, is the sum
+
+34
+
+2. Statistical Learning
+
+of these three quantities. In all three cases, the variance increases and the
+bias decreases as the method’s flexibility increases. However, the flexibility
+level corresponding to the optimal test MSE differs considerably among the
+three data sets, because the squared bias and variance change at different
+rates in each of the data sets. In the left-hand panel of Figure 2.12, the
+bias initially decreases rapidly, resulting in an initial sharp decrease in the
+expected test MSE. On the other hand, in the center panel of Figure 2.12
+the true f is close to linear, so there is only a small decrease in bias as flexibility increases, and the test MSE only declines slightly before increasing
+rapidly as the variance increases. Finally, in the right-hand panel of Figure 2.12, as flexibility increases, there is a dramatic decline in bias because
+the true f is very non-linear. There is also very little increase in variance
+as flexibility increases. Consequently, the test MSE declines substantially
+before experiencing a small increase as model flexibility increases.
+The relationship between bias, variance, and test set MSE given in Equation 2.7 and displayed in Figure 2.12 is referred to as the bias-variance
+trade-off. Good test set performance of a statistical learning method rebias-variance
+quires low variance as well as low squared bias. This is referred to as a trade-off
+trade-off because it is easy to obtain a method with extremely low bias but
+high variance (for instance, by drawing a curve that passes through every
+single training observation) or a method with very low variance but high
+bias (by fitting a horizontal line to the data). The challenge lies in finding
+a method for which both the variance and the squared bias are low. This
+trade-off is one of the most important recurring themes in this book.
+In a real-life situation in which f is unobserved, it is generally not possible to explicitly compute the test MSE, bias, or variance for a statistical
+learning method. Nevertheless, one should always keep the bias-variance
+trade-off in mind. In this book we explore methods that are extremely
+flexible and hence can essentially eliminate bias. However, this does not
+guarantee that they will outperform a much simpler method such as linear
+regression. To take an extreme example, suppose that the true f is linear.
+In this situation linear regression will have no bias, making it very hard
+for a more flexible method to compete. In contrast, if the true f is highly
+non-linear and we have an ample number of training observations, then
+we may do better using a highly flexible approach, as in Figure 2.11. In
+Chapter 5 we discuss cross-validation, which is a way to estimate the test
+MSE using the training data.
+
+2.2.3
+
+The Classification Setting
+
+Thus far, our discussion of model accuracy has been focused on the regression setting. But many of the concepts that we have encountered, such
+as the bias-variance trade-off, transfer over to the classification setting
+with only some modifications due to the fact that yi is no longer quantitative. Suppose that we seek to estimate f on the basis of training observations {(x1 , y1 ), . . . , (xn , yn )}, where now y1 , . . . , yn are qualitative. The
+most common approach for quantifying the accuracy of our estimate fˆ is
+the training error rate, the proportion of mistakes that are made if we apply error rate
+
+2.2 Assessing Model Accuracy
+
+35
+
+our estimate fˆ to the training observations:
+n
+
+10
+I(yi =
+% ŷi ).
+n i=1
+
+(2.8)
+
+Here ŷi is the predicted class label for the ith observation using fˆ. And
+I(yi %= ŷi ) is an indicator variable that equals 1 if yi %= ŷi and zero if yi = ŷi .
+indicator
+If I(yi %= ŷi ) = 0 then the ith observation was classified correctly by our variable
+classification method; otherwise it was misclassified. Hence Equation 2.8
+computes the fraction of incorrect classifications.
+Equation 2.8 is referred to as the training error rate because it is comtraining
+puted based on the data that was used to train our classifier. As in the error
+regression setting, we are most interested in the error rates that result from
+applying our classifier to test observations that were not used in training.
+The test error rate associated with a set of test observations of the form test error
+(x0 , y0 ) is given by
+Ave (I(y0 =
+% ŷ0 )) ,
+(2.9)
+where ŷ0 is the predicted class label that results from applying the classifier
+to the test observation with predictor x0 . A good classifier is one for which
+the test error (2.9) is smallest.
+The Bayes Classifier
+It is possible to show (though the proof is outside of the scope of this
+book) that the test error rate given in (2.9) is minimized, on average, by a
+very simple classifier that assigns each observation to the most likely class,
+given its predictor values. In other words, we should simply assign a test
+observation with predictor vector x0 to the class j for which
+Pr(Y = j|X = x0 )
+
+(2.10)
+
+is largest. Note that (2.10) is a conditional probability: it is the probability
+conditional
+that Y = j, given the observed predictor vector x0 . This very simple clas- probability
+sifier is called the Bayes classifier. In a two-class problem where there are
+Bayes
+only two possible response values, say class 1 or class 2, the Bayes classifier classifier
+corresponds to predicting class one if Pr(Y = 1|X = x0 ) > 0.5, and class
+two otherwise.
+Figure 2.13 provides an example using a simulated data set in a twodimensional space consisting of predictors X1 and X2 . The orange and
+blue circles correspond to training observations that belong to two different
+classes. For each value of X1 and X2 , there is a different probability of the
+response being orange or blue. Since this is simulated data, we know how
+the data were generated and we can calculate the conditional probabilities
+for each value of X1 and X2 . The orange shaded region reflects the set of
+points for which Pr(Y = orange|X) is greater than 50 %, while the blue
+shaded region indicates the set of points for which the probability is below
+50 %. The purple dashed line represents the points where the probability
+is exactly 50 %. This is called the Bayes decision boundary. The Bayes
+Bayes
+classifier’s prediction is determined by the Bayes decision boundary; an decision
+observation that falls on the orange side of the boundary will be assigned boundary
+
+36
+
+2. Statistical Learning
+
+oo o
+o
+o
+o
+o
+oo oo o
+o
+o
+oo oo ooo
+o
+oo ooo o
+o
+oo
+oo o o
+o
+o ooo oo
+o
+oo
+oo
+o
+o
+o
+o
+o
+ooo o o o o o
+o
+o
+o
+o o
+o oo o
+o o
+o o o
+o o
+o oo
+o o
+o
+o o oooo o
+ooo o o o o
+o
+oo
+o
+o
+oo o o o ooooo o o
+o o
+o
+oo o o
+oo o
+o
+o
+o
+o
+o
+o o o
+o oo
+o o o oo o ooo o
+o
+o
+oo o
+o ooooo oooo
+oo
+o
+o oo o o
+o
+o o
+oo oo o
+o
+o
+ooo
+o
+o
+o ooo
+o
+o
+o
+oo o
+o
+o
+o o
+
+X2
+
+oo
+
+X1
+
+FIGURE 2.13. A simulated data set consisting of 100 observations in each of
+two groups, indicated in blue and in orange. The purple dashed line represents
+the Bayes decision boundary. The orange background grid indicates the region
+in which a test observation will be assigned to the orange class, and the blue
+background grid indicates the region in which a test observation will be assigned
+to the blue class.
+
+to the orange class, and similarly an observation on the blue side of the
+boundary will be assigned to the blue class.
+The Bayes classifier produces the lowest possible test error rate, called
+the Bayes error rate. Since the Bayes classifier will always choose the class
+Bayes error
+for which (2.10) is largest, the error rate will be 1−maxj Pr(Y = j|X = x0 ) rate
+at X = x0 . In general, the overall Bayes error rate is given by
+*
++
+1 − E max Pr(Y = j|X) ,
+(2.11)
+j
+
+where the expectation averages the probability over all possible values of
+X. For our simulated data, the Bayes error rate is 0.133. It is greater than
+zero, because the classes overlap in the true population, which implies that
+maxj Pr(Y = j|X = x0 ) < 1 for some values of x0 . The Bayes error rate is
+analogous to the irreducible error, discussed earlier.
+K-Nearest Neighbors
+In theory we would always like to predict qualitative responses using the
+Bayes classifier. But for real data, we do not know the conditional distribution of Y given X, and so computing the Bayes classifier is impossible. Therefore, the Bayes classifier serves as an unattainable gold standard
+against which to compare other methods. Many approaches attempt to
+estimate the conditional distribution of Y given X, and then classify a
+given observation to the class with highest estimated probability. One such
+method is the K-nearest neighbors (KNN) classifier. Given a positive in-
+
+K-nearest
+neighbors
+
+2.2 Assessing Model Accuracy
+
+37
+
+teger K and a test observation x0 , the KNN classifier first identifies the
+K points in the training data that are closest to x0 , represented by N0 .
+It then estimates the conditional probability for class j as the fraction of
+points in N0 whose response values equal j:
+Pr(Y = j|X = x0 ) =
+
+1 0
+I(yi = j).
+K
+
+(2.12)
+
+i∈N0
+
+Finally, KNN classifies the test observation x0 to the class with the largest
+probability from (2.12).
+Figure 2.14 provides an illustrative example of the KNN approach. In
+the left-hand panel, we have plotted a small training data set consisting of
+six blue and six orange observations. Our goal is to make a prediction for
+the point labeled by the black cross. Suppose that we choose K = 3. Then
+KNN will first identify the three observations that are closest to the cross.
+This neighborhood is shown as a circle. It consists of two blue points and
+one orange point, resulting in estimated probabilities of 2/3 for the blue
+class and 1/3 for the orange class. Hence KNN will predict that the black
+cross belongs to the blue class. In the right-hand panel of Figure 2.14 we
+have applied the KNN approach with K = 3 at all of the possible values for
+X1 and X2 , and have drawn in the corresponding KNN decision boundary.
+Despite the fact that it is a very simple approach, KNN can often produce classifiers that are surprisingly close to the optimal Bayes classifier.
+Figure 2.15 displays the KNN decision boundary, using K = 10, when applied to the larger simulated data set from Figure 2.13. Notice that even
+though the true distribution is not known by the KNN classifier, the KNN
+decision boundary is very close to that of the Bayes classifier. The test error
+rate using KNN is 0.1363, which is close to the Bayes error rate of 0.1304.
+The choice of K has a drastic effect on the KNN classifier obtained.
+Figure 2.16 displays two KNN fits to the simulated data from Figure 2.13,
+using K = 1 and K = 100. When K = 1, the decision boundary is overly
+flexible and finds patterns in the data that don’t correspond to the Bayes
+decision boundary. This corresponds to a classifier that has low bias but
+very high variance. As K grows, the method becomes less flexible and
+produces a decision boundary that is close to linear. This corresponds to
+a low-variance but high-bias classifier. On this simulated data set, neither
+K = 1 nor K = 100 give good predictions: they have test error rates of
+0.1695 and 0.1925, respectively.
+Just as in the regression setting, there is not a strong relationship between the training error rate and the test error rate. With K = 1, the
+KNN training error rate is 0, bu

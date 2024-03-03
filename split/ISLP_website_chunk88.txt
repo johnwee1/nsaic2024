@@ -1,0 +1,422 @@
+ in order to test the null hypothesis that the jth fund
+manager’s mean return equals zero, H0,j : µj = 0.
+In [9]: Fund = load_data('Fund ')
+fund_mini = Fund.iloc [: ,:5]
+fund_mini_pvals = np.empty (5)
+for i in range (5):
+
+586
+
+13. Multiple Testing
+
+fund_mini_pvals [i] = ttest_1samp(fund_mini.iloc[:,i], 0). pvalue
+fund_mini_pvals
+Out[9]: array ([0.006 , 0.918 , 0.012 , 0.601 , 0.756])
+
+The p-values are low for Managers One and Three, and high for the other
+three managers. However, we cannot simply reject H0,1 and H0,3 , since
+this would fail to account for the multiple testing that we have performed.
+Instead, we will conduct Bonferroni’s method and Holm’s method to control
+the FWER.
+To do this, we use the multipletests() function from the statsmodels multiplemodule (abbreviated to mult_test()). Given the p-values, for methods like tests()
+Holm and Bonferroni the function outputs adjusted p-values, which can be
+adjusted
+thought of as a new set of p-values that have been corrected for multiple p-values
+testing. If the adjusted p-value for a given hypothesis is less than or equal
+to α, then that hypothesis can be rejected while maintaining a FWER of
+no more than α. In other words, for such methods, the adjusted p-values
+resulting from the multipletests() function can simply be compared to
+the desired FWER in order to determine whether or not to reject each
+hypothesis. We will later see that we can use the same function to control
+FDR as well.
+The mult_test() function takes p-values and a method argument, as well
+as an optional alpha argument. It returns the decisions (reject below) as
+well as the adjusted p-values (bonf).
+In [10]: reject , bonf = mult_test(fund_mini_pvals , method = "bonferroni")[:2]
+reject
+Out[10]: array ([ True , False , False , False , False ])
+
+The p-values bonf are simply the fund_mini_pvalues multiplied by 5 and
+truncated to be less than or equal to 1.
+In [11]: bonf , np.minimum(fund_mini_pvals * 5, 1)
+Out[11]: (array ([0.03 , 1.
+array ([0.03 , 1.
+
+, 0.06, 1.
+, 0.06, 1.
+
+, 1.
+, 1.
+
+]),
+]))
+
+Therefore, using Bonferroni’s method, we are able to reject the null hypothesis only for Manager One while controlling FWER at 0.05.
+By contrast, using Holm’s method, the adjusted p-values indicate that
+we can reject the null hypotheses for Managers One and Three at a FWER
+of 0.05.
+In [12]: mult_test(fund_mini_pvals , method = "holm", alpha =0.05) [:2]
+Out[12]: (array ([ True , False , True , False , False ]),
+array ([0.03 , 1. , 0.05, 1. , 1. ]))
+
+As discussed previously, Manager One seems to perform particularly well,
+whereas Manager Two has poor performance.
+
+13.6 Lab: Multiple Testing
+
+587
+
+In [13]: fund_mini.mean ()
+Out[13]: Manager1
+3.0
+Manager2
+-0.1
+Manager3
+2.8
+Manager4
+0.5
+Manager5
+0.3
+dtype: float64
+
+Is there evidence of a meaningful difference in performance between these
+two managers? We can check this by performing a paired t-test using the
+paired t-test
+ttest_rel() function from scipy.stats:
+
+ttest_rel()
+
+In [14]: ttest_rel(fund_mini['Manager1 '],
+fund_mini['Manager2 ']).pvalue
+Out[14]: 0.038
+
+The test results in a p-value of 0.038, suggesting a statistically significant
+difference.
+However, we decided to perform this test only after examining the data
+and noting that Managers One and Two had the highest and lowest mean
+performances.
+In a sense, this means that we have implicitly performed
+' 5(
+=
+5(5
+−
+1)/2
+= 10 hypothesis tests, rather than just one, as discussed
+2
+in Section 13.3.2. Hence, we use the pairwise_tukeyhsd() function from pairwise_
+statsmodels.stats.multicomp to apply Tukey’s method in order to adjust tukeyhsd()
+for multiple testing. This function takes as input a fitted ANOVA regresANOVA
+sion model, which is essentially just a linear regression in which all of the
+predictors are qualitative. In this case, the response consists of the monthly
+excess returns achieved by each manager, and the predictor indicates the
+manager to which each return corresponds.
+In [15]: returns = np.hstack ([ fund_mini.iloc[:,i] for i in range (5)])
+managers = np.hstack ([[i+1]*50 for i in range (5)])
+tukey = pairwise_tukeyhsd (returns , managers)
+print(tukey.summary ())
+Multiple Comparison of Means - Tukey HSD , FWER =0.05
+===================================================
+group1 group2 meandiff p-adj
+lower upper reject
+--------------------------------------------------1
+2
+-3.1 0.1862 -6.9865 0.7865 False
+1
+3
+-0.2 0.9999 -4.0865 3.6865 False
+1
+4
+-2.5 0.3948 -6.3865 1.3865 False
+1
+5
+-2.7 0.3152 -6.5865 1.1865 False
+2
+2.9 0.2453 -0.9865 6.7865 False
+3
+2
+4
+0.6 0.9932 -3.2865 4.4865 False
+2
+5
+0.4 0.9986 -3.4865 4.2865 False
+3
+4
+-2.3 0.482 -6.1865 1.5865 False
+3
+5
+-2.5 0.3948 -6.3865 1.3865 False
+4
+5
+-0.2 0.9999 -4.0865 3.6865 False
+---------------------------------------------------
+
+The pairwise_tukeyhsd() function provides confidence intervals for the
+difference between each pair of managers (lower and upper), as well as a
+
+588
+
+13. Multiple Testing
+
+FIGURE 13.10. 95% confidence intervals for each manager on the Fund data,
+using Tukey’s method to adjust for multiple testing. All of the confidence intervals
+overlap, so none of the differences among managers are statistically significant
+when controlling FWER at level 0.05.
+
+p-value. All of these quantities have been adjusted for multiple testing.
+Notice that the p-value for the difference between Managers One and Two
+has increased from 0.038 to 0.186, so there is no longer clear evidence of
+a difference between the managers’ performances. We can plot the confidence intervals for the pairwise comparisons using the plot_simultaneous()
+method of tukey. Any pair of intervals that don’t overlap indicates a significant difference at the nominal level of 0.05. In this case, no differences
+are considered significant as reported in the table above.
+In [16]: fig , ax = plt.subplots(figsize =(8 ,8))
+tukey.plot_simultaneous (ax=ax);
+
+The result can be seen19 in Figure 13.10.
+
+13.6.3
+
+False Discovery Rate
+
+Now we perform hypothesis tests for all 2,000 fund managers in the Fund
+dataset. We perform a one-sample t-test of H0,j : µj = 0, which states that
+the jth fund manager’s mean return is zero.
+In [17]: fund_pvalues = np.empty (2000)
+for i, manager in enumerate(Fund.columns):
+fund_pvalues[i] = ttest_1samp(Fund[manager], 0).pvalue
+
+There are far too many managers to consider trying to control the
+FWER. Instead, we focus on controlling the FDR: that is, the expected
+fraction of rejected null hypotheses that are actually false positives. The
+19 Traditionally this plot shows intervals for each paired difference. With many groups
+it is more convenient and equivalent to display one interval per group, as is done here.
+By “differencing” all pairs of intervals displayed here you recover the traditional plot.
+
+13.6 Lab: Multiple Testing
+
+589
+
+multipletests() function (abbreviated mult_test()) can be used to carry
+
+out the Benjamini–Hochberg procedure.
+
+In [18]: fund_qvalues = mult_test(fund_pvalues , method = "fdr_bh")[1]
+fund_qvalues [:10]
+Out[18]: array ([0.09 , 0.99, 0.12, 0.92, 0.96, 0.08, 0.08, 0.08, 0.08,
+0.08])
+
+The q-values output by the Benjamini–Hochberg procedure can be interq-values
+preted as the smallest FDR threshold at which we would reject a particular
+null hypothesis. For instance, a q-value of 0.1 indicates that we can reject
+the corresponding null hypothesis at an FDR of 10% or greater, but that
+we cannot reject the null hypothesis at an FDR below 10%.
+If we control the FDR at 10%, then for how many of the fund managers
+can we reject H0,j : µj = 0?
+In [19]: (fund_qvalues <= 0.1).sum()
+Out[19]: 146
+
+We find that 146 of the 2,000 fund managers have a q-value below 0.1;
+therefore, we are able to conclude that 146 of the fund managers beat the
+market at an FDR of 10%. Only about 15 (10% of 146) of these fund
+managers are likely to be false discoveries.
+By contrast, if we had instead used Bonferroni’s method to control the
+FWER at level α = 0.1, then we would have failed to reject any null
+hypotheses!
+In [20]: (fund_pvalues <= 0.1 / 2000).sum()
+Out[20]: 0
+
+Figure 13.6 displays the ordered p-values, p(1) ≤ p(2) ≤ · · · ≤ p(2000) , for
+the Fund dataset, as well as the threshold for rejection by the Benjamini–
+Hochberg procedure. Recall that the Benjamini–Hochberg procedure identifies the largest p-value such that p(j) < qj/m, and rejects all hypotheses
+for which the p-value is less than or equal to p(j) . In the code below, we implement the Benjamini–Hochberg procedure ourselves, in order to illustrate
+how it works. We first order the p-values. We then identify all p-values that
+satisfy p(j) < qj/m (sorted_set_). Finally, selected_ is a boolean array
+indicating which p-values are less than or equal to the largest p-value in
+sorted_[sorted_set_]. Therefore, selected_ indexes the p-values rejected
+by the Benjamini–Hochberg procedure.
+In [21]: sorted_ = np.sort(fund_pvalues)
+m = fund_pvalues.shape [0]
+q = 0.1
+sorted_set_ = np.where(sorted_ < q * np.linspace (1, m, m) / m)[0]
+if sorted_set_.shape [0] > 0:
+selected_ = fund_pvalues < sorted_[sorted_set_ ].max()
+sorted_set_ = np.arange(sorted_set_.max())
+else:
+selected_ = []
+sorted_set_ = []
+
+590
+
+13. Multiple Testing
+
+We now reproduce the middle panel of Figure 13.6.
+In [22]: fig , ax = plt.subplots ()
+ax.scatter(np.arange (0, sorted_.shape [0]) + 1,
+sorted_ , s=10)
+ax.set_yscale('log')
+ax.set_xscale('log')
+ax.set_ylabel('P-Value ')
+ax.set_xlabel('Index ')
+ax.scatter(sorted_set_ +1, sorted_[sorted_set_], c='r', s=20)
+ax.axline ((0, 0), (1,q/m), c='k', ls='--', linewidth =3);
+
+13.6.4
+
+A Re-Sampling Approach
+
+Here, we implement the re-sampling approach to hypothesis testing using
+the Khan dataset, which we investigated in Section 13.5. First, we merge
+the training and testing data, which results in observations on 83 patients
+for 2,308 genes.
+In [23]: Khan = load_data('Khan ')
+D = pd.concat ([ Khan['xtrain '], Khan['xtest ']])
+D['Y'] = pd.concat ([ Khan['ytrain '], Khan['ytest ']])
+D['Y']. value_counts ()
+Out[23]: 2
+29
+4
+25
+3
+18
+1
+11
+Name: Y, dtype: int64
+
+There are four classes of cancer. For each gene, we compare the mean expression in the second class (rhabdomyosarcoma) to the mean expression in
+the fourth class (Burkitt’s lymphoma). Performing a standard two-sample
+t-test using ttest_ind() from scipy.stats on the 11th gene produces a
+ttest_ind()
+test-statistic of -2.09 and an associated p-value of 0.0412, suggesting modest evidence of a difference in mean expression levels between the two cancer
+types.
+In [24]: D2 = D[lambda df:df['Y'] == 2]
+D4 = D[lambda df:df['Y'] == 4]
+gene_11 = 'G0011 '
+observedT , pvalue = ttest_ind(D2[gene_11],
+D4[gene_11],
+equal_var=True)
+observedT , pvalue
+Out[24]: ( -2.094, 0.041)
+
+However, this p-value relies on the assumption that under the null hypothesis of no difference between the two groups, the test statistic follows
+a t-distribution with 29 + 25 − 2 = 52 degrees of freedom. Instead of using this theoretical null distribution, we can randomly split the 54 patients
+into two groups of 29 and 25, and compute a new test statistic. Under the
+null hypothesis of no difference between the groups, this new test statistic should have the same distribution as our original one. Repeating this
+
+13.6 Lab: Multiple Testing
+
+591
+
+process 10,000 times allows us to approximate the null distribution of the
+test statistic. We compute the fraction of the time that our observed test
+statistic exceeds the test statistics obtained via re-sampling.
+In [25]: B = 10000
+Tnull = np.empty(B)
+D_ = np.hstack ([D2[gene_11], D4[gene_11 ]])
+n_ = D2[gene_11 ]. shape [0]
+D_null = D_.copy ()
+for b in range(B):
+rng.shuffle(D_null)
+ttest_ = ttest_ind(D_null [:n_],
+D_null[n_:],
+equal_var=True)
+Tnull[b] = ttest_.statistic
+(np.abs(Tnull) > np.abs(observedT)).mean ()
+Out[25]: 0.0398
+
+This fraction, 0.0398, is our re-sampling-based p-value. It is almost identical to the p-value of 0.0412 obtained using the theoretical null distribution.
+We can plot a histogram of the re-sampling-based test statistics in order
+to reproduce Figure 13.7.
+In [26]: fig , ax = plt.subplots(figsize =(8 ,8))
+ax.hist(Tnull ,
+bins =100,
+density=True ,
+facecolor='y',
+label='Null ')
+xval = np.linspace (-4.2, 4.2, 1001)
+ax.plot(xval ,
+t_dbn.pdf(xval , D_.shape [0] -2),
+c='r')
+ax.axvline(observedT ,
+c='b',
+label='Observed ')
+ax.legend ()
+ax.set_xlabel("Null Distribution of Test Statistic");
+
+The re-sampling-based null distribution is almost identical to the theoretical null distribution, which is displayed in red.
+Finally, we implement the plug-in re-sampling FDR approach outlined
+in Algorithm 13.4. Depending on the speed of your computer, calculating
+the FDR for all 2,308 genes in the Khan dataset may take a while. Hence,
+we will illustrate the approach on a random subset of 100 genes. For each
+gene, we first compute the observed test statistic, and then produce 10,000
+re-sampled test statistics. This may take a few minutes to run. If you are
+in a rush, then you could set B equal to a smaller value (e.g. B=500).
+In [27]: m, B = 100, 10000
+idx = rng.choice(Khan['xtest '].columns , m, replace=False)
+T_vals = np.empty(m)
+Tnull_vals = np.empty ((m, B))
+for j in range(m):
+col = idx[j]
+
+592
+
+13. Multiple Testing
+T_vals[j] = ttest_ind(D2[col],
+D4[col],
+equal_var=True).statistic
+D_ = np.hstack ([D2[col], D4[col ]])
+D_null = D_.copy ()
+for b in range(B):
+rng.shuffle(D_null)
+ttest_ = ttest_ind(D_null [:n_],
+D_null[n_:],
+equal_var=True)
+Tnull_vals[j,b] = ttest_.statistic
+
+Next, we compute the number of rejected null hypotheses R, the estimated number of false positives VW , and the estimated FDR, for a range
+of threshold values c in Algorithm 13.4. The threshold values are chosen
+using the absolute values of the test statistics from the 100 genes.
+In [28]: cutoffs = np.sort(np.abs(T_vals))
+FDRs , Rs , Vs = np.empty ((3, m))
+for j in range(m):
+R = np.sum(np.abs(T_vals) >= cutoffs[j])
+V = np.sum(np.abs(Tnull_vals) >= cutoffs[j]) / B
+Rs[j] = R
+Vs[j] = V
+FDRs[j] = V / R
+
+Now, for any given FDR, we can find the genes that will be rejected.
+For example, with FDR controlled at 0.1, we reject 15 of the 100 null
+hypotheses. On average, we would expect about one or two of these genes
+(i.e. 10% of 15) to be false discoveries. At an FDR of 0.2, we can reject
+the null hypothesis for 28 genes, of which we expect around six to be false
+discoveries.
+The variable idx stores which genes were included in our 100 randomlyselected genes. Let’s look at the genes whose estimated FDR is less than
+0.1.
+In [29]: sorted(idx[np.abs(T_vals) >= cutoffs[FDRs < 0.1]. min()])
+
+At an FDR threshold of 0.2, more genes are selected, at the cost of having
+a higher expected proportion of false discoveries.
+In [30]: sorted(idx[np.abs(T_vals) >= cutoffs[FDRs < 0.2]. min()])
+
+The next line generates Figure 13.11, which is similar to Figure 13.9,
+except that it is based on only a subset of the genes.
+In [31]: fig , ax = plt.subplots ()
+ax.plot(Rs , FDRs , 'b', linewidth =3)
+ax.set_xlabel("Number of Rejections")
+ax.set_ylabel("False Discovery Rate");
+
+13.7 Exercises
+
+593
+
+FIGURE 13.11. The estimated false discovery rate versus the number of rejected
+null hypotheses, for 100 genes randomly selected from the Khan dataset.
+
+13.7
+
+Exercises
+
+Conceptual
+1. Suppose we test m null hypotheses, all of which are true. We control
+the Type I error for each null hypothesis at level α. For each subproblem, justify your answer.
+(a) In total, how many Type I errors do we expect to make?
+(b) Suppose that the m tests 

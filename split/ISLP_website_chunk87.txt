@@ -1,0 +1,486 @@
+ re-sampling approach disagree with the results of assuming a theoretical
+null distribution, then the results of the re-sampling approach are more trustworthy.
+
+13.5 A Re-Sampling Approach to p-Values and False Discovery Rates
+
+579
+
+Algorithm 13.3 Re-Sampling p-Value for a Two-Sample t-Test
+1. Compute T , defined in (13.11), on the original data x1 , . . . , xnX and
+y 1 , . . . , y nY .
+2. For b = 1, . . . , B, where B is a large number (e.g. B = 10,000):
+(a) Permute the nX + nY observations at random. Call the first nX
+permuted observations x∗1 , . . . , x∗nX , and call the remaining nY
+observations y1∗ , . . . , yn∗ Y .
+(b) Compute (13.11) on the permuted data x∗1 , . . . , x∗nX and
+y1∗ , . . . , yn∗ Y , and call the result T ∗b .
+3. The p-value is given by
+
+!B
+
+b=1 1(|T ∗b |≥|T |)
+
+B
+
+.
+
+We try out this procedure on the Khan dataset, which consists of expression measurements for 2,308 genes in four sub-types of small round blood
+cell tumors, a type of cancer typically seen in children. This dataset is part
+of the ISLR2 package. We restrict our attention to the two sub-types for
+which the most observations are available: rhabdomyosarcoma (nX = 29)
+and Burkitt’s lymphoma (nY = 25).
+A two-sample t-test for the null hypothesis that the 11th gene’s mean
+expression values are equal in the two groups yields T = −2.09. Using
+the theoretical null distribution, which is a t52 distribution (since nX +
+nY − 2 = 52), we obtain a p-value of 0.041. (Note that a t52 distribution
+is virtually indistinguishable from a N (0, 1) distribution.) If we instead
+apply Algorithm 13.3 with B = 10,000, then we obtain a p-value of 0.042.
+Figure 13.7 displays the theoretical null distribution, the re-sampling null
+distribution, and the actual value of the test statistic (T = −2.09) for this
+gene. In this example, we see very little difference between the p-values
+obtained using the theoretical null distribution and the re-sampling null
+distribution.
+By contrast, Figure 13.8 shows an analogous set of results for the 877th
+gene. In this case, there is a substantial difference between the theoretical
+and re-sampling null distributions, which results in a difference between
+their p-values.
+In general, in settings with a smaller sample size or a more skewed data
+distribution (so that the theoretical null distribution is less accurate), the
+difference between the re-sampling and theoretical p-values will tend to
+be more pronounced. In fact, the substantial difference between the resampling and theoretical null distributions in Figure 13.8 is due to the
+fact that a single observation in the 877th gene is very far from the other
+observations, leading to a very skewed distribution.
+
+13.5.2
+
+A Re-Sampling Approach to the False Discovery Rate
+
+Now, suppose that we wish to control the FDR for m null hypotheses,
+H01 , . . . , H0m , in a setting in which either no theoretical null distribution
+is available, or else we simply prefer to avoid the use of a theoretical null
+
+13. Multiple Testing
+
+400
+
+580
+
+0
+
+100
+
+200
+
+300
+
+T=−2.0936
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+Null Distribution of Test Statistic for 11th Gene
+
+400
+
+FIGURE 13.7. The 11th gene in the Khan dataset has a test statistic of
+T = −2.09. Its theoretical and re-sampling null distributions are almost identical.
+The theoretical p-value equals 0.041 and the re-sampling p-value equals 0.042.
+
+0
+
+100
+
+200
+
+300
+
+T=−0.5696
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+Null Distribution of Test Statistic for 877th Gene
+
+FIGURE 13.8. The 877th gene in the Khan dataset has a test statistic of
+T = −0.57. Its theoretical and re-sampling null distributions are quite different.
+The theoretical p-value equals 0.571, and the re-sampling p-value equals 0.673.
+
+distribution. As in Section 13.5.1, we make use of a two-sample t-statistic for
+each hypothesis, leading to the test statistics T1 , . . . , Tm . We could simply
+compute a p-value for each of the m null hypotheses, as in Section 13.5.1,
+and then apply the Benjamini–Hochberg procedure of Section 13.4.2 to
+these p-values. However, it turns out that we can do this in a more direct
+way, without even needing to compute p-values.
+Recall from Section 13.4 that the FDR is defined as E(V /R), using the
+notation in Table 13.2. In order to estimate the FDR via re-sampling, we
+first make the following approximation:
+FDR = E
+
+*
+
+V
+R
+
++
+
+≈
+
+E(V )
+.
+R
+
+(13.13)
+
+Now suppose we reject any null hypothesis for which the test statistic
+exceeds c in absolute value. Then computing R in )
+the denominator on the
+m
+right-hand side of (13.13) is straightforward: R = j=1 1(|Tj |≥c) .
+
+13.5 A Re-Sampling Approach to p-Values and False Discovery Rates
+
+581
+
+However, the numerator E(V ) on the right-hand side of (13.13) is more
+challenging. This is the expected number of false positives associated with
+rejecting any null hypothesis for which the test statistic exceeds c in absolute value. At the risk of stating the obvious, estimating V is challenging
+because we do not know which of H01 , . . . , H0m are really true, and so we
+do not know which rejected hypotheses are false positives. To overcome this
+problem, we take a re-sampling approach, in which we simulate data under
+H01 , . . . , H0m , and then compute the resulting test statistics. The number
+of re-sampled test statistics that exceed c provides an estimate of V .
+In greater detail, in the case of a two-sample t-statistic (13.11) for each
+of the null hypotheses H01 , . . . , H0m , we can estimate E(V ) as follows. Let
+(j)
+(j)
+(j)
+(j)
+x1 , . . . , xnX and y1 , . . . , ynY denote the data associated with the jth
+null hypothesis, j = 1, . . . , m. We permute these nX + nY observations at
+random, and then compute the t-statistic on the permuted data. For this
+permuted data, we know that all of the null hypotheses H01 , . . . , H0m hold;
+therefore, the number of permuted t-statistics that exceed the threshold c in
+absolute value provides an estimate for E(V ). This estimate can be further
+improved by repeating the permutation process B times, for a large value
+of B, and averaging the results.
+Algorithm 13.4 details this procedure.18 It provides what is known as a
+plug-in estimate of the FDR, because the approximation in (13.13) allows us
+to estimate the FDR by plugging R into the denominator and an estimate
+for E(V ) into the numerator.
+We apply the re-sampling approach to the FDR from Algorithm 13.4,
+as well as the Benjamini–Hochberg approach from Algorithm 13.2 using
+theoretical p-values, to the m = 2,308 genes in the Khan dataset. Results are
+shown in Figure 13.9. We see that for a given number of rejected hypotheses,
+the estimated FDRs are almost identical for the two methods.
+We began this section by noting that in order to control the FDR for m
+hypothesis tests using a re-sampling approach, we could simply compute m
+re-sampling p-values as in Section 13.5.1, and then apply the Benjamini–
+Hochberg procedure of Section 13.4.2 to these p-values. It turns out that if
+we define the jth re-sampling p-value as
+)m )B
+j ! =1
+b=1 1(|Tj∗b
+! |≥|Tj |)
+pj =
+(13.14)
+Bm
+for j = 1, . . . , m, instead of as in (13.12), then applying the Benjamini–
+Hochberg procedure to these re-sampled p-values is exactly equivalent to
+Algorithm 13.4. Note that (13.14) is an alternative to (13.12) that pools
+the information across all m hypothesis tests in approximating the null
+distribution.
+
+13.5.3
+
+When Are Re-Sampling Approaches Useful?
+
+In Sections 13.5.1 and 13.5.2, we considered testing null hypotheses of the
+form H0 : E(X) = E(Y ) using a two-sample t-statistic (13.11), for which we
+18 To implement Algorithm 13.4 efficiently, the same set of permutations in Step 2(b)i.
+should be used for all m null hypotheses.
+
+582
+
+13. Multiple Testing
+
+Algorithm 13.4 Plug-In FDR for a Two-Sample T -Test
+1. Select a threshold c, where c > 0.
+2. For j = 1, . . . , m:
+(a) Compute T (j) , the two-sample t-statistic (13.11) for the null
+(j)
+(j)
+hypothesis H0j on the basis of the original data, x1 , . . . , xnX
+(j)
+(j)
+and y1 , . . . , ynY .
+(b) For b = 1, . . . , B, where B is a large number (e.g. B = 10,000):
+i. Permute the nX + nY observations at random. Call the first
+∗(j)
+∗(j)
+nX observations x1 , . . . , xnX , and call the remaining ob∗(j)
+∗(j)
+servations y1 , . . . , ynY .
+ii. Compute (13.11) on the permuted data x1
+∗(j)
+∗(j)
+y1 , . . . , ynY , and call the result T (j),∗b .
+)m
+3. Compute R = j=1 1(|T (j) |≥c) .
+
+∗(j)
+
+4. Compute VW =
+
+!B
+
+b=1
+
+!m
+
+j=1 1 |T (j),∗b |≥c
+
+(
+
+B
+
+)
+
+, . . . , xnX and
+∗(j)
+
+.
+
+5. The estimated FDR associated with the threshold c is VW /R.
+approximated the null distribution via a re-sampling approach. We saw that
+using the re-sampling approach gave us substantially different results from
+using the theoretical p-value approach in Figure 13.8, but not in Figure 13.7.
+In general, there are two settings in which a re-sampling approach is
+particularly useful:
+1. Perhaps no theoretical null distribution is available. This may be the
+case if you are testing an unusual null hypothesis H0 , or using an
+unsual test statistic T .
+2. Perhaps a theoretical null distribution is available, but the assumptions required for its validity do not hold. For instance, the twosample t-statistic in (13.11) follows a tnX +nY −2 distribution only if
+the observations are normally distributed. Furthermore, it follows a
+N (0, 1) distribution only if nX and nY are quite large. If the data are
+non-normal and nX and nY are small, then p-values that make use
+of the theoretical null distribution will not be valid (i.e. they will not
+properly control the Type I error).
+In general, if you can come up with a way to re-sample or permute
+your observations in order to generate data that follow the null distribution, then you can compute p-values or estimate the FDR using variants
+of Algorithms 13.3 and 13.4. In many real-world settings, this provides a
+powerful tool for hypothesis testing when no out-of-box hypothesis tests are
+available, or when the key assumptions underlying those out-of-box tests
+are violated.
+
+583
+
+0.8
+0.6
+0.4
+0.2
+0.0
+
+False Discovery Rate
+
+1.0
+
+13.6 Lab: Multiple Testing
+
+0
+
+500
+
+1000
+
+1500
+
+2000
+
+Number of Rejections
+
+FIGURE 13.9. For j = 1, . . . , m = 2,308, we tested the null hypothesis that for
+the jth gene in the Khan dataset, the mean expression in Burkitt’s lymphoma equals
+the mean expression in rhabdomyosarcoma. For each value of k from 1 to 2,308, the
+y-axis displays the estimated FDR associated with rejecting the null hypotheses
+corresponding to the k smallest p-values. The orange dashed curve shows the
+FDR obtained using the Benjamini–Hochberg procedure, whereas the blue solid
+curve shows the FDR obtained using the re-sampling approach of Algorithm 13.4,
+with B = 10,000. There is very little difference between the two FDR estimates.
+According to either estimate, rejecting the null hypothesis for the 500 genes with
+the smallest p-values corresponds to an FDR of around 17.7%.
+
+13.6
+
+Lab: Multiple Testing
+
+We include our usual imports seen in earlier labs.
+In [1]: import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statsmodels.api as sm
+from ISLP import load_data
+
+We also collect the new imports needed for this lab.
+In [2]: from scipy.stats import \
+(ttest_1samp ,
+ttest_rel ,
+ttest_ind ,
+t as t_dbn)
+from statsmodels.stats.multicomp import \
+pairwise_tukeyhsd
+from statsmodels.stats.multitest import \
+multipletests as mult_test
+
+13.6.1
+
+Review of Hypothesis Tests
+
+We begin by performing some one-sample t-tests. First we create 100 variables, each consisting of 10 observations. The first 50 variables have mean
+0.5 and variance 1, while the others have mean 0 and variance 1.
+In [3]: rng = np.random.default_rng (12)
+X = rng.standard_normal ((10, 100))
+true_mean = np.array ([0.5]*50 + [0]*50)
+X += true_mean[None ,:]
+
+584
+
+13. Multiple Testing
+
+To begin, we use ttest_1samp() from the scipy.stats module to test H0 :
+ttest_1samp()
+µ1 = 0, the null hypothesis that the first variable has mean zero.
+In [4]: result = ttest_1samp(X[:,0], 0)
+result.pvalue
+Out[4]: 0.931
+
+The p-value comes out to 0.931, which is not low enough to reject the null
+hypothesis at level α = 0.05. In this case, µ1 = 0.5, so the null hypothesis
+is false. Therefore, we have made a Type II error by failing to reject the
+null hypothesis when the null hypothesis is false.
+We now test H0,j : µj = 0 for j = 1, . . . , 100. We compute the 100 pvalues, and then construct a vector recording whether the jth p-value is
+less than or equal to 0.05, in which case we reject H0j , or greater than 0.05,
+in which case we do not reject H0j , for j = 1, . . . , 100.
+In [5]: p_values = np.empty (100)
+for i in range (100):
+p_values[i] = ttest_1samp(X[:,i], 0).pvalue
+decision = pd.cut(p_values ,
+[0, 0.05, 1],
+labels =['Reject H0',
+'Do not reject H0'])
+truth = pd.Categorical(true_mean == 0,
+categories =[True , False],
+ordered=True)
+
+Since this is a simulated data set, we can create a 2 × 2 table similar to
+Table 13.2.
+In [6]: pd.crosstab(decision ,
+truth ,
+rownames =['Decision '],
+colnames =['H0'])
+Out[6]:
+
+H0
+Decision
+Reject H0
+Do not reject H0
+
+True
+
+False
+
+5
+45
+
+15
+35
+
+Therefore, at level α = 0.05, we reject 15 of the 50 false null hypotheses,
+and we incorrectly reject 5 of the true null hypotheses. Using the notation
+from Section 13.3, we have V = 5, S = 15, U = 45 and W = 35. We have
+set α = 0.05, which means that we expect to reject around 5% of the true
+null hypotheses. This is in line with the 2 × 2 table above, which indicates
+that we rejected V = 5 of the 50 true null hypotheses.
+In the simulation above, for the false null hypotheses, the ratio of the
+mean to the standard deviation was only 0.5/1 = 0.5. This amounts to
+quite a weak signal, and it resulted in a high number of Type II errors.
+Let’s instead simulate data with a stronger signal, so that the ratio of the
+mean to the standard deviation for the false null hypotheses equals 1. We
+make only 10 Type II errors.
+
+13.6 Lab: Multiple Testing
+
+585
+
+In [7]: true_mean = np.array ([1]*50 + [0]*50)
+X = rng.standard_normal ((10, 100))
+X += true_mean[None ,:]
+for i in range (100):
+p_values[i] = ttest_1samp(X[:,i], 0).pvalue
+decision = pd.cut(p_values ,
+[0, 0.05, 1],
+labels =['Reject H0',
+'Do not reject H0'])
+truth = pd.Categorical(true_mean == 0,
+categories =[True , False],
+ordered=True)
+pd.crosstab(decision ,
+truth ,
+rownames =['Decision '],
+colnames =['H0'])
+Out[7]:
+
+H0
+Decision
+Reject H0
+Do not reject H0
+
+13.6.2
+
+True
+
+False
+
+2
+48
+
+40
+10
+
+Family-Wise Error Rate
+
+Recall from (13.5) that if the null hypothesis is true for each of m independent hypothesis tests, then the FWER is equal to 1 − (1 − α)m . We
+can use this expression to compute the FWER for m = 1, . . . , 500 and
+α = 0.05, 0.01, and 0.001. We plot the FWER for these values of α in order
+to reproduce Figure 13.2.
+In [8]: m = np.linspace (1, 501)
+fig , ax = plt.subplots ()
+[ax.plot(m,
+1 - (1 - alpha)**m,
+label=r'$\alpha =%s$' % str(alpha))
+for alpha in [0.05 , 0.01, 0.001]]
+ax.set_xscale('log')
+ax.set_xlabel('Number of Hypotheses ')
+ax.set_ylabel('Family -Wise Error Rate ')
+ax.legend ()
+ax.axhline (0.05 , c='k', ls='--');
+
+As discussed previously, even for moderate values of m such as 50, the
+FWER exceeds 0.05 unless α is set to a very low value, such as 0.001. Of
+course, the problem with setting α to such a low value is that we are likely
+to make a number of Type II errors: in other words, our power is very low.
+We now conduct a one-sample t-test for each of the first five managers
+in the Fund dataset,

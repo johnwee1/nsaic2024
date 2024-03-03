@@ -1,0 +1,466 @@
+s covered
+thus far in this textbook.
+Though the phrase “survival analysis” evokes a medical study, the applications of survival analysis extend far beyond medicine. For example,
+consider a company that wishes to model churn, the process by which customers cancel subscription to a service. The company might collect data on
+customers over some time period, in order to model each customer’s time
+to cancellation as a function of demographics or other predictors. However,
+presumably not all customers will have canceled their subscription by the
+end of this time period; for such customers, the time to cancellation is
+censored.
+In fact, survival analysis is relevant even in application areas that are
+unrelated to time. For instance, suppose we wish to model a person’s weight
+as a function of some covariates, using a dataset with measurements for a
+large number of people. Unfortunately, the scale used to weigh those people
+is unable to report weights above a certain number. Then, any weights that
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0_11
+
+469
+
+470
+
+11. Survival Analysis and Censored Data
+
+exceed that number are censored. The survival analysis methods presented
+in this chapter could be used to analyze this dataset.
+Survival analysis is a very well-studied topic within statistics, due to its
+critical importance in a variety of applications, both in and out of medicine.
+However, it has received relatively little attention in the machine learning
+community.
+
+11.1
+
+Survival and Censoring Times
+
+For each individual, we suppose that there is a true survival time, T , as well
+survival time
+as a true censoring time, C. (The survival time is also known as the failure
+censoring
+time or the event time.) The survival time represents the time at which the time
+event of interest occurs: for instance, the time at which the patient dies, failure time
+or the customer cancels his or her subscription. By contrast, the censoring event time
+time is the time at which censoring occurs: for example, the time at which
+the patient drops out of the study or the study ends.
+We observe either the survival time T or else the censoring time C.
+Specifically, we observe the random variable
+Y = min(T, C).
+
+(11.1)
+
+In other words, if the event occurs before censoring (i.e. T < C) then we
+observe the true survival time T ; however, if censoring occurs before the
+event (T > C) then we observe the censoring time. We also observe a status
+indicator,
+=
+1 if T ≤ C
+δ=
+0 if T > C.
+Thus, δ = 1 if we observe the true survival time, and δ = 0 if we instead
+observe the censoring time.
+Now, suppose we observe n (Y, δ) pairs, which we denote as (y1 , δ1 ), . . . ,
+(yn , δn ). Figure 11.1 displays an example from a (fictitious) medical study
+in which we observe n = 4 patients for a 365-day follow-up period. For
+patients 1 and 3, we observe the time to event (such as death or disease
+relapse) T = ti . Patient 2 was alive when the study ended, and patient 4
+dropped out of the study, or was “lost to follow-up”; for these patients we
+observe C = ci . Therefore, y1 = t1 , y3 = t3 , y2 = c2 , y4 = c4 , δ1 = δ3 = 1,
+and δ2 = δ4 = 0.
+
+11.2
+
+A Closer Look at Censoring
+
+In order to analyze survival data, we need to make some assumptions about
+why censoring has occurred. For instance, suppose that a number of patients
+drop out of a cancer study early because they are very sick. An analysis that
+does not take into consideration the reason why the patients dropped out
+will likely overestimate the true average survival time. Similarly, suppose
+that males who are very sick are more likely to drop out of the study than
+
+471
+
+1
+
+2
+
+Patient
+
+3
+
+4
+
+11.2 A Closer Look at Censoring
+
+0
+
+100
+
+200
+
+300
+
+Time in Days
+
+FIGURE 11.1. Illustration of censored survival data. For patients 1 and 3, the
+event was observed. Patient 2 was alive when the study ended. Patient 4 dropped
+out of the study.
+
+females who are very sick. Then a comparison of male and female survival
+times may wrongly suggest that males survive longer than females.
+In general, we need to assume that the censoring mechanism is independent: conditional on the features, the event time T is independent of the
+censoring time C. The two examples above violate the assumption of independent censoring. Typically, it is not possible to determine from the data
+itself whether the censoring mechanism is independent. Instead, one has to
+carefully consider the data collection process in order to determine whether
+independent censoring is a reasonable assumption. In the remainder of this
+chapter, we will assume that the censoring mechanism is independent.1
+In this chapter, we focus on right censoring, which occurs when T ≥ Y ,
+i.e. the true event time T is at least as large as the observed time Y .
+(Notice that T ≥ Y is a consequence of (11.1). Right censoring derives its
+name from the fact that time is typically displayed from left to right, as in
+Figure 11.1.) However, other types of censoring are possible. For instance,
+in left censoring, the true event time T is less than or equal to the observed
+time Y . For example, in a study of pregnancy duration, suppose that we
+survey patients 250 days after conception, when some have already had
+their babies. Then we know that for those patients, pregnancy duration is
+less than 250 days. More generally, interval censoring refers to the setting
+in which we do not know the exact event time, but we know that it falls
+in some interval. For instance, this setting arises if we survey patients once
+per week in order to determine whether the event has occurred. While left
+censoring and interval censoring can be accommodated using variants of
+the ideas presented in this chapter, in what follows we focus specifically on
+right censoring.
+
+1 The assumption of independent censoring can be relaxed somewhat using the notion
+of non-informative censoring; however, the definition of non-informative censoring is too
+technical for this book.
+
+472
+
+11. Survival Analysis and Censored Data
+
+11.3
+
+The Kaplan–Meier Survival Curve
+
+The survival curve, or survival function, is defined as
+S(t) = Pr(T > t).
+
+(11.2)
+
+This decreasing function quantifies the probability of surviving past time
+t. For example, suppose that a company is interested in modeling customer
+churn. Let T represent the time that a customer cancels a subscription to
+the company’s service. Then S(t) represents the probability that a customer
+cancels later than time t. The larger the value of S(t), the less likely that
+the customer will cancel before time t.
+In this section, we will consider the task of estimating the survival
+curve. Our investigation is motivated by the BrainCancer dataset, which
+contains the survival times for patients with primary brain tumors undergoing treatment with stereotactic radiation methods.2 The predictors
+are gtv (gross tumor volume, in cubic centimeters); sex (male or female);
+diagnosis (meningioma, LG glioma, HG glioma, or other); loc (the tumor
+location: either infratentorial or supratentorial); ki (Karnofsky index); and
+stereo (stereotactic method: either stereotactic radiosurgery or fractionated stereotactic radiotherapy, abbreviated as SRS and SRT, respectively).
+Only 53 of the 88 patients were still alive at the end of the study.
+Now, we consider the task of estimating the survival curve (11.2) for
+these data. To estimate S(20) = Pr(T > 20), the probability that a patient
+survives for at least t = 20 months, it is tempting to simply compute the
+proportion of patients who are known to have survived past 20 months, i.e.
+the proportion of patients for whom Y > 20. This turns out to be 48/88,
+or approximately 55%. However, this does not seem quite right, since Y
+and T represent different quantities. In particular, 17 of the 40 patients
+who did not survive to 20 months were actually censored, and this analysis
+implicitly assumes that T < 20 for all of those censored patients; of course,
+we do not know whether that is true.
+Alternatively, to estimate S(20), we could consider computing the proportion of patients for whom Y > 20, out of the 71 patients who were not
+censored by time t = 20; this comes out to 48/71, or approximately 68%.
+However, this is not quite right either, since it amounts to completely ignoring the patients who were censored before time t = 20, even though the
+time at which they are censored is potentially informative. For instance, a
+patient who was censored at time t = 19.9 likely would have survived past
+t = 20 had he or she not been censored.
+We have seen that estimating S(t) is complicated by the presence of
+censoring. We now present an approach to overcome these challenges. We
+let d1 < d2 < · · · < dK denote the K unique death times among the noncensored patients, and we let qk denote the number of patients who died
+at time dk . For k = 1, . . . , K, we let rk denote the number of patients alive
+2 This dataset is described in the following paper: Selingerová et al. (2016) Survival
+of patients with primary brain tumors: Comparison of two statistical approaches. PLoS
+One, 11(2):e0148733.
+
+survival
+curve
+survival
+function
+
+11.3 The Kaplan–Meier Survival Curve
+
+473
+
+and in the study just before dk ; these are the at risk patients. The set of
+patients that are at risk at a given time are referred to as the risk set.
+risk set
+By the law of total probability,3
+Pr(T > dk ) = Pr(T > dk |T > dk−1 ) Pr(T > dk−1 )
++ Pr(T > dk |T ≤ dk−1 ) Pr(T ≤ dk−1 ).
+The fact that dk−1 < dk implies that Pr(T > dk |T ≤ dk−1 ) = 0 (it is
+impossible for a patient to survive past time dk if he or she did not survive
+until an earlier time dk−1 ). Therefore,
+S(dk ) = Pr(T > dk ) = Pr(T > dk |T > dk−1 ) Pr(T > dk−1 ).
+Plugging in (11.2) again, we see that
+S(dk ) = Pr(T > dk |T > dk−1 )S(dk−1 ).
+This implies that
+S(dk ) = Pr(T > dk |T > dk−1 ) × · · · × Pr(T > d2 |T > d1 ) Pr(T > d1 ).
+We now must simply plug in estimates of each of the terms on the righthand side of the previous equation. It is natural to use the estimator
+6 > dj |T > dj−1 ) = (rj − qj )/rj ,
+Pr(T
+
+which is the fraction of the risk set at time dj who survived past time dj .
+This leads to the Kaplan–Meier estimator of the survival curve:
+W k) =
+S(d
+
+k *
+E
+
+j=1
+
+rj − q j
+rj
+
++
+
+.
+
+(11.3)
+
+W = S(d
+W k ). Consequently, the
+For times t between dk and dk+1 , we set S(t)
+Kaplan–Meier survival curve has a step-like shape.
+The Kaplan–Meier survival curve for the BrainCancer data is displayed
+in Figure 11.2. Each point in the solid step-like curve shows the estimated
+probability of surviving past the time indicated on the horizontal axis. The
+estimated probability of survival past 20 months is 71%, which is quite a
+bit higher than the naive estimates of 55% and 68% presented earlier.
+The sequential construction of the Kaplan–Meier estimator — starting
+at time zero and mapping out the observed events as they unfold in time —
+is fundamental to many of the key techniques in survival analysis. These
+include the log-rank test of Section 11.4, and Cox’s proportional hazard
+model of Section 11.5.2.
+3 The law of total probability states that for any two events A and B, Pr(A) =
+Pr(A|B) Pr(B) + Pr(A|B c ) Pr(B c ), where B c is the complement of the event B, i.e. it
+is the event that B does not hold.
+
+Kaplan–
+Meier
+estimator
+
+11. Survival Analysis and Censored Data
+
+0.8
+0.6
+0.4
+0.2
+0.0
+
+Estimated Probability of Survival
+
+1.0
+
+474
+
+0
+
+20
+
+40
+
+60
+
+80
+
+Months
+
+0.8
+0.6
+0.4
+0.2
+
+Female
+Male
+
+0.0
+
+Estimated Probability of Survival
+
+1.0
+
+FIGURE 11.2. For the BrainCancer data, we display the Kaplan–Meier survival
+curve (solid curve), along with standard error bands (dashed curves).
+
+0
+
+20
+
+40
+
+60
+
+80
+
+Months
+
+FIGURE 11.3. For the BrainCancer data, Kaplan–Meier survival curves for
+males and females are displayed.
+
+11.4
+
+The Log-Rank Test
+
+We now continue our analysis of the BrainCancer data introduced in Section 11.3. We wish to compare the survival of males to that of females.
+Figure 11.3 shows the Kaplan–Meier survival curves for the two groups.
+Females seem to fare a little better up to about 50 months, but then the
+two curves both level off to about 50%. How can we carry out a formal test
+of equality of the two survival curves?
+At first glance, a two-sample t-test seems like an obvious choice: we could
+test whether the mean survival time among the females equals the mean
+survival time among the males. But the presence of censoring again creates
+a complication. To overcome this challenge, we will conduct a log-rank test,4
+
+log-rank test
+
+11.4 The Log-Rank Test
+
+Died
+Survived
+Total
+
+Group 1
+q1k
+r1k − q1k
+r1k
+
+Group 2
+q2k
+r2k − q2k
+r2k
+
+475
+
+Total
+qk
+rk − q k
+rk
+
+TABLE 11.1. Among the set of patients at risk at time dk , the number of patients
+who died and survived in each of two groups is reported.
+
+which examines how the events in each group unfold sequentially in time.
+Recall from Section 11.3 that d1 < d2 < · · · < dK are the unique death
+times among the non-censored patients, rk is the number of patients at
+risk at time dk , and qk is the number of patients who died at time dk . We
+further define r1k and r2k to be the number of patients in groups 1 and 2,
+respectively, who are at risk at time dk . Similarly, we define q1k and q2k to
+be the number of patients in groups 1 and 2, respectively, who died at time
+dk . Note that r1k + r2k = rk and q1k + q2k = qk .
+At each death time dk , we construct a 2 × 2 table of counts of the form
+shown in Table 11.1. Note that if the death times are unique (i.e. no two
+individuals die at the same time), then one of q1k and q2k equals one, and
+the other equals zero.
+The main idea behind the log-rank test statistic is as follows. In order
+to test H0 : E(X) = µ for some random variable X, one approach is to
+construct a test statistic of the form
+X −µ
+W =5
+.
+Var(X)
+
+(11.4)
+
+To construct the log-rank test statistic,
+)K we compute a quantity that takes
+exactly the form (11.4), with X = k=1 q1k , where q1k is given in the top
+left of Table 11.1.
+In greater detail, if there is no difference in survival between the two
+groups, and conditioning on the row and column totals in Table 11.1, the
+expected value of q1k is
+r1k
+µk =
+qk .
+(11.5)
+rk
+)K
+)K
+So the expected value of X = k=1 q1k is µ = k=1 rr1k
+qk . Furthermore,
+k
+it can be shown5 that the variance of q1k is
+Var (q1k ) =
+
+qk (r1k /rk )(1 − r1k /rk )(rk − qk )
+.
+rk − 1
+
+(11.6)
+
+Though q11 , . . . , q1K may be correlated, we nonetheless estimate
+>K
+?
+K
+K
+0
+0
+0
+qk (r1k /rk )(1 − r1k /rk )(rk − qk )
+Var
+q1k ≈
+Var (q1k ) =
+.
+rk − 1
+k=1
+k=1
+k=1
+(11.7)
+4 The log-rank test is also known as the Mantel–Haenszel test or Cochran–Mantel–
+Haenszel test.
+5 For details, see Exercise 7 at the end of this chapter.
+
+476
+
+11. Survival Analysis and Censored Data
+
+Therefore, to compute
+)K the log-rank test statistic, we simply proceed as
+in (11.4), with X = k=1 q1k , making use of (11.5) and (11.7). That is, we
+calculate
+2
+)K 1
+qk
+)K
+q
+−
+r
+1k
+1k
+k=1
+rk
+k=1 (q1k − µk )
+W = G)
+= G)
+.
+(11.8)
+K
+qk (r1k /rk )(1−r1k /rk )(rk −qk )
+K
+Var
+(q
+)
+1k
+k=1
+rk −1
+k=1
+
+When the sample size is large, the log-rank test statistic W has approximately a standard normal distribution; this can be used to compute
+a p-value for the null hypothesis that there is no difference between the
+survival curves in the two groups.6
+Comparing the survival times of females and males on the BrainCancer
+data gives a log-rank test statistic of W 

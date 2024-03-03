@@ -1,0 +1,442 @@
+mial() in order to
+tell statsmodels to run a logistic regression rather than some other type of
+generalized linear model.
+In [7]: allvars = Smarket.columns.drop (['Today ', 'Direction ', 'Year '])
+design = MS(allvars)
+X = design.fit_transform(Smarket)
+y = Smarket.Direction == 'Up'
+glm = sm.GLM(y,
+X,
+family=sm.families.Binomial ())
+results = glm.fit()
+summarize(results)
+
+4.7 Lab: Logistic Regression, LDA, QDA, and KNN
+Out[7]:
+
+coef
+intercept -0.1260
+Lag1
+-0.0731
+Lag2
+-0.0423
+Lag3
+0.0111
+Lag4
+0.0094
+Lag5
+0.0103
+Volume
+0.1354
+
+std err
+0.241
+0.050
+0.050
+0.050
+0.050
+0.050
+0.158
+
+z
+-0.523
+-1.457
+-0.845
+0.222
+0.187
+0.208
+0.855
+
+175
+
+P>|z|
+0.601
+0.145
+0.398
+0.824
+0.851
+0.835
+0.392
+
+The smallest p-value here is associated with Lag1. The negative coefficient
+for this predictor suggests that if the market had a positive return yesterday,
+then it is less likely to go up today. However, at a value of 0.15, the p-value
+is still relatively large, and so there is no clear evidence of a real association
+between Lag1 and Direction.
+We use the params attribute of results in order to access just the coefficients for this fitted model.
+In [8]: results.params
+Out[8]: intercept
+-0.126000
+Lag1
+-0.073074
+Lag2
+-0.042301
+Lag3
+0.011085
+Lag4
+0.009359
+Lag5
+0.010313
+Volume
+0.135441
+dtype: float64
+
+Likewise we can use the pvalues attribute to access the p-values for the
+coefficients (not shown).
+In [9]: results.pvalues
+
+The predict() method of results can be used to predict the probability
+that the market will go up, given values of the predictors. This method
+returns predictions on the probability scale. If no data set is supplied to
+the predict() function, then the probabilities are computed for the training data that was used to fit the logistic regression model. As with linear
+regression, one can pass an optional exog argument consistent with a design
+matrix if desired. Here we have printed only the first ten probabilities.
+In [10]: probs = results.predict ()
+probs [:10]
+Out[10]: array ([0.5070841 , 0.4814679 , 0.4811388 , 0.5152223 , 0.5107812 ,
+0.5069565 , 0.4926509 , 0.5092292 , 0.5176135 , 0.4888378])
+
+In order to make a prediction as to whether the market will go up or
+down on a particular day, we must convert these predicted probabilities
+into class labels, Up or Down. The following two commands create a vector
+of class predictions based on whether the predicted probability of a market
+increase is greater than or less than 0.5.
+In [11]: labels = np.array (['Down ']*1250)
+labels[probs >0.5] = "Up"
+
+176
+
+4. Classification
+
+The confusion_table() function from the ISLP package summarizes these confusion_
+predictions, showing how many observations were correctly or incorrectly table()
+classified. Our function, which is adapted from a similar function in the
+module sklearn.metrics, transposes the resulting matrix and includes row
+and column labels. The confusion_table() function takes as first argument
+the predicted labels, and second argument the true labels.
+In [12]: confusion_table(labels , Smarket.Direction)
+Out[12]:
+
+Truth
+Predicted
+Down
+Up
+
+Down
+
+Up
+
+145
+457
+
+141
+507
+
+The diagonal elements of the confusion matrix indicate correct predictions,
+while the off-diagonals represent incorrect predictions. Hence our model
+correctly predicted that the market would go up on 507 days and that
+it would go down on 145 days, for a total of 507 + 145 = 652 correct
+predictions. The np.mean() function can be used to compute the fraction of
+days for which the prediction was correct. In this case, logistic regression
+correctly predicted the movement of the market 52.2% of the time.
+In [13]: (507+145) /1250 , np.mean(labels == Smarket.Direction)
+Out[13]: (0.5216 , 0.5216)
+
+At first glance, it appears that the logistic regression model is working
+a little better than random guessing. However, this result is misleading
+because we trained and tested the model on the same set of 1,250 observations. In other words, 100 − 52.2 = 47.8% is the training error rate. As
+we have seen previously, the training error rate is often overly optimistic
+— it tends to underestimate the test error rate. In order to better assess
+the accuracy of the logistic regression model in this setting, we can fit the
+model using part of the data, and then examine how well it predicts the
+held out data. This will yield a more realistic error rate, in the sense that in
+practice we will be interested in our model’s performance not on the data
+that we used to fit the model, but rather on days in the future for which
+the market’s movements are unknown.
+To implement this strategy, we first create a Boolean vector corresponding to the observations from 2001 through 2004. We then use this vector
+to create a held out data set of observations from 2005.
+In [14]: train = (Smarket.Year < 2005)
+Smarket_train = Smarket.loc[train]
+Smarket_test = Smarket.loc[∼train]
+Smarket_test.shape
+Out[14]: (252, 9)
+
+The object train is a vector of 1,250 elements, corresponding to the
+observations in our data set. The elements of the vector that correspond
+to observations that occurred before 2005 are set to True, whereas those
+that correspond to observations in 2005 are set to False. Hence train is a
+boolean array, since its elements are True and False. Boolean arrays can be
+used to obtain a subset of the rows or columns of a data frame using the
+
+4.7 Lab: Logistic Regression, LDA, QDA, and KNN
+
+177
+
+loc method. For instance, the command Smarket.loc[train] would pick
+
+out a submatrix of the stock market data set, corresponding only to the
+dates before 2005, since those are the ones for which the elements of train
+are True. The ∼ symbol can be used to negate all of the elements of a
+Boolean vector. That is, ∼train is a vector similar to train, except that
+the elements that are True in train get swapped to False in ∼train, and
+vice versa. Therefore, Smarket.loc[∼train] yields a subset of the rows of
+the data frame of the stock market data containing only the observations
+for which train is False. The output above indicates that there are 252
+such observations.
+We now fit a logistic regression model using only the subset of the observations that correspond to dates before 2005. We then obtain predicted
+probabilities of the stock market going up for each of the days in our test
+set — that is, for the days in 2005.
+In [15]: X_train , X_test = X.loc[train], X.loc[∼train]
+y_train , y_test = y.loc[train], y.loc[∼train]
+glm_train = sm.GLM(y_train ,
+X_train ,
+family=sm.families.Binomial ())
+results = glm_train.fit()
+probs = results.predict(exog=X_test)
+
+Notice that we have trained and tested our model on two completely
+separate data sets: training was performed using only the dates before
+2005, and testing was performed using only the dates in 2005.
+Finally, we compare the predictions for 2005 to the actual movements of
+the market over that time period. We will first store the test and training
+labels (recall y_test is binary).
+In [16]: D = Smarket.Direction
+L_train , L_test = D.loc[train], D.loc[∼train]
+
+Now we threshold the fitted probability at 50% to form our predicted labels.
+In [17]: labels = np.array (['Down ']*252)
+labels[probs >0.5] = 'Up'
+confusion_table(labels , L_test)
+Out[17]:
+
+Truth
+Predicted
+Down
+Up
+
+Down
+
+Up
+
+77
+34
+
+97
+44
+
+The test accuracy is about 48% while the error rate is about 52%
+In [18]: np.mean(labels == L_test), np.mean(labels != L_test)
+Out[18]: (0.4802 , 0.5198)
+
+The != notation means not equal to, and so the last command computes !=
+the test set error rate. The results are rather disappointing: the test error
+rate is 52%, which is worse than random guessing! Of course this result
+is not all that surprising, given that one would not generally expect to be
+able to use previous days’ returns to predict future market performance.
+(After all, if it were possible to do so, then the authors of this book would
+be out striking it rich rather than writing a statistics textbook.)
+
+178
+
+4. Classification
+
+We recall that the logistic regression model had very underwhelming pvalues associated with all of the predictors, and that the smallest p-value,
+though not very small, corresponded to Lag1. Perhaps by removing the
+variables that appear not to be helpful in predicting Direction, we can
+obtain a more effective model. After all, using predictors that have no
+relationship with the response tends to cause a deterioration in the test
+error rate (since such predictors cause an increase in variance without a
+corresponding decrease in bias), and so removing such predictors may in
+turn yield an improvement. Below we refit the logistic regression using just
+Lag1 and Lag2, which seemed to have the highest predictive power in the
+original logistic regression model.
+In [19]: model = MS(['Lag1 ', 'Lag2 ']).fit(Smarket)
+X = model.transform(Smarket)
+X_train , X_test = X.loc[train], X.loc[∼train]
+glm_train = sm.GLM(y_train ,
+X_train ,
+family=sm.families.Binomial ())
+results = glm_train.fit()
+probs = results.predict(exog=X_test)
+labels = np.array (['Down ']*252)
+labels[probs >0.5] = 'Up'
+confusion_table(labels , L_test)
+Out[19]:
+
+Truth
+Predicted
+Down
+Up
+
+Down
+
+Up
+
+35
+76
+
+35
+106
+
+Let’s evaluate the overall accuracy as well as the accuracy within the
+days when logistic regression predicts an increase.
+In [20]: (35+106) /252 ,106/(106+76)
+Out[20]: (0.5595 , 0.5824)
+
+Now the results appear to be a little better: 56% of the daily movements
+have been correctly predicted. It is worth noting that in this case, a much
+simpler strategy of predicting that the market will increase every day will
+also be correct 56% of the time! Hence, in terms of overall error rate, the
+logistic regression method is no better than the naive approach. However,
+the confusion matrix shows that on days when logistic regression predicts
+an increase in the market, it has a 58% accuracy rate. This suggests a
+possible trading strategy of buying on days when the model predicts an increasing market, and avoiding trades on days when a decrease is predicted.
+Of course one would need to investigate more carefully whether this small
+improvement was real or just due to random chance.
+Suppose that we want to predict the returns associated with particular
+values of Lag1 and Lag2. In particular, we want to predict Direction on a
+day when Lag1 and Lag2 equal 1.2 and 1.1, respectively, and on a day when
+they equal 1.5 and −0.8. We do this using the predict() function.
+
+In [21]: newdata = pd.DataFrame ({'Lag1 ':[1.2 , 1.5],
+'Lag2 ':[1.1 , -0.8]});
+
+4.7 Lab: Logistic Regression, LDA, QDA, and KNN
+
+179
+
+newX = model.transform(newdata)
+results.predict(newX)
+Out[21]: 0
+0.4791
+1
+0.4961
+dtype: float64
+
+4.7.3
+
+Linear Discriminant Analysis
+
+We begin by performing LDA on the Smarket data, using the function
+LinearDiscriminantAnalysis(), which we have abbreviated LDA(). We fit
+Linear
+the model using only the observations before 2005.
+Discriminant
+In [22]: lda = LDA( store_covariance=True)
+
+Analysis()
+
+Since the LDA estimator automatically adds an intercept, we should remove the column corresponding to the intercept in both X_train and X_test.
+We can also directly use the labels rather than the Boolean vectors y_train.
+In [23]: X_train , X_test = [M.drop(columns =['intercept '])
+for M in [X_train , X_test ]]
+lda.fit(X_train , L_train)
+Out[23]: LinearDiscriminantAnalysis (store_covariance=True)
+
+Here we have used the list comprehensions introduced in Section 3.6.4.
+Looking at our first line above, we see that the right-hand side is a list of
+length two. This is because the code for M in [X_train, X_test] iterates
+over a list of length two. While here we loop over a list, the list comprehension method works when looping over any iterable object. We then apply
+the drop() method to each element in the iteration, collecting the result
+.drop()
+in a list. The left-hand side tells Python to unpack this list of length two,
+assigning its elements to the variables X_train and X_test. Of course, this
+overwrites the previous values of X_train and X_test.
+Having fit the model, we can extract the means in the two classes with
+the means_ attribute. These are the average of each predictor within each
+class, and are used by LDA as estimates of µk . These suggest that there is
+a tendency for the previous 2 days’ returns to be negative on days when
+the market increases, and a tendency for the previous days’ returns to be
+positive on days when the market declines.
+In [24]: lda.means_
+Out[24]: array ([[ 0.04, 0.03] ,
+[-0.04, -0.03]])
+
+The estimated prior probabilities are stored in the priors_ attribute. The
+package sklearn typically uses this trailing _ to denote a quantity estimated
+when using the fit() method. We can be sure of which entry corresponds
+to which label by looking at the classes_ attribute.
+In [25]: lda.classes_
+Out[25]: array (['Down ', 'Up'], dtype='<U4')
+
+180
+
+4. Classification
+
+The LDA output indicates that π̂Down = 0.492 and π̂Up = 0.508.
+In [26]: lda.priors_
+Out[26]: array ([0.492 , 0.508])
+
+The linear discriminant vectors can be found in the scalings_ attribute:
+In [27]: lda.scalings_
+Out[27]: array ([[ -0.642] ,
+[ -0.513]])
+
+These values provide the linear combination of Lag1 and Lag2 that are used
+to form the LDA decision rule. In other words, these are the multipliers of
+the elements of X = x in (4.24). If −0.64 × Lag1 − 0.51 × Lag2 is large,
+then the LDA classifier will predict a market increase, and if it is small,
+then the LDA classifier will predict a market decline.
+In [28]: lda_pred = lda.predict(X_test)
+
+As we observed in our comparison of classification methods (Section 4.5),
+the LDA and logistic regression predictions are almost identical.
+In [29]: confusion_table(lda_pred , L_test)
+Out[29]:
+
+Truth
+Predicted
+Down
+Up
+
+Down
+
+Up
+
+35
+76
+
+35
+106
+
+We can also estimate the probability of each class for each point in a
+training set. Applying a 50% threshold to the posterior probabilities of being in class one allows us to recreate the predictions contained in lda_pred.
+In [30]: lda_prob = lda.predict_proba(X_test)
+np.all(
+np.where(lda_prob [:,1] >= 0.5, 'Up','Down ') == lda_pred
+)
+Out[30]: True
+
+Above, we used the np.where() function that creates an array with value
+np.where()
+'Up' for indices where the second column of lda_prob (the estimated posterior probability of 'Up') is greater than 0.5. For problems with more than
+two classes the labels are chosen as the class whose posterior probability is
+highest:
+In [31]: np.all(
+
+[lda.classes_[i] for i in np.argmax(lda_prob , 1)] ==
+lda_pred
+)
+
+Out[31]: True
+
+If we wanted to use a posterior probability threshold other than 50% in
+order to make predictions, then we could easily do so. For instance, suppose
+that we wish to predict a market decrease only if we are very certain that the
+
+4.7 Lab: Logistic Regression, LDA, QDA, and KNN
+
+181
+
+market will indeed decrease on that day — say, if the posterior probability
+is at least 90%. We know that the first column of lda_prob corresponds to
+the label Down after having checked the classes_ attribute, hence we use
+the column index 0 rather than 1 as we did above.
+In [32]: np.sum(lda_prob [:,0] > 0.9)
+Out[32]: 0
+
+No days in 2005 meet that threshold! In fact, the greatest posterior probability of decrease in all of 2005 was 52.02%.
+The LDA classifier above is the first classifier from the sklearn library. We
+will use several other objects from this library. The objects follow a common
+structure that simplifies tasks such as cross-validation, which we will see in
+Chapter 5. Specifically

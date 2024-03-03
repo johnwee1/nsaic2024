@@ -1,0 +1,575 @@
+fic problems, such
+as convolutional neural networks (CNNs) for image classification, and recurrent neural networks (RNNs) for time series and other sequences. We
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0_10
+
+399
+
+400
+
+10. Deep Learning
+
+Input
+Layer
+
+Hidden
+Layer
+
+Output
+Layer
+
+A1
+X1
+A2
+X2
+A3
+
+f (X)
+
+Y
+
+X3
+A4
+X4
+A5
+
+FIGURE 10.1. Neural network with a single hidden layer. The hidden layer
+computes activations Ak = hk (X) that are nonlinear transformations of linear
+combinations of the inputs X1 , X2 , . . . , Xp . Hence these Ak are not directly observed. The functions hk (·) are not fixed in advance, but are learned during the
+training of the network. The output layer is a linear model that uses these activations Ak as inputs, resulting in a function f (X).
+
+will also demonstrate these models using the Python torch package, along
+with a number of helper packages.
+The material in this chapter is slightly more challenging than elsewhere
+in this book.
+
+10.1
+
+Single Layer Neural Networks
+
+A neural network takes an input vector of p variables X = (X1 , X2 , . . . , Xp )
+and builds a nonlinear function f (X) to predict the response Y . We have
+built nonlinear prediction models in earlier chapters, using trees, boosting
+and generalized additive models. What distinguishes neural networks from
+these methods is the particular structure of the model. Figure 10.1 shows
+a simple feed-forward neural network for modeling a quantitative response
+feed-forward
+using p = 4 predictors. In the terminology of neural networks, the four fea- neural
+tures X1 , . . . , X4 make up the units in the input layer. The arrows indicate network
+that each of the inputs from the input layer feeds into each of the K hidden input layer
+units (we get to pick K; here we chose 5). The neural network model has
+hidden units
+the form
+)K
+f (X) = β0 + k=1 βk hk (X)
+(10.1)
+)K
+)p
+= β0 + k=1 βk g(wk0 + j=1 wkj Xj ).
+It is built up here in two steps. First the K activations Ak , k = 1, . . . , K, in
+activations
+the hidden layer are computed as functions of the input features X1 , . . . , Xp ,
+)p
+Ak = hk (X) = g(wk0 + j=1 wkj Xj ),
+(10.2)
+
+401
+
+sigmoid
+ReLU
+
+0.6
+0.4
+0.0
+
+0.2
+
+g(z)
+
+0.8
+
+1.0
+
+10.1 Single Layer Neural Networks
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+z
+
+FIGURE 10.2. Activation functions. The piecewise-linear ReLU function is popular for its efficiency and computability. We have scaled it down by a factor of
+five for ease of comparison.
+
+where g(z) is a nonlinear activation function that is specified in advance.
+activation
+We can think of each Ak as a different transformation hk (X) of the original function
+features, much like the basis functions of Chapter 7. These K activations
+from the hidden layer then feed into the output layer, resulting in
+f (X) = β0 +
+
+K
+0
+
+βk Ak ,
+
+(10.3)
+
+k=1
+
+a linear regression model in the K = 5 activations. All the parameters
+β0 , . . . , βK and w10 , . . . , wKp need to be estimated from data. In the early
+instances of neural networks, the sigmoid activation function was favored,
+ez
+1
+g(z) =
+=
+,
+z
+1+e
+1 + e−z
+
+sigmoid
+
+(10.4)
+
+which is the same function used in logistic regression to convert a linear
+function into probabilities between zero and one (see Figure 10.2). The
+preferred choice in modern neural networks is the ReLU (rectified linear
+ReLU
+unit) activation function, which takes the form
+rectified
+K
+linear unit
+0 if z < 0
+g(z) = (z)+ =
+(10.5)
+z otherwise.
+A ReLU activation can be computed and stored more efficiently than a
+sigmoid activation. Although it thresholds at zero, because we apply it to a
+linear function (10.2) the constant term wk0 will shift this inflection point.
+So in words, the model depicted in Figure 10.1 derives five new features
+by computing five different linear combinations of X, and then squashes
+each through an activation function g(·) to transform it. The final model
+is linear in these derived variables.
+The name neural network originally derived from thinking of these hidden
+units as analogous to neurons in the brain — values of the activations
+Ak = hk (X) close to one are firing, while those close to zero are silent
+(using the sigmoid activation function).
+The nonlinearity in the activation function g(·) is essential, since without
+it the model f (X) in (10.1) would collapse into a simple linear model in
+
+402
+
+10. Deep Learning
+
+X1 , . . . , Xp . Moreover, having a nonlinear activation function allows the
+model to capture complex nonlinearities and interaction effects. Consider
+a very simple example with p = 2 input variables X = (X1 , X2 ), and
+K = 2 hidden units h1 (X) and h2 (X) with g(z) = z 2 . We specify the other
+parameters as
+β0 = 0, β1 = 14 , β2 = − 14 ,
+w10 = 0, w11 = 1, w12 = 1,
+(10.6)
+w20 = 0, w21 = 1, w22 = −1.
+From (10.2), this means that
+
+h1 (X) =
+h2 (X) =
+
+(0 + X1 + X2 )2 ,
+(0 + X1 − X2 )2 .
+
+(10.7)
+
+Then plugging (10.7) into (10.1), we get
+f (X)
+
+1
+1
+2
+2
+= 0+
+N 4 · (0 + X21 + X2 ) − 4 ·2(0
+O + X1 − X2 )
+1
+= 4 (X1 + X2 ) − (X1 − X2 )
+= X1 X2 .
+
+(10.8)
+
+So the sum of two nonlinear transformations of linear functions can give
+us an interaction! In practice we would not use a quadratic function for
+g(z), since we would always get a second-degree polynomial in the original
+coordinates X1 , . . . , Xp . The sigmoid or ReLU activations do not have such
+a limitation.
+Fitting a neural network requires estimating the unknown parameters in
+(10.1). For a quantitative response, typically squared-error loss is used, so
+that the parameters are chosen to minimize
+n
+0
+i=1
+
+2
+
+(yi − f (xi )) .
+
+(10.9)
+
+Details about how to perform this minimization are provided in Section 10.7.
+
+10.2
+
+Multilayer Neural Networks
+
+Modern neural networks typically have more than one hidden layer, and
+often many units per layer. In theory a single hidden layer with a large
+number of units has the ability to approximate most functions. However,
+the learning task of discovering a good solution is made much easier with
+multiple layers each of modest size.
+We will illustrate a large dense network on the famous and publicly
+available MNIST handwritten digit dataset.1 Figure 10.3 shows examples of
+these digits. The idea is to build a model to classify the images into their
+correct digit class 0–9. Every image has p = 28 × 28 = 784 pixels, each
+of which is an eight-bit grayscale value between 0 and 255 representing
+1 See LeCun, Cortes, and Burges (2010) “The MNIST database of handwritten digits”,
+available at http://yann.lecun.com/exdb/mnist.
+
+10.2 Multilayer Neural Networks
+
+403
+
+FIGURE 10.3. Examples of handwritten digits from the MNIST corpus. Each
+grayscale image has 28 × 28 pixels, each of which is an eight-bit number (0–255)
+which represents how dark that pixel is. The first 3, 5, and 8 are enlarged to show
+their 784 individual pixel values.
+
+the relative amount of the written digit in that tiny square.2 These pixels
+are stored in the input vector X (in, say, column order). The output is
+the class label, represented by a vector Y = (Y0 , Y1 , . . . , Y9 ) of 10 dummy
+variables, with a one in the position corresponding to the label, and zeros
+elsewhere. In the machine learning community, this is known as one-hot
+encoding. There are 60,000 training images, and 10,000 test images.
+one-hot
+On a historical note, digit recognition problems were the catalyst that encoding
+accelerated the development of neural network technology in the late 1980s
+at AT&T Bell Laboratories and elsewhere. Pattern recognition tasks of this
+kind are relatively simple for humans. Our visual system occupies a large
+fraction of our brains, and good recognition is an evolutionary force for
+survival. These tasks are not so simple for machines, and it has taken more
+than 30 years to refine the neural-network architectures to match human
+performance.
+Figure 10.4 shows a multilayer network architecture that works well for
+solving the digit-classification task. It differs from Figure 10.1 in several
+ways:
+• It has two hidden layers L1 (256 units) and L2 (128 units) rather
+than one. Later we will see a network with seven hidden layers.
+• It has ten output variables, rather than one. In this case the ten variables really represent a single qualitative variable and so are quite
+dependent. (We have indexed them by the digit class 0–9 rather than
+1–10, for clarity.) More generally, in multi-task learning one can premulti-task
+dict different responses simultaneously with a single network; they learning
+all have a say in the formation of the hidden layers.
+• The loss function used for training the network is tailored for the
+multiclass classification task.
+2 In the analog-to-digital conversion process, only part of the written numeral may
+fall in the square representing a particular pixel.
+
+404
+
+10. Deep Learning
+Input
+layer
+
+X1
+
+Hidden
+layer L1
+
+X2
+
+(1)
+A1
+
+X3
+
+(1)
+A2
+
+Hidden
+layer L2
+
+Output
+layer
+
+(2)
+
+A1
+
+f0 (X)
+
+Y0
+
+f1 (X)
+
+Y1
+
+.
+.
+.
+
+.
+.
+.
+
+f9 (X)
+
+Y9
+
+(2)
+A2
+(1)
+
+X4
+
+A3
+
+(2)
+
+A3
+(1)
+
+X5
+
+A4
+
+.
+.
+.
+
+.
+.
+.
+
+X6
+
+(2)
+
+AK
+.
+.
+.
+
+Xp
+
+2
+
+(1)
+
+AK
+
+1
+
+B
+
+W2
+
+W1
+
+FIGURE 10.4. Neural network diagram with two hidden layers and multiple
+outputs, suitable for the MNIST handwritten-digit problem. The input layer has
+p = 784 units, the two hidden layers K1 = 256 and K2 = 128 units respectively,
+and the output layer 10 units. Along with intercepts (referred to as biases in the
+deep-learning community) this network has 235,146 parameters (referred to as
+weights).
+
+The first hidden layer is as in (10.2), with
+(1)
+
+Ak
+
+=
+=
+
+(1)
+
+hk (X)
+)p
+(1)
+(1)
+g(wk0 + j=1 wkj Xj )
+
+(10.10)
+
+for k = 1, . . . , K1 . The second hidden layer treats the activations Ak
+the first hidden layer as inputs and computes new activations
+(2)
+
+A$
+
+=
+=
+
+(2)
+
+h$ (X)
+)K1 (2) (1)
+(2)
+g(w$0 + k=1
+w$k Ak )
+
+(1)
+
+of
+
+(10.11)
+
+for % = 1, . . . , K2 . Notice that each of the activations in the second layer
+(2)
+(2)
+A$ = h$ (X) is a function of the input vector X. This is the case because
+(1)
+while they are explicitly a function of the activations Ak from layer L1 ,
+these in turn are functions of X. This would also be the case with more
+hidden layers. Thus, through a chain of transformations, the network is
+able to build up fairly complex transformations of X that ultimately feed
+into the output layer as features.
+(2)
+We have introduced additional superscript notation such as h$ (X) and
+(2)
+w$j in (10.10) and (10.11) to indicate to which layer the activations and
+weights (coefficients) belong, in this case layer 2. The notation W1 in Fig-
+
+weights
+
+10.2 Multilayer Neural Networks
+
+405
+
+ure 10.4 represents the entire matrix of weights that feed from the input
+layer to the first hidden layer L1 . This matrix will have 785×256 = 200,960
+elements; there are 785 rather than 784 because we must account for the
+intercept or bias term.3
+bias
+(1)
+Each element Ak feeds to the second hidden layer L2 via the matrix of
+weights W2 of dimension 257 × 128 = 32,896.
+We now get to the output layer, where we now have ten responses rather
+than one. The first step is to compute ten different linear models similar
+to our single model (10.1),
+)K2
+(2)
+Zm = βm0 + $=1
+βm$ h$ (X)
+(10.12)
+)K2
+(2)
+= βm0 + $=1 βm$ A$ ,
+
+for m = 0, 1, . . . , 9. The matrix B stores all 129 × 10 = 1,290 of these
+weights.
+If these were all separate quantitative responses, we would simply set
+each fm (X) = Zm and be done. However, we would like our estimates to
+represent class probabilities fm (X) = Pr(Y = m|X), just like in multinomial logistic regression in Section 4.3.5. So we use the special softmax
+softmax
+activation function (see (4.13) on page 145),
+e Zm
+fm (X) = Pr(Y = m|X) = )9
+,
+Z"
+$=0 e
+
+(10.13)
+
+for m = 0, 1, . . . , 9. This ensures that the 10 numbers behave like probabilities (non-negative and sum to one). Even though the goal is to build
+a classifier, our model actually estimates a probability for each of the 10
+classes. The classifier then assigns the image to the class with the highest
+probability.
+To train this network, since the response is qualitative, we look for coefficient estimates that minimize the negative multinomial log-likelihood
+−
+
+n 0
+9
+0
+
+yim log(fm (xi )),
+
+(10.14)
+
+i=1 m=0
+
+also known as the cross-entropy. This is a generalization of the crite- crossrion (4.5) for two-class logistic regression. Details on how to minimize this entropy
+objective are given in Section 10.7. If the response were quantitative, we
+would instead minimize squared-error loss as in (10.9).
+Table 10.1 compares the test performance of the neural network with
+two simple models presented in Chapter 4 that make use of linear decision
+boundaries: multinomial logistic regression and linear discriminant analysis.
+The improvement of neural networks over both of these linear methods is
+dramatic: the network with dropout regularization achieves a test error rate
+below 2% on the 10,000 test images. (We describe dropout regularization in
+Section 10.7.3.) In Section 10.9.2 of the lab, we present the code for fitting
+this model, which runs in just over two minutes on a laptop computer.
+3 The use of “weights” for coefficients and “bias” for the intercepts w
+k0 in (10.2) is
+popular in the machine learning community; this use of bias is not to be confused with
+the “bias-variance” usage elsewhere in this book.
+
+406
+
+10. Deep Learning
+
+Method
+Neural Network + Ridge Regularization
+Neural Network + Dropout Regularization
+Multinomial Logistic Regression
+Linear Discriminant Analysis
+
+Test Error
+2.3%
+1.8%
+7.2%
+12.7%
+
+TABLE 10.1. Test error rate on the MNIST data, for neural networks with two
+forms of regularization, as well as multinomial logistic regression and linear discriminant analysis. In this example, the extra complexity of the neural network
+leads to a marked improvement in test error.
+
+FIGURE 10.5. A sample of images from the CIFAR100 database: a collection of
+natural images from everyday life, with 100 different classes represented.
+
+Adding the number of coefficients in W1 , W2 and B, we get 235,146 in
+all, more than 33 times the number 785 × 9 = 7,065 needed for multinomial
+logistic regression. Recall that there are 60,000 images in the training set.
+While this might seem like a large training set, there are almost four times
+as many coefficients in the neural network model as there are observations in
+the training set! To avoid overfitting, some regularization is needed. In this
+example, we used two forms of regularization: ridge regularization, which
+is similar to ridge regression from Chapter 6, and dropout regularization.
+dropout
+We discuss both forms of regularization in Section 10.7.
+
+10.3
+
+Convolutional Neural Networks
+
+Neural networks rebounded around 2010 with big successes in image classification. Around that time, massive databases of labeled images were being
+accumulated, with ever-increasing numbers of classes. Figure 10.5 shows
+75 images drawn from the CIFAR100 database.4 This database consists of
+60,000 images labeled according to 20 superclasses (e.g. aquatic mammals),
+with five classes per superclass (beaver, dolphin, otter, seal, whale). Each
+image has a resolution of 32 × 32 pixels, with three eight-bit numbers per
+pixel representing red, green and blue. The numbers for each image are
+organized in a three-dimensional array called a feature map. The first two
+4 See Chapter 3 of Krizhevsky (2009)
+tures from tiny images”, available at
+learning-features-2009-TR.pdf.
+
+“Learning multiple layers of feahttps://www.cs.toronto.edu/~kriz/
+
+fe

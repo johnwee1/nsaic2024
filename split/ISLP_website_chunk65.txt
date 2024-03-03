@@ -1,0 +1,414 @@
+s per hidden layer can
+be large, and overfitting can be controlled via the various forms of
+regularization.
+• Regularization tuning parameters. These include the dropout rate φ
+and the strength λ of lasso and ridge regularization, and are typically
+set separately at each layer.
+• Details of stochastic gradient descent. These include the batch size,
+the number of epochs, and if used, details of data augmentation (Section 10.3.4.)
+Choices such as these can make a difference. In preparing this MNIST example, we achieved a respectable 1.8% misclassification error after some trial
+and error. Finer tuning and training of a similar network can get under
+1% error on these data, but the tinkering process can be tedious, and can
+result in overfitting if done carelessly.
+
+10. Deep Learning
+2.0
+
+432
+
+1.0
+0.0
+
+0.5
+
+Error
+
+1.5
+
+Training Error
+Test Error
+
+2
+
+5
+
+10
+
+20
+
+50
+
+Degrees of Freedom
+
+FIGURE 10.20. Double descent phenomenon, illustrated using error plots for a
+one-dimensional natural spline example. The horizontal axis refers to the number
+of spline basis functions on the log scale. The training error hits zero when the
+degrees of freedom coincides with the sample size n = 20, the “interpolation
+threshold”, and remains zero thereafter. The test error increases dramatically
+at this threshold, but then descends again to a reasonable value before finally
+increasing again.
+
+10.8
+
+Interpolation and Double Descent
+
+Throughout this book, we have repeatedly discussed the bias-variance tradeoff, first presented in Section 2.2.2. This trade-off indicates that statistical
+learning methods tend to perform the best, in terms of test-set error, for an
+intermediate level of model complexity. In particular, if we plot “flexibility” on the x-axis and error on the y-axis, then we generally expect to see
+that test error has a U-shape, whereas training error decreases monotonically. Two “typical” examples of this behavior can be seen in the right-hand
+panel of Figure 2.9 on page 29, and in Figure 2.17 on page 39. One implication of the bias-variance trade-off is that it is generally not a good idea to
+interpolate the training data — that is, to get zero training error — since
+interpolate
+that will often result in very high test error.
+However, it turns out that in certain specific settings it can be possible for
+a statistical learning method that interpolates the training data to perform
+well — or at least, better than a slightly less complex model that does not
+quite interpolate the data. This phenomenon is known as double descent,
+and is displayed in Figure 10.20. “Double descent” gets its name from the
+fact that the test error has a U-shape before the interpolation threshold is
+reached, and then it descends again (for a while, at least) as an increasingly
+flexible model is fit.
+We now describe the set-up that resulted in Figure 10.20. We simulated
+n = 20 observations from the model
+Y = sin(X) + ",
+where X ∼ U [−5, 5] (uniform distribution), and " ∼ N (0, σ 2 ) with σ = 0.3.
+We then fit a natural spline to the data, as described in Section 7.4, with d
+
+10.8 Interpolation and Double Descent
+
+−4
+
+−2
+
+0
+
+2
+
+2
+1
+0
+−3 −2 −1
+
+−3 −2 −1
+
+0
+
+1
+
+2
+
+f(seq(−5, 5, len = 1000))
+
+3
+
+20 Degrees of Freedom
+
+3
+
+8 Degrees of Freedom
+
+433
+
+4
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+2
+1
+0
+−3 −2 −1
+
+−3 −2 −1
+
+0
+
+1
+
+2
+
+f(seq(−5, 5, len = 1000))
+
+3
+
+80 Degrees
+of Freedom
+seq(−5, 5, len = 1000)
+
+3
+
+42 Degrees
+of Freedom
+seq(−5, 5, len = 1000)
+
+−4
+
+−2
+
+0
+
+2
+
+4
+
+FIGURE 10.21. Fitted functions fˆd (X) (orange), true function f (X) (black)
+and the observed 20 training data points. A different value of d (degrees of freedom)
+is used in each panel. For d ≥ 20 the orange curves all interpolate the training
+points, and hence the training error is zero.
+
+degrees of freedom.22 Recall from Section 7.4 that fitting a natural spline
+with d degrees of freedom amounts to fitting a least-squares regression
+of the response onto a set of d basis functions. The upper-left panel of
+Figure 10.21 shows the data, the true function f (X), and fˆ8 (X), the fitted
+natural spline with d = 8 degrees of freedom.
+Next, we fit a natural spline with d = 20 degrees of freedom. Since n = 20,
+this means that n = d, and we have zero training error; in other words, we
+have interpolated the training data! We can see from the top-right panel of
+Figure 10.21 that fˆ20 (X) makes wild excursions, and hence the test error
+will be large.
+We now continue to fit natural splines to the data, with increasing values
+of d. For d > 20, the least squares regression of Y onto d basis functions
+is not unique: there are an infinite number of least squares coefficient estimates that achieve zero error. To select among
+)dthem, we choose the one
+with the smallest sum of squared coefficients, j=1 β̂j2 . This is known as
+the minimum-norm solution.
+The two lower panels of Figure 10.21 show the minimum-norm natural
+spline fits with d = 42 and d = 80 degrees of freedom. Incredibly, fˆ42 (X)
+is quite a bit less less wild than fˆ20 (X), even though it makes use of more
+degrees of freedom. And fˆ80 (X) is not much different. How can this be?
+Essentially, fˆ20 (X) is very wild because there is just a single way to interpolate n = 20 observations using d = 20 basis functions, and that single way
+results in a somewhat extreme fitted function. By contrast, there are an
+22 This implies the choice of d knots, here chosen at d equi-probability quantiles of the
+training data. When d > n, the quantiles are found by interpolation.
+
+434
+
+10. Deep Learning
+
+infinite number of ways to interpolate n = 20 observations using d = 42 or
+d = 80 basis functions, and the smoothest of them — that is, the minimum
+norm solution — is much less wild than fˆ20 (X)!
+In Figure 10.20, we display the training error and test error associated
+with fˆd (X), for a range of values of the degrees of freedom d. We see that
+the training error drops to zero once d = 20 and beyond; i.e. once the
+interpolation threshold is reached. By contrast, the test error shows a U shape for d ≤ 20, grows extremely large around d = 20, and then shows a
+second region of descent for d > 20. For this example the signal-to-noise
+ratio — Var(f (X))/σ 2 — is 5.9, which is quite high (the data points are
+close to the true curve). So an estimate that interpolates the data and does
+not wander too far inbetween the observed data points will likely do well.
+In Figures 10.20 and 10.21, we have illustrated the double descent phenomenon in a simple one-dimensional setting using natural splines. However, it turns out that the same phenomenon can arise for deep learning.
+Basically, when we fit neural networks with a huge number of parameters,
+we are sometimes able to get good results with zero training error. This is
+particularly true in problems with high signal-to-noise ratio, such as natural
+image recognition and language translation, for example. This is because
+the techniques used to fit neural networks, including stochastic gradient
+descent, naturally lend themselves to selecting a “smooth” interpolating
+model that has good test-set performance on these kinds of problems.
+Some points are worth emphasizing:
+• The double-descent phenomenon does not contradict the bias-variance
+trade-off, as presented in Section 2.2.2. Rather, the double-descent
+curve seen in the right-hand side of Figure 10.20 is a consequence of
+the fact that the x-axis displays the number of spline basis functions
+used, which does not properly capture the true “flexibility” of models
+that interpolate the training data. Stated another way, in this example, the minimum-norm natural spline with d = 42 has lower variance
+than the natural spline with d = 20.
+• Most of the statistical learning methods seen in this book do not exhibit
+double descent. For instance, regularization approaches typically do
+not interpolate the training data, and thus double descent does not
+occur. This is not a drawback of regularized methods: they can give
+great results without interpolating the data!
+In particular, in the examples here, if we had fit the natural splines
+using ridge regression with an appropriately-chosen penalty rather
+than least squares, then we would not have seen double descent, and
+in fact would have obtained better test error results.
+• In Chapter 9, we saw that maximal margin classifiers and SVMs that
+have zero training error nonetheless often achieve very good test error.
+This is in part because those methods seek smooth minimum norm
+solutions. This is similar to the fact that the minimum-norm natural
+spline can give good results with zero training error.
+• The double-descent phenomenon has been used by the machine learning community to explain the successful practice of using an over-
+
+10.9 Lab: Deep Learning
+
+435
+
+parametrized neural network (many layers, and many hidden units),
+and then fitting all the way to zero training error. However, fitting
+to zero error is not always optimal, and whether it is advisable depends on the signal-to-noise ratio. For instance, we may use ridge
+regularization to avoid overfitting a neural network, as in (10.31). In
+this case, provided that we use an appropriate choice for the tuning
+parameter λ, we will never interpolate the training data, and thus
+will not see the double descent phenomenon. Nonetheless we can get
+very good test-set performance, likely much better than we would
+have achieved had we interpolated the training data. Early stopping
+during stochastic gradient descent can also serve as a form of regularization that prevents us from interpolating the training data, while
+still getting very good results on test data.
+To summarize: though double descent can sometimes occur in neural networks, we typically do not want to rely on this behavior. Moreover, it
+is important to remember that the bias-variance trade-off always holds
+(though it is possible that test error as a function of flexibility may not
+exhibit a U-shape, depending on how we have parametrized the notion of
+“flexibility” on the x-axis).
+
+10.9
+
+Lab: Deep Learning
+
+In this section we demonstrate how to fit the examples discussed in the
+text. We use the Python torch package, along with the pytorch_lightning torch
+package which provides utilities to simplify fitting and evaluating mod- pytorch_
+els. This code can be impressively fast with certain special processors, lightning
+such as Apple’s new M1 chip. The package is well-structured, flexible, and
+will feel comfortable to Python users. A good companion is the site pytorch.org/tutorials. Much of our code is adapted from there, as well as the
+pytorch_lightning documentation.23
+We start with several standard imports that we have seen before.
+In [1]: import numpy as np , pandas as pd
+from matplotlib.pyplot import subplots
+from sklearn.linear_model import \
+(LinearRegression ,
+LogisticRegression ,
+Lasso)
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import KFold
+from sklearn.pipeline import Pipeline
+from ISLP import load_data
+from ISLP.models import ModelSpec as MS
+from sklearn.model_selection import \
+(train_test_split ,
+GridSearchCV)
+
+23 The precise URLs at the time of writing are https://pytorch.org/tutorials/
+beginner/basics/intro.html and https://pytorch-lightning.readthedocs.io/en/
+latest/.
+
+436
+
+10. Deep Learning
+
+Torch-Specific Imports
+There are a number of imports for torch. (These are not included with
+ISLP, so must be installed separately.) First we import the main library
+and essential tools used to specify sequentially-structured networks.
+In [2]: import torch
+from torch import nn
+from torch.optim import RMSprop
+from torch.utils.data import TensorDataset
+
+There are several other helper packages for torch. For instance, the
+torchmetrics package has utilities to compute various metrics to evalutorchmetrics
+ate performance when fitting a model. The torchinfo package provides a torchinfo
+useful summary of the layers of a model. We use the read_image() function
+when loading test images in Section 10.9.4.
+
+read_image()
+
+In [3]: from torchmetrics import (MeanAbsoluteError ,
+R2Score)
+from torchinfo import summary
+from torchvision.io import read_image
+
+The package pytorch_lightning is a somewhat higher-level interface to
+torch that simplifies the specification and fitting of models by reducing the
+amount of boilerplate code needed (compared to using torch alone).
+In [4]: from pytorch_lightning import Trainer
+from pytorch_lightning .loggers import CSVLogger
+
+In order to reproduce results we use seed_everything(). We will also seed_
+instruct torch to use deterministic algorithms where possible.
+everything()
+In [5]: from pytorch_lightning .utilities.seed import seed_everything
+seed_everything (0, workers=True)
+torch. use_deterministic_algorithms (True , warn_only=True)
+
+We will use several datasets shipped with torchvision for our examples: torchvision
+a pretrained network for image classification, as well as some transforms
+used for preprocessing.
+In [6]: from torchvision.datasets import MNIST , CIFAR100
+from torchvision.models import (resnet50 ,
+ResNet50_Weights)
+from torchvision.transforms import (Resize ,
+Normalize ,
+CenterCrop ,
+ToTensor)
+
+We have provided a few utilities in ISLP specifically for this lab. The
+SimpleDataModule and SimpleModule are simple versions of objects used
+in pytorch_lightning, the high-level module for fitting torch models. Although more advanced uses such as computing on graphical processing
+units (GPUs) and parallel data processing are possible in this module, we
+will not be focusing much on these in this lab. The ErrorTracker handles
+collections of targets and predictions over each mini-batch in the validation
+or test stage, allowing computation of the metric over the entire validation
+or test data set.
+
+10.9 Lab: Deep Learning
+
+437
+
+In [7]: from ISLP.torch import (SimpleDataModule ,
+SimpleModule ,
+ErrorTracker ,
+rec_num_workers)
+
+In addition we have included some helper functions to load the IMDb
+database, as well as a lookup that maps integers to particular keys in the
+database. We’ve included a slightly modified copy of the preprocessed IMDb
+data from keras, a separate package for fitting deep learning models. This keras
+saves us significant preprocessing and allows us to focus on specifying and
+fitting the models themselves.
+In [8]: from ISLP.torch.imdb import (load_lookup ,
+load_tensor ,
+load_sparse ,
+load_sequential)
+
+Finally, we introduce some utility imports not directly related to torch.
+The glob() function from the glob module is used to find all files matching
+glob()
+wildcard characters, which we will use in our example applying the ResNet50
+model to some of our own images. The json module will be used to load a json
+JSON file for looking up classes to identify the labels of the pictures in the
+ResNet50 example.
+In [9]: from glob import glob
+import json
+
+10.9.1
+
+Single Layer Network on Hitters Data
+
+We start by fitting the models in Section 10.6 on the Hitters data.
+In [10]: Hitters = load_data('Hitters ').dropna ()
+n = Hitters.shape [0]
+
+We will fit two linear models (least squares and lasso) and compare their
+performance to that of a neural network. For this comparison we will use
+mean absolute error on a validation dataset.
+MAE(y, ŷ) =
+
+n
+
+10
+|yi − ŷi |.
+n i=1
+
+We set up the model matrix and the response.
+
+In [11]: model = MS(Hitters.columns.drop('Salary '), intercept=False)
+X = model.fit_transform(Hitters).to_numpy ()
+Y = Hitters['Salary ']. to_numpy ()
+
+The to_numpy() method above converts pa

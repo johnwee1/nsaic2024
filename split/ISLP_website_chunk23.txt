@@ -1,0 +1,383 @@
+lass for which
+1
+δk (x) = xT Σ−1 µk − µTk Σ−1 µk + log πk
+(4.24)
+2
+is largest. This is the vector/matrix version of (4.18).
+An example is shown in the left-hand panel of Figure 4.6. Three equallysized Gaussian classes are shown with class-specific mean vectors and a
+common covariance matrix. The three ellipses represent regions that contain 95 % of the probability for each of the three classes. The dashed lines
+are the Bayes decision boundaries. In other words, they represent the set
+of values x for which δk (x) = δ$ (x); i.e.
+1
+1
+xT Σ−1 µk − µTk Σ−1 µk = xT Σ−1 µl − µTl Σ−1 µl
+(4.25)
+2
+2
+for k =
+% l. (The log πk term from (4.24) has disappeared because each of
+the three classes has the same number of training observations; i.e. πk is
+the same for each class.) Note that there are three lines representing the
+Bayes decision boundaries because there are three pairs of classes among
+the three classes. That is, one Bayes decision boundary separates class 1
+from class 2, one separates class 1 from class 3, and one separates class 2
+from class 3. These three Bayes decision boundaries divide the predictor
+space into three regions. The Bayes classifier will classify an observation
+according to the region in which it is located.
+Once again, we need to estimate the unknown parameters µ1 , . . . , µK ,
+π1 , . . . , πK , and Σ; the formulas are similar to those used in the onedimensional case, given in (4.20). To assign a new observation X = x,
+LDA plugs these estimates into (4.24) to obtain quantities δ̂k (x), and classifies to the class for which δ̂k (x) is largest. Note that in (4.24) δk (x) is
+a linear function of x; that is, the LDA decision rule depends on x only
+
+152
+
+4. Classification
+
+Predicted
+default status
+
+No
+Yes
+Total
+
+True default status
+No
+Yes Total
+9644 252
+9896
+23
+81
+104
+9667 333 10000
+
+TABLE 4.4. A confusion matrix compares the LDA predictions to the true
+default statuses for the 10,000 training observations in the Default data set.
+Elements on the diagonal of the matrix represent individuals whose default statuses
+were correctly predicted, while off-diagonal elements represent individuals that
+were misclassified. LDA made incorrect predictions for 23 individuals who did
+not default and for 252 individuals who did default.
+
+through a linear combination of its elements. As previously discussed, this
+is the reason for the word linear in LDA.
+In the right-hand panel of Figure 4.6, 20 observations drawn from each of
+the three classes are displayed, and the resulting LDA decision boundaries
+are shown as solid black lines. Overall, the LDA decision boundaries are
+pretty close to the Bayes decision boundaries, shown again as dashed lines.
+The test error rates for the Bayes and LDA classifiers are 0.0746 and 0.0770,
+respectively. This indicates that LDA is performing well on this data.
+We can perform LDA on the Default data in order to predict whether
+or not an individual will default on the basis of credit card balance and
+student status.4 The LDA model fit to the 10,000 training samples results
+in a training error rate of 2.75 %. This sounds like a low error rate, but two
+caveats must be noted.
+• First of all, training error rates will usually be lower than test error
+rates, which are the real quantity of interest. In other words, we
+might expect this classifier to perform worse if we use it to predict
+whether or not a new set of individuals will default. The reason is
+that we specifically adjust the parameters of our model to do well on
+the training data. The higher the ratio of parameters p to number
+of samples n, the more we expect this overfitting to play a role. For
+overfitting
+these data we don’t expect this to be a problem, since p = 2 and
+n = 10, 000.
+• Second, since only 3.33 % of the individuals in the training sample
+defaulted, a simple but useless classifier that always predicts that
+an individual will not default, regardless of his or her credit card
+balance and student status, will result in an error rate of 3.33 %. In
+other words, the trivial null classifier will achieve an error rate that
+null
+is only a bit higher than the LDA training set error rate.
+In practice, a binary classifier such as this one can make two types of
+errors: it can incorrectly assign an individual who defaults to the no default
+category, or it can incorrectly assign an individual who does not default to
+4 The careful reader will notice that student status is qualitative — thus, the normality
+assumption made by LDA is clearly violated in this example! However, LDA is often
+remarkably robust to model violations, as this example shows. Naive Bayes, discussed in
+Section 4.4.4, provides an alternative to LDA that does not assume normally distributed
+predictors.
+
+4.4 Generative Models for Classification
+
+153
+
+the default category. It is often of interest to determine which of these two
+types of errors are being made. A confusion matrix, shown for the Default
+confusion
+data in Table 4.4, is a convenient way to display this information. The matrix
+table reveals that LDA predicted that a total of 104 people would default.
+Of these people, 81 actually defaulted and 23 did not. Hence only 23 out
+of 9,667 of the individuals who did not default were incorrectly labeled.
+This looks like a pretty low error rate! However, of the 333 individuals who
+defaulted, 252 (or 75.7 %) were missed by LDA. So while the overall error
+rate is low, the error rate among individuals who defaulted is very high.
+From the perspective of a credit card company that is trying to identify
+high-risk individuals, an error rate of 252/333 = 75.7 % among individuals
+who default may well be unacceptable.
+Class-specific performance is also important in medicine and biology,
+where the terms sensitivity and specificity characterize the performance of
+sensitivity
+a classifier or screening test. In this case the sensitivity is the percentspecificity
+age of true defaulters that are identified; it equals 24.3 %. The specificity
+is the percentage of non-defaulters that are correctly identified; it equals
+(1 − 23/9667) = 99.8 %.
+Why does LDA do such a poor job of classifying the customers who default? In other words, why does it have such low sensitivity? As we have
+seen, LDA is trying to approximate the Bayes classifier, which has the lowest total error rate out of all classifiers. That is, the Bayes classifier will
+yield the smallest possible total number of misclassified observations, regardless of the class from which the errors stem. Some misclassifications will
+result from incorrectly assigning a customer who does not default to the
+default class, and others will result from incorrectly assigning a customer
+who defaults to the non-default class. In contrast, a credit card company
+might particularly wish to avoid incorrectly classifying an individual who
+will default, whereas incorrectly classifying an individual who will not default, though still to be avoided, is less problematic. We will now see that it
+is possible to modify LDA in order to develop a classifier that better meets
+the credit card company’s needs.
+The Bayes classifier works by assigning an observation to the class for
+which the posterior probability pk (X) is greatest. In the two-class case, this
+amounts to assigning an observation to the default class if
+Pr(default = Yes|X = x) > 0.5.
+
+(4.26)
+
+Thus, the Bayes classifier, and by extension LDA, uses a threshold of 50 %
+for the posterior probability of default in order to assign an observation
+to the default class. However, if we are concerned about incorrectly predicting the default status for individuals who default, then we can consider
+lowering this threshold. For instance, we might label any customer with a
+posterior probability of default above 20 % to the default class. In other
+words, instead of assigning an observation to the default class if (4.26)
+holds, we could instead assign an observation to this class if
+Pr(default = Yes|X = x) > 0.2.
+
+(4.27)
+
+The error rates that result from taking this approach are shown in Table 4.5.
+Now LDA predicts that 430 individuals will default. Of the 333 individuals
+who default, LDA correctly predicts all but 138, or 41.4 %. This is a vast
+
+154
+
+4. Classification
+
+Predicted
+default status
+
+No
+Yes
+Total
+
+True default status
+No
+Yes Total
+9432 138
+9570
+235 195
+430
+9667 333 10000
+
+0.4
+0.2
+0.0
+
+Error Rate
+
+0.6
+
+TABLE 4.5. A confusion matrix compares the LDA predictions to the true
+default statuses for the 10,000 training observations in the Default data set,
+using a modified threshold value that predicts default for any individuals whose
+posterior default probability exceeds 20 %.
+
+0.0
+
+0.1
+
+0.2
+
+0.3
+
+0.4
+
+0.5
+
+Threshold
+
+FIGURE 4.7. For the Default data set, error rates are shown as a function of
+the threshold value for the posterior probability that is used to perform the assignment. The black solid line displays the overall error rate. The blue dashed line
+represents the fraction of defaulting customers that are incorrectly classified, and
+the orange dotted line indicates the fraction of errors among the non-defaulting
+customers.
+
+improvement over the error rate of 75.7 % that resulted from using the
+threshold of 50 %. However, this improvement comes at a cost: now 235
+individuals who do not default are incorrectly classified. As a result, the
+overall error rate has increased slightly to 3.73 %. But a credit card company
+may consider this slight increase in the total error rate to be a small price to
+pay for more accurate identification of individuals who do indeed default.
+Figure 4.7 illustrates the trade-off that results from modifying the threshold value for the posterior probability of default. Various error rates are
+shown as a function of the threshold value. Using a threshold of 0.5, as in
+(4.26), minimizes the overall error rate, shown as a black solid line. This
+is to be expected, since the Bayes classifier uses a threshold of 0.5 and is
+known to have the lowest overall error rate. But when a threshold of 0.5 is
+used, the error rate among the individuals who default is quite high (blue
+dashed line). As the threshold is reduced, the error rate among individuals
+who default decreases steadily, but the error rate among the individuals
+who do not default increases. How can we decide which threshold value is
+best? Such a decision must be based on domain knowledge, such as detailed
+information about the costs associated with default.
+The ROC curve is a popular graphic for simultaneously displaying the
+ROC curve
+two types of errors for all possible thresholds. The name “ROC” is historic,
+and comes from communications theory. It is an acronym for receiver operating characteristics. Figure 4.8 displays the ROC curve for the LDA
+classifier on the training data. The overall performance of a classifier, sum-
+
+4.4 Generative Models for Classification
+
+155
+
+0.6
+0.4
+0.0
+
+0.2
+
+True positive rate
+
+0.8
+
+1.0
+
+ROC Curve
+
+0.0
+
+0.2
+
+0.4
+
+0.6
+
+0.8
+
+1.0
+
+False positive rate
+
+FIGURE 4.8. A ROC curve for the LDA classifier on the Default data. It
+traces out two types of error as we vary the threshold value for the posterior
+probability of default. The actual thresholds are not shown. The true positive rate
+is the sensitivity: the fraction of defaulters that are correctly identified, using
+a given threshold value. The false positive rate is 1-specificity: the fraction of
+non-defaulters that we classify incorrectly as defaulters, using that same threshold
+value. The ideal ROC curve hugs the top left corner, indicating a high true positive
+rate and a low false positive rate. The dotted line represents the “no information”
+classifier; this is what we would expect if student status and credit card balance
+are not associated with probability of default.
+
+marized over all possible thresholds, is given by the area under the (ROC)
+curve (AUC). An ideal ROC curve will hug the top left corner, so the larger
+area under
+the AUC the better the classifier. For this data the AUC is 0.95, which is the (ROC)
+close to the maximum of 1.0, so would be considered very good. We expect curve
+a classifier that performs no better than chance to have an AUC of 0.5
+(when evaluated on an independent test set not used in model training).
+ROC curves are useful for comparing different classifiers, since they take
+into account all possible thresholds. It turns out that the ROC curve for
+the logistic regression model of Section 4.3.4 fit to these data is virtually
+indistinguishable from this one for the LDA model, so we do not display it
+here.
+As we have seen above, varying the classifier threshold changes its true
+positive and false positive rate. These are also called the sensitivity and one
+sensitivity
+minus the specificity of our classifier. Since there is an almost bewildering
+specificity
+array of terms used in this context, we now give a summary. Table 4.6
+shows the possible results when applying a classifier (or diagnostic test)
+to a population. To make the connection with the epidemiology literature,
+we think of “+” as the “disease” that we are trying to detect, and “−” as
+the “non-disease” state. To make the connection to the classical hypothesis
+testing literature, we think of “−” as the null hypothesis and “+” as the
+
+156
+
+4. Classification
+
+Predicted
+class
+
+− or Null
++ or Non-null
+Total
+
+True class
+− or Null
++ or Non-null
+True Neg. (TN) False Neg. (FN)
+False Pos. (FP)
+True Pos. (TP)
+N
+P
+
+Total
+N∗
+P∗
+
+TABLE 4.6. Possible results when applying a classifier or diagnostic test to a
+population.
+Name
+False Pos. rate
+True Pos. rate
+Pos. Pred. value
+Neg. Pred. value
+
+Definition
+FP/N
+TP/P
+TP/P∗
+TN/N∗
+
+Synonyms
+Type I error, 1−Specificity
+1−Type II error, power, sensitivity, recall
+Precision, 1−false discovery proportion
+
+TABLE 4.7. Important measures for classification and diagnostic testing, derived
+from quantities in Table 4.6.
+
+alternative (non-null) hypothesis. In the context of the Default data, “+”
+indicates an individual who defaults, and “−” indicates one who does not.
+Table 4.7 lists many of the popular performance measures that are used in
+this context. The denominators for the false positive and true positive rates
+are the actual population counts in each class. In contrast, the denominators
+for the positive predictive value and the negative predictive value are the
+total predicted counts for each class.
+
+4.4.3 Quadratic Discriminant Analysis
+As we have discussed, LDA assumes that the observations within each class
+are drawn from a multivariate Gaussian distribution with a class-specific
+mean vector and a covariance matrix that is common to all K classes.
+Quadratic discriminant analysis (QDA) provides an alternative approach.
+quadratic
+Like LDA, the QDA classifier results from assuming that the observations discriminant
+from each class are drawn from a Gaussian distribution, and plugging es- analysis
+timates for the parameters into Bayes’ theorem in order to perform prediction. However, unlike LDA, QDA assumes that each class has its own
+covariance matrix. That is, it assumes that an observation from the kth
+class is of the form X ∼ N (µk , Σk ), where Σk is a covariance matrix for
+the kth class. Under this assumption, the Bayes classifier assigns an observation X = x to the class for which
+1
+1
+δk (x) = − (x − µk )T Σ−1
+log |Σk | + log πk
+k (x − µk ) −
+2
+2
+1
+1 T −1
+1
+T −1
+= − xT Σ−1
+log |Σk | + log πk
+k x + x Σk µk − µk Σk µk −
+2
+2
+2
+(4.28)
+is largest. So the QDA classifier involves plugging estimates for Σk , µk ,
+and πk into (4.28), and then 

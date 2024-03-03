@@ -1,0 +1,427 @@
+ into the correct
+regions, and indicate the mean for each region.
+5. Suppose we produce ten bootstrapped samples from a data set
+containing red and green classes. We then apply a classification tree
+to each bootstrapped sample and, for a specific value of X, produce
+10 estimates of P (Class is Red|X):
+0.1, 0.15, 0.2, 0.2, 0.55, 0.6, 0.6, 0.65, 0.7, and 0.75.
+There are two common ways to combine these results together into a
+single class prediction. One is the majority vote approach discussed in
+this chapter. The second approach is to classify based on the average
+probability. In this example, what is the final classification under each
+of these two approaches?
+6. Provide a detailed explanation of the algorithm that is used to fit a
+regression tree.
+
+Applied
+7. In Section 8.3.3, we applied random forests to the Boston data using
+max_features = 6 and using n_estimators = 100 and n_estimators =
+500. Create a plot displaying the test error resulting from random
+forests on this data set for a more comprehensive range of values
+for max_features and n_estimators. You can model your plot after
+Figure 8.10. Describe the results obtained.
+8. In the lab, a classification tree was applied to the Carseats data set after converting Sales into a qualitative response variable. Now we will
+seek to predict Sales using regression trees and related approaches,
+treating the response as a quantitative variable.
+
+8.4 Exercises
+
+365
+
+(a) Split the data set into a training set and a test set.
+(b) Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?
+(c) Use cross-validation in order to determine the optimal level of
+tree complexity. Does pruning the tree improve the test MSE?
+(d) Use the bagging approach in order to analyze this data. What
+test MSE do you obtain? Use the feature_importance_ values to
+determine which variables are most important.
+(e) Use random forests to analyze this data. What test MSE do
+you obtain? Use the feature_importance_ values to determine
+which variables are most important. Describe the effect of m, the
+number of variables considered at each split, on the error rate
+obtained.
+(f) Now analyze the data using BART, and report your results.
+9. This problem involves the OJ data set which is part of the ISLP
+package.
+(a) Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.
+(b) Fit a tree to the training data, with Purchase as the response
+and the other variables as predictors. What is the training error
+rate?
+(c) Create a plot of the tree, and interpret the results. How many
+terminal nodes does the tree have?
+(d) Use the export_tree() function to produce a text summary of
+the fitted tree. Pick one of the terminal nodes, and interpret the
+information displayed.
+(e) Predict the response on the test data, and produce a confusion
+matrix comparing the test labels to the predicted test labels.
+What is the test error rate?
+(f) Use cross-validation on the training set in order to determine
+the optimal tree size.
+(g) Produce a plot with tree size on the x-axis and cross-validated
+classification error rate on the y-axis.
+(h) Which tree size corresponds to the lowest cross-validated classification error rate?
+(i) Produce a pruned tree corresponding to the optimal tree size
+obtained using cross-validation. If cross-validation does not lead
+to selection of a pruned tree, then create a pruned tree with five
+terminal nodes.
+(j) Compare the training error rates between the pruned and unpruned trees. Which is higher?
+(k) Compare the test error rates between the pruned and unpruned
+trees. Which is higher?
+
+366
+
+8. Tree-Based Methods
+
+10. We now use boosting to predict Salary in the Hitters data set.
+(a) Remove the observations for whom the salary information is
+unknown, and then log-transform the salaries.
+(b) Create a training set consisting of the first 200 observations, and
+a test set consisting of the remaining observations.
+(c) Perform boosting on the training set with 1,000 trees for a range
+of values of the shrinkage parameter λ. Produce a plot with
+different shrinkage values on the x-axis and the corresponding
+training set MSE on the y-axis.
+(d) Produce a plot with different shrinkage values on the x-axis and
+the corresponding test set MSE on the y-axis.
+(e) Compare the test MSE of boosting to the test MSE that results
+from applying two of the regression approaches seen in
+Chapters 3 and 6.
+(f) Which variables appear to be the most important predictors in
+the boosted model?
+(g) Now apply bagging to the training set. What is the test set MSE
+for this approach?
+11. This question uses the Caravan data set.
+(a) Create a training set consisting of the first 1,000 observations,
+and a test set consisting of the remaining observations.
+(b) Fit a boosting model to the training set with Purchase as the
+response and the other variables as predictors. Use 1,000 trees,
+and a shrinkage value of 0.01. Which predictors appear to be
+the most important?
+(c) Use the boosting model to predict the response on the test data.
+Predict that a person will make a purchase if the estimated probability of purchase is greater than 20 %. Form a confusion matrix. What fraction of the people predicted to make a purchase
+do in fact make one? How does this compare with the results
+obtained from applying KNN or logistic regression to this data
+set?
+12. Apply boosting, bagging, random forests, and BART to a data set
+of your choice. Be sure to fit the models on a training set and to
+evaluate their performance on a test set. How accurate are the results
+compared to simple methods like linear or logistic regression? Which
+of these approaches yields the best performance?
+
+9
+Support Vector Machines
+
+In this chapter, we discuss the support vector machine (SVM), an approach
+for classification that was developed in the computer science community in
+the 1990s and that has grown in popularity since then. SVMs have been
+shown to perform well in a variety of settings, and are often considered one
+of the best “out of the box” classifiers.
+The support vector machine is a generalization of a simple and intuitive classifier called the maximal margin classifier, which we introduce in
+Section 9.1. Though it is elegant and simple, we will see that this classifier
+unfortunately cannot be applied to most data sets, since it requires that
+the classes be separable by a linear boundary. In Section 9.2, we introduce
+the support vector classifier, an extension of the maximal margin classifier
+that can be applied in a broader range of cases. Section 9.3 introduces the
+support vector machine, which is a further extension of the support vector classifier in order to accommodate non-linear class boundaries. Support
+vector machines are intended for the binary classification setting in which
+there are two classes; in Section 9.4 we discuss extensions of support vector
+machines to the case of more than two classes. In Section 9.5 we discuss
+the close connections between support vector machines and other statistical
+methods such as logistic regression.
+People often loosely refer to the maximal margin classifier, the support
+vector classifier, and the support vector machine as “support vector
+machines”. To avoid confusion, we will carefully distinguish between these
+three notions in this chapter.
+
+9.1
+
+Maximal Margin Classifier
+
+In this section, we define a hyperplane and introduce the concept of an
+optimal separating hyperplane.
+© Springer Nature Switzerland AG 2023
+G. James et al., An Introduction to Statistical Learning, Springer Texts in Statistics,
+https://doi.org/10.1007/978-3-031-38747-0_9
+
+367
+
+368
+
+9. Support Vector Machines
+
+9.1.1
+
+What Is a Hyperplane?
+
+In a p-dimensional space, a hyperplane is a flat affine subspace of
+hyperplane
+dimension p − 1.1 For instance, in two dimensions, a hyperplane is a flat
+one-dimensional subspace—in other words, a line. In three dimensions, a
+hyperplane is a flat two-dimensional subspace—that is, a plane. In p > 3
+dimensions, it can be hard to visualize a hyperplane, but the notion of a
+(p − 1)-dimensional flat subspace still applies.
+The mathematical definition of a hyperplane is quite simple. In two dimensions, a hyperplane is defined by the equation
+β 0 + β 1 X1 + β2 X2 = 0
+
+(9.1)
+
+for parameters β0 , β1 , and β2 . When we say that (9.1) “defines” the hyperplane, we mean that any X = (X1 , X2 )T for which (9.1) holds is a point
+on the hyperplane. Note that (9.1) is simply the equation of a line, since
+indeed in two dimensions a hyperplane is a line.
+Equation 9.1 can be easily extended to the p-dimensional setting:
+β 0 + β 1 X1 + β 2 X2 + · · · + β p Xp = 0
+
+(9.2)
+
+defines a p-dimensional hyperplane, again in the sense that if a point X =
+(X1 , X2 , . . . , Xp )T in p-dimensional space (i.e. a vector of length p) satisfies
+(9.2), then X lies on the hyperplane.
+Now, suppose that X does not satisfy (9.2); rather,
+β0 + β1 X1 + β2 X2 + · · · + βp Xp > 0.
+
+(9.3)
+
+Then this tells us that X lies to one side of the hyperplane. On the other
+hand, if
+β0 + β1 X1 + β2 X2 + · · · + βp Xp < 0,
+(9.4)
+
+then X lies on the other side of the hyperplane. So we can think of the
+hyperplane as dividing p-dimensional space into two halves. One can easily
+determine on which side of the hyperplane a point lies by simply calculating
+the sign of the left-hand side of (9.2). A hyperplane in two-dimensional
+space is shown in Figure 9.1.
+
+9.1.2
+
+Classification Using a Separating Hyperplane
+
+Now suppose that we have an n × p data matrix X that consists of n
+training observations in p-dimensional space,
+ 
+
+
+x11
+xn1
+ 
+
+
+x1 =  ...  , . . . , xn =  ...  ,
+(9.5)
+x1p
+
+xnp
+
+and that these observations fall into two classes—that is, y1 , . . . , yn ∈
+{−1, 1} where −1 represents one class and 1 the other class. We also have a
+1 The word affine indicates that the subspace need not pass through the origin.
+
+369
+
+0.0
+−1.5
+
+−1.0
+
+−0.5
+
+X2
+
+0.5
+
+1.0
+
+1.5
+
+9.1 Maximal Margin Classifier
+
+−1.5
+
+−1.0
+
+−0.5
+
+0.0
+
+0.5
+
+1.0
+
+1.5
+
+X1
+
+FIGURE 9.1. The hyperplane 1 + 2X1 + 3X2 = 0 is shown. The blue region is
+the set of points for which 1 + 2X1 + 3X2 > 0, and the purple region is the set of
+points for which 1 + 2X1 + 3X2 < 0.
+
+'
+(T
+test observation, a p-vector of observed features x∗ = x∗1 . . . x∗p . Our
+goal is to develop a classifier based on the training data that will correctly
+classify the test observation using its feature measurements. We have seen
+a number of approaches for this task, such as linear discriminant analysis
+and logistic regression in Chapter 4, and classification trees, bagging, and
+boosting in Chapter 8. We will now see a new approach that is based upon
+the concept of a separating hyperplane.
+separating
+Suppose that it is possible to construct a hyperplane that separates the hyperplane
+training observations perfectly according to their class labels. Examples
+of three such separating hyperplanes are shown in the left-hand panel of
+Figure 9.2. We can label the observations from the blue class as yi = 1 and
+those from the purple class as yi = −1. Then a separating hyperplane has
+the property that
+β0 + β1 xi1 + β2 xi2 + · · · + βp xip > 0 if yi = 1,
+
+(9.6)
+
+β0 + β1 xi1 + β2 xi2 + · · · + βp xip < 0 if yi = −1.
+
+(9.7)
+
+yi (β0 + β1 xi1 + β2 xi2 + · · · + βp xip ) > 0
+
+(9.8)
+
+and
+Equivalently, a separating hyperplane has the property that
+
+for all i = 1, . . . , n.
+If a separating hyperplane exists, we can use it to construct a very natural
+classifier: a test observation is assigned a class depending on which side of
+the hyperplane it is located. The right-hand panel of Figure 9.2 shows
+an example of such a classifier. That is, we classify the test observation x∗
+based on the sign of f (x∗ ) = β0 +β1 x∗1 +β2 x∗2 +· · ·+βp x∗p . If f (x∗ ) is positive,
+then we assign the test observation to class 1, and if f (x∗ ) is negative, then
+we assign it to class −1. We can also make use of the magnitude of f (x∗ ). If
+
+2
+1
+
+X2
+
+−1
+
+0
+
+1
+−1
+
+0
+
+X2
+
+2
+
+3
+
+9. Support Vector Machines
+
+3
+
+370
+
+−1
+
+0
+
+1
+
+2
+
+3
+
+X1
+
+−1
+
+0
+
+1
+
+2
+
+3
+
+X1
+
+FIGURE 9.2. Left: There are two classes of observations, shown in blue and
+in purple, each of which has measurements on two variables. Three separating
+hyperplanes, out of many possible, are shown in black. Right: A separating hyperplane is shown in black. The blue and purple grid indicates the decision rule
+made by a classifier based on this separating hyperplane: a test observation that
+falls in the blue portion of the grid will be assigned to the blue class, and a test
+observation that falls into the purple portion of the grid will be assigned to the
+purple class.
+
+f (x∗ ) is far from zero, then this means that x∗ lies far from the hyperplane,
+and so we can be confident about our class assignment for x∗ . On the other
+hand, if f (x∗ ) is close to zero, then x∗ is located near the hyperplane, and so
+we are less certain about the class assignment for x∗ . Not surprisingly, and
+as we see in Figure 9.2, a classifier that is based on a separating hyperplane
+leads to a linear decision boundary.
+
+9.1.3
+
+The Maximal Margin Classifier
+
+In general, if our data can be perfectly separated using a hyperplane, then
+there will in fact exist an infinite number of such hyperplanes. This is
+because a given separating hyperplane can usually be shifted a tiny bit up or
+down, or rotated, without coming into contact with any of the observations.
+Three possible separating hyperplanes are shown in the left-hand panel
+of Figure 9.2. In order to construct a classifier based upon a separating
+hyperplane, we must have a reasonable way to decide which of the infinite
+possible separating hyperplanes to use.
+A natural choice is the maximal margin hyperplane (also known as the
+maximal
+optimal separating hyperplane), which is the separating hyperplane that margin
+is farthest from the training observations. That is, we can compute the hyperplane
+(perpendicular) distance from each training observation to a given separat- optimal
+ing hyperplane; the smallest such distance is the minimal distance from the separating
+observations to the hyperplane, and is known as the margin. The maximal hyperplane
+margin hyperplane is the separating hyperplane for which the margin is margin
+largest—that is, it is the hyperplane that has the farthest minimum distance to the training observations. We can then classify a test observation
+based on which side of the maximal margin hyperplane it lies. This is known
+
+371
+
+1
+−1
+
+0
+
+X2
+
+2
+
+3
+
+9.1 Maximal Margin Classifier
+
+−1
+
+0
+
+1
+
+2
+
+3
+
+X1
+
+FIGURE 9.3. There are two classes of observations, shown in blue and in
+purple. The maximal margin hyperplane is shown as a solid line. The margin
+is the distance from the solid line to either of the dashed lines. The two blue
+points and the purple point that lie on the dashed lines are the support vectors,
+and the distance from those points to the hyperplane is indicated by arrows. The
+purple and blue grid indicates the decision rule made by a classifier based on this
+separating hyperplane.
+
+as the maximal margin classifier. We hope that a classifier that has a large
+maximal
+margin on the training data will also have a large margin on the test data, margin
+and hence will classify the test observations correctly. Although the maxi- classifier
+mal margin classifier is often successful, it can also lead to overfitting when
+p is large.
+If β0 , β1 , . . . , βp are the coefficients of the maximal margi
