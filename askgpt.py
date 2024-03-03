@@ -11,8 +11,6 @@ with open("prompt.txt", "r") as file:
     prompt = file.read()
 
 
-# TODO: Find a way to deploy multiple instances of this on all the text files
-# for some reason, it always falls back to using the You provider. the moment we crack this we can start spamming requests
 async def run_provider(txt_filename, prefix):
     with open(txt_filename, "r") as f:
         text = f.read()

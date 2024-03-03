@@ -52,4 +52,5 @@ def sanitize(input, output):
     os.remove("temp2.txt")
 
 
-sanitize("questions.txt", "sanitized_questions.txt")
+# NOTE: CHANGE THE FILE NAMES FOR DIFFERENT FILES!
+sanitize("FILEPREFIX_qns.txt", "sanitized_FILEPREFIX_qns.txt")
