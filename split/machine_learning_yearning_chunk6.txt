@@ -1,0 +1,407 @@
+comes from a different distribution than the dev/test set, we 
+still want to use it for learning since it can provide a lot of information. 
+
+For the cat detector example, instead of putting all 10,000 user-uploaded images into the 
+dev/test sets, we might instead put 5,000 into the dev/test sets. We can put the remaining 
+5,000 user-uploaded examples into the training set. This way, your training set of 205,000 
+examples contains some data that comes from your dev/test distribution along with the 
+200,000 internet images. We will discuss in a later chapter why this method is helpful.  
+
+Let’s consider a second example. Suppose you are building a speech recognition system to 
+transcribe street addresses for a voice-controlled mobile map/navigation app. You have 
+20,000 examples of users speaking street addresses. But you also have 500,000 examples of 
+other audio clips with users speaking about other topics. You might take 10,000 examples of 
+street addresses for the dev/test sets, and use the remaining 10,000, plus the additional 
+500,000 examples, for training.  
+
+We will continue to assume that your dev data and your test data come from the same 
+distribution. But it is important to understand that different training and dev/test 
+distributions offer some special challenges.  
+
+Page 72
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+37 How to decide whether to use all your data 
+
+Suppose your cat detector’s training set includes 10,000 user-uploaded images. This data 
+comes from the same distribution as a separate dev/test set, and represents the distribution 
+you care about doing well on. You also have an additional 20,000 images downloaded from 
+the internet. Should you provide all 20,000+10,000=30,000 images to your learning 
+algorithm as its training set, or discard the 20,000 internet images for fear of it biasing your 
+learning algorithm?  
+
+When using earlier generations of learning algorithms (such as hand-designed computer 
+vision features, followed by a simple linear classifier) there was a real risk that merging both 
+types of data would cause you to perform worse. Thus, some engineers will warn you against 
+including the 20,000 internet images. 
+
+But in the modern era of powerful, flexible learning algorithms—such as large neural 
+networks—this risk has greatly diminished. If you can afford to build a neural network with a 
+large enough number of hidden units/layers, you can safely add the 20,000 images to your 
+training set. Adding the images is more likely to increase your performance.  
+
+This observation relies on the fact that there is some x —> y mapping that works well for 
+both types of data. In other words, there exists some system that inputs either an internet 
+image or a mobile app image and reliably predicts the label, even without knowing the 
+source of the image.  
+
+Adding the additional 20,000 images has the following effects: 
+
+1. It gives your neural network more examples of what cats do/do not look like. This is 
+helpful, since internet images and user-uploaded mobile app images do share some 
+similarities. Your neural network can apply some of the knowledge acquired from internet 
+images to mobile app images.  
+
+2. It forces the neural network to expend some of its capacity to learn about properties that 
+are specific to internet images (such as higher resolution, different distributions of how 
+the images are framed, etc.) If these properties differ greatly from mobile app images, it 
+will “use up” some of the representational capacity of the neural network. Thus there is 
+less capacity for recognizing data drawn from the distribution of mobile app images, 
+which is what you really care about. Theoretically, this could hurt your algorithms’ 
+performance.  
+
+Page 73
+
+
+
+Andrew Ng 
+
+ 
+ 
+To describe the second effect in different terms, we can turn to the fictional character 
+Sherlock Holmes, who says that your brain is like an attic; it only has a finite amount of 
+space. He says that “for every addition of knowledge, you forget something that you knew 
+before. It is of the highest importance, therefore, not to have useless facts elbowing out the 
+12
+useful ones.”   
+
+Fortunately, if you have the computational capacity needed to build a big enough neural 
+network—i.e., a big enough attic—then this is not a serious concern. You have enough 
+capacity to learn from both internet and from mobile app images, without the two types of 
+data competing for capacity. Your algorithm’s “brain” is big enough that you don’t have to 
+worry about running out of attic space.  
+
+But if you do not have a big enough neural network (or another highly flexible learning 
+algorithm), then you should pay more attention to your training data matching your dev/test 
+set distribution.  
+
+If you think you have data that has no benefit,you should just leave out that data for 
+computational reasons. For example, suppose your dev/test sets contain mainly casual 
+pictures of people, places, landmarks, animals. Suppose you also have a large collection of 
+scanned historical documents:  
+
+These documents don’t contain anything resembling a cat. They also look completely unlike 
+your dev/test distribution. There is no point including this data as negative examples, 
+because the benefit from the first effect above is negligible—there is almost nothing your 
+neural network can learn from this data that it can apply to your dev/test set distribution. 
+Including them would waste computation resources and representation capacity of the 
+neural network.  
+
+12 
+
+A Study in Scarlet
+​
+
+by Arthur Conan Doyle 
+
+Page 74
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+​
+ 
+​
+38 How to decide whether to include 
+inconsistent data 
+
+Suppose you want to learn to predict housing prices in New York City. Given the size of a 
+house (input feature x), you want to predict the price (target label y).  
+
+Housing prices in New York City are very high. Suppose you have a second dataset of 
+housing prices in Detroit, Michigan, where housing prices are much lower. Should you 
+include this data in your training set?  
+
+Given the same size x, the price of a house y is very different depending on whether it is in 
+New York City or in Detroit. If you only care about predicting New York City housing prices, 
+putting the two datasets together will hurt your performance.  In this case, it would be better 
+to leave out the inconsistent Detroit data.
+
+13
+
+How is this New York City vs. Detroit example different from the  mobile app vs. internet cat 
+images example? 
+
+The cat image example is different because, given an input picture x, one can reliably predict 
+the label y indicating whether there is a cat, even without knowing if the image is an internet 
+image or a mobile app image. I.e., there is a function f(x) that reliably maps from the input x 
+to the target output y, even without knowing the origin of x. Thus, the task of recognition 
+from internet images is “consistent” with the task of recognition from mobile app images. 
+This means there was little downside (other than computational cost) to including all the 
+data, and some possible significant upside. In contrast, New York City and Detroit, Michigan 
+data are not consistent. Given the same x (size of house), the price is very different 
+depending on where the house is.  
+
+13 There is one way to address the problem of Detroit data being inconsistent with New York City 
+data, which is to add an extra feature to each training example indicating the city. Given an input 
+x—which now specifies the city—the target value of y is now unambiguous. However, in practice I do 
+not see this done frequently.  
+
+Page 75
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+39 Weighting data  
+
+Suppose you have 200,000 images from the internet and 5,000 images from your mobile 
+app users. There is a 40:1 ratio between the size of these datasets. In theory, so long as you 
+build a huge neural network and train it long enough on all 205,000 images, there is no 
+harm in trying to make the algorithm do well on both internet images and mobile images.  
+
+But in practice, having 40x as many internet images as mobile app images might mean you 
+need to spend 40x (or more) as much computational resources to model both, compared to if 
+you trained on only the 5,000 images.  
+
+If you don’t have huge computational resources, you could  give the internet images a much 
+lower weight as a compromise.  
+
+For example, suppose your optimization objective is squared error (This is not a good choice 
+for a classification task, but it will simplify our explanation.) Thus, our learning algorithm 
+tries to optimize: 
+
+The first sum above is over the 5,000 mobile images, and the second sum is over the 
+𝛽​:  
+200,000 internet images. You can instead optimize with an additional parameter 
+
+𝛽​=1/40, the algorithm would give equal weight to the 5,000 mobile images and the 
+
+ If you set 
+200,000 internet images. You can also set the parameter 
+tuning to the dev set.  
+
+𝛽​ to other values, perhaps by 
+
+By weighting the additional Internet images less, you don’t have to build as massive a neural 
+network to make sure the algorithm does well on both types of tasks. This type of 
+re-weighting is needed only when you suspect the additional data (Internet Images) has a 
+very different distribution than the dev/test set, or if the additional data is much larger than 
+the data that came from the same distribution as the dev/test set (mobile images).  
+
+Page 76
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+​
+ 
+​
+​
+40 Generalizing from the training set to the 
+dev set 
+
+Suppose you are applying ML in a setting where the training and the dev/test distributions 
+are different. Say, the training set contains Internet images + Mobile images, and the 
+dev/test sets contain only Mobile images. However, the algorithm is not working well: It has 
+a much higher dev/test set error than you would like. Here are some possibilities of what 
+might be wrong:  
+
+1. It does not do well on the training set. This is the problem of high (avoidable) bias on the 
+
+training set distribution.  
+
+2. It does well on the training set, but does not generalize well to previously unseen data 
+
+. This is high variance.  
+drawn from the same distribution as the training set
+​
+
+3. It generalizes well to new data drawn from the same distribution as the training set, but 
+
+not to data drawn from the dev/test set distribution. We call this problem 
+mismatch
+data.  
+
+, since it is because the training set data is a poor match for the dev/test set 
+
+data 
+
+For example, suppose that humans achieve near perfect performance on the cat recognition 
+task. Your algorithm achieves this:  
+
+• 1% error on the training set 
+
+• 1.5% error on data drawn from the same distribution as the training set that the algorithm 
+
+has not seen 
+
+• 10% error on the dev set  
+
+In this case, you clearly have a data mismatch problem. To address this, you might try to 
+make the training data more similar to the dev/test data. We discuss some techniques for 
+this later.  
+
+In order to diagnose to what extent an algorithm suffers from each of the problems 1-3 
+above, it will be useful to have another dataset. Specifically, rather than giving the algorithm 
+all the available training data, you can split it into two subsets: The actual training set which 
+the algorithm will train on, and a separate set, which we will call the “Training dev” set, that 
+we will not train on.  
+
+You now have four subsets of data: 
+
+Page 77
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+• Training set. This is the data that the algorithm will learn from (e.g., Internet images + 
+Mobile images). This does not have to be drawn from the same distribution as what we 
+really care about (the dev/test set distribution). 
+
+• Training dev set: This data is drawn from the same distribution as the training set (e.g., 
+Internet images + Mobile images). This is usually smaller than the training set; it only 
+needs to be large enough to evaluate and track the progress of our learning algorithm.  
+
+• Dev set: This is drawn from the same distribution as the test set, and it reflects the 
+
+distribution of data that we ultimately care about doing well on. (E.g., mobile images.)  
+
+• Test set: This is drawn from the same distribution as the dev set. (E.g., mobile images.) 
+
+Armed with these four separate datasets, you can now evaluate: 
+
+• Training error, by evaluating on the training set.  
+
+• The algorithm’s ability to generalize to new data drawn from the training set distribution, 
+
+by evaluating on the training dev set. 
+
+• The algorithm’s performance on the task you care about, by evaluating on the dev and/or 
+
+test sets.  
+
+Most of the guidelines in Chapters 5-7 for picking the size of the dev set also apply to the 
+training dev set.   
+
+Page 78
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+41 Identifying Bias, Variance, and Data 
+Mismatch Errors  
+
+Suppose humans achieve almost perfect performance (≈0% error) on the cat detection task, 
+and thus the optimal error rate is about 0%. Suppose you have: 
+
+• 1% error on the training set. 
+
+• 5% error on training dev set.  
+
+• 5% error on the dev set.  
+
+What does this tell you? Here, you know that you have high variance. The variance reduction 
+techniques described earlier should allow you to make progress.  
+
+Now, suppose your algorithm achieves:  
+
+• 10% error on the training set. 
+
+• 11% error on training dev set.  
+
+• 12% error on the dev set.  
+
+This tells you that you have high avoidable bias on the training set. I.e., the algorithm is 
+doing poorly on the training set. Bias reduction techniques should help. 
+
+In the two examples above, the algorithm suffered from only high avoidable bias or high 
+variance. It is possible for an algorithm to suffer from any subset of high avoidable bias, high 
+variance, and data mismatch. For example:  
+
+• 10% error on the training set.  
+
+• 11% error on training dev set.  
+
+• 20% error on the dev set.  
+
+This algorithm suffers from high avoidable bias and from data mismatch. It does not, 
+however, suffer from high variance on the training set distribution.  
+
+It might be easier to understand how the different types of errors relate to each other by 
+drawing them as entries in a table:   
+
+Page 79
+
+
+
+Andrew Ng 
+
+ 
+ 
+e cat image detector, you can see that there are two 
+
+Continuing with the example of th
+different distributions of data on the x-axis. On the y-axis, we ha
+human level error, error on examples the algorithm has trained on, and error on examples 
+the algorithm has not trained on. We can fill in the boxes with the different types of errors we 
+identified in the previous chapter.  
+
+ve three types of error: 
+
+If you wish, you can also fill in the remaining two boxes in this table: You can fill in the 
+upper-right box (Human level performance on Mobile Images) by asking some humans to 
+label your mobile cat images data and measure their error. You can fill in the next box by 
+taking the mobile cat images (Distribution B) and putting a small fraction of into the training 
+set so that the neural network learns on it too. Then you measure the learned model’s error 
+on that subset of data. Filling in these two additional entries may sometimes give additional 
+insight about what the algorithm is doing on the two different distributions (Distribution A 
+and B) of data.  
+
+By understanding which types of error the algorithm suffers from the most, you will be better 
+positioned to decide whether to focus on reducing bias, reducing variance, or reducing data 
+mismatch.  
+
+Page 

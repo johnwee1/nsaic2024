@@ -1,0 +1,445 @@
+ng curve with high avoidable bias looks like: At the largest training set 
+size—presumably corresponding to all the training data we have—there is a large gap 
+between the training error and the desired performance, indicating large avoidable bias. 
+Furthermore, the gap between the training and dev curves is small, indicating small 
+variance.  
+
+Previously, we were measuring training and dev set error only at the rightmost point of this 
+plot, which corresponds to using all the available training data. Plotting the full learning 
+curve gives us a more comprehensive picture of the algorithms’ performance on different 
+training set sizes.  
+
+Page 61
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+31 Interpreting learning curves: Other cases  
+
+Consider this learning curve:  
+
+Does this plot indicate high bias, high variance, or both? 
+
+The blue training error curve is relatively low, and the red dev error curve is much higher 
+than the blue training error. Thus, the bias is small, but the variance is large. Adding more 
+training data will probably help close the gap between dev error and training error. 
+
+Now, consider this: 
+
+This time, the training error is large, as it is much higher than the desired level of 
+performance. The dev error is also much larger than the training error. Thus, you have 
+significant bias and significant variance. You will have to find a way to reduce both bias and 
+variance in your algorithm.  
+
+Page 62
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+32 Plotting learning curves 
+
+Suppose you have a very small training set of 100 examples. You train your algorithm using a 
+randomly chosen subset of 10 examples, then 20 examples, then 30, up to 100, increasing 
+the number of examples by intervals of ten. You then use these 10 data points to plot your 
+learning curve. You might find that the curve looks slightly noisy (meaning that the values 
+are higher/lower than expected) at the smaller training set sizes.  
+
+When training on just 10 randomly chosen examples, you might be unlucky and have a 
+particularly “bad” training set, such as one with many ambiguous/mislabeled examples. Or, 
+you might get lucky and get a particularly “good” training set. Having a small training set 
+means that the dev and training errors may randomly fluctuate.  
+
+If your machine learning application is heavily skewed toward one class (such as a cat 
+classification task where the fraction of negative examples is much larger than positive 
+examples), or if it has a huge number of classes (such as recognizing 100 different animal 
+species), then the chance of selecting an especially “unrepresentative” or bad training set is 
+also larger. For example, if 80% of your examples are negative examples (y=0), and only 
+20% are positive examples (y=1), then there is a chance that a training set of 10 examples 
+contains only negative examples, thus making it very difficult for the algorithm to learn 
+something meaningful.   
+
+If the noise in the training curve makes it hard to see the true trends, here are two solutions:  
+
+• Instead of training just one model on 10 examples, instead select several (say 3-10) 
+
+different randomly chosen training sets of 10 examples by sampling with replacement  10
+from your original set of 100. Train a different model on each of these, and compute the 
+training and dev set error of each of the resulting models. Compute and plot the average 
+training error and average dev set error.  
+
+• If your training set is skewed towards one class, or if it has many classes, choose a 
+
+“balanced” subset instead of 10 training examples at random out of the set of 100. For 
+example, you can make sure that 2/10 of the examples are positive examples, and 8/10 are 
+
+ means: You would randomly pick 10 different examples out of the 100 to form 
+with replacement
+​
+
+10 Here’s what sampling 
+your first training set. Then to form the second training set, you would again pick 10 examples, but without taking into 
+account what had been chosen in the first training set. Thus, it is possible for one specific example to appear in both the 
+first and second training sets. In contrast, if you were sampling 
+, the second training set would be 
+without replacement
+​
+chosen from just the 90 examples that had not been chosen the first time around. In practice, sampling with or without 
+replacement shouldn’t make a huge difference, but the former is common practice.  
+
+Page 63
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+negative. More generally, you can make sure the fraction of examples from each class is as 
+close as possible to the overall fraction in the original training set.   
+
+I would not bother with either of these techniques unless you have already tried plotting 
+learning curves and concluded that the curves are too noisy to see the underlying trends. If 
+your training set is large—say over 10,000 examples—and your class distribution is not very 
+skewed, you probably won’t need these techniques.  
+
+Finally, plotting a learning curve may be computationally expensive: For example, you might 
+have to train ten models with 1,000, then 2,000, all the way up to 10,000 examples. Training 
+models with small datasets is much faster than training models with large datasets. Thus, 
+instead of evenly spacing out the training set sizes on a linear scale as above, you might train 
+models with 1,000, 2,000, 4,000, 6,000, and 10,000 examples. This should still give you a 
+clear sense of the trends in the learning curves. Of course, this technique is relevant only if 
+the computational cost of training all the additional models is significant.  
+
+Page 64
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Comparing to 
+human-level 
+performance 
+
+Page 65
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+33 Why we compare to human-level 
+performance  
+
+Many machine learning systems aim to automate things that humans do well. Examples 
+include image recognition, speech recognition, and email spam classification. Learning 
+algorithms have also improved so much that we are now surpassing human-level 
+performance on more and more of these tasks.  
+
+Further, there are several reasons building an ML system is easier if you are trying to do a 
+task that people can do well:  
+
+1. Ease of obtaining data from human labelers.
+cat images well, it is straightforward for people to provide high accuracy labels for your 
+learning algorithm. 
+
+ For example, since people recognize 
+
+2. Error analysis can draw on human intuition.
+algorithm is doing worse than human-level recognition. Say it incorrectly transcribes an 
+audio clip as “This recipe calls for a 
+ of apples,” mistaking “pair” for “pear.” You can 
+pear
+​
+draw on human intuition and try to understand what information a person uses to get the 
+correct transcription, and use this knowledge to modify the learning algorithm.  
+
+ Suppose a speech recognition 
+
+3. Use human-level performance to estimate the optimal error rate and also set 
+a “desired error rate.”
+ Suppose your algorithm achieves 10% error on a task, but a person 
+achieves 2% error. Then we know that the optimal error rate is 2% or lower and the 
+avoidable bias is at least 8%. Thus, you should try bias-reducing techniques.  
+
+Even though item #3 might not sound important, I find that having a reasonable and 
+achievable target error rate helps accelerate a team’s progress. Knowing your algorithm has 
+high avoidable bias is incredibly valuable and opens up a menu of options to try.  
+
+There are some tasks that even humans aren’t good at. For example, picking a book to 
+recommend to you; or picking an ad to show a user on a website; or predicting the stock 
+market. Computers already surpass the performance of most people on these tasks. With 
+these applications, we run into the following problems:  
+
+•
+
+It is harder to obtain labels.
+ For example, it’s hard for human labelers to annotate a 
+database of users with the “optimal” book recommendation. If you operate a website or 
+app that sells books, you can obtain data by showing books to users and seeing what they 
+buy. If you do not operate such a site, you need to find more creative ways to get data. 
+
+Page 66
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+​
+​
+​
+• Human intuition is harder to count on.
+
+ For example, pretty much no one can 
+
+predict the stock market. So if our stock prediction algorithm does no better than random 
+guessing, it is hard to figure out how to improve it.  
+
+•
+
+It is hard to know what the optimal error rate and reasonable desired error 
+rate is. 
+well. How do you know how much more it can improve without a human baseline?  
+
+Suppose you already have a book recommendation system that is doing quite 
+
+Page 67
+
+
+
+Andrew Ng 
+
+ 
+​
+​
+ 
+ 
+ 
+ 
+ 
+ 
+34 How to define human-level performance  
+
+Suppose you are working on a medical imaging application that automatically makes 
+diagnoses from x-ray images. A typical person with no previous medical background besides 
+some basic training achieves 15% error on this task. A junior doctor achieves 10% error. An 
+experienced doctor achieves 5% error. And a small team of doctors that discuss and debate 
+each image achieves 2% error. Which one of these error rates defines “human-level 
+performance”?  
+
+In this case, I would use 2% as the human-level performance proxy for our optimal error 
+rate. You can also set 2% as the desired performance level because all three reasons from the 
+previous chapter for comparing to human-level performance apply:  
+
+• Ease of obtaining labeled data from human labelers.
+
+ You can get a team of doctors 
+
+to provide labels to you with a 2% error rate. 
+
+• Error analysis can draw on human intuition. 
+
+By discussing images with a team of 
+
+doctors, you can draw on their intuitions. 
+
+• Use human-level performance to estimate the optimal error rate and also set 
+
+ It is reasonable to use 2% error as our estimate of the 
+
+achievable “desired error rate.”
+optimal error rate. The optimal error rate could be even lower than 2%, but it cannot be 
+higher, since it is possible for a team of doctors to achieve 2% error. In contrast, it is not 
+reasonable to use 5% or 10% as an estimate of the optimal error rate, since we know these 
+estimates are necessarily too high. 
+
+When it comes to obtaining labeled data, you might not want to discuss every image with an 
+entire team of doctors since their time is expensive. Perhaps you can have a single junior 
+doctor label the vast majority of cases and bring only the harder cases to more experienced 
+doctors or to the team of doctors.  
+
+If your system is currently at 40% error, then it doesn’t matter much whether you use a 
+junior doctor (10% error) or an experienced doctor (5% error) to label your data and provide 
+intuitions. But if your system is already at 10% error, then defining the human-level 
+reference as 2% gives you better tools to keep improving your system.  
+
+Page 68
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+​
+ 
+ 
+35 Surpassing human-level performance  
+
+You are working on speech recognition and have a dataset of audio clips. Suppose your 
+dataset has many noisy audio clips so that even humans have 10% error. Suppose your 
+system already achieves 8% error. Can you use any of the three techniques described in 
+Chapter 33 to continue making rapid progress? 
+
+If you can identify a subset of data in which humans significantly surpass your system, then 
+you can still use those techniques to drive rapid progress. For example, suppose your system 
+is much better than people at recognizing speech in noisy audio, but humans are still better 
+at transcribing very rapidly spoken speech. 
+
+For the subset of data with rapidly spoken speech: 
+
+1. You can still obtain transcripts from humans that are higher quality than your algorithm’s 
+
+output. 
+
+2. You can draw on human intuition to understand why they correctly heard a rapidly 
+
+spoken utterance when your system didn’t. 
+
+3. You can use human-level performance on rapidly spoken speech as a desired performance 
+
+target. 
+
+More generally, so long as there are dev set examples where humans are right and your 
+algorithm is wrong, then many of the techniques described earlier will apply. This is true 
+even if, averaged over the entire dev/test set, your performance is already surpassing 
+human-level performance.  
+
+There are many important machine learning applications where machines surpass human 
+level performance. For example, machines are better at predicting movie ratings, how long it 
+takes for a delivery car to drive somewhere, or whether to approve loan applications. Only a 
+subset of techniques apply once humans have a hard time identifying examples that the 
+algorithm is clearly getting wrong. Consequently, progress is usually slower on problems 
+where machines already surpass human-level performance, while progress is faster when 
+machines are still trying to catch up to humans.  
+
+Page 69
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+Training and 
+testing on different 
+distributions 
+
+Page 70
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+36 When you should train and test on 
+different distributions 
+
+Users of your cat pictures app have uploaded 10,000 images, which you have manually 
+labeled as containing cats or not. You also have a larger set of 200,000 images that you 
+downloaded off the internet. How should you define train/dev/test sets?  
+
+Since the 10,000 user images closely reflect the actual probability distribution of data you 
+want to do well on, you might use that for your dev and test sets. If you are training a 
+data-hungry deep learning algorithm, you might give it the additional 200,000 internet 
+images for training. Thus, your training and dev/test sets come from different probability 
+distributions. How does this affect your work?  
+
+Instead of partitioning our data into train/dev/test sets, we could take all 210,000 images we 
+have, and randomly shuffle them into train/dev/test sets. In this case, all the data comes 
+from the same distribution. But I recommend against this method, because about 
+205,000/210,000 ≈ 97.6% of your dev/test data would come from internet images, which 
+does not reflect the actual distribution you want to do well on. Remember our 
+recommendation on choosing dev/test sets:  
+
+Choose dev and test sets to reflect data you expect to get in the future 
+and want to do well on.  
+
+Most of the academic literature on machine learning assumes that the training set, dev set 
+and test set all come from the same distribution.  In the early days of machine learning, data 
+was scarce. We usually only had one dataset drawn from some probability distribution. So 
+we would randomly split that data into train/dev/test sets, and the assumption that all the 
+data was coming from the same source was usually satisfied.  
+
+11
+
+11 There is some academic research on training and testing on different distributions. Examples 
+include “domain adaptation,” “transfer learning” and “multitask learning.” But there is still a huge 
+gap between theory and practice. If you train on dataset A and test on some very different type of data 
+B, luck could have a huge effect on how well your algorithm performs. (Here, “luck” includes the 
+researcher’s hand-designed features for the particular task, as well as other factors that we just don’t 
+understand yet.) This makes the academic study of training and testing on different distributions 
+difficult to carry out in a systematic way.  
+
+Page 71
+
+
+
+Andrew Ng 
+
+ 
+ 
+But in the era of big data, we now have access to huge training sets, such as cat internet 
+images. Even if the training set 

@@ -1,0 +1,505 @@
+
+18 How big should the Eyeball and Blackbox 
+dev sets be? 
+
+Your Eyeball dev set should be large enough to give you a sense of your algorithm’s major 
+error categories. If you are working on a task that humans do well (such as recognizing cats 
+in images), here are some rough guidelines:  
+
+• An eyeball dev set in which your classifier makes 10 mistakes would be considered very 
+small. With just 10 errors, it’s hard to accurately estimate the impact of different error 
+categories. But if you have very little data and cannot afford to put more into the Eyeball 
+dev set, it
+’
+
+s better than nothing and will help with project prioritization.  
+
+• If your classifier makes ~20 mistakes on eyeball dev examples, you would start to get a 
+
+rough sense of the major error sources.  
+
+• With ~50 mistakes, you would get a good sense of the major error sources. 
+
+• With ~100 mistakes, you would get a very good sense of the major sources of errors. I’ve 
+seen people manually analyze even more errors—sometimes as many as 500. There is no 
+harm in this as long as you have enough data.  
+
+Say your classifier has a 5% error rate. To make sure you have ~100 misclassified examples 
+in the Eyeball dev set, the Eyeball dev set would have to have about 2,000 examples (since 
+0.05*2,000 = 100). The lower your classifier’s error rate, the larger your Eyeball dev set 
+needs to be in order to get a large enough set of errors to analyze.  
+
+If you are working on a task that even humans cannot do well, then the exercise of examining 
+an Eyeball dev set will not be as helpful because it is harder to figure out why the algorithm 
+didn’t classify an example correctly. In this case, you might omit having an Eyeball dev set. 
+We discuss guidelines for such problems in a later chapter.  
+
+Page 38
+
+
+
+Andrew Ng 
+
+ 
+​
+​
+How about the Blackbox dev set? We previously said that dev sets of around 1,000-10,000 
+examples are common. To refine that statement, a Blackbox dev set of 1,000-10,000 
+examples will often give you enough data to tune hyperparameters and select among models, 
+though there is little harm in having even more data. A Blackbox dev set of 100 would be 
+small but still useful.  
+
+If you have a small dev set, then you might not have enough data to split into Eyeball and 
+Blackbox dev sets that are both large enough to serve their purposes. Instead, your entire dev 
+set might have to be used as the Eyeball dev set—i.e., you would manually examine all the 
+dev set data.  
+
+Between the Eyeball and Blackbox dev sets, I consider the Eyeball dev set more important 
+(assuming that you are working on a problem that humans can solve well and that examining 
+the examples helps you gain insight). If you only have an Eyeball dev set, you can perform 
+error analyses, model selection and hyperparameter tuning all on that set. The downside of 
+having only an Eyeball dev set is that the risk of overfitting the dev set is greater.  
+
+If you have plentiful access to data, then the size of the Eyeball dev set would be determined 
+mainly by how many examples you have time to manually analyze. For example, I’ve rarely 
+seen anyone manually analyze more than 1,000 errors.  
+
+Page 39
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+19 Takeaways: Basic error analysis 
+
+• When you start a new project, especially if it is in an area in which you are not an expert, 
+
+it is hard to correctly guess the most promising directions.  
+
+•
+
+So don’t start off trying to design and build the perfect system. Instead build and train a 
+basic system as quickly as possible—perhaps in a few days. Then use error analysis to 
+help you identify the most promising directions and iteratively improve your algorithm 
+from there.  
+
+• Carry out error analysis by manually examining ~100 dev set examples the algorithm 
+misclassifies and counting the major categories of errors. Use this information to 
+prioritize what types of errors to work on fixing.  
+
+• Consider splitting the dev set into an Eyeball dev set, which you will manually examine, 
+and a Blackbox dev set, which you will not manually examine. If performance on the 
+Eyeball dev set is much better than the Blackbox dev set, you have overfit the Eyeball dev 
+set and should consider acquiring more data for it.  
+
+• The Eyeball dev set should be big enough so that your algorithm misclassifies enough 
+
+examples for you to analyze. A Blackbox dev set of 1,000-10,000 examples is sufficient 
+for many applications.  
+
+•
+
+If your dev set is not big enough to split this way, just use the entire dev set as an Eyeball 
+dev set for manual error analysis, model selection, and hyperparameter tuning.  
+
+Page 40
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Bias and Variance 
+
+Page 41
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+20 Bias and Variance: The two big sources of 
+error 
+
+Suppose your training, dev and test sets all come from the same distribution. Then you 
+should always try to get more training data, since that can only improve performance, right? 
+
+Even though having more data can’t hurt, unfortunately it doesn’t always help as much as 
+you might hope. It could be a waste of time to work on getting more data. So, how do you 
+decide when to add data, and when not to bother? 
+
+There are two major sources of error in machine learning: bias and variance. Understanding 
+them will help you decide whether adding data, as well as other tactics to improve 
+performance, are a good use of time.  
+
+Suppose you hope to build a cat recognizer that has 5% error. Right now, your training set 
+has an error rate of 15%, and your dev set has an error rate of 16%. In this case, adding 
+training data probably won’t help much. You should focus on other changes. Indeed, adding 
+more examples to your training set only makes it harder for your algorithm to do well on the 
+training set. (We explain why in a later chapter.)   
+
+If your error rate on the training set is 15% (or 85% accuracy), but your target is 5% error 
+s performance 
+(95% accuracy), then the first problem to solve is to improve your algorithm
+’
+on your training set. Your dev/test set performance is usually worse than your training set 
+performance. So if you are getting 85% accuracy on the examples your algorithm has seen, 
+there’s no way you’re getting 95% accuracy on examples your algorithm hasn’t even seen.  
+
+Suppose as above that your algorithm has 16% error (84% accuracy) on the dev set. We break 
+the 16% error into two components:  
+
+• First, the algorithm’s error rate on the training set. In this example, it is 15%. We think of 
+
+this informally as the algorithm’s 
+
+bias
+
+.  
+
+• Second, how much worse the algorithm does on the dev (or test) set than the training set. 
+In this example, it does 1% worse on the dev set than the training set. We think of this 
+informally as the algorithm’s 
+
+variance
+
+6
+.  
+
+6 The field of statistics has more formal definitions of bias and variance that we won’t worry about. 
+Roughly, the bias is the error rate of your algorithm on your training set when you have a very large 
+training set. The variance is how much worse you do on the test set compared to the training set in 
+
+Page 42
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+​
+​
+​
+​
+Some changes to a learning algorithm can address the first component of error—
+improve its performance on the training set. Some changes address the second 
+component—
+—and help it generalize better from the training set to the dev/test 
+sets.  To select the most promising changes, it is incredibly useful to understand which of 
+these two components of error is more pressing to address. 
+
+variance
+
+bias
+
+7
+
+—and 
+
+Developing good intuition about Bias and Variance will help you choose effective changes for 
+your algorithm.  
+
+this setting. When your error metric is mean squared error, you can write down formulas specifying 
+these two quantities, and prove that Total Error = Bias + Variance. But for our purposes of deciding 
+how to make progress on an ML problem, the more informal definition of bias and variance given 
+here will suffice.   
+
+7 There are also some methods that can simultaneously reduce bias and variance, by making major 
+changes to the system architecture. But these tend to be harder to identify and implement.  
+
+Page 43
+
+
+
+Andrew Ng 
+
+ 
+​
+​
+​
+​
+ 
+ 
+ 
+21 Examples of Bias and Variance 
+
+Consider our cat classification task. An “ideal” classifier (such as a human) might achieve 
+nearly perfect performance in this task.  
+
+Suppose your algorithm performs as follows: 
+
+• Training error = 1% 
+
+• Dev error = 11% 
+
+What problem does it have? Applying the definitions from the previous chapter, we estimate 
+the bias as 1%, and the variance as 10% (=11%-1%). Thus, it has 
+classifier has very low training error, but it is failing to generalize to the dev set. This is also 
+called 
+
+high variance
+
+overfitting
+
+. The 
+
+. 
+
+Now consider this: 
+
+• Training error = 15% 
+
+• Dev error = 16% 
+
+We estimate the bias as 15%, and variance as 1%. This classifier is fitting the training set 
+poorly with 15% error, but its error on the dev set is barely higher than the training error. 
+This classifier therefore has 
+. 
+underfitting
+
+, but low variance. We say that this algorithm is 
+
+high bias
+
+Now, consider this:  
+
+• Training error = 15% 
+
+• Dev error = 30% 
+
+: It is doing poorly on the training set, and therefore has high bias, and its 
+
+We estimate the bias as 15%, and variance as 15%. This classifier has 
+variance
+performance on the dev set is even worse, so it also has high variance. The 
+overfitting/underfitting terminology is hard to apply here since the classifier is 
+simultaneously overfitting and underfitting.  
+
+high bias and high 
+
+Page 44
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+​
+​
+​
+​
+​
+​
+​
+ 
+ 
+Finally, consider this:  
+
+• Training error = 0.5% 
+
+• Dev error = 1% 
+
+This classifier is doing well, as it has low bias and low variance. Congratulations on achieving 
+this great performance!  
+
+Page 45
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+22 Comparing to the optimal error rate 
+
+In our cat recognition example, the “ideal” error rate—that is, one achievable by an “optimal” 
+classifier—is nearly 0%. A human looking at a picture would be able to recognize if it 
+contains a cat almost all the time; thus, we can hope for a machine that would do just as well.  
+
+Other problems are harder. For example, suppose that you are building a speech recognition 
+system, and find that 14% of the audio clips have so much background noise or are so 
+unintelligible that even a human cannot recognize what was said. In this case, even the most 
+“optimal” speech recognition system might have error around 14%.  
+
+Suppose that on this speech recognition problem, your algorithm achieves:  
+
+• Training error = 15% 
+
+• Dev error = 30% 
+
+The training set performance is already close to the optimal error rate of 14%. Thus, there is 
+not much room for improvement in terms of bias or in terms of training set performance. 
+However, this algorithm is not generalizing well to the dev set; thus there is ample room for 
+improvement in the errors due to variance.  
+
+This example is similar to the third example from the previous chapter, which also had a 
+training error of 15% and dev error of 30%. If the optimal error rate is ~0%, then a training 
+error of 15% leaves much room for improvement. This suggests bias-reducing changes might 
+be fruitful. But if the optimal error rate is 14%, then the same training set performance tells 
+us that there’s little room for improvement in the classifier’s bias.  
+
+For problems where the optimal error rate is far from zero, here
+’
+breakdown of an algorithm
+the total dev set error of 30% can be broken down as follows (a similar analysis can be 
+applied to the test set error):  
+
+s error. Continuing with our speech recognition example above, 
+’
+
+s a more detailed 
+
+• Optimal error rate (“unavoidable bias”)
+
+: 14%. Suppose we decide that, even with the 
+
+best possible speech system in the world, we would still suffer 14% error. We can think of 
+this as the “unavoidable” part of a learning algorithm
+’
+
+s bias.  
+
+Page 46
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+​
+​
+​
+​
+​
+• Avoidable bias
+
+: 1%. This is calculated as the difference between the training error and 
+
+8
+the optimal error rate.  
+
+• Variance
+
+: 15%. The difference between the dev error and the training error.  
+
+9
+To relate this to our earlier definitions, Bias and Avoidable Bias are related as follows:   
+
+Bias = Optimal error rate (“unavoidable bias”) + Avoidable bias 
+
+The “avoidable bias” reflects how much worse your algorithm performs on the training set 
+than the “optimal classifier.”  
+
+The concept of variance remains the same as before. In theory, we can always reduce 
+variance to nearly zero by training on a massive training set. Thus, all variance is “avoidable” 
+with a sufficiently large dataset, so there is no such thing as “unavoidable variance.”  
+
+Consider one more example, where the optimal error rate is 14%, and we have:  
+
+• Training error = 15% 
+
+• Dev error = 16% 
+
+Whereas in the previous chapter we called this a high bias classifier, now we would say that 
+error from avoidable bias is 1%, and the error from variance is about 1%. Thus, the algorithm 
+is already doing well, with little room for improvement. It is only 2% worse than the optimal 
+error rate.  
+
+We see from these examples that knowing the optimal error rate is helpful for guiding our 
+next steps. In statistics, the optimal error rate is also called 
+rate.  
+
+Bayes error rate
+
+, or Bayes 
+
+How do we know what the optimal error rate is? For tasks that humans are reasonably good 
+at, such as recognizing pictures or transcribing audio clips, you can ask a human to provide 
+labels then measure the accuracy of the human labels relative to your training set. This 
+would give an estimate of the optimal error rate. If you are working on a problem that even 
+
+8 If this number is negative, you are doing better on the training set than the optimal error rate. This 
+means you are overfitting on the training set, and the algorithm has over-memorized the training set. 
+You should focus on variance reduction methods rather than on further bias reduction methods. 
+
+9 These definitions are chosen to convey insight on how to improve your learning algorithm. These 
+definitions are different than how statisticians define Bias and Variance. Technically, what I define 
+here as “Bias” should be called “Error we attribute to bias”; and “Avoidable bias” should be “error we 
+attribute to the learning algorithm’s bias that is over the optimal error rate.”  
+
+Page 47
+
+
+
+Andrew Ng 
+
+ 
+​
+​
+​
+​
+humans have a hard time solving (e.g., predicting what movie to recommend, or what ad to 
+show to a user) it can be hard to estimate the optimal error rate.  
+
+In the section “Comparing to Human-Level Performance (Chapters 33 to 35), I will discuss 
+in more detail the process of comparing a learning algorithm’s performance to human-level 
+performance.  
+
+In the last few chapters, you learned how to estimate avoidable/unavoidable bias and 
+variance by looking at training and dev set error rates. The next chapter will discuss how you 
+can use insights from such an analysis to prioritize techniques that reduce bias vs. 
+techniques that reduce variance. There are very different techniques that you should apply 
+depending on whether your project’s current problem is high (avoidable) bias or high 
+variance. Read on!  
+
+Page 48
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+23 Addressing Bias and Variance 
+
+Here is the simplest formula for addressin

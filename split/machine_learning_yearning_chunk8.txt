@@ -1,0 +1,657 @@
+e ride 
+down was for passengers, and so on. It is not easy to design good reward functions.  
+
+ are. It has to trade off how bumpy the 
+T
+​
+
+Page 88
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+​
+​
+​
+​
+​
+​
+​
+Given a reward function 
+the job of the reinforcement learning algorithm is to control 
+R(T), 
+​
+However, reinforcement learning algorithms 
+ R(T). 
+the helicopter so that it  achieves max
+​T
+​
+​
+make many approximations and may not succeed in achieving this maximization.  
+
+ and have run your learning algorithm. However, 
+R(.)
+​
+
+Suppose you have picked some reward 
+its performance appears far worse than your human pilot—the landings are bumpier and 
+seem less safe than what a human pilot achieves. How can you tell if the fault is with the 
+reinforcement learning algorithm—which is trying to carry out a trajectory that achieves 
+max
+​T
+specify the ideal tradeoff between ride bumpiness and accuracy of landing spot?  
+
+—or if the fault is with the reward function—which is trying to measure as well as 
+R(T)
+​
+
+ be the trajectory achieved by the 
+To apply the Optimization Verification test, let 
+be the trajectory achieved by the algorithm. According to our 
+human pilot, and let 
+T
+​out 
+is a superior trajectory to 
+T
+description above, 
+​human 
+T
+(
+R
+Does it hold true that 
+​human
+​
+
+. Thus, the key test is the following: 
+
+T
+​human
+
+T
+​out
+
+T
+​out
+
+(
+R
+​
+
+) > 
+
+)?  
+
+as 
+Case 1: If this inequality holds, then the reward function 
+superior to 
+This 
+suggests that working on improving our reinforcement learning algorithm is worthwhile.  
+
+T
+(.) is correctly rating 
+R
+​human 
+​
+T
+. But our reinforcement learning algorithm is finding the inferior 
+​out. 
+
+T
+​out
+
+Case 2: The inequality does not hold: 
+score to 
+better capture the tradeoffs that correspond to a good landing.  
+
+(
+R
+​
+even though it is the superior trajectory. You should work on improving 
+
+(.) assigns a worse 
+R
+​
+
+). This means 
+
+T
+​human 
+
+T
+​human
+
+T
+​out
+
+(
+R
+​
+
+) ≤ 
+
+(.) to 
+R
+​
+
+Many machine learning applications have this “pattern” of optimizing an approximate 
+scoring function Score
+, so this reduces to just Score(.). In our example above, the scoring function 
+x
+specified input 
+​
+was the reward function Score(
+)=R(
+T
+​
+reinforcement learning algorithm trying to execute a good trajectory 
+
+(.) using an approximate search algorithm. Sometimes, there is no 
+​x
+
+), and the optimization algorithm was the 
+T
+​
+
+.  
+T
+​
+
+One difference between this and earlier examples is that, rather than comparing to an 
+“optimal” output, you were instead comparing to human-level performance 
+.We 
+T
+assumed 
+​human
+this example, 
+T
+​human
+algorithm—even if it is not the “optimal” output—then the Optimization Verification test can 
+indicate whether it is more promising to improve the optimization algorithm or  the scoring 
+function. 
+
+ is pretty good, even if not optimal. In general, so long as you have some y* (in 
+) that is a superior output to the performance of your current learning 
+
+T
+​human
+
+Page 89
+
+
+
+Andrew Ng 
+
+ 
+​
+​
+​
+ 
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+ 
+ 
+End-to-end 
+deep learning 
+
+Page 90
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+47 The rise of end-to-end learning 
+
+Suppose you want to build a system to examine online product reviews and automatically tell 
+you if the writer liked or disliked that product. For example, you hope to recognize the 
+following review as highly positive:  
+
+This is a great mop!  
+
+and the following as highly negative: 
+
+This mop is low quality--I regret buying it.   
+
+The problem of recognizing positive vs. negative opinions is called “sentiment classification.” 
+To build this system, you might build a “pipeline” of two components: 
+
+1. Parser: A system that annotates the text with information identifying the most 
+
+important words.
+and nouns. You would therefore get the following annotated text:  
+
+ For example, you might use the parser to label all the adjectives 
+
+15
+
+This is a great
+
+​Adjective
+
+ mop
+
+! 
+
+​Noun
+
+2. Sentiment classifier: A learning algorithm that takes as input the annotated text and 
+predicts the overall sentiment. The parser’s annotation could help this learning 
+algorithm greatly: By giving adjectives a higher weight, your algorithm will be able to 
+quickly hone in on the important words such as “great,” and ignore less important 
+words such as “this.”  
+
+We can visualize your “pipeline” of two components as follows:  
+
+There has been a recent trend toward replacing pipeline systems with a single learning 
+algorithm. An 
+the raw, original text “This is a great mop!”, and try to directly recognize the sentiment:  
+
+end-to-end learning algorithm
+
+ for this task would simply take as input 
+
+15 A parser gives a much richer annotation of the text than this, but this simplified description will 
+suffice for explaining end-to-end deep learning.  
+
+Page 91
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+ 
+ 
+  
+​
+​
+ 
+Neural networks are commonly used in end-to-end learning systems. The term “end-to-end” 
+refers to the fact that we are asking the learning algorithm to go directly from the input to 
+the desired output. I.e., the learning algorithm directly connects the “input end” of the 
+system to the “output end.” 
+
+In problems where data is abundant, end-to-end systems have been remarkably successful. 
+But they are not always a good choice. The next few chapters will give more examples of 
+end-to-end systems as well as give advice on when you should and should not use them. 
+
+Page 92
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+48 More end-to-end learning examples  
+
+Suppose you want to build a speech recognition system. You might build a system with three 
+components:  
+
+The components work as follows:  
+
+1. Compute features: Extract hand-designed features, such as MFCC (
+
+Mel-frequency 
+
+cepstrum coefficients) features, 
+disregarding less relevant properties, such as the speaker’s pitch.  
+
+which try to capture the content of an utterance while 
+
+2. Phoneme recognizer: Some linguists believe that there are basic units of sound called 
+
+“phonemes.” For example, the initial “k” sound in “keep” is the same phoneme as the “c” 
+sound in “cake.” This system tries to recognize the phonemes in the audio clip. 
+
+3. Final recognizer: Take the sequence of recognized phonemes, and try to string them 
+
+together into an output transcript.  
+
+In contrast, an end-to-end system might input an audio clip, and try to directly output the 
+transcript:  
+
+So far, we have only described machine learning “pipelines” that are completely linear: the 
+output is sequentially passed from one staged to the next. Pipelines can be more complex. 
+For example, here is a simple architecture for an autonomous car:  
+
+Page 93
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+​
+​
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+It has three components: One detects other cars using the camera images; one detects 
+pedestrians; then a final component plans a path for our own car that avoids the cars and 
+pedestrians.  
+
+Not every component in a pipeline has to be learned. For example, the literature on “robot 
+motion planning” has numerous algorithms for the final path planning step for the car. Many 
+of these algorithms do not involve learning.  
+
+In contrast, and end-to-end approach might try to take in the sensor inputs and directly 
+output the steering direction:  
+
+Even though end-to-end learning has seen many successes, it is not always the best 
+approach. For example, end-to-end speech recognition works well. But I’m skeptical about 
+end-to-end learning for autonomous driving. The next few chapters explain why.  
+
+Page 94
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+49 Pros and cons of end-to-end learning  
+
+Consider the same speech pipeline from our earlier example: 
+
+Many parts of this pipeline were “hand-engineered”: 
+
+• MFCCs are a set of hand-designed audio features. Although they provide a reasonable 
+summary of the audio input, they also simplify the input signal by throwing some 
+information away.  
+
+• Phonemes are an invention of linguists. They are an imperfect representation of speech 
+sounds. To the extent that phonemes are a poor approximation of reality, forcing an 
+algorithm to use a phoneme representation will limit the speech system’s performance. 
+
+These hand-engineered components limit the potential performance of the speech system. 
+However, allowing hand-engineered components also has some advantages: 
+
+• The MFCC features are robust to some properties of speech that do not affect the content, 
+such as speaker pitch. Thus, they help simplify the problem for the learning algorithm. 
+
+• To the extent that phonemes are a reasonable representation of speech, they can also help 
+the learning algorithm understand basic sound components and therefore improve its 
+performance. 
+
+Having more hand-engineered components generally allows a speech system to learn with 
+less data. The hand-engineered knowledge captured by MFCCs and phonemes 
+“supplements” the knowledge our algorithm acquires from data. When we don’t have much 
+data, this knowledge is useful.  
+
+Now, consider the end-to-end system:   
+
+Page 95
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+This system lacks the hand-engineered knowledge. Thus, when the training set is small, it 
+might do worse than the hand-engineered pipeline.  
+
+However, when the training set is large, then it is not hampered by the limitations of an 
+MFCC or phoneme-based representation. If the learning algorithm is a large-enough neural 
+network and if it is trained with enough training data, it has the potential to do very well, and 
+perhaps even approach the optimal error rate.  
+
+End-to-end learning systems tend to do well when there is a lot of labeled data for “both 
+ends”—the input end and the output end. In this example, we require a large dataset of 
+(audio, transcript) pairs. When this type of data is not available, approach end-to-end 
+learning with great caution.  
+
+If you are working on a machine learning problem where the training set is very small, most 
+of your algorithm’s knowledge will have to come from your human insight. I.e., from your 
+“hand engineering” components.  
+
+If you choose not to use an end-to-end system, you will have to decide what are the steps in 
+your pipeline, and how they should plug together. In the next few chapters, we’ll give some 
+suggestions for designing such pipelines.  
+
+Page 96
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+50 Choosing pipeline components: Data 
+availability 
+
+When building a non-end-to-end pipeline system, what are good candidates for the 
+components of the pipeline? How you design the pipeline will greatly impact the overall 
+system’s performance. One important factor is whether you can easily collect data to train 
+each of the components.  
+
+For example, consider this autonomous driving architecture: 
+
+You can use machine learning to detect cars and pedestrians. Further, it is not hard to obtain 
+data for these: There are numerous computer vision datasets with large numbers of labeled 
+cars and pedestrians. You can also use crowdsourcing (such as Amazon Mechanical Turk) to 
+obtain even larger datasets. It is thus relatively easy to obtain training data to build a car 
+detector and a pedestrian detector.  
+
+In contrast, consider a pure end-to-end approach:  
+
+To train this system, we would need a large dataset of (Image, Steering Direction) pairs. It is 
+very time-consuming and expensive to have people drive cars around and record their 
+steering direction to collect such data. You need a fleet of specially-instrumented cars, and a 
+huge amount of driving to cover a wide range of possible scenarios. This makes an 
+end-to-end system difficult to train. It is much easier to obtain a large dataset of labeled car 
+or pedestrian images.  
+
+More generally, if there is a lot of data available for training “intermediate modules” of a 
+pipeline (such as a car detector or a pedestrian detector), then you might consider using a 
+
+Page 97
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+pipeline with multiple stages. This structure could be superior because you could use all that 
+available data to train the intermediate modules.  
+
+Until more end-to-end data becomes available, I believe the non-end-to-end approach is 
+significantly more promising for autonomous driving: Its architecture better matches the 
+availability of data.  
+
+Page 98
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+51 Choosing pipeline components: Task 
+simplicity  
+
+Other than data availability, you should also consider a second factor when picking 
+components of a pipeline: How simple are the tasks solved by the individual components? 
+You should try to choose pipeline components that are individually easy to build or learn. 
+But what does it mean for a component to be “easy” to learn?  
+
+Consider these machine learning tasks, listed in order of increasing difficulty:  
+1. Classifying whether an image is overexposed (like the example above)  
+2. Classifying whether an image was taken indoor or outdoor 
+3. Classifying whether an image contains a cat 
+4. Classifying whether an image contains a cat with both black and white fur 
+5. Classifying whether an image contains a Siamese cat (a particular breed of cat) 
+
+Each of these is a binary image classification task: You have to input an image, and output 
+either 0 or 1. But the tasks earlier in the list seem much “easier” for a neural network to 
+learn. You will be able to learn the easier tasks with fewer training examples.  
+
+16
+
+ With the rise of deep learning and multi-layered neural networks, we sometimes say a 
+
+Machine learning does not yet have a good formal definition of what makes a task easy or 
+hard.
+task is “easy” if it can be carried out with fewer computation steps (corresponding to a 
+shallow neural network), and “hard” if it requires more computation steps (requiring a 
+deeper neural network). But these are informal definitions.  
+
+16Information theory has the concept of “Kolmogorov Complexity”, which says that the complexity of a learned function 
+is the length of the shortest computer program that can produce that function. However, this theoretical concept has found 
+few practical applications in AI. See also: https://en.wikipedia.org/wiki/Kolmogorov_complexity 
+
+Page 99
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+If you are able to take a complex task, and break it down into simpler sub-tasks, then by 
+coding in the steps of the sub-tasks explicitly, you are giving the algorithm prior knowledge 
+that can help it learn a task more efficiently.  
+
+Suppose you are building a Siamese cat detector. This is the pure end-to-end architecture: 
+
+In contrast, you can alternatively use a pipeline with two steps:  
+
+The first step (cat detector) detects all the cats in the image.  
+
+Page 100
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+The second step then passes cropped images of each of the detected cats (one at a time) to a 
+cat species classifier, and finally outputs 1 if any of the cats detected is a Siamese cat. 
+
+Compared to training a purely end-to-end classifier using just labels 0/1, each of the two 
+components in the pipeline--the cat detector and the cat breed classifier--seem much easier 
+to learn and will require significantly less data.
+
+ 17
+
+17 If you are familiar with practical object detection algorithms, you will recognize that they do not learn just with 0/1 
+image labels, but are instead trained with bounding boxes provided as part of the training data. A discussion of them is 
+beyond the scope of this chapter. See the Deep Learning specialization on Co

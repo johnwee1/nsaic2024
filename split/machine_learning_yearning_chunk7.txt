@@ -1,0 +1,801 @@
+80
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+ 
+ 
+42 Addressing data mismatch 
+
+Suppose you have developed a speech recognition system that does very well on the training 
+set and on the training dev set. However, it does poorly on your dev set: You have a data 
+mismatch problem. What can you do?  
+
+I recommend that you: (i) Try to understand what properties of the data differ between the 
+training and the dev set distributions. (ii) Try to find more training data that better matches 
+the dev set examples that your algorithm has trouble with.
+
+14
+
+For example, suppose you carry out an error analysis on the speech recognition dev set: You 
+manually go through 100 examples, and try to understand where the algorithm is making 
+mistakes. You find that your system does poorly because most of the audio clips in the dev 
+set are taken within a car, whereas most of the training examples were recorded against a 
+quiet background. The engine and road noise dramatically worsen the performance of your 
+speech system. In this case, you might try to acquire more training data comprising audio 
+clips that were taken in a car. The purpose of the error analysis is to understand the 
+significant differences between the training and the dev set, which is what leads to the data 
+mismatch.  
+
+If your training and training dev sets include audio recorded within a car, you should also 
+double-check your system’s performance on this subset of data. If it is doing well on the car 
+data in the training set but not on car data in the training dev set, then this further validates 
+the hypothesis that getting more car data would help. This is why we discussed the 
+possibility of including in your training set some data drawn from the same distribution as 
+your dev/test set in the previous chapter. Doing so allows you to compare your performance 
+on the car data in the training set vs. the dev/test set. 
+
+Unfortunately, there are no guarantees in this process. For example, if you don't have any 
+way to get more training data that better match the dev set data, you might not have a clear 
+path towards improving performance.  
+
+14There is also some research on “domain adaptation”—how to train an algorithm on one distribution 
+and have it generalize to a different distribution. These methods are typically applicable only in 
+special types of problems and are much less widely used than the ideas described in this chapter.  
+
+Page 81
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+43 Artificial data synthesis 
+
+Your speech system needs more data that sounds as if it were taken from within a car. Rather 
+than collecting a lot of data while driving around, there might be an easier way to get this 
+data: By artificially synthesizing it. 
+
+Suppose you obtain a large quantity of car/road noise audio clips. You can download this 
+data from several websites. Suppose you also have a large training set of people speaking in a 
+quiet room. If you take an audio clip of a person speaking and “add” to that to an audio clip 
+of car/road noise, you will obtain an audio clip that sounds as if that person was speaking in 
+a noisy car. Using this process, you can “synthesize” huge amounts of data that sound as if it 
+were collected inside a car.  
+
+More generally, there are several circumstances where artificial data synthesis allows you to 
+create a huge dataset that reasonably matches the dev set. Let’s use the cat image detector as 
+a second example. You notice that dev set images have much more motion blur because they 
+tend to come from cellphone users who are moving their phone slightly while taking the 
+picture. You can take non-blurry images from the training set of internet images, and add 
+simulated motion blur to them, thus making them more similar to the dev set.  
+
+Keep in mind that artificial data synthesis has its challenges: it is sometimes easier to create 
+synthetic data that appears realistic to a person than it is to create data that appears realistic 
+to a computer. For example, suppose you have 1,000 hours of speech training data, but only 
+1 hour of car noise. If you repeatedly use the same 1 hour of car noise with different portions 
+from the original 1,000 hours of training data, you will end up with a synthetic dataset where 
+the same car noise is repeated over and over. While a person listening to this audio probably 
+would not be able to tell—all car noise sounds the same to most of us—it is possible that a 
+learning algorithm would “overfit” to the 1 hour of car noise. Thus, it could generalize poorly 
+to a new audio clip where the car noise happens to sound different.  
+
+Alternatively, suppose you have 1,000 unique hours of car noise, but all of it was taken from 
+just 10 different cars. In this case, it is possible for an algorithm to “overfit” to these 10 cars 
+and perform poorly if tested on audio from a different car. Unfortunately, these problems 
+can be hard to spot.  
+
+Page 82
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+To take one more example, suppose you are building a computer vision system to recognize 
+cars. Suppose you partner with a video gaming company, which has computer graphics 
+models of several cars. To train your algorithm, you use the models to generate synthetic 
+images of cars. Even if the synthesized images look very realistic, this approach (which has 
+been independently proposed by many people) will probably not work well. The video game 
+might have ~20 car designs in the entire video game. It is very expensive to build a 3D car 
+model of a car; if you were playing the game, you probably wouldn’t notice that you’re seeing 
+the same cars over and over, perhaps only painted differently. I.e., this data looks very 
+realistic to you. But compared to the set of all cars out on roads—and therefore what you’re 
+likely to see in the dev/test sets—this set of 20 synthesized cars captures only a minuscule 
+fraction of the world’s distribution of cars. Thus if your 100,000 training examples all come 
+from these 20 cars, your system will “overfit” to these 20 specific car designs, and it will fail 
+to generalize well to dev/test sets that include other car designs.  
+
+When synthesizing data, put some thought into whether you’re really synthesizing a 
+representative set of examples. Try to avoid giving the synthesized data properties that 
+makes it possible for a learning algorithm to distinguish synthesized from non-synthesized 
+examples—such as if all the synthesized data comes from one of 20 car designs, or all the 
+synthesized audio comes from only 1 hour of car noise. This advice can be hard to follow.  
+
+When working on data synthesis, my teams have sometimes taken weeks before we produced 
+data with details that are close enough to the actual distribution for the synthesized data to 
+have a significant effect. But if you are able to get the details right, you can suddenly access a 
+far larger training set than before.  
+
+Page 83
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+Debugging 
+inference 
+algorithms 
+
+Page 84
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+44 The Optimization Verification test 
+
+Suppose you are building a speech recognition system. Your system works by inputting an 
+) for each possible output sentence 
+S
+(
+, and computing some Score
+A
+audio clip 
+​A
+​
+​
+example, you might try to estimate Score
+) = P(
+S
+(
+​A
+​
+output transcription is the sentence 
+
+), the probability that the correct 
+A
+​
+,  given that the input audio was 
+S
+​
+
+. For 
+S
+​
+
+A.   
+
+|
+S
+​
+
+Given a way to compute Score
+(
+​A
+maximizes it: 
+
+), you still have to find the English sentence 
+S
+​
+
+ that 
+S
+​
+
+N 
+
+​possible sentences of length 
+
+How do you compute the “arg max” above? If the English language has 50,000 words, then 
+there are (50,000)
+So, you need to apply an approximate search algorithm, to try to find the value of 
+optimizes (maximizes) Score
+keeps only 
+ top candidates during the search process. (For the purposes of this chapter, you 
+K
+​
+don’t need to understand the details of beam search.) Algorithms like this are not guaranteed 
+).  
+S
+to find the value of 
+​
+
+). One example search algorithm is “beam search,” which 
+S
+​
+
+—far too many to exhaustively enumerate. 
+N
+​
+
+(
+that maximizes Score
+S 
+​A
+​
+
+ that 
+S
+​
+
+(
+​A
+
+Suppose that an audio clip 
+of outputting the correct transcription, your system outputs the incorrect “I love robots.” 
+There are now two possibilities for what went wrong:  
+
+ records someone saying “I love machine learning.” But instead 
+A
+​
+
+1. Search algorithm problem
+
+. The approximate search algorithm (beam search) failed 
+
+to find the value of 
+
+ that maximizes Score
+S
+​
+
+(
+​A
+
+).  
+S
+​
+
+2. Objective (scoring function) problem.
+inaccurate. In particular, our choice of Score
+learning” is the correct transcription.  
+
+ Our estimates for Score
+
+(
+​A
+) failed to recognize that “I love machine 
+S
+​
+
+) were 
+A
+​
+
+) = P(
+S
+​
+
+|
+S
+​
+
+(
+​A
+
+Depending on which of these was the cause of the failure, you should prioritize your efforts 
+very differently. If #1 was the problem, you should work on improving the search algorithm. 
+).  
+S
+(
+If #2 was the problem, you should work on the learning algorithm that estimates Score
+​A
+​
+
+Facing this situation, some researchers will randomly decide to work on the search 
+algorithm; others will randomly work on a better way to learn values for Score
+unless you know which of these is the underlying cause of the error, your efforts could be 
+wasted. How can you decide more systematically what to work on?   
+
+(S). But 
+​A
+
+Page 85
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+ 
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​out
+
+ be the output transcription (“I love robots”). Let S* be the correct transcription (“I 
+
+Let S
+love machine learning”). In order to understand whether #1 or #2 above is the problem, you 
+can perform the 
+S
+(
+Score
+​out
+​A
+
+Optimization Verification test
+(
+*) > Score
+S
+​A
+​
+
+(
+). Then check whether Score
+​A
+
+). There are two possibilities:  
+
+: First, compute Score
+
+*) and 
+S
+​
+
+S
+​out
+
+(
+​A
+
+Case 1: Score
+
+(S
+(S*) > Score
+​A
+​A
+
+​out
+
+)   
+
+In this case, your learning algorithm has correctly given S* a higher score than S
+Nevertheless, our approximate search algorithm chose S
+your approximate search algorithm is failing to choose the value of S that maximizes 
+(
+Score
+​A
+algorithm problem and should focus on that. For example, you could try increasing the beam 
+width of beam search.   
+
+). In this case, the Optimization Verification test tells you that you have a search 
+S
+​
+
+rather than S*. This tells you that 
+
+. 
+​out
+
+​out 
+
+Case 2: Score
+
+(S
+(S*) ≤ Score
+​A
+​A
+
+​out
+
+)   
+
+In this case, you know that the way you’re computing Score
+strictly higher score to the correct output 
+Verification test tells you that you have an objective (scoring) function problem. Thus, you 
+) for different sentences 
+S
+(
+should focus on improving how you learn or approximate Score
+​A
+​
+
+(.) is at fault: It is failing to give a 
+​A
+. The Optimization 
+
+* than the incorrect 
+S
+​
+
+S
+​out
+
+.  
+S
+​
+
+Our discussion has focused on a single example. To apply the Optimization Verification test 
+in practice, you should examine the errors in your dev set. For each error, you would test 
+). Each dev example for which this inequality holds will get 
+whether Score
+marked as an error caused by the optimization algorithm. Each example for which this does 
+not hold (Score
+(S
+(S*) ≤ Score
+​A
+​A
+computing Score
+
+)) gets counted as a mistake due to the way you’re 
+
+(S
+(S*) > Score
+​A
+​A
+
+​out
+
+​out
+
+(.).  
+​A
+
+For example, suppose you find that 95% of the errors were due to the scoring function 
+Score
+(.), and only 5% due to the optimization algorithm. Now you know that no matter how 
+​A
+much you improve your optimization procedure, you would realistically eliminate only ~5% 
+(.).  
+of our errors. Thus, you should instead focus on improving how you estimate Score
+​A
+
+Page 86
+
+
+
+Andrew Ng 
+
+ 
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+ 
+ 
+ 
+ 
+ 
+45 General form of Optimization Verification 
+test 
+
+You can apply the Optimization Verification test when, given some input 
+compute Score
+) that indicates how good a response 
+y
+(
+​x
+​
+are using an approximate algorithm to try to find arg max
+search algorithm is sometimes failing to find the maximum. In our previous speech 
+recognition example, 
+
+ is to an input 
+y
+​
+
+ Score
+​y
+
+(
+​x
+
+ was the output transcript.  
+y=S
+​
+
+ was an audio clip, and 
+x=A
+​
+
+. Furthermore, you 
+x
+​
+
+), but suspect that the 
+y
+​
+
+, you know how  to 
+x
+​
+
+Suppose y* is the “correct” output but the algorithm instead outputs y
+to measure whether Score
+). If this inequality holds, then we blame the 
+optimization algorithm for the mistake. Refer to the previous chapter to make sure you 
+(y).  
+understand the logic behind this. Otherwise, we blame the computation of Score
+​x
+
+(y
+(y*) > Score
+​x
+​x
+
+​out
+
+​out
+
+. Then the key test is 
+
+Let’s look at one more example. Suppose you are building a Chinese-to-English machine 
+, and computing 
+C
+translation system. Your system works by inputting a Chinese sentence 
+​
+some Score
+(
+. For example, you might use Score
+E
+​C
+​
+), the probability of the translation being E given that the input sentence was 
+C
+P(
+​
+
+) for each possible translation 
+E
+(
+​C
+​
+
+E
+) = 
+​
+.  
+C
+​
+
+|
+E
+​
+
+Your algorithm translates sentences by trying to compute:  
+
+However, the set of all possible English sentences 
+search algorithm.  
+
+is too large, so you rely on a heuristic 
+E 
+​
+
+*. Then the Optimization Verification test would ask you to compute whether 
+E
+​
+
+Suppose your algorithm outputs an incorrect translation 
+translation 
+Score
+). If this inequality holds, then the Score
+E
+(
+​out
+​C
+as a superior output to 
+E
+​out
+(.).  
+algorithm. Otherwise, you attribute this error to the computation of Score
+​C
+
+; thus, you would attribute this error to the approximate search 
+
+(.) correctly recognized E* 
+​C
+
+ rather than some correct 
+
+(
+) > Score
+E*
+​C
+​
+
+E
+​out
+
+It is a very common “design pattern” in AI to first learn an approximate scoring function 
+(.), then use an approximate maximization algorithm. If you are able to spot this 
+Score
+​x
+pattern, you will be able to use the Optimization Verification test to understand your source 
+of errors.  
+
+Page 87
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+ 
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+​
+ 
+ 
+46 Reinforcement learning example 
+
+Suppose you are using machine learning to teach a helicopter to fly complex maneuvers. 
+Here is a time-lapse photo of a computer-controller helicopter executing a landing with the 
+engine turned off. 
+
+This is called an “autorotation” maneuver. It allows helicopters to land even if their engine 
+unexpectedly fails. Human pilots practice this maneuver as part of their training. Your goal 
+that ends in a safe 
+T 
+is to use a learning algorithm to fly the helicopter through a trajectory 
+​
+landing.   
+
+To apply reinforcement learning, you have to develop a “Reward function” 
+(.) that gives a 
+R
+​
+results in the 
+T 
+ is. For example, if 
+T
+score measuring how good each possible trajectory 
+​
+​
+ = -1,000—a huge negative reward. A 
+helicopter crashing, then perhaps the reward is 
+R(T)
+​
+R(T) 
+trajectory 
+with the exact value 
+ resulting in a safe landing might result in a positive 
+T
+​
+​
+(.) is typically chosen by 
+R
+depending on how smooth the landing was. The reward function 
+​
+hand to quantify how desirable different trajectories 
+landing was, whether the helicopter landed in exactly the desired spot, how rough th

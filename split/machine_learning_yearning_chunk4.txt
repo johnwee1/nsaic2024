@@ -1,0 +1,527 @@
+g bias and variance issues: 
+
+• If you have high avoidable bias, increase the size of your model (for example, increase the 
+
+size of your neural network by adding layers/neurons). 
+
+• If you have high variance, add data to your training set. 
+
+If you are able to increase the neural network size and increase training data without limit, it 
+is possible to do very well on many learning problems.  
+
+In practice, increasing the size of your model will eventually cause you to run into 
+computational problems because training very large models is slow. You might also exhaust 
+your ability to acquire more training data. (Even on the internet, there is only a finite 
+number of cat pictures!)  
+
+Different model architectures—for example, different neural network architectures—will 
+have different amounts of bias/variance for your problem. A lot of recent deep learning 
+research has developed many innovative model architectures. So if you are using neural 
+networks, the academic literature can be a great source of inspiration. There are also many 
+great open-source implementations on github. But the results of trying new architectures are 
+less predictable than the simple formula of increasing the model size and adding data.  
+
+Increasing the model size generally reduces bias, but it might also increase variance and the 
+risk of overfitting. However, this overfitting problem usually arises only when you are not 
+using regularization. If you include a well-designed regularization method, then you can 
+usually safely increase the size of the model without increasing overfitting.  
+
+Suppose you are applying deep learning, with L2 regularization or dropout, with the 
+regularization parameter that performs best on the dev set. If you increase the model size, 
+usually your performance will stay the same or improve; it is unlikely to worsen significantly. 
+The only reason to avoid using a bigger model is the increased computational cost.  
+
+Page 49
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+24 Bias vs. Variance tradeoff 
+
+You might have heard of the “Bias vs. Variance tradeoff.” Of the changes you could make to 
+most learning algorithms, there are some that reduce bias errors but at the cost of increasing 
+variance, and vice versa. This creates a “trade off” between bias and variance.  
+
+For example, increasing the size of your model—adding neurons/layers in a neural network, 
+or adding input features—generally reduces bias but could increase variance. Alternatively, 
+adding regularization generally increases bias but reduces variance.  
+
+In the modern era, we often have access to plentiful data and can use very large neural 
+networks (deep learning). Therefore, there is less of a tradeoff, and there are now more 
+options for reducing bias without hurting variance, and vice versa.  
+
+For example, you can usually increase a neural network size and tune the regularization 
+method to reduce bias without noticeably increasing variance. By adding training data, you 
+can also usually reduce variance without affecting bias.  
+
+If you select a model architecture that is well suited for your task, you might also reduce bias 
+and variance simultaneously. Selecting such an architecture can be difficult.  
+
+In the next few chapters, we discuss additional specific techniques for addressing bias and 
+variance.  
+
+Page 50
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+25 Techniques for reducing avoidable bias 
+
+If your learning algorithm suffers from high avoidable bias, you might try the following 
+techniques:  
+
+• Increase the model size 
+
+(such as number of neurons/layers): This technique reduces 
+bias, since it should allow you to fit the training set better. If you find that this increases 
+variance, then use regularization, which will usually eliminate the increase in variance. 
+
+• Modify input features based on insights from error analysis
+
+: Say your error 
+analysis inspires you to create additional features that help the algorithm eliminate a 
+particular category of errors. (We discuss this further in the next chapter.) These new 
+features could help with both bias and variance. In theory, adding more features could 
+increase the variance; but if you find this to be the case, then use regularization, which will 
+usually eliminate the increase in variance.  
+
+• Reduce or eliminate regularization
+
+ (L2 regularization, L1 regularization, dropout): 
+
+This will reduce avoidable bias, but increase variance.  
+
+• Modify model architecture
+
+ (such as neural network architecture) so that it is more 
+
+suitable for your problem: This technique can affect both bias and variance.  
+
+One method that is not helpful:  
+
+• Add more training data
+
+: This technique helps with variance problems, but it usually 
+
+has no significant effect on bias.  
+
+Page 51
+
+
+
+Andrew Ng 
+
+ 
+26 Error analysis on the training set 
+
+Your algorithm must perform well on the training set before you can expect it to perform 
+well on the dev/test sets.  
+
+In addition to the techniques described earlier to address high bias, I sometimes also carry 
+out an error analysis on the 
+, following a protocol similar to error analysis on 
+training data
+​
+the Eyeball dev set. This can be useful if your algorithm has high bias—i.e., if it is not fitting 
+the training set well.  
+
+For example, suppose you are building a speech recognition system for an app and have 
+collected a training set of audio clips from volunteers. If your system is not doing well on the 
+training set, you might consider listening to a set of ~100 examples that the algorithm is 
+doing poorly on to understand the major categories of training set errors. Similar to the dev 
+set error analysis, you can count the errors in different categories:  
+
+Audio clip 
+
+Loud background 
+noise 
+
+User spoke 
+quickly 
+
+Far from 
+microphone 
+
+1 
+
+2 
+
+3   
+
+4 
+
+✔  
+
+✔  
+
+✔  
+
+75% 
+
+% of total 
+
+✔  
+
+✔  
+
+✔  
+
+25% 
+
+50% 
+
+Comments 
+
+Car noise 
+
+Restaurant noise 
+
+User shouting 
+across living room? 
+
+Coffeeshop 
+
+In this example, you might realize that your algorithm is having a particularly hard time with 
+training examples that have a lot of background noise. Thus, you might focus on techniques 
+that allow it to better fit training examples with background noise.  
+
+You might also double-check whether it is possible for a person to transcribe these audio 
+clips, given the same input audio as your learning algorithm. If there is so much background 
+noise that it is simply impossible for anyone to make out what was said, then it might be 
+unreasonable to expect any algorithm to correctly recognize such utterances. We will discuss 
+the benefits of comparing your algorithm to human-level performance in a later section. 
+
+Page 52
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+ 
+ 
+ 
+  
+ 
+ 
+ 
+ 
+ 
+27 Techniques for reducing variance 
+
+If your learning algorithm suffers from high variance, you might try the following 
+techniques:  
+
+• Add more training data
+
+: This is the simplest and most reliable way to address variance, 
+
+so long as you have access to significantly more data and enough computational power to 
+process the data.   
+
+• Add regularization
+
+ (L2 regularization, L1 regularization, dropout): This technique 
+
+reduces variance but increases bias.  
+
+• Add early stopping
+
+ (i.e., stop gradient descent early, based on dev set error): This 
+
+technique reduces variance but increases bias. Early stopping behaves a lot like 
+regularization methods, and some authors call it a regularization technique.  
+
+• Feature selection to decrease number/type of input features:
+
+ This technique 
+
+might help with variance problems, but it might also increase bias. Reducing the number 
+of features slightly (say going from 1,000 features to 900) is unlikely to have a huge effect 
+on bias. Reducing it significantly (say going from 1,000 features to 100—a 10x reduction) 
+is more likely to have a significant effect, so long as you are not excluding too many useful 
+features. In modern deep learning, when data is plentiful, there has been a shift away from 
+feature selection, and we are now more likely to give all the features we have to the 
+algorithm and let the algorithm sort out which ones to use based on the data. But when 
+your training set is small, feature selection can be very useful.  
+
+• Decrease the model size 
+
+(such as number of neurons/layers): 
+
+ This 
+Use with caution.
+​
+technique could decrease variance, while possibly increasing bias. However, I don’t 
+recommend this technique for addressing variance. Adding regularization usually gives 
+better classification performance. The advantage of reducing the model size is reducing 
+your computational cost and thus speeding up how quickly you can train models. If 
+speeding up model training is useful, then by all means consider decreasing the model size. 
+But if your goal is to reduce variance, and you are not concerned about the computational 
+cost, consider adding regularization instead.  
+
+Here are two additional tactics, repeated from the previous chapter on addressing bias:  
+
+• Modify input features based on insights from error analysis
+
+: Say your error 
+
+analysis inspires you to create additional features that help the algorithm to eliminate a 
+particular category of errors. These new features could help with both bias and variance. In 
+
+Page 53
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+​
+​
+​
+​
+​
+​
+theory, adding more features could increase the variance; but if you find this to be the case, 
+then use regularization, which will usually eliminate the increase in variance.  
+
+• Modify model architecture
+
+ (such as neural network architecture) so that it is more 
+
+suitable for your problem: This technique can affect both bias and variance.  
+
+Page 54
+
+
+
+Andrew Ng 
+
+ 
+​
+ 
+ 
+ 
+ 
+Learning curves 
+
+Page 55
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+28 Diagnosing bias and variance: Learning 
+curves  
+
+We’ve seen some ways to estimate how much error can be attributed to avoidable bias vs. 
+variance. We did so by estimating the optimal error rate and computing the algorithm’s 
+training set and dev set errors. Let’s discuss a technique that is even more informative: 
+plotting a learning curve.  
+
+A learning curve plots your dev set error against the number of training examples. To plot it, 
+you would run your algorithm using different training set sizes. For example, if you have 
+1,000 examples, you might train separate copies of the algorithm on 100, 200, 300, …, 1000 
+examples. Then you could plot how dev set error varies with the training set size. Here is an 
+example: 
+
+As the training set size increases, the dev set error should decrease.  
+
+We will often have some “desired error rate” that we hope our learning algorithm will 
+eventually achieve. For example:  
+
+• If we hope for human-level performance, then the human error rate could be the “desired 
+
+error rate.” 
+
+• If our learning algorithm serves some product (such as delivering cat pictures), we might 
+
+have an intuition about what level of performance is needed to give users a great 
+experience.  
+
+Page 56
+
+
+
+Andrew Ng 
+
+ 
+ 
+• If you have worked on a important application for a long time, then you might have 
+
+intuition about how much more progress you can reasonably make in the next 
+quarter/year.  
+
+Add the desired level of performance to your learning curve:  
+
+You can visually extrapolate the red “dev error” curve  to guess how much closer you could 
+get to the desired level of performance by adding more data. In the example above, it looks 
+plausible that doubling the training set size might allow you to reach the desired 
+performance.  
+
+But if the dev error curve has “plateaued” (i.e. flattened out), then you can immediately tell 
+that adding more data won’t get you to your goal:  
+
+Looking at the learning curve might therefore help you avoid spending months collecting 
+twice as much training data, only to realize it does not help. 
+
+Page 57
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+One downside of this process is that if you only look at the dev error curve, it can be hard to 
+extrapolate and predict exactly where the red curve will go if you had more data. There is one 
+additional plot that can help you estimate the impact of adding more data: the training error. 
+
+Page 58
+
+
+
+Andrew Ng 
+
+ 
+29 Plotting training error 
+
+Your dev set (and test set) error should decrease as the training set size grows. But your 
+training set error usually 
+
+ as the training set size grows.  
+increases
+​
+
+Let’s illustrate this effect with an example. Suppose your training set has only 2 examples: 
+One cat image and one non-cat image. Then it is easy for the learning algorithms to 
+“memorize” both examples in the training set, and get 0% training set error. Even if either or 
+both of the training examples were mislabeled, it is still easy for the algorithm to memorize 
+both labels.  
+
+Now suppose your training set has 100 examples. Perhaps even a few examples are 
+mislabeled, or ambiguous—some images are very blurry, so even humans cannot tell if there 
+is a cat. Perhaps the learning algorithm can still “memorize” most or all of the training set, 
+but it is now harder to obtain 100% accuracy. By increasing the training set from 2 to 100 
+examples, you will find that the training set accuracy will drop slightly.  
+
+Finally, suppose your training set has 10,000 examples. In this case, it becomes even harder 
+for the algorithm to perfectly fit all 10,000 examples, especially if some are ambiguous or 
+mislabeled. Thus, your learning algorithm will do even worse on this training set.  
+
+Let’s add a plot of training error to our earlier figures:  
+
+You can see that the blue “training error” curve increases with the size of the training set. 
+Furthermore, your algorithm usually does better on the training set than on the dev set; thus 
+the red dev error curve usually lies strictly above the blue training error curve.  
+
+Let’s discuss next how to interpret these plots. 
+
+Page 59
+
+
+
+Andrew Ng 
+
+ 
+ 
+​
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+30 Interpreting learning curves: High bias 
+
+Suppose your dev error curve looks like this:  
+
+We previously said that, if your dev error curve plateaus, you are unlikely to achieve the 
+desired performance just by adding data.  
+
+But it is hard to know exactly what an extrapolation of the red dev error curve will look like. 
+If the dev set was small, you would be even less certain because the curves could be noisy. 
+
+Suppose we add the training error curve to this plot and get the following:  
+
+Now, you can be absolutely sure that adding more data will not, by itself, be sufficient. Why 
+is that? Remember our two observations: 
+
+Page 60
+
+
+
+Andrew Ng 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+• As we add more training data, training error can only get worse. Thus, the blue training 
+
+error curve can only stay the same or go higher, and thus it can only get further away from 
+the (green line) level of desired performance.  
+
+• The red dev error curve is usually higher than the blue training error. Thus, there’s almost 
+no way that adding more data would allow the red dev error curve to drop down to the 
+desired level of performance when even the training error is higher than the desired level 
+of performance.  
+
+Examining both the dev error curve and the training error curve on the same plot allows us 
+to more confidently extrapolate the dev error curve.  
+
+Suppose, for the sake of discussion, that the desired performance is our estimate of the 
+optimal error rate. The figure above is then the standard “textbook” example of what a 
+learni

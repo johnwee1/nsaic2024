@@ -28,4 +28,4 @@ def text_spliter(filename):
             file.write(chunk)
 
 
-text_spliter("stanford_ml_notes")
+text_spliter("machine_learning_yearning")

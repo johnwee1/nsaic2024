@@ -7,6 +7,8 @@ Here's a manual pipeline of how to use the scripts in this folder. Not sure if w
 1. To extract text from PDF files in the `textbook` directory:
 Run `extract("filename.txt")` from `pdf_text_extractor.py`. The output is saved under the directory `raws`.
 
+> I recommend manual output inspection. For example, its pretty trivial to find and replace all occurences of "TitleName Copyright 2021" with "", just to reduce clutter.
+
 2. Split chunks from the long text file. **ANY CHANGES MADE TO PROMPT.TXT SHOULD BE MADE PRIOR TO THIS STEP.**
 Run `text_splitter("filename")` (note: no .txt suffix here) which will split the texts while factoring in the context length of `prompt.txt`.
 

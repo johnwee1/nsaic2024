@@ -1,5 +1,6 @@
 from pdfminer.high_level import extract_text
 from pathlib import Path
+import os
 
 
 def extract(pdf_path):
@@ -12,4 +13,5 @@ def extract(pdf_path):
     return str(txt_path)
 
 
-extract("textbooks/stanford_ml_notes.pdf")
+dest = os.path.join("textbooks", "machine_learning_yearning.pdf")
+extract(dest)
