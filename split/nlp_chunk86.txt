@@ -1,0 +1,372 @@
+ed algorithms for sentiment were ﬁrst sug-
+gested by Hatzivassiloglou and McKeown (1997), and graph propagation became a
+standard method (Zhu and Ghahramani 2002, Zhu et al. 2003, Zhou et al. 2004a,
+Velikovich et al. 2010). Crowdsourcing can also be used to improve precision by
+ﬁltering the result of semi-supervised lexicon learning (Riloff and Shepherd 1997,
+Fast et al. 2016).
+
+Much recent work focuses on ways to learn embeddings that directly encode sen-
+timent or other properties, such as the DENSIFIER algorithm of Rothe et al. (2016)
+that learns to transform the embedding space to focus on sentiment (or other) infor-
+mation.
+
+Exercises
+
+21.1 Show that the relationship between a word w and a category c in the Potts
+Score in Eq. 21.6 is a variant of the pointwise mutual information pmi(w, c)
+without the log term.
+
+CHAPTER
+
+22 Coreference Resolution and
+
+Entity Linking
+
+and even Stigand, the patriotic archbishop of Canterbury, found it advisable–”’
+‘Found WHAT?’ said the Duck.
+‘Found IT,’ the Mouse replied rather crossly: ‘of course you know what “it”means.’
+‘I know what “it”means well enough, when I ﬁnd a thing,’ said the Duck: ‘it’s gener-
+ally a frog or a worm. The question is, what did the archbishop ﬁnd?’
+
+Lewis Carroll, Alice in Wonderland
+
+An important component of language processing is knowing who is being talked
+about in a text. Consider the following passage:
+
+(22.1) Victoria Chen, CFO of Megabucks Banking, saw her pay jump to $2.3
+
+million, as the 38-year-old became the company’s president. It is widely
+known that she came to Megabucks from rival Lotsabucks.
+
+Each of the underlined phrases in this passage is used by the writer to refer to
+a person named Victoria Chen. We call linguistic expressions like her or Victoria
+Chen mentions or referring expressions, and the discourse entity that is referred
+to (Victoria Chen) the referent. (To distinguish between referring expressions and
+their referents, we italicize the former.)1 Two or more referring expressions that are
+used to refer to the same discourse entity are said to corefer; thus, Victoria Chen
+and she corefer in (22.1).
+
+Coreference is an important component of natural language processing. A dia-
+logue system that has just told the user “There is a 2pm ﬂight on United and a 4pm
+one on Cathay Paciﬁc” must know which ﬂight the user means by “I’ll take the sec-
+ond one”. A question answering system that uses Wikipedia to answer a question
+about Marie Curie must know who she was in the sentence “She was born in War-
+saw”. And a machine translation system translating from a language like Spanish, in
+which pronouns can be dropped, must use coreference from the previous sentence to
+decide whether the Spanish sentence ‘“Me encanta el conocimiento”, dice.’ should
+be translated as ‘“I love knowledge”, he says’, or ‘“I love knowledge”, she says’.
+Indeed, this example comes from an actual news article in El Pa´ıs about a female
+professor and was mistranslated as “he” in machine translation because of inaccurate
+coreference resolution (Schiebinger, 2013).
+
+Natural language processing systems (and humans) interpret linguistic expres-
+sions with respect to a discourse model (Karttunen, 1969). A discourse model
+(Fig. 22.1) is a mental model that the understander builds incrementally when in-
+terpreting a text, containing representations of the entities referred to in the text,
+as well as properties of the entities and relations among them. When a referent is
+ﬁrst mentioned in a discourse, we say that a representation for it is evoked into the
+model. Upon subsequent mention, this representation is accessed from the model.
+
+1 As a convenient shorthand, we sometimes speak of a referring expression referring to a referent, e.g.,
+saying that she refers to Victoria Chen. However, the reader should keep in mind that what we really
+mean is that the speaker is performing the act of referring to Victoria Chen by uttering she.
+
+mention
+
+referent
+
+corefer
+
+discourse
+model
+
+evoked
+
+accessed
+
+482 CHAPTER 22
+
+• COREFERENCE RESOLUTION AND ENTITY LINKING
+
+Figure 22.1 How mentions evoke and access discourse entities in a discourse model.
+
+anaphora
+
+anaphor
+
+antecedent
+
+singleton
+coreference
+resolution
+
+coreference
+chain
+cluster
+
+Reference in a text to an entity that has been previously introduced into the
+discourse is called anaphora, and the referring expression used is said to be an
+anaphor, or anaphoric.2 In passage (22.1), the pronouns she and her and the deﬁ-
+nite NP the 38-year-old are therefore anaphoric. The anaphor corefers with a prior
+mention (in this case Victoria Chen) that is called the antecedent. Not every refer-
+ring expression is an antecedent. An entity that has only a single mention in a text
+(like Lotsabucks in (22.1)) is called a singleton.
+
+In this chapter we focus on the task of coreference resolution. Coreference
+resolution is the task of determining whether two mentions corefer, by which we
+mean they refer to the same entity in the discourse model (the same discourse entity).
+The set of coreferring expressions is often called a coreference chain or a cluster.
+For example, in processing (22.1), a coreference resolution algorithm would need
+to ﬁnd at least four coreference chains, corresponding to the four entities in the
+discourse model in Fig. 22.1.
+
+1.
+2.
+3.
+4.
+
+Victoria Chen, her, the 38-year-old, She
+{
+Megabucks Banking, the company, Megabucks
+{
+her pay
+{
+Lotsabucks
+}
+{
+
+}
+
+}
+
+}
+
+Note that mentions can be nested; for example the mention her is syntactically
+part of another mention, her pay, referring to a completely different discourse entity.
+Coreference resolution thus comprises two tasks (although they are often per-
+formed jointly): (1) identifying the mentions, and (2) clustering them into corefer-
+ence chains/discourse entities.
+
+entity linking
+
+We said that two mentions corefered if they are associated with the same dis-
+course entity. But often we’d like to go further, deciding which real world entity is
+associated with this discourse entity. For example, the mention Washington might
+refer to the US state, or the capital city, or the person George Washington; the inter-
+pretation of the sentence will of course be very different for each of these. The task
+of entity linking (Ji and Grishman, 2011) or entity resolution is the task of mapping
+a discourse entity to some real-world individual.3 We usually operationalize entity
+
+2 We will follow the common NLP usage of anaphor to mean any mention that has an antecedent, rather
+than the more narrow usage to mean only mentions (like pronouns) whose interpretation depends on the
+antecedent (under the narrower interpretation, repeated names are not anaphors).
+3 Computational linguistics/NLP thus differs in its use of the term reference from the ﬁeld of formal
+semantics, which uses the words reference and coreference to describe the relation between a mention
+and a real-world entity. By contrast, we follow the functional linguistics tradition in which a mention
+refers to a discourse entity (Webber, 1978) and the relation between a discourse entity and the real world
+individual requires an additional step of linking.
+
+VDiscourse Model“Victoria”“she”coreferrefer (evoke)refer (access)$LotsabucksMegabuckspay483
+
+linking or resolution by mapping to an ontology: a list of entities in the world, like
+a gazeteer (Chapter 19). Perhaps the most common ontology used for this task is
+Wikipedia; each Wikipedia page acts as the unique id for a particular entity. Thus
+the entity linking task of wikiﬁcation (Mihalcea and Csomai, 2007) is the task of de-
+ciding which Wikipedia page corresponding to an individual is being referred to by
+a mention. But entity linking can be done with any ontology; for example if we have
+an ontology of genes, we can link mentions of genes in text to the disambiguated
+gene name in the ontology.
+
+In the next sections we introduce the task of coreference resolution in more de-
+tail, and survey a variety of architectures for resolution. We also introduce two
+architectures for the task of entity linking.
+
+Before turning to algorithms, however, we mention some important tasks we
+will only touch on brieﬂy at the end of this chapter. First are the famous Winograd
+Schema problems (so-called because they were ﬁrst pointed out by Terry Winograd
+in his dissertation). These entity coreference resolution problems are designed to be
+too difﬁcult to be solved by the resolution methods we describe in this chapter, and
+the kind of real-world knowledge they require has made them a kind of challenge
+task for natural language processing. For example, consider the task of determining
+the correct antecedent of the pronoun they in the following example:
+(22.2) The city council denied the demonstrators a permit because
+
+a. they feared violence.
+b. they advocated violence.
+
+Determining the correct antecedent for the pronoun they requires understanding
+that the second clause is intended as an explanation of the ﬁrst clause, and also
+that city councils are perhaps more likely than demonstrators to fear violence and
+that demonstrators might be more likely to advocate violence. Solving Winograd
+Schema problems requires ﬁnding way to represent or discover the necessary real
+world knowledge.
+
+A problem we won’t discuss in this chapter is the related task of event corefer-
+ence, deciding whether two event mentions (such as the buy and the acquisition in
+these two sentences from the ECB+ corpus) refer to the same event:
+(22.3) AMD agreed to [buy] Markham, Ontario-based ATI for around $5.4 billion
+
+in cash and stock, the companies announced Monday.
+
+(22.4) The [acquisition] would turn AMD into one of the world’s largest providers
+
+of graphics chips.
+
+Event mentions are much harder to detect than entity mentions, since they can be ver-
+bal as well as nominal. Once detected, the same mention-pair and mention-ranking
+models used for entities are often applied to events.
+
+An even more complex kind of coreference is discourse deixis (Webber, 1988),
+in which an anaphor refers back to a discourse segment, which can be quite hard to
+delimit or categorize, like the examples in (22.5) adapted from Webber (1991):
+(22.5) According to Soleil, Beau just opened a restaurant
+
+a. But that turned out to be a lie.
+b. But that was false.
+c. That struck me as a funny way to describe the situation.
+
+The referent of that is a speech act (see Chapter 15) in (22.5a), a proposition in
+(22.5b), and a manner of description in (22.5c). We don’t give algorithms in this
+chapter for these difﬁcult types of non-nominal antecedents, but see Kolhatkar
+et al. (2018) for a survey.
+
+event
+coreference
+
+discourse deixis
+
+484 CHAPTER 22
+
+• COREFERENCE RESOLUTION AND ENTITY LINKING
+
+22.1 Coreference Phenomena: Linguistic Background
+
+We now offer some linguistic background on reference phenomena. We introduce
+the four types of referring expressions (deﬁnite and indeﬁnite NPs, pronouns, and
+names), describe how these are used to evoke and access entities in the discourse
+model, and talk about linguistic features of the anaphor/antecedent relation (like
+number/gender agreement, or properties of verb semantics).
+
+22.1.1 Types of Referring Expressions
+
+Indeﬁnite Noun Phrases: The most common form of indeﬁnite reference in En-
+glish is marked with the determiner a (or an), but it can also be marked by a quan-
+tiﬁer such as some or even the determiner this. Indeﬁnite reference generally intro-
+duces into the discourse context entities that are new to the hearer.
+
+(22.6) a. Mrs. Martin was so very kind as to send Mrs. Goddard a beautiful goose.
+
+b. He had gone round one day to bring her some walnuts.
+c. I saw this beautiful cauliﬂower today.
+
+Deﬁnite Noun Phrases: Deﬁnite reference, such as via NPs that use the English
+article the, refers to an entity that is identiﬁable to the hearer. An entity can be
+identiﬁable to the hearer because it has been mentioned previously in the text and
+thus is already represented in the discourse model:
+
+(22.7)
+
+It concerns a white stallion which I have sold to an ofﬁcer. But the pedigree
+of the white stallion was not fully established.
+
+Alternatively, an entity can be identiﬁable because it is contained in the hearer’s
+set of beliefs about the world, or the uniqueness of the object is implied by the
+description itself, in which case it evokes a representation of the referent into the
+discourse model, as in (22.9):
+
+(22.8) I read about it in the New York Times.
+(22.9) Have you seen the car keys?
+
+These last uses are quite common; more than half of deﬁnite NPs in newswire
+texts are non-anaphoric, often because they are the ﬁrst time an entity is mentioned
+(Poesio and Vieira 1998, Bean and Riloff 1999).
+
+Pronouns: Another form of deﬁnite reference is pronominalization, used for enti-
+ties that are extremely salient in the discourse, (as we discuss below):
+
+(22.10) Emma smiled and chatted as cheerfully as she could,
+
+cataphora
+
+Pronouns can also participate in cataphora, in which they are mentioned before
+
+their referents are, as in (22.11).
+
+(22.11) Even before she saw it, Dorothy had been thinking about the Emerald City
+
+every day.
+
+Here, the pronouns she and it both occur before their referents are introduced.
+
+Pronouns also appear in quantiﬁed contexts in which they are considered to be
+
+bound
+
+bound, as in (22.12).
+(22.12) Every dancer brought her left arm forward.
+
+Under the relevant reading, her does not refer to some woman in context, but instead
+behaves like a variable bound to the quantiﬁed expression every dancer. We are not
+concerned with the bound interpretation of pronouns in this chapter.
+
+22.1
+
+• COREFERENCE PHENOMENA: LINGUISTIC BACKGROUND
+
+485
+
+In some languages, pronouns can appear as clitics attached to a word, like lo
+
+(‘it’) in this Spanish example from AnCora (Recasens and Mart´ı, 2010):
+
+(22.13) La intenci´on es reconocer el gran prestigio que tiene la marat´on y unirlo
+
+con esta gran carrera.
+‘The aim is to recognize the great prestige that the Marathon has and join
+it
+|
+with this great race.”
+
+Demonstrative Pronouns: Demonstrative pronouns this and that can appear ei-
+ther alone or as determiners, for instance, this ingredient, that spice:
+
+(22.14) I just bought a copy of Thoreau’s Walden. I had bought one ﬁve years ago.
+
+That one had been very tattered; this one was in much better condition.
+
+Note that this NP is ambiguous; in colloquial spoken English, it can be indeﬁnite,
+
+as in (22.6), or deﬁnite, as in (22.14).
+
+zero anaphor
+
+Instead of using a pronoun, in some languages (including Chi-
+Zero Anaphora:
+nese, Japanese, and Italian) it is possible to have an anaphor that has no lexical
+realization at all, called a zero anaphor or zero pronoun, as in the following Italian
+and Japanese examples from Poesio et al. (2016):
+
+(22.15) EN [John]i went to visit some friends. On the way [he]i bought some
+
+wine.
+
+IT [Giovanni]i and`o a far visita a degli amici. Per via φi compr`o del vino.
+JA [John]i-wa yujin-o houmon-sita. Tochu-de φi wain-o ka-tta.
+
+or this Chinese example:
+
+(22.16)
+
+[我] 前一会精神上太紧张。[0] 现在比较平静了
+[I] was too nervous a while ago. ... [0] am now calmer.
+
+Zero anaphors complicate the task of mention detection in these languages.
+
+Names: Names (such as of people, locations, or organizations) can be used to refer
+to both new and old entities in the discourse:
+
+(22.17)
+
+a. Miss Woodhouse certainly had not done him justice.
+b. International Business Machines sought patent compensation
+from Amazon; IBM had previ

@@ -1,0 +1,408 @@
+ more examples, but there is a lot more to the various temporal annotation
+standards; consult ISO8601 (2004), Ferro et al. (2005), and Pustejovsky et al. (2005)
+for more details.
+
+Unit
+Fully speciﬁed dates
+Weeks
+Weekends
+24-hour clock times
+Dates and times
+Financial quarters
+Figure 19.18 Sample ISO patterns for representing various times and durations.
+
+Pattern
+YYYY-MM-DD
+YYYY-Wnn
+PnWE
+HH:MM:SS
+YYYY-MM-DDTHH:MM:SS
+Qn
+
+Sample Value
+1991-09-28
+2007-W27
+P1WE
+11:13:45
+1991-09-28T11:00:00
+1999-Q3
+
+Most current approaches to temporal normalization are rule-based (Chang and
+Manning 2012, Str¨otgen and Gertz 2013). Patterns that match temporal expressions
+are associated with semantic analysis procedures. For example, the pattern above for
+recognizing phrases like 3 years old can be associated with the predicate Duration
+that takes two arguments, the length and the unit of time:
+pattern: /(\d+)[-\s]($TEUnits)(s)?([-\s]old)?/
+result: Duration($1, $2)
+
+The task is difﬁcult because fully qualiﬁed temporal expressions are fairly rare
+in real texts. Most temporal expressions in news articles are incomplete and are only
+implicitly anchored, often with respect to the dateline of the article, which we refer
+to as the document’s temporal anchor. The values of temporal expressions such
+as today, yesterday, or tomorrow can all be computed with respect to this temporal
+
+temporal
+anchor
+
+19.7
+
+• AUTOMATIC TEMPORAL ANALYSIS
+
+435
+
+anchor. The semantic procedure for today simply assigns the anchor, and the attach-
+ments for tomorrow and yesterday add a day and subtract a day from the anchor,
+respectively. Of course, given the cyclic nature of our representations for months,
+weeks, days, and times of day, our temporal arithmetic procedures must use modulo
+arithmetic appropriate to the time unit being used.
+
+Unfortunately, even simple expressions such as the weekend or Wednesday in-
+troduce a fair amount of complexity. In our current example, the weekend clearly
+refers to the weekend of the week that immediately precedes the document date. But
+this won’t always be the case, as is illustrated in the following example.
+
+(19.38) Random security checks that began yesterday at Sky Harbor will continue
+
+at least through the weekend.
+
+In this case, the expression the weekend refers to the weekend of the week that the
+anchoring date is part of (i.e., the coming weekend). The information that signals
+this meaning comes from the tense of continue, the verb governing the weekend.
+
+Relative temporal expressions are handled with temporal arithmetic similar to
+that used for today and yesterday. The document date indicates that our example
+article is ISO week 27, so the expression last week normalizes to the current week
+minus 1. To resolve ambiguous next and last expressions we consider the distance
+from the anchoring date to the nearest unit. Next Friday can refer either to the
+immediately next Friday or to the Friday following that, but the closer the document
+date is to a Friday, the more likely it is that the phrase will skip the nearest one. Such
+ambiguities are handled by encoding language and domain-speciﬁc heuristics into
+the temporal attachments.
+
+19.7.3 Temporal Ordering of Events
+
+The goal of temporal analysis, is to link times to events and then ﬁt all these events
+into a complete timeline. This ambitious task is the subject of considerable current
+research but solving it with a high level of accuracy is beyond the capabilities of
+current systems. A somewhat simpler, but still useful, task is to impose a partial or-
+dering on the events and temporal expressions mentioned in a text. Such an ordering
+can provide many of the same beneﬁts as a true timeline. An example of such a par-
+tial ordering is the determination that the fare increase by American Airlines came
+after the fare increase by United in our sample text. Determining such an ordering
+can be viewed as a binary relation detection and classiﬁcation task.
+
+Even this partial ordering task assumes that in addition to the detecting and nor-
+malizing time expressions steps described above, we have already detected all the
+events in the text. Indeed, many temporal expressions are anchored to events men-
+tioned in a text and not directly to other temporal expressions. Consider the follow-
+ing example:
+
+(19.39) One week after the storm, JetBlue issued its customer bill of rights.
+
+To determine when JetBlue issued its customer bill of rights we need to determine
+the time of the storm event, and then we need to modify that time by the temporal
+expression one week after.
+
+Thus once the events and times have been detected, our goal next is to assert links
+between all the times and events: i.e. creating event-event, event-time, time-time,
+DCT-event, and DCT-time TimeML TLINKS. This can be done by training time
+relation classiﬁers to predict the correct T:INK between each pair of times/events,
+supervised by the gold labels in the TimeBank corpus with features like words/em-
+beddings, parse paths, tense and aspect The sieve-based architecture using precision-
+
+436 CHAPTER 19
+
+•
+
+INFORMATION EXTRACTION: RELATIONS, EVENTS, AND TIME
+
+ranked sets of classiﬁers, which we’ll introduce in Chapter 26, is also commonly
+used.
+
+Systems that perform all 4 tasks (time extraction creation and normalization,
+event extraction, and time/event linking) include TARSQI (Verhagen et al., 2005)
+CLEARTK (Bethard, 2013), CAEVO (Chambers et al., 2014), and CATENA (Mirza
+and Tonelli, 2016).
+
+19.8 Template Filling
+
+scripts
+
+templates
+
+template ﬁlling
+
+Many texts contain reports of events, and possibly sequences of events, that often
+correspond to fairly common, stereotypical situations in the world. These abstract
+situations or stories, related to what have been called scripts (Schank and Abel-
+son, 1977), consist of prototypical sequences of sub-events, participants, and their
+roles. The strong expectations provided by these scripts can facilitate the proper
+classiﬁcation of entities, the assignment of entities into roles and relations, and most
+critically, the drawing of inferences that ﬁll in things that have been left unsaid. In
+their simplest form, such scripts can be represented as templates consisting of ﬁxed
+sets of slots that take as values slot-ﬁllers belonging to particular classes. The task
+of template ﬁlling is to ﬁnd documents that invoke particular scripts and then ﬁll the
+slots in the associated templates with ﬁllers extracted from the text. These slot-ﬁllers
+may consist of text segments extracted directly from the text, or they may consist of
+concepts that have been inferred from text elements through some additional pro-
+cessing.
+
+A ﬁlled template from our original airline story might look like the following.
+
+FARE-RAISE ATTEMPT:
+
+
+
+LEAD AIRLINE:
+AMOUNT:
+EFFECTIVE DATE:
+FOLLOWER:
+
+UNITED AIRLINES
+$6
+2006-10-26
+AMERICAN AIRLINES
+
+
+
+
+
+
+
+
+
+
+
+
+
+This template has four slots (LEAD AIRLINE, AMOUNT, EFFECTIVE DATE, FOL-
+LOWER). The next section describes a standard sequence-labeling approach to ﬁlling
+slots. Section 19.8.2 then describes an older system based on the use of cascades of
+ﬁnite-state transducers and designed to address a more complex template-ﬁlling task
+that current learning-based systems don’t yet address.
+
+19.8.1 Machine Learning Approaches to Template Filling
+
+In the standard paradigm for template ﬁlling, we are given training documents with
+text spans annotated with predeﬁned templates and their slot ﬁllers. Our goal is to
+create one template for each event in the input, ﬁlling in the slots with text spans.
+
+The task is generally modeled by training two separate supervised systems. The
+ﬁrst system decides whether the template is present in a particular sentence. This
+task is called template recognition or sometimes, in a perhaps confusing bit of
+terminology, event recognition. Template recognition can be treated as a text classi-
+ﬁcation task, with features extracted from every sequence of words that was labeled
+in training documents as ﬁlling any slot from the template being detected. The usual
+set of features can be used: tokens, embeddings, word shapes, part-of-speech tags,
+syntactic chunk tags, and named entity tags.
+
+template
+recognition
+
+role-ﬁller
+extraction
+
+19.8
+
+• TEMPLATE FILLING
+
+437
+
+The second system has the job of role-ﬁller extraction. A separate classiﬁer is
+trained to detect each role (LEAD-AIRLINE, AMOUNT, and so on). This can be a
+binary classiﬁer that is run on every noun-phrase in the parsed input sentence, or a
+sequence model run over sequences of words. Each role classiﬁer is trained on the
+labeled data in the training set. Again, the usual set of features can be used, but now
+trained only on an individual noun phrase or the ﬁllers of a single slot.
+
+Multiple non-identical text segments might be labeled with the same slot la-
+bel. For example in our sample text, the strings United or United Airlines might be
+labeled as the LEAD AIRLINE. These are not incompatible choices and the corefer-
+ence resolution techniques introduced in Chapter 26 can provide a path to a solution.
+A variety of annotated collections have been used to evaluate this style of ap-
+proach to template ﬁlling, including sets of job announcements, conference calls for
+papers, restaurant guides, and biological texts. A key open question is extracting
+templates in cases where there is no training data or even predeﬁned templates, by
+inducing templates as sets of linked events (Chambers and Jurafsky, 2011).
+
+19.8.2 Earlier Finite-State Template-Filling Systems
+
+The templates above are relatively simple. But consider the task of producing a
+template that contained all the information in a text like this one (Grishman and
+Sundheim, 1995):
+
+Bridgestone Sports Co. said Friday it has set up a joint venture in Taiwan
+with a local concern and a Japanese trading house to produce golf clubs to be
+shipped to Japan. The joint venture, Bridgestone Sports Taiwan Co., capital-
+ized at 20 million new Taiwan dollars, will start production in January 1990
+with production of 20,000 iron and “metal wood” clubs a month.
+
+The MUC-5 ‘joint venture’ task (the Message Understanding Conferences were
+a series of U.S. government-organized information-extraction evaluations) was to
+produce hierarchically linked templates describing joint ventures. Figure 19.19
+shows a structure produced by the FASTUS system (Hobbs et al., 1997). Note how
+the ﬁller of the ACTIVITY slot of the TIE-UP template is itself a template with slots.
+
+Tie-up-1
+RELATIONSHIP
+ENTITIES
+
+tie-up
+Bridgestone Sports Co.
+a local concern
+a Japanese trading house
+
+Activity-1:
+COMPANY
+PRODUCT
+START DATE DURING: January 1990
+
+Bridgestone Sports Taiwan Co.
+iron and “metal wood” clubs
+
+JOINT VENTURE Bridgestone Sports Taiwan Co.
+Activity-1
+ACTIVITY
+AMOUNT
+NT$20000000
+Figure 19.19 The templates produced by FASTUS given the input text on page 437.
+
+Early systems for dealing with these complex templates were based on cascades
+
+of transducers based on handwritten rules, as sketched in Fig. 19.20.
+
+The ﬁrst four stages use handwritten regular expression and grammar rules to
+do basic tokenization, chunking, and parsing. Stage 5 then recognizes entities and
+events with a recognizer based on ﬁnite-state transducers (FSTs), and inserts the rec-
+ognized objects into the appropriate slots in templates. This FST recognizer is based
+on hand-built regular expressions like the following (NG indicates Noun-Group and
+VG Verb-Group), which matches the ﬁrst sentence of the news story above.
+
+438 CHAPTER 19
+
+•
+
+INFORMATION EXTRACTION: RELATIONS, EVENTS, AND TIME
+
+No. Step
+1
+2
+3
+4
+5
+6
+
+Tokens
+Complex Words
+Basic phrases
+Complex phrases
+Semantic Patterns
+Merging
+
+Description
+Tokenize input stream of characters
+Multiword phrases, numbers, and proper names.
+Segment sentences into noun and verb groups
+Identify complex noun groups and verb groups
+Identify entities and events, insert into templates.
+Merge references to the same entity or event
+
+Figure 19.20 Levels of processing in FASTUS (Hobbs et al., 1997). Each level extracts a
+speciﬁc type of information which is then passed on to the next higher level.
+
+NG(Company/ies) VG(Set-up) NG(Joint-Venture) with NG(Company/ies)
+
+VG(Produce) NG(Product)
+
+The result of processing these two sentences is the ﬁve draft templates (Fig. 19.21)
+that must then be merged into the single hierarchical structure shown in Fig. 19.19.
+The merging algorithm, after performing coreference resolution, merges two activi-
+ties that are likely to be describing the same events.
+
+# Template/Slot
+1 RELATIONSHIP:
+
+ENTITIES:
+2 ACTIVITY:
+PRODUCT:
+
+Value
+TIE-UP
+Bridgestone Co., a local concern, a Japanese trading house
+
+PRODUCTION
+“golf clubs”
+
+3 RELATIONSHIP:
+
+TIE-UP
+
+JOINT VENTURE: “Bridgestone Sports Taiwan Co.”
+AMOUNT:
+NT$20000000
+4 ACTIVITY:
+COMPANY:
+STARTDATE:
+
+PRODUCTION
+“Bridgestone Sports Taiwan Co.”
+DURING: January 1990
+
+5 ACTIVITY:
+PRODUCT:
+
+PRODUCTION
+“iron and “metal wood” clubs”
+
+Figure 19.21 The ﬁve partial templates produced by stage 5 of FASTUS. These templates
+are merged in stage 6 to produce the ﬁnal template shown in Fig. 19.19 on page 437.
+
+19.9 Summary
+
+This chapter has explored techniques for extracting limited forms of semantic con-
+tent from texts.
+
+• Relations among entities can be extracted by pattern-based approaches, su-
+pervised learning methods when annotated training data is available, lightly
+supervised bootstrapping methods when small numbers of seed tuples or
+seed patterns are available, distant supervision when a database of relations
+is available, and unsupervised or Open IE methods.
+
+• Reasoning about time can be facilitated by detection and normalization of
+
+temporal expressions.
+
+• Events can be ordered in time using sequence models and classiﬁers trained
+
+on temporally- and event-labeled data like the TimeBank corpus.
+
+BIBLIOGRAPHICAL AND HISTORICAL NOTES
+
+439
+
+• Template-ﬁlling applications can recognize stereotypical situations in texts
+and assign elements from the text to roles represented as ﬁxed sets of slots.
+
+Bibliographical and Historical Notes
+
+The earliest work on information extraction addressed the template-ﬁlling task in the
+context of the Frump system (DeJong, 1982). Later work was stimulated by the U.S.
+government-sponsored MUC conferences (Sundheim 1991, Sundheim 1992, Sund-
+heim 1993, Sundheim 1995). Early MUC systems like CIRCUS system (Lehnert
+et al., 1991) and SCISOR (Jacobs and Rau, 1990) were quite inﬂuential and inspired
+later systems like FASTUS (Hobbs et al., 1997). Chinchor et al. (1993) describe the
+MUC evaluation techniques.
+
+Due to the difﬁculty of porting systems from one domain to another, attention
+shifted to machine learning approaches. Early supervised learning approaches to
+IE (Cardie 1993, Cardie 1994, Riloff 1993, Soderland et al. 1995, Huffman 1996)
+focused on automating the knowledge acquisition process, mainly for ﬁnite-state
+rule-based systems. Their success, and the earlier success of HMM-based speech
+recognition, led to the use of sequence labeling (HMMs: Bikel et al. 1997; MEMMs
+McCallum et al. 2000; CRFs: Lafferty et al. 2001), and a wide exploration of fea-
+tures (Zhou et al., 2005). Neural approaches followed from the pioneering results of
+Collobert et al. (2011), who applied a CRF on top of a convolutional net.
+
+Progress in this area continues to be stimulated by formal evaluations with shared
+benchmark datasets, including the Automatic Content Extraction (ACE) evaluations
+of 2000-2007

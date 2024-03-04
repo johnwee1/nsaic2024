@@ -1,0 +1,533 @@
+ to
+zero).
+
+matrix showing the qi ·
+−
+
+×
+
+k j values, with the upper-triangle
+∞, which the softmax will turn to
+
+Fig. 10.4 also makes it clear that attention is quadratic in the length of the input,
+since at each layer we need to compute dot products between each pair of tokens in
+the input. This makes it expensive for the input to a transformer to consist of very
+long documents (like entire novels). Nonetheless modern large language models
+manage to use quite long contexts of up to 4096 tokens.
+
+q1•k1q2•k1q2•k2q5•k1q5•k2q5•k3q5•k4q5•k5q4•k1q4•k2q4•k3q4•k4q3•k1q3•k2q3•k3NN−∞−∞−∞−∞−∞−∞−∞−∞−∞−∞10.2 Multihead Attention
+
+10.2
+
+• MULTIHEAD ATTENTION
+
+221
+
+Transformers actually compute a more complex kind of attention than the single
+self-attention calculation we’ve seen so far. This is because the different words in a
+sentence can relate to each other in many different ways simultaneously. For exam-
+ple, distinct syntactic, semantic, and discourse relationships can hold between verbs
+and their arguments in a sentence. It would be difﬁcult for a single self-attention
+model to learn to capture all of the different kinds of parallel relations among its in-
+puts. Transformers address this issue with multihead self-attention layers. These
+are sets of self-attention layers, called heads, that reside in parallel layers at the same
+depth in a model, each with its own set of parameters. By using these distinct sets of
+parameters, each head can learn different aspects of the relationships among inputs
+at the same level of abstraction.
+
+multihead
+self-attention
+layers
+
+To implement this notion, each head, i, in a self-attention layer is provided with
+its own set of key, query and value matrices: WK
+i . These are used
+to project the inputs into separate key, value, and query embeddings separately for
+each head, with the rest of the self-attention computation remaining unchanged.
+
+i and WV
+
+i , WQ
+
+Rd
+
+Rd
+
+i ∈
+
+i ∈
+
+dk , WK
+×
+
+In multi-head attention, as with self-attention, the model dimension d is still used
+for the input and output, the key and query embeddings have dimensionality dk, and
+the value embeddings are of dimensionality dv (again, in the original transformer
+paper dk = dv = 64, h = 8, and d = 512). Thus for each head i, we have weight
+layers WQ
+dk , and WV
+Rd
+dv , and these get multiplied by
+×
+×
+i ∈
+dv. The
+dk , and V
+dk , K
+RN
+the inputs packed into X to produce Q
+×
+×
+×
+∈
+dv, and so the output of the multi-head
+output of each of the h heads is of shape N
+layer with h heads consists of h matrices of shape N
+dv. To make use of these
+matrices in further processing, they are concatenated to produce a single output with
+d,
+dimensionality N
+×
+that reshape it to the original output dimension for each token. Multiplying the
+hdv matrix output by WO
+d yields the self-attention output
+concatenated N
+d], suitable to be passed through residual connections and layer
+A of shape [N
+norm.
+
+hdv. Finally, we use yet another linear projection WO
+
+Rhdv×
+
+Rhdv×
+
+×
+×
+
+RN
+
+RN
+
+×
+
+×
+
+∈
+
+∈
+
+∈
+
+∈
+
+Q = XWQ
+i
+
+; K = XWK
+i
+
+; V = XWV
+i
+headi = SelfAttention(Q, K, V)
+headh)WO
+
+head2...
+
+A = MultiHeadAttention(X) = (head1 ⊕
+
+⊕
+
+(10.17)
+
+(10.18)
+
+(10.19)
+
+Fig. 10.5 illustrates this approach with 4 self-attention heads. In general in trans-
+
+formers, the multihead layer is used instead of a self-attention layer.
+
+10.3 Transformer Blocks
+
+The self-attention calculation lies at the core of what’s called a transformer block,
+which, in addition to the self-attention layer, includes three other kinds of layers: (1)
+a feedforward layer, (2) residual connections, and (3) normalizing layers (colloqui-
+ally called “layer norm”).
+
+Fig. 10.6 illustrates a standard transformer block consisting of a single attention
+layer followed by a position-wise feedforward layer with residual connections and
+layer normalizations following each.
+
+222 CHAPTER 10
+
+• TRANSFORMERS AND LARGE LANGUAGE MODELS
+
+Figure 10.5 Multihead self-attention: Each of the multihead self-attention layers is provided with its own
+set of key, query and value weight matrices. The outputs from each of the layers are concatenated and then
+projected to d, thus producing an output of the same size as the input so the attention can be followed by layer
+norm and feedforward and layers can be stacked.
+
+Figure 10.6 A transformer block showing all the layers.
+
+Feedforward layer The feedforward layer contains N position-wise networks, one
+at each position. Each is a fully-connected 2-layer network, i.e., one hidden layer,
+two weight matrices, as introduced in Chapter 7. The weights are the same for each
+position, but the parameters are different from layer to layer. Unlike attention, the
+feedforward networks are independent for each position and so can be computed in
+parallel. It is common to make the dimensionality dff of the hidden layer of the
+feedforward network be larger than the model dimensionality d. (For example in the
+original transformer model, d = 512 and dff = 2048.)
+
+Residual connections Residual connections are connections that pass informa-
+tion from a lower layer to a higher layer without going through the intermediate
+
+Multihead  Attention Layer with h=4 heads…x1x2x3xNConcatenateOutputs[N x hdv]WO  [hdv x d]head1 output val [N x dv]head3 output val [N x dv]head2 output val [N x dv]head4 output val [N x dv]WQ1, WK1, WV1 WQ3, WK3, WV3 WQ2, WK2, WV2 WQ4, WK4, WV4 Head 1Project fromhdv to dHead 2Head 3Head 4a1a2a3aN…[N x d][N x d]MultiHead Attentionz   z                                    zz   z                                    zTransformerBlockx1x2x3xn…ResidualconnectionResidualconnection++h1h2h3hn……FeedforwardLayer NormalizeLayer Normalizelayer norm
+
+10.3
+
+• TRANSFORMER BLOCKS
+
+223
+
+layer. Allowing information from the activation going forward and the gradient go-
+ing backwards to skip a layer improves learning and gives higher level layers direct
+access to information from lower layers (He et al., 2016). Residual connections in
+transformers are implemented simply by adding a layer’s input vector to its out-
+put vector before passing it forward. In the transformer block shown in Fig. 10.6,
+residual connections are used with both the attention and feedforward sublayers.
+
+Layer Norm These summed vectors are then normalized using layer normaliza-
+tion (Ba et al., 2016). Layer normalization (usually called layer norm) is one of
+many forms of normalization that can be used to improve training performance in
+deep neural networks by keeping the values of a hidden layer in a range that facil-
+itates gradient-based training. Layer norm is a variation of the standard score, or
+z-score, from statistics applied to a single vector in a hidden layer. The input to
+layer norm is a single vector, for a particular token position i, and the output is that
+vector normalized. Thus layer norm takes as input a single vector of dimensionality
+d and produces as output a single vector of dimensionality d. The ﬁrst step in layer
+normalization is to calculate the mean, µ, and standard deviation, σ , over the ele-
+ments of the vector to be normalized. Given a hidden layer with dimensionality dh,
+these values are calculated as follows.
+
+µ =
+
+1
+dh
+
+σ =
+
+(cid:118)
+(cid:117)
+(cid:117)
+(cid:116)
+
+dh
+
+xi
+
+(cid:88)i=1
+dh
+1
+dh
+
+(cid:88)i=1
+
+µ)2
+
+(xi −
+
+(10.20)
+
+(10.21)
+
+Given these values, the vector components are normalized by subtracting the mean
+from each and dividing by the standard deviation. The result of this computation is
+a new vector with zero mean and a standard deviation of one.
+
+−
+σ
+Finally, in the standard implementation of layer normalization, two learnable param-
+eters, γ and β , representing gain and offset values, are introduced.
+
+(10.22)
+
+ˆx =
+
+(x
+
+µ)
+
+LayerNorm = γ ˆx + β
+
+(10.23)
+
+Putting it all together The function computed by a transformer block can be ex-
+pressed as:
+
+O = LayerNorm(X + SelfAttention(X))
+H = LayerNorm(O + FFN(O))
+
+(10.24)
+
+(10.25)
+
+Or we can break it down with one equation for each component computation, using
+T (of shape [N
+d]) to stand for transformer and superscripts to demarcate each
+computation inside the block:
+
+×
+
+T1 = SelfAttention(X)
+T2 = X + T1
+T3 = LayerNorm(T2)
+T4 = FFN(T3)
+T5 = T4 + T3
+H = LayerNorm(T5)
+
+(10.26)
+
+(10.27)
+
+(10.28)
+
+(10.29)
+
+(10.30)
+
+(10.31)
+
+224 CHAPTER 10
+
+• TRANSFORMERS AND LARGE LANGUAGE MODELS
+
+Crucially, the input and output dimensions of transformer blocks are matched so
+they can be stacked. Each token xi at the input to the block has dimensionality d,
+and so the input X and output H are both of shape [N
+
+d].
+
+Transformers for large language models stack many of these blocks, from 12
+layers (used for the T5 or GPT-3-small language models) to 96 layers (used for
+GPT-3 large), to even more for more recent models. We’ll come back to this issues
+of stacking in a bit.
+
+×
+
+10.4 The Residual Stream view of the Transformer Block
+
+×
+
+×
+
+d].
+
+The previous sections viewed the transformer block as applied to the entire N-token
+input X of shape [N
+d], producing an output also of shape [N
+While packing everything this way is a computationally efﬁcient way to imple-
+ment the transformer block, it’s not always the most perspicuous way to understand
+what the transformer is doing. It’s often clearer to instead visualize what is hap-
+pening to an individual token vector xi in the input as it is processed through each
+transformer block. After all, most of the components of the transformer are de-
+signed to take a single vector of dimensionality d, corresponding to a single token,
+and produce an output vector also of dimensionality d. For example, the feedfor-
+ward layer takes a single d-dimensional vector and produces a single d-dimensional
+vector. Over the N tokens in a batch, we simply use the identical feedforward layer
+weights (W1, W2, b1 and b2) for each token i. Similarly, the layer norm function takes
+a single d-dimensional vector and produces a normalized d-dimensional version.
+
+Figure 10.7 The residual stream for token xi, showing how the input to the transformer
+block xi is passed up through residual connections, the output of the feedforward and multi-
+head attention layers are added in, and processed by layer norm, to produce the output of
+this block, hi, which is used as the input to the next layer transformer block. Note that of all
+the components, only the MultiHeadAttention component reads information from the other
+residual streams in the context.
+
+We can therefore talk about the processing of an individual token through all
+
+Layer Normxi+hi-1Layer Norm+MultiHeadAttentionFeedforwardxi-1xi+1hihi+1……residual stream
+
+10.4
+
+• THE RESIDUAL STREAM VIEW OF THE TRANSFORMER BLOCK
+
+225
+
+these layers as a stream of d-dimensional representations, called the residual stream
+and visualized in Fig. 10.7. The input at the bottom of the stream is an embedding
+for a token, which has dimensionality d. That initial embedding is passed up by the
+residual connections and the outputs of feedforward and attention layers get added
+into it. For each token i, at each block and layer we are passing up an embedding
+d]. The residual layers are constantly copying information up from
+of shape [1
+earlier embeddings (hence the metaphor of ‘residual stream’), so we can think of the
+other components as adding new views of this representation back into this constant
+stream. Feedforward networks add in a different view of the earlier embedding.
+
+×
+
+Here are the equations for the transformer block, now viewed from this embed-
+
+ding stream perspective.
+
+, xN])
+
+· · ·
+
+t1
+i = MultiHeadAttention(xi, [x1,
+i = t1
+t2
+i + xi
+i = LayerNorm(t2
+t3
+i )
+i = FFN(t3
+t4
+t5
+i + t3
+i = t4
+i
+hi = LayerNorm(t5
+i )
+
+i ))
+
+(10.32)
+
+(10.33)
+
+(10.34)
+
+(10.35)
+
+(10.36)
+
+(10.37)
+
+Notice that the only component that takes as input information from other tokens
+(other residual streams) is multi-head attention, which (as we see from (10.32) looks
+at all the neighboring tokens in the context. The output from attention, however,
+is then added into to this token’s embedding stream. In fact, Elhage et al. (2021)
+show that we can view attention heads as literally moving attention from the resid-
+ual stream of a neighboring token into the current stream. The high-dimensional
+embedding space at each position thus contains information about the current to-
+ken and about neighboring tokens, albeit in different subspaces of the vector space.
+Fig. 10.8 shows a visualization of this movement.
+
+Figure 10.8 An attention head can move information from token A’s residual stream into
+token B’s residual stream.
+
+Equation (10.32) and following are just just the equation for a single transformer
+block, but the residual stream metaphor goes through all the transformer layers,
+from the ﬁrst transformer blocks to the 12th, in a 12-layer transformer. At the earlier
+transformer blocks, the residual stream is representing the current token. At the
+highest transformer blocks, the residual stream is usual representing the following
+token, since at the very end it’s being trained to predict the next token.
+
+Pre-norm vs. post-norm architecture There is an alternative form of the trans-
+former architecture that is commonly used because it performs better in many cases.
+In this prenorm transformer architecture, the layer norm happens in a slightly dif-
+
+prenorm
+transformer
+
+Token Aresidual streamToken Bresidual stream226 CHAPTER 10
+
+• TRANSFORMERS AND LARGE LANGUAGE MODELS
+
+ferent place: before the attention layer and before the feedforward layer, rather than
+afterwards. Fig. 10.9 shows this architecture, with the equations below:
+
+t1
+i = LayerNorm(xi)
+t2
+i = MultiHeadAttention(t1
+i ,
+i = t2
+t3
+i + xi
+t4
+i = LayerNorm(t3
+i )
+i = FFN(t4
+t5
+i + t3
+hi = t5
+i
+
+i ))
+
+t1
+1,
+
+· · ·
+
+, x1
+N
+
+)
+
+(cid:2)
+
+(cid:3)
+
+(10.38)
+
+(10.39)
+
+(10.40)
+
+(10.41)
+
+(10.42)
+
+(10.43)
+
+Figure 10.9 The architecture of the prenorm transformer block. Here the nature of the
+residual stream, passing up information from the input, is even clearer.
+
+The prenorm transformer has one extra requirement: at the very end of the last
+(highest) transformer block, there is a single extra layer norm that is run on the last hi
+of each token stream (just below the language model head layer that we will deﬁne
+below).
+
+10.5 The input: embeddings for token and position
+
+embedding
+
+Let’s talk about where the input X comes from. Given a sequence of N tokens (N is
+the context length in tokens), the matrix X of shape [N
+d] has an embedding for
+each word in the context. The transformer does this by separately computing two
+embeddings: an input token embedding, and an input positional embedding.
+
+×
+
+A token embedding, introduced in Chapter 7 and Chapter 9, is a vector of di-
+mension d that will be our initial representation for the input token. (As we pass
+vectors up through the transformer layers in the residual stream, this embedding
+representation will change and grow, incorporating context and playing a different
+
+Layer Normxi+hi-1Layer NormMultiHeadAttentionFeedforwardxi-1xi+1hihi+1+……10.5
+
+• THE INPUT: EMBEDDINGS FOR TOKEN AND POSITION
+
+227
+
+|
+
+role depending on the kind of language model we are building.) The set of initial
+embeddings are stored in the embedding matrix E, which has a row for each of the
+tokens in the vocabulary. Thus each each word is a row vector of d dimensions,
+V
+|
+and E has shape [
+V
+|
+
+Given an input token string like Thanks for all the we ﬁrst convert the tokens
+into vocabulary indices (these were created when we ﬁrst tokenized the input using
+BPE or SentencePiece). 

@@ -1,0 +1,582 @@
+. One parameter of these
+formats is the sample rate and sample size discussed above; telephone speech is
+often sampled at 8 kHz and stored as 8-bit samples, and microphone data is often
+sampled at 16 kHz and stored as 16-bit samples. Another parameter is the number of
+
+Time (s)00.03875–0.016970.022830342 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+channel
+
+PCM
+
+channels. For stereo data or for two-party conversations, we can store both channels
+in the same ﬁle or we can store them in separate ﬁles. A ﬁnal parameter is individual
+sample storage—linearly or compressed. One common compression format used for
+telephone speech is µ-law (often written u-law but still pronounced mu-law). The
+intuition of log compression algorithms like µ-law is that human hearing is more
+sensitive at small intensities than large ones; the log represents small values with
+more faithfulness at the expense of more error on large values. The linear (unlogged)
+values are generally referred to as linear PCM values (PCM stands for pulse code
+modulation, but never mind that). Here’s the equation for compressing a linear PCM
+sample value x to 8-bit µ-law, (where µ=255 for 8 bits):
+
+F(x) =
+
+sgn(x) log(1 + µ
+log(1 + µ)
+
+x
+|
+
+)
+|
+
+1
+
+−
+
+≤
+
+x
+
+≤
+
+1
+
+(16.1)
+
+There are a number of standard ﬁle formats for storing the resulting digitized wave-
+ﬁle, such as Microsoft’s .wav and Apple’s AIFF all of which have special headers;
+simple headerless “raw” ﬁles are also used. For example, the .wav format is a sub-
+set of Microsoft’s RIFF format for multimedia ﬁles; RIFF is a general format that
+can represent a series of nested chunks of data and control information. Figure 16.3
+shows a simple .wav ﬁle with a single data chunk together with its format chunk.
+
+Figure 16.3 Microsoft waveﬁle header format, assuming simple ﬁle with one chunk. Fol-
+lowing this 44-byte header would be the data chunk.
+
+stationary
+
+non-stationary
+
+frame
+
+stride
+
+16.2.2 Windowing
+
+From the digitized, quantized representation of the waveform, we need to extract
+spectral features from a small window of speech that characterizes part of a par-
+ticular phoneme. Inside this small window, we can roughly think of the signal as
+(By
+stationary (that is, its statistical properties are constant within this region).
+contrast, in general, speech is a non-stationary signal, meaning that its statistical
+properties are not constant over time). We extract this roughly stationary portion of
+speech by using a window which is non-zero inside a region and zero elsewhere, run-
+ning this window across the speech signal and multiplying it by the input waveform
+to produce a windowed waveform.
+
+The speech extracted from each window is called a frame. The windowing is
+characterized by three parameters: the window size or frame size of the window
+(its width in milliseconds), the frame stride, (also called shift or offset) between
+successive windows, and the shape of the window.
+
+To extract the signal we multiply the value of the signal at time n, s[n] by the
+
+value of the window at time n, w[n]:
+
+y[n] = w[n]s[n]
+
+(16.2)
+
+rectangular
+
+The window shape sketched in Fig. 16.4 is rectangular; you can see the ex-
+tracted windowed signal looks just like the original signal. The rectangular window,
+
+16.2
+
+• FEATURE EXTRACTION FOR ASR: LOG MEL SPECTRUM 343
+
+Figure 16.4 Windowing, showing a 25 ms rectangular window with a 10ms stride.
+
+Hamming
+
+however, abruptly cuts off the signal at its boundaries, which creates problems when
+we do Fourier analysis. For this reason, for acoustic feature creation we more com-
+monly use the Hamming window, which shrinks the values of the signal toward
+zero at the window boundaries, avoiding discontinuities. Figure 16.5 shows both;
+the equations are as follows (assuming a window that is L frames long):
+
+rectangular
+
+w[n] =
+
+Hamming
+
+w[n] =
+
+1
+0
+
+0.54
+0
+
+(cid:26)
+
+(cid:26)
+
+1
+
+≤
+
+≤
+
+−
+
+L
+n
+0
+otherwise
+0.46 cos( 2πn
+L )
+
+−
+
+(16.3)
+
+1
+
+−
+
+(16.4)
+
+L
+n
+0
+otherwise
+
+≤
+
+≤
+
+Figure 16.5 Windowing a sine wave with the rectangular or Hamming windows.
+
+16.2.3 Discrete Fourier Transform
+
+The next step is to extract spectral information for our windowed signal; we need to
+know how much energy the signal contains at different frequency bands. The tool
+
+Shift10 msWindow25 msShift10 msWindow25 msWindow25 msTime (s)00.0475896–0.50.49990Rectangular windowHamming windowTime (s)0.004559380.0256563–0.48260.49990Time (s)0.004559380.0256563–0.50.49990344 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+Discrete
+Fourier
+transform
+DFT
+
+for extracting spectral information for discrete frequency bands for a discrete-time
+(sampled) signal is the discrete Fourier transform or DFT.
+
+The input to the DFT is a windowed signal x[n]...x[m], and the output, for each of
+N discrete frequency bands, is a complex number X[k] representing the magnitude
+and phase of that frequency component in the original signal. If we plot the mag-
+nitude against the frequency, we can visualize the spectrum that we introduced in
+Chapter 28. For example, Fig. 16.6 shows a 25 ms Hamming-windowed portion of
+a signal and its spectrum as computed by a DFT (with some additional smoothing).
+
+(a)
+
+(b)
+
+Figure 16.6
+and (b) its spectrum computed by a DFT.
+
+(a) A 25 ms Hamming-windowed portion of a signal from the vowel [iy]
+
+Euler’s formula
+
+that Fourier analysis relies on Euler’s formula, with j as the imaginary unit:
+
+We do not introduce the mathematical details of the DFT here, except to note
+
+e jθ = cos θ + j sin θ
+
+(16.5)
+
+As a brief reminder for those students who have already studied signal processing,
+the DFT is deﬁned as follows:
+
+X[k] =
+
+N
+
+1
+−
+
+(cid:88)n=0
+
+x[n]e−
+
+j 2π
+N kn
+
+(16.6)
+
+fast Fourier
+transform
+FFT
+
+A commonly used algorithm for computing the DFT is the fast Fourier transform
+or FFT. This implementation of the DFT is very efﬁcient but only works for values
+of N that are powers of 2.
+
+16.2.4 Mel Filter Bank and Log
+
+The results of the FFT tell us the energy at each frequency band. Human hearing,
+however, is not equally sensitive at all frequency bands; it is less sensitive at higher
+frequencies. This bias toward low frequencies helps human recognition, since in-
+formation in low frequencies (like formants) is crucial for distinguishing vowels or
+nasals, while information in high frequencies (like stop bursts or fricative noise) is
+less crucial for successful recognition. Modeling this human perceptual property
+improves speech recognition performance in the same way.
+
+We implement this intuition by collecting energies, not equally at each frequency
+band, but according to the mel scale, an auditory frequency scale (Chapter 28). A
+mel (Stevens et al. 1937, Stevens and Volkmann 1940) is a unit of pitch. Pairs of
+sounds that are perceptually equidistant in pitch are separated by an equal number
+
+mel
+
+Time (s)0.01417520.039295–0.041210.044140Frequency (Hz)08000Sound pressure level (dB/Hz)–2002016.3
+
+• SPEECH RECOGNITION ARCHITECTURE
+
+345
+
+of mels. The mel frequency m can be computed from the raw acoustic frequency by
+a log transformation:
+
+mel( f ) = 1127 ln(1 +
+
+f
+700
+
+)
+
+(16.7)
+
+We implement this intuition by creating a bank of ﬁlters that collect energy from
+each frequency band, spread logarithmically so that we have very ﬁne resolution
+at low frequencies, and less resolution at high frequencies. Figure 16.7 shows a
+sample bank of triangular ﬁlters that implement this idea, that can be multiplied by
+the spectrum to get a mel spectrum.
+
+Figure 16.7 The mel ﬁlter bank (Davis and Mermelstein, 1980). Each triangular ﬁlter,
+spaced logarithmically along the mel scale, collects energy from a given frequency range.
+
+Finally, we take the log of each of the mel spectrum values. The human response
+to signal level is logarithmic (like the human response to frequency). Humans are
+less sensitive to slight differences in amplitude at high amplitudes than at low ampli-
+tudes. In addition, using a log makes the feature estimates less sensitive to variations
+in input such as power variations due to the speaker’s mouth moving closer or further
+from the microphone.
+
+16.3 Speech Recognition Architecture
+
+AED
+listen attend
+and spell
+
+The basic architecture for ASR is the encoder-decoder (implemented with either
+RNNs or Transformers), exactly the same architecture introduced for MT in Chap-
+ter 13. Generally we start from the log mel spectral features described in the previous
+section, and map to letters, although it’s also possible to map to induced morpheme-
+like chunks like wordpieces or BPE.
+
+Fig. 16.8 sketches the standard encoder-decoder architecture, which is com-
+monly referred to as the attention-based encoder decoder or AED, or listen attend
+and spell (LAS) after the two papers which ﬁrst applied it to speech (Chorowski
+et al. 2014, Chan et al. 2016). The input is a sequence of t acoustic feature vectors
+F = f1, f2, ..., ft , one vector per 10 ms frame. The output can be letters or word-
+, y1, ..., ym(cid:104)
+pieces; we’ll assume letters here. Thus the output sequence Y = (
+SOS
+(cid:105)
+(cid:104)
+assuming special start of sequence and end of sequence tokens
+eos
+and
+sos
+(cid:105)
+(cid:104)
+(cid:105)
+(cid:104)
+each yi is a character; for English we might choose the set:
+
+),
+EOS
+(cid:105)
+and
+
+a, b, c, ..., z, 0, ..., 9,
+
+yi ∈ {
+Of course the encoder-decoder architecture is particularly appropriate when in-
+put and output sequences have stark length differences, as they do for speech, with
+
+apostrophe
+(cid:104)
+
+,
+space
+(cid:105)
+(cid:104)
+
+comma
+(cid:104)
+
+period
+(cid:104)
+
+unk
+(cid:104)
+
+,
+(cid:105)
+
+,
+(cid:105)
+
+,
+(cid:105)
+
+(cid:105)}
+
+m1m2mM...mel spectrum0770000.51AmplitudeFrequency (Hz)8K346 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+Figure 16.8 Schematic architecture for an encoder-decoder speech recognizer.
+
+very long acoustic feature sequences mapping to much shorter sequences of letters
+or words. A single word might be 5 letters long but, supposing it lasts about 2
+seconds, would take 200 acoustic frames (of 10ms each).
+
+Because this length difference is so extreme for speech, encoder-decoder ar-
+chitectures for speech need to have a special compression stage that shortens the
+acoustic feature sequence before the encoder stage. (Alternatively, we can use a loss
+function that is designed to deal well with compression, like the CTC loss function
+we’ll introduce in the next section.)
+
+low frame rate
+
+3 .1
+
+The goal of the subsampling is to produce a shorter sequence X = x1, ..., xn that
+will be the input to the encoder. The simplest algorithm is a method sometimes
+called low frame rate (Pundak and Sainath, 2016): for time i we stack (concatenate)
+the acoustic feature vector fi with the prior two vectors fi
+2 to make a new
+vector three times longer. Then we simply delete fi
+2. Thus instead of
+(say) a 40-dimensional acoustic feature vector every 10 ms, we have a longer vector
+(say 120-dimensional) every 30 ms, with a shorter sequence length n = t
+
+−
+1 and fi
+
+1 and fi
+
+−
+
+−
+
+−
+
+After this compression stage, encoder-decoders for speech use the same archi-
+tecture as for MT or other text, composed of either RNNs (LSTMs) or Transformers.
+
+For inference, the probability of the output string Y is decomposed as:
+
+p(y1, . . . , yn) =
+
+n
+
+(cid:89)i=1
+
+p(yi|
+
+y1, . . . , yi
+
+1, X)
+
+−
+
+We can produce each letter of the output via greedy decoding:
+
+ˆyi = argmaxchar
+
+AlphabetP(char
+
+∈
+
+y1...yi
+|
+
+−
+
+1, X)
+
+(16.8)
+
+(16.9)
+
+Alternatively we can use beam search as described in the next section. This is par-
+ticularly relevant when we are adding a language model.
+
+Adding a language model Since an encoder-decoder model is essentially a con-
+ditional language model, encoder-decoders implicitly learn a language model for the
+output domain of letters from their training data. However, the training data (speech
+
+1 There are also more complex alternatives for subsampling, like using a convolutional net that down-
+samples with max pooling, or layers of pyramidal RNNs, RNNs where each successive layer has half
+the number of RNNs as the previous layer.
+
+ENCODER…DECODER……ymFeature ComputationSubsampling…Hftf180-dimensional log Mel spectrumper frameShorter sequence Xy1<s>iy2ity3t‘y4‘sy5s y6 ty7tiy8imy9mex1xnn-best list
+
+rescore
+
+16.4
+
+• CTC 347
+
+paired with text transcriptions) may not include sufﬁcient text to train a good lan-
+guage model. After all, it’s easier to ﬁnd enormous amounts of pure text training
+data than it is to ﬁnd text paired with speech. Thus we can can usually improve a
+model at least slightly by incorporating a very large language model.
+
+The simplest way to do this is to use beam search to get a ﬁnal beam of hy-
+pothesized sentences; this beam is sometimes called an n-best list. We then use a
+language model to rescore each hypothesis on the beam. The scoring is done by in-
+terpolating the score assigned by the language model with the encoder-decoder score
+used to create the beam, with a weight λ tuned on a held-out set. Also, since most
+models prefer shorter sentences, ASR systems normally have some way of adding a
+length factor. One way to do this is to normalize the probability by the number of
+characters in the hypothesis
+|c. The following is thus a typical scoring function
+(Chan et al., 2016):
+
+Y
+|
+
+score(Y
+
+X) =
+|
+
+1
+Y
+|
+
+|c
+
+log P(Y
+
+X) + λ log PLM(Y )
+|
+
+(16.10)
+
+16.3.1 Learning
+
+Encoder-decoders for speech are trained with the normal cross-entropy loss gener-
+ally used for conditional language models. At timestep i of decoding, the loss is the
+log probability of the correct token (letter) yi:
+
+LCE =
+
+−
+
+log p(yi|
+
+y1, . . . , yi
+
+1, X)
+
+−
+
+The loss for the entire sentence is the sum of these losses:
+
+LCE =
+
+m
+
+−
+
+(cid:88)i=1
+
+log p(yi|
+
+y1, . . . , yi
+
+1, X)
+
+−
+
+(16.11)
+
+(16.12)
+
+This loss is then backpropagated through the entire end-to-end model to train the
+entire encoder-decoder.
+
+As we described in Chapter 13, we normally use teacher forcing, in which the
+decoder history is forced to be the correct gold yi rather than the predicted ˆyi. It’s
+also possible to use a mixture of the gold and decoder output, for example using
+the gold output 90% of the time, but with probability .1 taking the decoder output
+instead:
+
+LCE =
+
+−
+
+16.4 CTC
+
+log p(yi|
+
+y1, . . . , ˆyi
+
+1, X)
+
+−
+
+(16.13)
+
+We pointed out in the previous section that speech recognition has two particular
+properties that make it very appropriate for the encoder-decoder architecture, where
+the encoder produces an encoding of the input that the decoder uses attention to
+explore. First, in speech we have a very long acoustic input sequence X mapping to
+a much shorter sequence of letters Y , and second, it’s hard to know exactly which
+part of X maps to which part of Y .
+
+In this section we brieﬂy introduce an alternative to encoder-decoder: an algo-
+rithm and loss function called CTC, short for Connectionist Temporal Classiﬁca-
+
+CTC
+
+348 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+tion (Graves et al., 2006), that deals with these problems in a very different way. The
+intuition of CTC is to output a single character for every frame of the input, so that
+the output is the same length as the input, and then to apply a collapsing function
+that combines sequences of identical letters, resulting in a shorter sequence.
+
+Let’s imagine inference on someone saying the word dinner, and let’s suppose
+we had a function that chooses the most probable letter for each input spectral frame
+representation xi. We’ll call the se

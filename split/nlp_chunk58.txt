@@ -1,0 +1,351 @@
+
+β high conﬁdence
+γ very high conﬁdence don’t conﬁrm at all
+
+reject
+conﬁrm explicitly
+conﬁrm implictly
+
+≥
+≥
+≥
+
+15.3.4 Natural language generation: Sentence Realization
+
+recommend(restaurant name= Au Midi, neighborhood = midtown,
+cuisine = french)
+
+1 Au Midi is in Midtown and serves French food.
+2 There is a French restaurant in Midtown called Au Midi.
+Figure 15.9 Sample inputs to the sentence realization phase of NLG, showing the dialogue
+act and attributes prespeciﬁed by the content planner, and two distinct potential output sen-
+tences to be generated. From the restaurant recommendation system of Nayak et al. (2017).
+
+Once a dialogue act has been chosen, we need to generate the text of the re-
+sponse to the user. This part of the generation process is called sentence realiza-
+tion. Fig. 15.9 shows a sample input/output for the sentence realization phase. The
+content planner has chosen the dialogue act RECOMMEND and some slots (name,
+neighborhood, cuisine) and ﬁllers. The sentence realizer generates a sentence like
+lines 1 or 2 (by training on examples of representation/sentence pairs from a corpus
+of labeled dialogues). Because we won’t see every restaurant or attribute in every
+possible wording, we can delexicalize: generalize the training examples by replac-
+ing speciﬁc slot value words in the training set with a generic placeholder token
+representing the slot. Fig. 15.10 shows the sentences in Fig. 15.9 delexicalized.
+
+We can map from frames to delexicalized sentences with an encoder decoder
+model (Mrkˇsi´c et al. 2017, inter alia), trained on hand-labeled dialogue corpora like
+MultiWOZ (Budzianowski et al., 2018). The input to the encoder is a sequence of
+
+sentence
+realization
+
+delexicalize
+
+15.4
+
+• CHATBOTS
+
+327
+
+recommend(restaurant name= Au Midi, neighborhood = midtown,
+cuisine = french)
+
+1 restaurant name is in neighborhood and serves cuisine food.
+2 There is a cuisine restaurant in neighborhood called restaurant name.
+Figure 15.10 Delexicalized sentences that can be used for generating many different relex-
+icalized sentences. From the restaurant recommendation system of Nayak et al. (2017).
+
+Figure 15.11 An encoder decoder sentence realizer mapping slots/ﬁllers to English.
+
+tokens xt that represent the dialogue act (e.g., RECOMMEND) and its arguments (e.g.,
+service:decent, cuisine:null) (Nayak et al., 2017), as in Fig. 15.11.
+
+The decoder outputs the delexicalized English sentence “name has decent ser-
+vice”, which we can then relexicalize, i.e. ﬁll back in correct slot values, resulting
+in “Au Midi has decent service”.
+
+relexicalize
+
+15.4 Chatbots
+
+chatbot
+
+Chatbots are systems that can carry on extended conversations with the goal of
+mimicking the unstructured conversations or ‘chats’ characteristic of informal human-
+human interaction. While early systems like ELIZA (Weizenbaum, 1966) or PARRY
+(Colby et al., 1971) had theoretical goals like testing theories of psychological coun-
+seling, for most of the last 50 years chatbots have been designed for entertainment.
+That changed with the recent rise of neural chatbots like ChatGPT, which incor-
+porate solutions to NLP tasks like question answering, writing tools, or machine
+translation into a conversational interface. A conversation with ChatGPT is shown
+in Fig. 15.12. In this section we describe neural chatbot architectures and datasets.
+
+[TBD]
+Figure 15.12 A conversation with ChatGPT.
+
+15.4.1 Training chatbots
+
+Data Chatbots are generally trained on a training set that includes standard large
+language model training data of the type discussed in Section 10.9.2: versions of the
+web from the Common Crawl, including news sites, Wikipedia, as well as books.
+For training chatbots, it is common to additionally add lots of dialogue data.
+
+This can include datasets created speciﬁcally for training chatbots by hiring
+speakers of the language to have conversations, such as by having them take on
+personas or talk about knowledge provided to them. For example the Topical-Chat
+dataset has 11K crowdsourced conversations spanning 8 broad topics (Gopalakrish-
+nan et al., 2019), the EMPATHETICDIALOGUES includes 25K crowdsourced con-
+
+decentservice:RECOMMENDcuisine:null[name]hasdecentserviceENCODERDECODER328 CHAPTER 15
+
+• CHATBOTS & DIALOGUE SYSTEMS
+
+versations grounded in a speciﬁc situation where a speaker was feeling a speciﬁc
+emotion (Rashkin et al., 2019), and the SaFeRDialogues dataset (Ung et al., 2022)
+has 8k dialogues demonstrating graceful responses to conversational feedback about
+safety failures.
+
+Such datasets are far too small to train a language model alone, and so it’s com-
+mon to also pretrain on large datasets of pseudo-conversations drawn from Twitter
+(Ritter et al., 2010a), Reddit (Roller et al., 2021), Weibo (微博), and other social
+media platforms. To turn social media data into data that has the structure of a con-
+versation, we can treat any post on the platform as the ﬁrst turn in a conversation,
+and the sequence of comments/replies as subsequent turns in that conversation.
+
+Datasets from the web can be enormously toxic, so it’s crucial to ﬁlter the di-
+alogues ﬁrst. This can be done by using the same toxicity classiﬁers we describe
+below in the ﬁne-tuning section.
+
+Architecture For training chatbots, it’s most common to use the standard causal
+language model architecture, in which the model predicts each word given all the
+prior words, and the loss is the standard language modeling loss. Fig. 15.13 shows
+a standard training setup; no different than language model training in Chapter 10.
+The only difference is the data, which has the addition of signiﬁcant conversation
+and pseudo-conversation data as described in the prior section. As usual, the left
+context can include the entire prior conversation (or as much as ﬁts in the context
+window).
+
+Figure 15.13 Training a causal (decoder-only) language model for a chatbot.
+
+An alternative is to use the encoder-decoder architecture of Chapter 13. In this
+case the entire conversation up to the last turn (as much as ﬁts in the context) is
+presented to the encoder, and the decoder generates the next turn.
+
+Figure 15.14 An alternative: an encoder-decoder language model for a chatbot.
+
+TransformerBlocksLM headgotpromoted!<s>gotpromoted!<s>Next wordCongratsLM Loss…LM headLM headLM headLM headLM headICongrats!…LM headLM head!-log y!-log yCongrats-log y<s>-log y!-log ypromoted-log ygot………………promotedgot!<s>Congrats!ENCODERDECODERI15.4
+
+• CHATBOTS
+
+329
+
+In practice, dialogue systems require additional customization beyond just pre-
+training on dialogue data. In the next few sections we’ll discuss various stages of
+ﬁne-tuning that can be used for this customization.
+
+15.4.2 Fine Tuning for Quality and Safety
+
+It is a common practice for dialogue systems to use further labeled data for ﬁne-
+tuning. One function of this ﬁne-tuning step is to improve the quality of the dialogue,
+training the system to produce responses that are sensible and interesting. Another
+function might be to improve safety, keeping a dialogue system from suggesting
+harmful actions (like ﬁnancial fraud, medical harm, inciting hatred, or abusing the
+user or other people).
+
+In the simplest method for improving quality and safety, speakers of the lan-
+guage are given an initial prompt and instructions to have high-quality, safe dia-
+logues. They then interact with an initial dialogue system and their responses are
+used to ﬁnetune the model, usually as part of the instruct tuning step we introduced
+in Chapter 12. Thus a dialogue system learns to answer questions, follow other
+instructions, and also carry on high-quality, safe dialogues, in a single multi-task
+learning format.
+
+While ﬁne-tuning on positive examples is helpful, it is generally insufﬁcient and
+so it is common to add more discriminative data that speciﬁcally downweights low-
+quality or harmful responses. The simplest paradigm for this is to train a model to
+predict turn-level safety and quality values, by training on human-labeled ratings.
+Such ratings might be collected by ﬁrst having speakers of the language carry on
+dialogues with a system, and then a second set of people act as labelers to label
+every system turn for its quality and safety, resulting in a binary label for quality and
+safety for each turn.
+
+Once a dataset has been created with these labels, a language model can be used
+in a classiﬁcation task to label the quality and safety of a turn. For example in the
+Lamda system (Cohen et al., 2022), a single language model is used in two phases,
+roughly corresponding to generative and discriminative tasks: ﬁrst generating a re-
+sponse, and then generating a label. In the generative phase, the model is given the
+prior turn and a special RESPONSE token and generates the blue response turn. (In
+training, the training loss is given only for the blue response):
+
+“What’s up? RESPONSE Not much.
+
+In a second, discriminative phase, the model is ﬁne-tuned to see an attribute
+(SENSIBLE, INTERESTING, UNSAFE) and then to predict a 0 or 1 value, again
+with training losses given only for the blue value.
+
+What’s up? RESPONSE Not much. SENSIBLE 1
+What’s up? RESPONSE Not much. INTERESTING 0
+What’s up? RESPONSE Not much. UNSAFE 0
+
+To use the system in inference, the model ﬁrst generates a response given the context,
+and then it is given the attribute and asked to generate a rating. The result is a
+generated turn along with a label. This label isn’t shown to the user but can be use
+for ﬁltering, either at training time or at deployment time. For example, the system
+can generate multiple potential responses, ﬁlter out any response that is unsafe, and
+return to the user the highest ranking response.
+
+330 CHAPTER 15
+
+• CHATBOTS & DIALOGUE SYSTEMS
+
+15.4.3 Learning to perform retrieval as part of responding
+
+Modern chatbots are also trained to do retrieval (calls to Google or Bing or other
+search engines) as a component of generating a response. This is generally done
+by having a sort of fake dialogue participant called something like Search Query
+whose utterances are passed to a search engine. The system can be encourged to do
+searches either by prompting or by ﬁne-tuning.
+
+For example in the Sparrow chatbot (Glaese et al., 2022), the prompt includes
+a few sample conversations that include two special users, Search Query, and
+Search Results:
+
+...[this is preceded by other parts of the prompt]
+What color is the sky?
+Blue.
+Why?
+
+User:
+Sparrow:
+User:
+Search Query: why is sky blue
+Search Results: Page title: Sky Except for direct sunlight, most of the light in
+the daytime sky is caused by scattering, which is dominated by
+a small-particle limit called Rayleigh scattering. The scattering
+due to molecule-sized particles (as in air) is greater in the di-
+rections both toward and away from the source of light than it
+is in directions perpendicular to the incident path. Scattering is
+signiﬁcant for light at all visible wavelengths, but is stronger at
+the shorter (bluer) end of the visible spectrum, meaning that the
+scattered light is bluer than its source: the Sun. The remain-
+ing direct sunlight, having lost some of its shorter-wavelength
+components, appears slightly less blue.
+Because of the Rayleigh scattering.
+It causes short waves of
+blue light to be scattered more than the other colours in the spec-
+trum.
+User:
+Who was Raleigh?
+Search Query: who was Rayleigh
+...
+...
+
+Sparrow:
+
+From these prompts, the system learns to generate texts with Search Query
+turns for fact-based questions from the user, and these are passed to a search engine
+to generate the Search Results turns.
+
+Alternatively, systems can be ﬁnetuned to to know when to use a search en-
+gine. For example, labelers can interact with a system, fact check each of the re-
+sponses, and whenever the system emits an incorrect response, perform the web
+search queries that the system should have used to check its answer, and then the in-
+teration is recorded and used for ﬁne-tuning. Or labelers can look at a transcript of a
+language model carrying on a dialogue, and similarly mark every place where a fact
+was wrong (or out-of-date) and write the set of search queries that would have been
+appropriate. A system is then ﬁne-tuned to generate search query turns which
+are again passed to a search engine to generate the search responses. The set
+of pages or snippets returned by the search engine in the search response turn are
+then treated as the context for generation, similarly to the retrieval-based question-
+answering methods of Chapter 14.
+
+15.5
+
+• DIALOGUE SYSTEM DESIGN
+
+331
+
+15.4.4 RLHF
+
+RLHF
+
+A more sophisticated family of methods uses reinforcement learning to learn to
+match human preferences for generated turns.
+In this method, RLHF for Rein-
+forcement Learning from Human Feedback, we give a system a dialogue context
+and sample two possible turns from the language model. We then have humans la-
+bel which of the two is better, creating a large dataset of sentence pairs with human
+preferences. These pairs are used to train a dialogue policy, and reinforcement learn-
+ing is used to train the language model to generate turns that have higher rewards
+(Christiano et al., 2017; Ouyang et al., 2022). While using RLHF is the current state
+of the art at the time of this writing, a number of alternatives have been recently
+developed that don’t require reinforcement learning (Rafailov et al., 2023, e.g.,) and
+so this aspect of the ﬁeld is changing very quickly.
+
+15.4.5 Evaluating Chatbots
+
+Chatbots are evaluated by humans, who assign a score. This can be the human who
+talked to the chatbot (participant evaluation) or a third party who reads a transcript
+of a human/chatbot conversation (observer evaluation). In the participant evalua-
+tion of See et al. (2019), the human evaluator chats with the model for six turns and
+rates the chatbot on 8 dimensions capturing conversational quality: avoiding repe-
+tition, interestingness, making sense, ﬂuency, listening, inquisitiveness, humanness
+and engagingness on Likert scales like these:
+
+Engagingness How much did you enjoy talking to this user?
+
+•
+•
+
+Not at all
+
+A little
+
+Somewhat
+
+A lot
+
+•
+
+•
+
+•
+
+•
+
+Making sense How often did this user say something which did NOT make sense?
+Some re-
+
+Never made any sense
+•
+sponses didn’t make sense
+
+Most responses didn’t make sense
+Everything made perfect sense
+
+•
+
+Observer evaluations use third party annotators to look at the text of a complete
+conversation. Sometimes we’re interested in having raters assign a score to each
+system turn; for example (Artstein et al., 2009) have raters mark how coherent each
+turn is. Often, however, we just want a single high-level score to know if system A
+is better than system B. The acute-eval metric (Li et al., 2019a) is such an observer
+evaluation in which annotators look at two separate human-computer conversations
+and choose the system which performed better on four metrics: engagingness, inter-
+estingness, humanness, and knowledgability.
+
+acute-eval
+
+15.5 Dialogue System Design
+
+Because of the important role of the user, the ﬁeld of dialogue systems is closely
+linked with Human-Computer Interaction (HCI). This is especially true for task-
+oriented dialogue and assistants, where the design of dialogue strategies, sometimes
+called voice user interface design, generally follows user-centered design princi-
+ples (Gould and Lewis, 1985):
+
+voice user
+interface
+
+1. Study the user and task: Understand the users and the task by interviewing
+us

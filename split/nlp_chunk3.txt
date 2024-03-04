@@ -1,0 +1,475 @@
+d on its own, and can only
+occur when it is attached to another word. Some such contractions occur in other
+alphabetic languages, including articles and pronouns in French (j’ai, l’homme).
+Depending on the application, tokenization algorithms may also tokenize mul-
+tiword expressions like New York or rock ’n’ roll as a single token, which re-
+quires a multiword expression dictionary of some sort. Tokenization is thus inti-
+mately tied up with named entity recognition, the task of detecting names, dates,
+and organizations (Chapter 8).
+
+One commonly used tokenization standard is known as the Penn Treebank to-
+kenization standard, used for the parsed corpora (treebanks) released by the Lin-
+guistic Data Consortium (LDC), the source of many useful datasets. This standard
+separates out clitics (doesn’t becomes does plus n’t), keeps hyphenated words to-
+gether, and separates out all punctuation (to save space we’re showing visible spaces
+‘ ’ between tokens, although newlines is a more common output):
+
+Input:
+
+"The San Francisco-based restaurant," they said,
+"doesn’t charge $10".
+
+Output: " The San Francisco-based restaurant , " they said ,
+
+" does n’t charge $ 10 " .
+
+In practice, since tokenization needs to be run before any other language process-
+ing, it needs to be very fast. The standard method for tokenization is therefore to use
+deterministic algorithms based on regular expressions compiled into very efﬁcient
+
+clitic
+
+Penn Treebank
+tokenization
+
+20 CHAPTER 2
+
+• REGULAR EXPRESSIONS, TEXT NORMALIZATION, EDIT DISTANCE
+
+ﬁnite state automata. For example, Fig. 2.12 shows an example of a basic regular
+expression that can be used to tokenize English with the nltk.regexp tokenize
+function of the Python-based Natural Language Toolkit (NLTK) (Bird et al. 2009;
+https://www.nltk.org).
+
+# set flag to allow verbose regexps
+
+# abbreviations, e.g. U.S.A.
+
+(?:[A-Z]\.)+
+| \w+(?:-\w+)*
+| \$?\d+(?:\.\d+)?%?
+| \.\.\.
+| [][.,;"’?():_‘-]
+
+>>> text = ’That U.S.A. poster-print costs $12.40...’
+>>> pattern = r’’’(?x)
+...
+...
+...
+...
+...
+... ’’’
+>>> nltk.regexp_tokenize(text, pattern)
+[’That’, ’U.S.A.’, ’poster-print’, ’costs’, ’$12.40’, ’...’]
+
+# ellipsis
+# these are separate tokens; includes ], [
+
+# words with optional internal hyphens
+# currency, percentages, e.g. $12.40, 82%
+
+Figure 2.12 A Python trace of regular expression tokenization in the NLTK Python-based
+natural language processing toolkit (Bird et al., 2009), commented for readability; the (?x)
+verbose ﬂag tells Python to strip comments and whitespace. Figure from Chapter 3 of Bird
+et al. (2009).
+
+Carefully designed deterministic algorithms can deal with the ambiguities that
+arise, such as the fact that the apostrophe needs to be tokenized differently when used
+as a genitive marker (as in the book’s cover), a quotative as in ‘The other class’, she
+said, or in clitics like they’re.
+
+Word tokenization is more complex in languages like written Chinese, Japanese,
+and Thai, which do not use spaces to mark potential word-boundaries. In Chinese,
+for example, words are composed of characters (called hanzi in Chinese). Each
+character generally represents a single unit of meaning (called a morpheme) and is
+pronounceable as a single syllable. Words are about 2.4 characters long on average.
+But deciding what counts as a word in Chinese is complex. For example, consider
+the following sentence:
+(2.4) 姚明进入总决赛
+
+y´ao m´ıng j`ın r`u zˇong ju´e s`ai
+
+“Yao Ming reaches the ﬁnals”
+
+hanzi
+
+As Chen et al. (2017b) point out, this could be treated as 3 words (‘Chinese Tree-
+bank’ segmentation):
+(2.5) 姚明
+
+进入
+reaches
+
+总决赛
+ﬁnals
+
+YaoMing
+
+or as 5 words (‘Peking University’ segmentation):
+(2.6) 姚
+Yao
+
+进入
+reaches
+
+总
+overall
+
+明
+Ming
+
+决赛
+ﬁnals
+
+Finally, it is possible in Chinese simply to ignore words altogether and use characters
+as the basic elements, treating the sentence as a series of 7 characters:
+(2.7) 姚
+Yao
+
+决
+decision
+
+总
+overall
+
+明
+Ming
+
+赛
+game
+
+入
+enter
+
+进
+enter
+
+In fact, for most Chinese NLP tasks it turns out to work better to take characters
+rather than words as input, since characters are at a reasonable semantic level for
+most applications, and since most word standards, by contrast, result in a huge vo-
+cabulary with large numbers of very rare words (Li et al., 2019b).
+
+2.5
+
+• WORD TOKENIZATION
+
+21
+
+word
+segmentation
+
+However, for Japanese and Thai the character is too small a unit, and so algo-
+rithms for word segmentation are required. These can also be useful for Chinese
+in the rare situations where word rather than character boundaries are required. The
+standard segmentation algorithms for these languages use neural sequence mod-
+els trained via supervised machine learning on hand-segmented training sets; we’ll
+introduce sequence models in Chapter 8 and Chapter 9.
+
+subwords
+
+BPE
+
+2.5.2 Byte-Pair Encoding: A Bottom-up Tokenization Algorithm
+
+There is a third option to tokenizing text, one that is most commonly used by large
+language models. Instead of deﬁning tokens as words (whether delimited by spaces
+or more complex algorithms), or as characters (as in Chinese), we can use our data to
+automatically tell us what the tokens should be. This is especially useful in dealing
+with unknown words, an important problem in language processing. As we will
+see in the next chapter, NLP algorithms often learn some facts about language from
+one corpus (a training corpus) and then use these facts to make decisions about a
+separate test corpus and its language. Thus if our training corpus contains, say the
+words low, new, newer, but not lower, then if the word lower appears in our test
+corpus, our system will not know what to do with it.
+
+To deal with this unknown word problem, modern tokenizers automatically in-
+duce sets of tokens that include tokens smaller than words, called subwords. Sub-
+words can be arbitrary substrings, or they can be meaning-bearing units like the
+morphemes -est or -er. (A morpheme is the smallest meaning-bearing unit of a lan-
+guage; for example the word unlikeliest has the morphemes un-, likely, and -est.)
+In modern tokenization schemes, most tokens are words, but some tokens are fre-
+quently occurring morphemes or other subwords like -er. Every unseen word like
+lower can thus be represented by some sequence of known subword units, such as
+low and er, or even as a sequence of individual letters if necessary.
+
+Most tokenization schemes have two parts: a token learner, and a token seg-
+menter. The token learner takes a raw training corpus (sometimes roughly pre-
+separated into words, for example by whitespace) and induces a vocabulary, a set
+of tokens. The token segmenter takes a raw test sentence and segments it into the
+tokens in the vocabulary. Two algorithms are widely used: byte-pair encoding
+(Sennrich et al., 2016), and unigram language modeling (Kudo, 2018), There is
+also a SentencePiece library that includes implementations of both of these (Kudo
+and Richardson, 2018a), and people often use the name SentencePiece to simply
+mean unigram language modeling tokenization.
+
+In this section we introduce the simplest of the three, the byte-pair encoding or
+BPE algorithm (Sennrich et al., 2016); see Fig. 2.13. The BPE token learner begins
+with a vocabulary that is just the set of all individual characters. It then examines the
+training corpus, chooses the two symbols that are most frequently adjacent (say ‘A’,
+‘B’), adds a new merged symbol ‘AB’ to the vocabulary, and replaces every adjacent
+’A’ ’B’ in the corpus with the new ‘AB’. It continues to count and merge, creating
+new longer and longer character strings, until k merges have been done creating
+k novel tokens; k is thus a parameter of the algorithm. The resulting vocabulary
+consists of the original set of characters plus k new symbols.
+
+The algorithm is usually run inside words (not merging across word boundaries),
+so the input corpus is ﬁrst white-space-separated to give a set of strings, each corre-
+, and its
+sponding to the characters of a word, plus a special end-of-word symbol
+counts. Let’s see its operation on the following tiny input corpus of 18 word tokens
+with counts for each word (the word low appears 5 times, the word newer 6 times,
+
+22 CHAPTER 2
+
+• REGULAR EXPRESSIONS, TEXT NORMALIZATION, EDIT DISTANCE
+
+and so on), which would have a starting vocabulary of 11 letters:
+
+vocabulary
+
+, d, e, i, l, n, o, r, s, t, w
+
+corpus
+5
+2
+6
+3
+2
+
+l o w
+l o w e s t
+n e w e r
+w i d e r
+n e w
+
+The BPE algorithm ﬁrst counts all pairs of adjacent symbols: the most frequent
+is the pair e r because it occurs in newer (frequency of 6) and wider (frequency of
+3) for a total of 9 occurrences.2 We then merge these symbols, treating er as one
+symbol, and count again:
+
+vocabulary
+
+, d, e, i, l, n, o, r, s, t, w, er
+
+corpus
+5
+2
+6
+3
+2
+Now the most frequent pair is er
+
+l o w
+l o w e s t
+n e w er
+w i d er
+n e w
+
+, which we merge; our system has learned
+
+that there should be a token for word-ﬁnal er, represented as er :
+
+vocabulary
+
+, d, e, i, l, n, o, r, s, t, w, er, er
+
+corpus
+5
+2
+6
+3
+2
+
+l o w
+l o w e s t
+n e w er
+w i d er
+n e w
+
+Next n e (total count of 8) get merged to ne:
+
+vocabulary
+
+, d, e, i, l, n, o, r, s, t, w, er, er , ne
+
+corpus
+5
+2
+6
+3
+2
+
+l o w
+l o w e s t
+ne w er
+w i d er
+ne w
+
+If we continue, the next merges are:
+
+merge
+(ne, w)
+(l, o)
+(lo, w)
+(new, er )
+(low,
+
+)
+
+current vocabulary
+
+, d, e, i, l, n, o, r, s, t, w, er, er , ne, new
+, d, e, i, l, n, o, r, s, t, w, er, er , ne, new, lo
+, d, e, i, l, n, o, r, s, t, w, er, er , ne, new, lo, low
+, d, e, i, l, n, o, r, s, t, w, er, er , ne, new, lo, low, newer
+, d, e, i, l, n, o, r, s, t, w, er, er , ne, new, lo, low, newer , low
+
+Once we’ve learned our vocabulary, the token segmenter is used to tokenize a
+test sentence. The token segmenter just runs on the test data the merges we have
+learned from the training data, greedily, in the order we learned them. (Thus the
+frequencies in the test data don’t play a role, just the frequencies in the training
+data). So ﬁrst we segment each test sentence word into characters. Then we apply
+the ﬁrst rule: replace every instance of e r in the test corpus with er, and then the
+in the test corpus with er , and so on.
+second rule: replace every instance of er
+
+2 Note that there can be ties; we could have instead chosen to merge r
+frequency of 9.
+
+ﬁrst, since that also has a
+
+2.6
+
+• WORD NORMALIZATION, LEMMATIZATION AND STEMMING
+
+23
+
+function BYTE-PAIR ENCODING(strings C, number of merges k) returns vocab V
+
+all unique characters in C
+
+V
+←
+for i = 1 to k do
+tL, tR ←
+tNEW ←
+V
+←
+Replace each occurrence of tL, tR in C with tNEW
+
+Most frequent pair of adjacent tokens in C
+tL + tR
+V + tNEW
+
+# make new token by concatenating
+
+# update the vocabulary
+
+# and update the corpus
+
+# initial set of tokens is characters
+# merge tokens k times
+
+return V
+
+Figure 2.13 The token learner part of the BPE algorithm for taking a corpus broken up
+into individual characters or bytes, and learning a vocabulary by iteratively merging tokens.
+Figure adapted from Bostrom and Durrett (2020).
+
+By the end, if the test corpus contained the character sequence n e w e r
+, it
+would be tokenized as a full word. But the characters of a new (unknown) word like
+l o w e r
+
+would be merged into the two tokens low er .
+
+Of course in real settings BPE is run with many thousands of merges on a very
+large input corpus. The result is that most words will be represented as full symbols,
+and only the very rare words (and unknown words) will have to be represented by
+their parts.
+
+2.6 Word Normalization, Lemmatization and Stemming
+
+normalization
+
+case folding
+
+Word normalization is the task of putting words/tokens in a standard format. The
+simplest case of word normalization is case folding. Mapping everything to lower
+case means that Woodchuck and woodchuck are represented identically, which is
+very helpful for generalization in many tasks, such as information retrieval or speech
+recognition. For sentiment analysis and other text classiﬁcation tasks, information
+extraction, and machine translation, by contrast, case can be quite helpful and case
+folding is generally not done. This is because maintaining the difference between,
+for example, US the country and us the pronoun can outweigh the advantage in
+generalization that case folding would have provided for other words.
+
+Systems that use BPE or other kinds of bottom-up tokenization may do no fur-
+ther word normalization. In other NLP systems, we may want to do further nor-
+malizations, like choosing a single normal form for words with multiple forms like
+USA and US or uh-huh and uhhuh. This standardization may be valuable, despite
+the spelling information that is lost in the normalization process. For information
+retrieval or information extraction about the US, we might want to see information
+from documents whether they mention the US or the USA.
+
+2.6.1 Lemmatization
+
+For other natural language processing situations we also want two morphologically
+different forms of a word to behave similarly. For example in web search, someone
+may type the string woodchucks but a useful system might want to also return pages
+that mention woodchuck with no s. This is especially common in morphologically
+complex languages like Polish, where for example the word Warsaw has different
+endings when it is the subject (Warszawa), or after a preposition like “in Warsaw” (w
+
+24 CHAPTER 2
+
+• REGULAR EXPRESSIONS, TEXT NORMALIZATION, EDIT DISTANCE
+
+lemmatization
+
+morpheme
+
+stem
+
+afﬁx
+
+stemming
+
+Porter stemmer
+
+Warszawie), or “to Warsaw” (do Warszawy), and so on. Lemmatization is the task
+of determining that two words have the same root, despite their surface differences.
+The words am, are, and is have the shared lemma be; the words dinner and dinners
+both have the lemma dinner. Lemmatizing each of these forms to the same lemma
+will let us ﬁnd all mentions of words in Polish like Warsaw. The lemmatized form
+of a sentence like He is reading detective stories would thus be He be read detective
+story.
+
+How is lemmatization done? The most sophisticated methods for lemmatization
+involve complete morphological parsing of the word. Morphology is the study of
+the way words are built up from smaller meaning-bearing units called morphemes.
+Two broad classes of morphemes can be distinguished: stems—the central mor-
+pheme of the word, supplying the main meaning—and afﬁxes—adding “additional”
+meanings of various kinds. So, for example, the word fox consists of one morpheme
+(the morpheme fox) and the word cats consists of two: the morpheme cat and the
+morpheme -s. A morphological parser takes a word like cats and parses it into the
+two morphemes cat and s, or parses a Spanish word like amaren (‘if in the future
+they would love’) into the morpheme amar ‘to love’, and the morphological features
+3PL and future subjunctive.
+
+Stemming: The Porter Stemmer
+
+Lemmatization algorithms can be complex. For this reason we sometimes make
+use of a simpler but cruder method, which mainly consists of chopping off word-
+ﬁnal afﬁxes. This naive version of morphological analysis is called stemming. For
+example, the Porter stemmer, a widely used stemming algorithm (Porter, 1980),
+when applied to the following paragraph:
+
+This was not the map we found in Billy Bones’s chest, but
+an accurate copy, complete in all things-names and heights
+and soundings-with the single exception of the red crosses
+and the written notes.
+
+produces the following stemmed output:
+
+Thi wa not the map we found in Billi Bone s ch

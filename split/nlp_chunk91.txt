@@ -1,0 +1,296 @@
+ trophy didn’t ﬁt into the suitcase because it was too small.
+Question: What was too small? Answer: The suitcase
+
+The problems have the following characteristics:
+
+1. The problems each have two parties
+2. A pronoun preferentially refers to one of the parties, but could grammatically
+
+also refer to the other
+
+3. A question asks which party the pronoun refers to
+4. If one word in the question is changed, the human-preferred answer changes
+
+to the other party
+
+The kind of world knowledge that might be needed to solve the problems can
+vary. In the trophy/suitcase example, it is knowledge about the physical world; that
+a bigger object cannot ﬁt into a smaller object. In the original Winograd sentence,
+it is stereotypes about social actors like politicians and protesters. In examples like
+the following, it is knowledge about human actions like turn-taking or thanking.
+(22.75) Bill passed the gameboy to John because his turn was [over/next]. Whose
+
+turn was [over/next]? Answers: Bill/John
+
+(22.76) Joan made sure to thank Susan for all the help she had [given/received].
+
+Who had [given/received] help? Answers: Susan/Joan.
+
+Although the Winograd Schema was designed to require common-sense rea-
+soning, a large percentage of the original set of problem can be solved by pre-
+trained language models, ﬁne-tuned on Winograd Schema sentences (Kocijan et al.,
+2019). Large pretrained language models encode an enormous amount of world or
+common-sense knowledge! The current trend is therefore to propose new datasets
+with increasingly difﬁcult Winograd-like coreference resolution problems like KNOWREF
+(Emami et al., 2019), with examples like:
+(22.77) Marcus is undoubtedly faster than Jarrett right now but in [his] prime the
+
+gap wasn’t all that big.
+
+In the end, it seems likely that some combination of language modeling and knowl-
+edge will prove fruitful; indeed, it seems that knowledge-based models overﬁt less
+to lexical idiosyncracies in Winograd Schema training sets (Trichelair et al., 2018),
+
+22.10 Gender Bias in Coreference
+
+As with other aspects of language processing, coreference models exhibit gender and
+other biases (Zhao et al. 2018a, Rudinger et al. 2018, Webster et al. 2018). For exam-
+ple the WinoBias dataset (Zhao et al., 2018a) uses a variant of the Winograd Schema
+paradigm to test the extent to which coreference algorithms are biased toward link-
+ing gendered pronouns with antecedents consistent with cultural stereotypes. As we
+summarized in Chapter 6, embeddings replicate societal biases in their training test,
+such as associating men with historically sterotypical male occupations like doctors,
+and women with stereotypical female occupations like secretaries (Caliskan et al.
+2017, Garg et al. 2018).
+
+A WinoBias sentence contain two mentions corresponding to stereotypically-
+male and stereotypically-female occupations and a gendered pronoun that must be
+linked to one of them. The sentence cannot be disambiguated by the gender of the
+pronoun, but a biased model might be distracted by this cue. Here is an example
+sentence:
+
+22.11
+
+• SUMMARY
+
+507
+
+(22.78) The secretary called the physiciani and told himi about a new patient
+
+[pro-stereotypical]
+
+(22.79) The secretary called the physiciani and told heri about a new patient
+
+[anti-stereotypical]
+
+Zhao et al. (2018a) consider a coreference system to be biased if it is more accu-
+rate at linking pronouns consistent with gender stereotypical occupations (e.g., him
+with physician in (22.78)) than linking pronouns inconsistent with gender-stereotypical
+occupations (e.g., her with physician in (22.79)). They show that coreference sys-
+tems of all architectures (rule-based, feature-based machine learned, and end-to-
+end-neural) all show signiﬁcant bias, performing on average 21 F1 points worse in
+the anti-stereotypical cases.
+
+One possible source of this bias is that female entities are signiﬁcantly un-
+derrepresented in the OntoNotes dataset, used to train most coreference systems.
+Zhao et al. (2018a) propose a way to overcome this bias: they generate a second
+gender-swapped dataset in which all male entities in OntoNotes are replaced with
+female ones and vice versa, and retrain coreference systems on the combined orig-
+inal and swapped OntoNotes data, also using debiased GloVE embeddings (Boluk-
+basi et al., 2016). The resulting coreference systems no longer exhibit bias on the
+WinoBias dataset, without signiﬁcantly impacting OntoNotes coreference accuracy.
+In a follow-up paper, Zhao et al. (2019) show that the same biases exist in ELMo
+contextualized word vector representations and coref systems that use them. They
+showed that retraining ELMo with data augmentation again reduces or removes bias
+in coreference systems on WinoBias.
+
+Webster et al. (2018) introduces another dataset, GAP, and the task of Gendered
+Pronoun Resolution as a tool for developing improved coreference algorithms for
+gendered pronouns. GAP is a gender-balanced labeled corpus of 4,454 sentences
+with gendered ambiguous pronouns (by contrast, only 20% of the gendered pro-
+nouns in the English OntoNotes training data are feminine). The examples were
+created by drawing on naturally occurring sentences from Wikipedia pages to create
+hard to resolve cases with two named entities of the same gender and an ambiguous
+pronoun that may refer to either person (or neither), like the following:
+
+(22.80) In May, Fujisawa joined Mari Motohashi’s rink as the team’s skip, moving
+back from Karuizawa to Kitami where she had spent her junior days.
+
+Webster et al. (2018) show that modern coreference algorithms perform signif-
+icantly worse on resolving feminine pronouns than masculine pronouns in GAP.
+Kurita et al. (2019) shows that a system based on BERT contextualized word repre-
+sentations shows similar bias.
+
+22.11 Summary
+
+This chapter introduced the task of coreference resolution.
+
+• This is the task of linking together mentions in text which corefer, i.e. refer
+to the same discourse entity in the discourse model, resulting in a set of
+coreference chains (also called clusters or entities).
+
+• Mentions can be deﬁnite NPs or indeﬁnite NPs, pronouns (including zero
+
+pronouns) or names.
+
+508 CHAPTER 22
+
+• COREFERENCE RESOLUTION AND ENTITY LINKING
+
+• The surface form of an entity mention is linked to its information status
+
+(new, old, or inferrable), and how accessible or salient the entity is.
+
+• Some NPs are not referring expressions, such as pleonastic it in It is raining.
+• Many corpora have human-labeled coreference annotations that can be used
+for supervised learning, including OntoNotes for English, Chinese, and Ara-
+bic, ARRAU for English, and AnCora for Spanish and Catalan.
+
+• Mention detection can start with all nouns and named entities and then use
+anaphoricity classiﬁers or referentiality classiﬁers to ﬁlter out non-mentions.
+• Three common architectures for coreference are mention-pair, mention-rank,
+and entity-based, each of which can make use of feature-based or neural clas-
+siﬁers.
+
+• Modern coreference systems tend to be end-to-end, performing mention de-
+
+tection and coreference in a single end-to-end architecture.
+
+• Algorithms learn representations for text spans and heads, and learn to com-
+
+pare anaphor spans with candidate antecedent spans.
+
+• Entity linking is the task of associating a mention in text with the representa-
+
+tion of some real-world entity in an ontology .
+
+• Coreference systems are evaluated by comparing with gold entity labels using
+
+precision/recall metrics like MUC, B3, CEAF, BLANC, or LEA.
+
+• The Winograd Schema Challenge problems are difﬁcult coreference prob-
+lems that seem to require world knowledge or sophisticated reasoning to solve.
+• Coreference systems exhibit gender bias which can be evaluated using datasets
+
+like Winobias and GAP.
+
+Bibliographical and Historical Notes
+
+Hobbs
+algorithm
+
+Coreference has been part of natural language processing since the 1970s (Woods
+et al. 1972, Winograd 1972). The discourse model and the entity-centric foundation
+of coreference was formulated by Karttunen (1969) (at the 3rd COLING confer-
+ence), playing a role also in linguistic semantics (Heim 1982, Kamp 1981). But
+it was Bonnie Webber’s 1978 dissertation and following work (Webber 1983) that
+explored the model’s computational aspects, providing fundamental insights into
+how entities are represented in the discourse model and the ways in which they can
+license subsequent reference. Many of the examples she provided continue to chal-
+lenge theories of reference to this day.
+
+The Hobbs algorithm9 is a tree-search algorithm that was the ﬁrst in a long
+series of syntax-based methods for identifying reference robustly in naturally occur-
+ring text. The input to the Hobbs algorithm is a pronoun to be resolved, together
+with a syntactic (constituency) parse of the sentences up to and including the cur-
+rent sentence. The details of the algorithm depend on the grammar used, but can be
+understood from a simpliﬁed version due to Kehler et al. (2004) that just searches
+through the list of NPs in the current and prior sentences. This simpliﬁed Hobbs
+algorithm searches NPs in the following order: “(i) in the current sentence from
+right-to-left, starting with the ﬁrst NP to the left of the pronoun, (ii) in the previous
+sentence from left-to-right, (iii) in two sentences prior from left-to-right, and (iv) in
+
+9 The simpler of two algorithms presented originally in Hobbs (1978).
+
+BIBLIOGRAPHICAL AND HISTORICAL NOTES
+
+509
+
+the current sentence from left-to-right, starting with the ﬁrst noun group to the right
+of the pronoun (for cataphora). The ﬁrst noun group that agrees with the pronoun
+with respect to number, gender, and person is chosen as the antecedent” (Kehler
+et al., 2004).
+
+Lappin and Leass (1994) was an inﬂuential entity-based system that used weights
+to combine syntactic and other features, extended soon after by Kennedy and Bogu-
+raev (1996) whose system avoids the need for full syntactic parses.
+
+Approximately contemporaneously centering (Grosz et al., 1995) was applied
+to pronominal anaphora resolution by Brennan et al. (1987), and a wide variety of
+work followed focused on centering’s use in coreference (Kameyama 1986, Di Eu-
+genio 1990, Walker et al. 1994, Di Eugenio 1996, Strube and Hahn 1996, Kehler
+1997a, Tetreault 2001, Iida et al. 2003). Kehler and Rohde (2013) show how center-
+ing can be integrated with coherence-driven theories of pronoun interpretation. See
+Chapter 27 for the use of centering in measuring discourse coherence.
+
+Coreference competitions as part of the US DARPA-sponsored MUC confer-
+ences provided early labeled coreference datasets (the 1995 MUC-6 and 1998 MUC-
+7 corpora), and set the tone for much later work, choosing to focus exclusively
+on the simplest cases of identity coreference (ignoring difﬁcult cases like bridging,
+metonymy, and part-whole) and drawing the community toward supervised machine
+learning and metrics like the MUC metric (Vilain et al., 1995). The later ACE eval-
+uations produced labeled coreference corpora in English, Chinese, and Arabic that
+were widely used for model training and evaluation.
+
+This DARPA work inﬂuenced the community toward supervised learning begin-
+ning in the mid-90s (Connolly et al. 1994, Aone and Bennett 1995, McCarthy and
+Lehnert 1995). Soon et al. (2001) laid out a set of basic features, extended by Ng and
+Cardie (2002b), and a series of machine learning models followed over the next 15
+years. These often focused separately on pronominal anaphora resolution (Kehler
+et al. 2004, Bergsma and Lin 2006), full NP coreference (Cardie and Wagstaff 1999,
+Ng and Cardie 2002b, Ng 2005a) and deﬁnite NP reference (Poesio and Vieira 1998,
+Vieira and Poesio 2000), as well as separate anaphoricity detection (Bean and Riloff
+1999, Bean and Riloff 2004, Ng and Cardie 2002a, Ng 2004), or singleton detection
+(de Marneffe et al., 2015).
+
+The move from mention-pair to mention-ranking approaches was pioneered by
+Yang et al. (2003) and Iida et al. (2003) who proposed pairwise ranking methods,
+then extended by Denis and Baldridge (2008) who proposed to do ranking via a soft-
+max over all prior mentions. The idea of doing mention detection, anaphoricity, and
+coreference jointly in a single end-to-end model grew out of the early proposal of Ng
+(2005b) to use a dummy antecedent for mention-ranking, allowing ‘non-referential’
+to be a choice for coreference classiﬁers, Denis and Baldridge’s 2007 joint system
+combining anaphoricity classiﬁer probabilities with coreference probabilities, the
+Denis and Baldridge (2008) ranking model, and the Rahman and Ng (2009) pro-
+posal to train the two models jointly with a single objective.
+
+Simple rule-based systems for coreference returned to prominence in the 2010s,
+partly because of their ability to encode entity-based features in a high-precision way
+(Zhou et al. 2004b, Haghighi and Klein 2009, Raghunathan et al. 2010, Lee et al.
+2011, Lee et al. 2013, Hajishirzi et al. 2013) but in the end they suffered from an
+inability to deal with the semantics necessary to correctly handle cases of common
+noun coreference.
+
+A return to supervised learning led to a number of advances in mention-ranking
+models which were also extended into neural architectures, for example using re-
+
+510 CHAPTER 22
+
+• COREFERENCE RESOLUTION AND ENTITY LINKING
+
+inforcement learning to directly optimize coreference evaluation models Clark and
+Manning (2016a), doing end-to-end coreference all the way from span extraction
+(Lee et al. 2017b, Zhang et al. 2018). Neural models also were designed to take
+advantage of global entity-level information (Clark and Manning 2016b, Wiseman
+et al. 2016, Lee et al. 2018).
+
+Coreference is also related to the task of entity linking discussed in Chapter 14.
+Coreference can help entity linking by giving more possible surface forms to help
+link to the right Wikipedia page, and conversely entity linking can help improve
+coreference resolution. Consider this example from Hajishirzi et al. (2013):
+
+(22.81)
+
+[Michael Eisner]1 and [Donald Tsang]2 announced the grand opening of
+[[Hong Kong]3 Disneyland]4 yesterday. [Eisner]1 thanked [the President]2
+and welcomed [fans]5 to [the park]4.
+
+Integrating entity linking into coreference can help draw encyclopedic knowl-
+edge (like the fact that Donald Tsang is a president) to help disambiguate the men-
+tion the President. Ponzetto and Strube (2006) 2007 and Ratinov and Roth (2012)
+showed that such attributes extracted from Wikipedia pages could be used to build
+richer models of entity mentions in coreference. More recent research shows how to
+do linking and coreference jointly (Hajishirzi et al. 2013, Zheng et al. 2013) or even
+jointly with named entity tagging as well (Durrett and Klein 2014).
+
+The coreference task as we introduced it involves a simplifying assumption that
+the relationship between an anaphor and its antecedent is one of identity: the two
+coreferring mentions refer to the identical discourse referent. In real texts, the rela-
+tionship can be more complex, where different aspects of a discourse referent can
+be neutralized or refocused. For example (22.82) (Recasens et al., 2011) shows an
+example of metonymy, in which the capital city Washington is used metonymically
+to refer to the US. (22.83-22.84) show other examples (Recasens et al., 2011):
+
+(22.82) a strict interpretation of a policy requires The U.S. to notify foreign
+
+dictators of certain coup plots 

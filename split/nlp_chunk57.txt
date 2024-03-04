@@ -1,0 +1,467 @@
+rvation or buying a product. Task-based dialogue systems
+are based around frames, ﬁrst introduced in the early inﬂuential GUS system for
+travel planning (Bobrow et al., 1977). Frames are knowledge structures representing
+the details of the user’s task speciﬁcation. Each frame consists of a collection of
+slots, each of which can take a set of possible values. Together a set of frames is
+
+frame
+
+GUS
+
+slot
+
+15.2
+
+• FRAME-BASED DIALOGUE SYSTEMS
+
+321
+
+sometimes called a domain ontology.
+
+Here we’ll describe the most well-studied frame-based architecture, the dialogue-
+state architecture, made up of the six components shown in Fig. 15.3. In the next
+sections we’ll introduce four of them, after introducing the idea of frames (deferring
+the speech recognition and synthesis components to Chapter 16).
+
+Figure 15.3 Architecture of a dialogue-state system for task-oriented dialogue from Williams et al. (2016).
+
+15.2.1 Frames and Slot Filling
+
+The frame and its slots in a task-based dialogue system specify what the system
+needs to know to perform its task. A hotel reservation system needs dates and loca-
+tions. An alarm clock system needs a time. The system’s goal is to ﬁll the slots in
+the frame with the ﬁllers the user intends, and then perform the relevant action for
+the user (answering a question, or booking a ﬂight).
+
+Fig. 15.4 shows a sample frame for booking air travel, with some sample ques-
+tions used for ﬁlling slots. In the simplest frame-based systems (including most com-
+mercial assistants until quite recently), these questions are pre-written templates, but
+in more sophisticated systems, questions are generated on-the-ﬂy. The slot ﬁllers are
+often constrained to a particular semantic type, like type CITY (taking on values like
+San Francisco, or Hong Kong) or DATE, AIRLINE, or TIME.
+
+Type Example Question
+Slot
+city
+ORIGIN CITY
+DESTINATION CITY city
+DEPARTURE TIME
+time
+DEPARTURE DATE date
+time
+ARRIVAL TIME
+ARRIVAL DATE
+date
+Figure 15.4 A frame in a frame-based dialogue system, showing the type of each slot and
+a sample question used to ﬁll the slot.
+
+“From what city are you leaving?”
+“Where are you going?”
+“When would you like to leave?”
+“What day would you like to leave?”
+“When do you want to arrive?”
+“What day would you like to arrive?”
+
+322 CHAPTER 15
+
+• CHATBOTS & DIALOGUE SYSTEMS
+
+intent
+determination
+
+slot ﬁlling
+
+Many domains require multiple frames. Besides frames for car or hotel reser-
+vations, we might need other frames for things like general route information (for
+questions like Which airlines ﬂy from Boston to San Francisco?), That means the
+system must be able to disambiguate which slot of which frame a given input is
+supposed to ﬁll.
+
+The task of slot-ﬁlling is usually combined with two other tasks, to extract 3
+things from each user utterance. The ﬁrst is domain classiﬁcation: is this user for
+example talking about airlines, programming an alarm clock, or dealing with their
+calendar? The second is user intent determination: what general task or goal is the
+user trying to accomplish? For example the task could be to Find a Movie, or Show
+a Flight, or Remove a Calendar Appointment. Together, the domain classiﬁcation
+and intent determination tasks decide which frame we are ﬁlling. Finally, we need
+to do slot ﬁlling itself: extract the particular slots and ﬁllers that the user intends the
+system to understand from their utterance with respect to their intent. From a user
+utterance like this one:
+
+Show me morning flights from Boston to San Francisco on Tuesday
+
+a system might want to build a representation like:
+
+DOMAIN:
+ORIGIN-CITY:
+ORIGIN-DATE:
+
+AIR-TRAVEL
+Boston
+Tuesday
+
+INTENT:
+DEST-CITY:
+ORIGIN-TIME:
+
+SHOW-FLIGHTS
+San Francisco
+morning
+
+Similarly an utterance like this:
+
+should give an intent like this:
+
+Wake me tomorrow at 6
+
+DOMAIN:
+INTENT:
+TIME:
+
+ALARM-CLOCK
+SET-ALARM
+2017-07-01 0600
+
+The simplest dialogue systems use handwritten rules for slot-ﬁlling, like this
+
+regular expression for recognizing the SET-ALARM intent:
+
+wake me (up) | set (the|an) alarm | get me up
+
+But most systems use supervised machine-learning: each sentence in a training
+set is annotated with slots, domain, and intent, and a sequence model maps from
+input words to slot ﬁllers, domain and intent. For example we’ll have pairs of sen-
+tences that are labeled for domain (AIRLINE) and intent (SHOWFLIGHT), and are
+also labeled with BIO representations for the slots and ﬁllers. (Recall from Chap-
+ter 8 that in BIO tagging we introduce a tag for the beginning (B) and inside (I) of
+each slot label, and one for tokens outside (O) any slot label.)
+
+O O
+
+O
+
+O
+
+O
+
+B-DES I-DES
+
+O
+
+B-DEPTIME I-DEPTIME
+
+O
+
+AIRLINE-SHOWFLIGHT
+
+I want to fly to San
+
+Francisco on Monday
+
+afternoon
+
+please
+
+EOS
+
+Fig. 15.5 shows a typical architecture for inference. The input words w1...wn
+are passed through a pretrained language model encoder, followed by a feedforward
+layer and a softmax at each token position over possible BIO tags, with the output
+a series of BIO tags s1...sn. We generally combine the domain-classiﬁcation and
+intent-extraction tasks with slot-ﬁlling by adding a domain concatenated with an
+intent as the desired output for the ﬁnal EOS token.
+
+Once the sequence labeler has tagged the user utterance, a ﬁller string can be ex-
+tracted for each slot from the tags (e.g., “San Francisco”), and these word strings
+can then be normalized to the correct form in the ontology (perhaps the airport
+
+15.3
+
+• DIALOGUE ACTS AND DIALOGUE STATE
+
+323
+
+Figure 15.5 Slot ﬁlling by passing input words through an encoder, and then using a linear
+or feedforward layer followed by a softmax to generate a series of BIO tags. Here we also
+show a ﬁnal state: a domain concatenated with an intent.
+
+code ‘SFO’), for example with dictionaries that specify that SF, SFO, and San Fran-
+cisco are synonyms. Often in industrial contexts, combinations of rules and machine
+learning are used for each of these components.
+
+We can make a very simple frame-based dialogue system by wrapping a small
+amount of code around this slot extractor. Mainly we just need to ask the user
+questions until all the slots are full, do a database query, then report back to the user,
+using hand-built templates for generating sentences.
+
+15.2.2 Evaluating Task-Based Dialogue
+
+task error rate
+
+slot error rate
+
+We evaluate task-based systems by computing the task error rate, or task success
+rate: the percentage of times the system booked the right plane ﬂight, or put the
+right event on the calendar. A more ﬁne-grained, but less extrinsic metric is the slot
+error rate, the percentage of slots ﬁlled with the correct values:
+
+Slot Error Rate for a Sentence =
+
+# of inserted/deleted/subsituted slots
+# of total reference slots for sentence
+
+(15.1)
+
+For example a system that extracted the slot structure below from this sentence:
+
+(15.2) Make an appointment with Chris at 10:30 in Gates 104
+
+Filler
+Slot
+PERSON Chris
+TIME
+11:30 a.m.
+ROOM Gates 104
+
+Instead of error rate, slot
+has a slot error rate of 1/3, since the TIME is wrong.
+precision, recall, and F-score can also be used. We can also measure efﬁciency
+costs like the length of the dialogue in seconds or turns.
+
+efﬁciency costs
+
+15.3 Dialogue Acts and Dialogue State
+
+While the naive slot-extractor system described above can handle simple dialogues,
+often we want more complex interactions. For example, we might want to conﬁrm
+that we’ve understand the user, or ask them to repeat themselves. We can build a
+more sophisticated system using dialogue acts and dialogue state.
+
+SanFranciscoonMondayEncodingsClassiﬁer+softmaxB-DESI-DESOB-DTIME…d+i<EOS>Encoder 324 CHAPTER 15
+
+• CHATBOTS & DIALOGUE SYSTEMS
+
+15.3.1 Dialogue Acts
+
+dialogue acts
+
+Dialogue acts are a generalization of speech acts that also represent grounding. The
+set of acts can be general, or can be designed for particular dialogue tasks.
+
+Sys User Description
+
+Tag
+HELLO(a = x, b = y, ...) (cid:88) (cid:88)
+INFORM(a = x, b = y, ...) (cid:88) (cid:88)
+(cid:88) (cid:88)
+REQUEST(a, b = x, ...)
+χ (cid:88)
+REQALTS(a = x, ...)
+CONFIRM(a = x, b = y, ...) (cid:88) (cid:88)
+(cid:88) χ
+CONFREQ(a = x, ..., d)
+(cid:88) χ
+SELECT(a = x, a = y)
+AFFIRM(a = x, b = y, ...) (cid:88) (cid:88)
+χ (cid:88)
+NEGATE(a = x)
+χ (cid:88)
+DENY(a = x)
+(cid:88) (cid:88)
+BYE()
+
+Open a dialogue and give info a = x, b = y, ...
+Give info a = x, b = y, ...
+Request value for a given b = x, ...
+Request alternative with a = x, ...
+Explicitly conﬁrm a = x, b = y, ...
+Implicitly conﬁrm a = x, ... and request value of d
+Implicitly conﬁrm a = x, ... and request value of d
+Afﬁrm and give further info a = x, b = y, ...
+Negate and give corrected value a = x
+Deny that a = x
+Close a dialogue
+
+Figure 15.6 Dialogue acts used by the HIS restaurant recommendation system of Young
+et al. (2010). The Sys and User columns indicate which acts are valid as system outputs and
+user inputs, respectively.
+
+Figure 15.6 shows a tagset for a restaurant recommendation system, and Fig. 15.7
+shows these tags labeling a sample dialogue from the HIS system (Young et al.,
+2010). This example also shows the content of each dialogue act, which are the slot
+ﬁllers being communicated. So the user might INFORM the system that they want
+Italian food near a museum, or CONFIRM with the system that the price is reasonable.
+
+Utterance
+
+U: Hi, I am looking for somewhere to eat.
+S: You are looking for a restaurant. What
+
+type of food do you like?
+
+U: I’d like an Italian near the museum.
+S: Roma is a nice Italian restaurant near
+
+the museum.
+
+U: Is it reasonably priced?
+S: Yes, Roma is in the moderate price
+
+range.
+
+Dialogue act
+hello(task = find,type=restaurant)
+confreq(type = restaurant, food)
+
+inform(food = Italian, near=museum)
+inform(name = "Roma", type = restaurant,
+food = Italian, near = museum)
+confirm(pricerange = moderate)
+affirm(name = "Roma", pricerange =
+moderate)
+request(phone)
+inform(name = "Roma", phone = "385456")
+bye()
+
+U: What is the phone number?
+S: The number of Roma is 385456.
+U: Ok, thank you goodbye.
+Figure 15.7 A dialogue from the HIS System of Young et al. (2010) using the dialogue acts in Fig. 15.6.
+
+15.3.2 Dialogue State Tracking
+
+The job of the dialogue-state tracker is to determine the current state of the frame
+(the ﬁllers of each slot), and the user’s most recent dialogue act. The dialogue-state
+is not just the slot-ﬁllers in the current sentence; it includes the entire state of the
+frame at this point, summarizing all of the user’s constraints. Fig. 15.8 from Mrkˇsi´c
+et al. (2017) shows the dialogue state after each turn.
+
+Dialogue act detection is done just like domain or intent classiﬁcation, by passing
+the input sentence through an encoder and adding an act classiﬁer. Often passing in
+the prior dialogue act as well can improve classiﬁcation. And since dialogue acts
+
+15.3
+
+• DIALOGUE ACTS AND DIALOGUE STATE
+
+325
+
+User:
+
+I’m looking for a cheaper restaurant
+inform(price=cheap)
+
+System: Sure. What kind - and where?
+User:
+
+Thai food, somewhere downtown
+inform(price=cheap, food=Thai, area=centre)
+
+System: The House serves cheap Thai food
+User: Where is it?
+
+inform(price=cheap, food=Thai, area=centre); request(address)
+
+System: The House is at 106 Regent Street
+Figure 15.8 The output of the dialogue state tracker after each turn (Mrkˇsi´c et al., 2017).
+
+place some constraints on the slots and values, the tasks of dialogue-act detection and
+slot-ﬁlling are often performed jointly. The state tracker can just take the output of
+a slot-ﬁlling sequence-model (Section 15.2.1) after each sentence, or do something
+more complicated like training a classiﬁer to decide if a value has been changed.
+
+If a dialogue system misrecognizes
+A special case: detecting correction acts.
+or misunderstands an utterance, users will repeat or reformulate the utterance. De-
+tecting these user correction acts is quite important, especially for spoken lan-
+guage. Ironically, corrections are actually harder to recognize than normal sentences
+(Swerts et al., 2000), because users who are frustrated adjust their speech in a way
+that is difﬁcult for speech recognizers (Goldberg et al., 2003). For example speak-
+ers often use a prosodic style for corrections called hyperarticulation, in which the
+utterance is louder or longer or exaggerated in pitch, such as I said BAL-TI-MORE,
+not Boston (Wade et al. 1992, Levow 1998, Hirschberg et al. 2001). Detecting acts
+can be part of the general dialogue act detection classiﬁer, or can make use of spe-
+cial features beyond the words, like those shown below (Levow 1998, Litman et al.
+1999, Hirschberg et al. 2001, Bulyko et al. 2005, Awadallah et al. 2015).
+
+user correction
+acts
+
+hyperarticula-
+tion
+
+features
+semantic
+phonetic
+
+prosodic
+ASR
+
+examples
+embedding similarity between correction and user’s prior utterance
+phonetic overlap between candidate correction act and user’s prior utterance
+(i.e. “WhatsApp” may be incorrectly recognized as “What’s up”)
+hyperarticulation, increases in F0 range, pause duration, and word duration
+ASR conﬁdence, language model probability
+
+15.3.3 Dialogue Policy: Which act to generate
+
+In early commercial frame-based systems, the dialogue policy is simple: ask ques-
+tions until all the slots are full, do a database query, then report back to the user. A
+more sophisticated dialogue policy can help a system decide when to answer the
+user’s questions, when to instead ask the user a clariﬁcation question, and so on. A
+dialogue policy thus decides what dialogue act to generate. Choosing a dialogue act
+to generate, along with its arguments, is sometimes called content planning.
+
+Let’s see how to do this for some important dialogue acts. Dialogue systems, es-
+pecially speech systems, often misrecognize the users’ words or meaning. To ensure
+system and user share a common ground, systems must conﬁrm understandings with
+the user or reject utterances that the system don’t understand. A system might use
+an explicit conﬁrmation act to conﬁrm with the user, like Is that correct? below:
+
+dialogue policy
+
+content
+planning
+
+explicit
+conﬁrmation
+
+326 CHAPTER 15
+
+• CHATBOTS & DIALOGUE SYSTEMS
+
+U: I’d like to ﬂy from Denver Colorado to New York City on September
+
+twenty ﬁrst in the morning on United Airlines
+
+S: Let’s see then. I have you going from Denver Colorado to New York
+
+on September twenty ﬁrst. Is that correct?
+
+implicit
+conﬁrmation
+
+When using an implicit conﬁrmation act, a system instead grounds more im-
+plicitly, for example by repeating the system’s understanding as part of asking the
+next question, as Shanghai is conﬁrmed in passing in this example:
+
+U: I want to travel to to Shanghai
+S: When do you want to travel to Shanghai?
+
+rejection
+
+There’s a tradeoff. Explicit conﬁrmation makes it easier for users to correct mis-
+recognitions by just answering “no” to the conﬁrmation question. But explicit con-
+ﬁrmation is time-consuming and awkward (Danieli and Gerbino 1995, Walker et al.
+1998a). We also might want an act that expresses lack of understanding: rejection,
+for example with a prompt like I’m sorry, I didn’t understand that. To decide among
+these acts, we can make use of the fact that ASR systems often compute their conﬁ-
+dence in their transcription (often based on the log-likelihood the system assigns the
+sentence). A system can thus choose to explicitly conﬁrm only low-conﬁdence sen-
+tences. Or systems might have a four-tiered level of conﬁdence with three thresholds
+α, β , and γ:
+
+< α low conﬁdence
+
+α above the threshold

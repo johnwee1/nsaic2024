@@ -1,0 +1,419 @@
+ce or training via ordinary backpropagation.
+
+For applications that involve much longer input sequences, such as speech recog-
+nition, character-level processing, or streaming continuous inputs, unrolling an en-
+tire input sequence may not be feasible. In these cases, we can unroll the input into
+manageable ﬁxed-length segments and treat each segment as a distinct training item.
+
+9.2 RNNs as Language Models
+
+Let’s see how to apply RNNs to the language modeling task. Recall from Chapter 3
+that language models predict the next word in a sequence given some preceding
+context. For example, if the preceding context is “Thanks for all the” and we want
+to know how likely the next word is “ﬁsh” we would compute:
+
+Thanks for all the)
+P(ﬁsh
+|
+
+Language models give us the ability to assign such a conditional probability to every
+possible next word, giving us a distribution over the entire vocabulary. We can also
+assign probabilities to entire sequences by combining these conditional probabilities
+with the chain rule:
+
+n
+
+P(w1:n) =
+
+P(wi|
+
+w<i)
+
+−
+
+1 prior words. The context is thus of size n
+
+(cid:89)i=1
+The n-gram language models of Chapter 3 compute the probability of a word given
+counts of its occurrence with the n
+1.
+−
+For the feedforward language models of Chapter 7, the context is the window size.
+RNN language models (Mikolov et al., 2010) process the input sequence one
+word at a time, attempting to predict the next word from the current word and the
+previous hidden state. RNNs thus don’t have the limited context problem that n-gram
+models have, or the ﬁxed context that feedforward language models have, since the
+hidden state can in principle represent information about all of the preceding words
+all the way back to the beginning of the sequence. Fig. 9.5 sketches this difference
+between a FFN language model and an RNN language model, showing that the
+RNN language model uses ht
+1, the hidden state from the previous time step, as a
+representation of the past context.
+
+−
+
+9.2.1 Forward Inference in an RNN language model
+
+Forward inference in a recurrent language model proceeds exactly as described in
+Section 9.1.1. The input sequence X = [x1; ...; xt ; ...; xN] consists of a series of words
+1, and the output prediction, y, is a
+each represented as a one-hot vector of size
+vector representing a probability distribution over the vocabulary. At each step, the
+model uses the word embedding matrix E to retrieve the embedding for the current
+word, and then combines it with the hidden layer from the previous step to compute a
+new hidden layer. This hidden layer is then used to generate an output layer which is
+passed through a softmax layer to generate a probability distribution over the entire
+
+V
+|
+
+| ×
+
+192 CHAPTER 9
+
+• RNNS AND LSTMS
+
+Figure 9.5 Simpliﬁed sketch of (a) a feedforward neural language model versus (b) an
+RNN language model moving through a text.
+
+vocabulary. That is, at time t:
+
+et = Ext
+ht = g(Uht
+yt = softmax(Vht )
+
+1 + Wet )
+−
+
+(9.4)
+
+(9.5)
+
+(9.6)
+
+The vector resulting from Vh can be thought of as a set of scores over the vocabulary
+given the evidence provided in h. Passing these scores through the softmax normal-
+izes the scores into a probability distribution. The probability that a particular word
+l in the vocabulary is the next word is represented by yt [k], the kth component of yt :
+
+P(wt+1 = k
+
+w1, . . . , wt ) = yt [k]
+|
+
+(9.7)
+
+The probability of an entire sequence is just the product of the probabilities of each
+item in the sequence, where we’ll use yi[wi] to mean the probability of the true word
+wi at time step i.
+
+P(w1:n) =
+
+=
+
+P(wi|
+
+w1:i
+
+1)
+
+−
+
+yi[wi]
+
+n
+
+(cid:89)i=1
+n
+
+(cid:89)i=1
+
+(9.8)
+
+(9.9)
+
+self-supervision
+
+9.2.2 Training an RNN language model
+
+To train an RNN as a language model, we use the same self-supervision (or self-
+training) algorithm we saw in Section 7.7: we take a corpus of text as training
+material and at each time step t ask the model to predict the next word. We call
+such a model self-supervised because we don’t have to add any special gold labels
+to the data; the natural sequence of words is its own supervision! We simply train
+the model to minimize the error in predicting the true next word in the training
+sequence, using cross-entropy as the loss function. Recall that the cross-entropy
+loss measures the difference between a predicted probability distribution and the
+correct distribution.
+
+LCE =
+
+−
+
+yt [w] log ˆyt [w]
+
+(9.10)
+
+V
+(cid:88)w
+∈
+In the case of language modeling, the correct distribution yt comes from knowing the
+next word. This is represented as a one-hot vector corresponding to the vocabulary
+
+VWytxthtUht-1ytxthtxt-1xt-2U       Wa)b)9.2
+
+• RNNS AS LANGUAGE MODELS
+
+193
+
+Figure 9.6 Training RNNs as language models.
+
+where the entry for the actual next word is 1, and all the other entries are 0. Thus,
+the cross-entropy loss for language modeling is determined by the probability the
+model assigns to the correct next word. So at time t the CE loss is the negative log
+probability the model assigns to the next word in the training sequence.
+
+LCE ( ˆyt , yt ) =
+
+log ˆyt [wt+1]
+
+−
+
+(9.11)
+
+Thus at each word position t of the input, the model takes as input the correct se-
+quence of tokens w1:t , and uses them to compute a probability distribution over
+possible next words so as to compute the model’s loss for the next token wt+1. Then
+we move to the next word, we ignore what the model predicted for the next word
+and instead use the correct sequence of tokens w1:t+1 to estimate the probability of
+token wt+2. This idea that we always give the model the correct history sequence to
+predict the next word (rather than feeding the model its best case from the previous
+time step) is called teacher forcing.
+
+The weights in the network are adjusted to minimize the average CE loss over
+the training sequence via gradient descent. Fig. 9.6 illustrates this training regimen.
+
+9.2.3 Weight Tying
+
+Careful readers may have noticed that the input embedding matrix E and the ﬁnal
+layer matrix V, which feeds the output softmax, are quite similar. The columns of E
+represent the word embeddings for each word in the vocabulary learned during the
+training process with the goal that words that have similar meaning and function will
+have similar embeddings. And, since the length of these embeddings corresponds to
+the size of the hidden layer dh, the shape of the embedding matrix E is dh × |
+V
+The ﬁnal layer matrix V provides a way to score the likelihood of each word in
+the vocabulary given the evidence present in the ﬁnal hidden layer of the network
+through the calculation of Vh. This results in dimensionality
+dh. That is, the
+rows of V provide a second set of learned word embeddings that capture relevant
+aspects of word meaning. This leads to an obvious question – is it even necessary
+to have both? Weight tying is a method that dispenses with this redundancy and
+simply uses a single set of embeddings at the input and softmax layers. That is, we
+
+V
+|
+
+| ×
+
+.
+|
+
+teacher forcing
+
+weight typing
+
+InputEmbeddingsSoftmax overVocabularySolongandthanksforlongandthanksforNext wordall…Loss……RNNhyVhe194 CHAPTER 9
+
+• RNNS AND LSTMS
+
+dispense with V and use E in both the start and end of the computation.
+
+et = Ext
+ht = g(Uht
+1 + Wet )
+−
+yt = softmax(E(cid:124)ht )
+
+(9.12)
+
+(9.13)
+
+(9.14)
+
+In addition to providing improved model perplexity, this approach signiﬁcantly re-
+duces the number of parameters required for the model.
+
+9.3 RNNs for other NLP tasks
+
+Now that we’ve seen the basic RNN architecture, let’s consider how to apply it to
+three types of NLP tasks: sequence classiﬁcation tasks like sentiment analysis and
+topic classiﬁcation, sequence labeling tasks like part-of-speech tagging, and text
+generation tasks, including with a new architecture called the encoder-decoder.
+
+9.3.1 Sequence Labeling
+
+In sequence labeling, the network’s task is to assign a label chosen from a small
+ﬁxed set of labels to each element of a sequence, like the part-of-speech tagging and
+named entity recognition tasks from Chapter 8. In an RNN approach to sequence
+labeling, inputs are word embeddings and the outputs are tag probabilities generated
+by a softmax layer over the given tagset, as illustrated in Fig. 9.7.
+
+Figure 9.7 Part-of-speech tagging as sequence labeling with a simple RNN. Pre-trained
+word embeddings serve as inputs and a softmax layer provides a probability distribution over
+the part-of-speech tags as output at each time step.
+
+In this ﬁgure, the inputs at each time step are pretrained word embeddings cor-
+responding to the input tokens. The RNN block is an abstraction that represents
+an unrolled simple recurrent network consisting of an input layer, hidden layer, and
+output layer at each time step, as well as the shared U, V and W weight matrices
+that comprise the network. The outputs of the network at each time step represent
+the distribution over the POS tagset generated by a softmax layer.
+
+JanetwillbackthebillNNDTVBMDNNPArgmaxEmbeddingsWordsehVhyRNNLayer(s)Softmax overtags9.3
+
+• RNNS FOR OTHER NLP TASKS
+
+195
+
+To generate a sequence of tags for a given input, we run forward inference over
+the input sequence and select the most likely tag from the softmax at each step. Since
+we’re using a softmax layer to generate the probability distribution over the output
+tagset at each time step, we will again employ the cross-entropy loss during training.
+
+9.3.2 RNNs for Sequence Classiﬁcation
+
+Another use of RNNs is to classify entire sequences rather than the tokens within
+them. This is the set of tasks commonly called text classiﬁcation, like sentiment
+analysis or spam detection, in which we classify a text into two or three classes
+(like positive or negative), as well as classiﬁcation tasks with a large number of
+categories, like document-level topic classiﬁcation, or message routing for customer
+service applications.
+
+To apply RNNs in this setting, we pass the text to be classiﬁed through the RNN
+a word at a time generating a new hidden layer at each time step. We can then take
+the hidden layer for the last token of the text, hn, to constitute a compressed repre-
+sentation of the entire sequence. We can pass this representation hn to a feedforward
+network that chooses a class via a softmax over the possible classes. Fig. 9.8 illus-
+trates this approach.
+
+Figure 9.8 Sequence classiﬁcation using a simple RNN combined with a feedforward net-
+work. The ﬁnal hidden state from the RNN is used as the input to a feedforward network that
+performs the classiﬁcation.
+
+Note that in this approach we don’t need intermediate outputs for the words in
+the sequence preceding the last element. Therefore, there are no loss terms associ-
+ated with those elements. Instead, the loss function used to train the weights in the
+network is based entirely on the ﬁnal text classiﬁcation task. The output from the
+softmax output from the feedforward classiﬁer together with a cross-entropy loss
+drives the training. The error signal from the classiﬁcation is backpropagated all the
+way through the weights in the feedforward classiﬁer through, to its input, and then
+through to the three sets of weights in the RNN as described earlier in Section 9.1.2.
+The training regimen that uses the loss from a downstream application to adjust the
+weights all the way through the network is referred to as end-to-end training.
+
+Another option, instead of using just the last token hn to represent the whole
+sequence, is to use some sort of pooling function of all the hidden states hi for each
+word i in the sequence. For example, we can create a representation that pools all
+
+end-to-end
+training
+
+pooling
+
+x1RNNhnx2x3xnSoftmaxFFN196 CHAPTER 9
+
+• RNNS AND LSTMS
+
+the n hidden states by taking their element-wise mean:
+
+hmean =
+
+1
+n
+
+n
+
+hi
+
+(cid:88)i=1
+
+(9.15)
+
+Or we can take the element-wise max; the element-wise max of a set of n vectors is
+a new vector whose kth element is the max of the kth elements of all the n vectors.
+
+9.3.3 Generation with RNN-Based Language Models
+
+RNN-based language models can also be used to generate text. Text generation is
+of enormous practical importance, part of tasks like question answering, machine
+translation, text summarization, grammar correction, story generation, and conver-
+sational dialogue; any task where a system needs to produce text, conditioned on
+some other text. This use of a language model to generate text is one of the areas
+in which the impact of neural language models on NLP has been the largest. Text
+generation, along with image generation and code generation, constitute a new area
+of AI that is often called generative AI.
+
+Recall back in Chapter 3 we saw how to generate text from an n-gram language
+model by adapting a sampling technique suggested at about the same time by Claude
+Shannon (Shannon, 1951) and the psychologists George Miller and Jennifer Self-
+ridge (Miller and Selfridge, 1950). We ﬁrst randomly sample a word to begin a
+sequence based on its suitability as the start of a sequence. We then continue to
+sample words conditioned on our previous choices until we reach a pre-determined
+length, or an end of sequence token is generated.
+
+Today, this approach of using a language model to incrementally generate words
+by repeatedly sampling the next word conditioned on our previous choices is called
+autoregressive generation or causal LM generation. The procedure is basically
+the same as that described on page 42, but adapted to a neural context:
+
+• Sample a word in the output from the softmax distribution that results from
+
+using the beginning of sentence marker, <s>, as the ﬁrst input.
+
+• Use the word embedding for that ﬁrst word as the input to the network at the
+
+next time step, and then sample the next word in the same fashion.
+
+• Continue generating until the end of sentence marker, </s>, is sampled or a
+
+ﬁxed length limit is reached.
+
+autoregressive
+generation
+
+−
+
+−
+
+1, t
+
+Technically an autoregressive model is a model that predicts a value at time t based
+on a linear function of the previous values at times t
+2, and so on. Although
+language models are not linear (since they have many layers of non-linearities), we
+loosely refer to this generation technique as autoregressive generation since the
+word generated at each time step is conditioned on the word selected by the network
+from the previous step. Fig. 9.9 illustrates this approach. In this ﬁgure, the details of
+the RNN’s hidden layers and recurrent connections are hidden within the blue block.
+This simple architecture underlies state-of-the-art approaches to applications
+such as machine translation, summarization, and question answering. The key to
+these approaches is to prime the generation component with an appropriate context.
+That is, instead of simply using <s> to get things started we can provide a richer
+task-appropriate context; for translation the context is the sentence in the source
+language; for summarization it’s the long text we want to summarize.
+
+9.4
+
+• STACKED AND BIDIRECTIONAL RNN ARCHITECTURES
+
+197
+
+Figure 9.9 Autoregressive generation with an RNN-based neural language model.
+
+9.4 Stacked and Bidirectional RNN architectures
+
+Recurrent networks are quite ﬂexible. By combining the feedforward nature of un-
+rolled computational graphs with vectors as common inputs and outputs, complex
+networks can be treated as modules that can be combined in creative ways. This
+section introduces two of the more common network architectures used 

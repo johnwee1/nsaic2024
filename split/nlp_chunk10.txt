@@ -1,0 +1,419 @@
+aking a single sequence that is long enough instead of
+summing over all possible sequences.
+
+What makes the cross-entropy useful is that the cross-entropy H(p, m) is an up-
+
+per bound on the entropy H(p). For any model m:
+
+H(p)
+
+≤
+
+H(p, m)
+
+(3.51)
+
+This means that we can use some simpliﬁed model m to help estimate the true en-
+tropy of a sequence of symbols drawn according to probability p. The more accurate
+m is, the closer the cross-entropy H(p, m) will be to the true entropy H(p). Thus,
+the difference between H(p, m) and H(p) is a measure of how accurate a model is.
+Between two models m1 and m2, the more accurate model will be the one with the
+lower cross-entropy. (The cross-entropy can never be lower than the true entropy, so
+a model cannot err by underestimating the true entropy.)
+
+We are ﬁnally ready to see the relation between perplexity and cross-entropy
+as we saw it in Eq. 3.50. Cross-entropy is deﬁned in the limit as the length of the
+observed word sequence goes to inﬁnity. We will need an approximation to cross-
+entropy, relying on a (sufﬁciently long) sequence of ﬁxed length. This approxima-
+1) on a sequence of words
+tion to the cross-entropy of a model M = P(wi|
+W is
+
+N+1 : i
+
+wi
+
+−
+
+−
+
+H(W ) =
+
+1
+N
+
+−
+
+log P(w1w2 . . . wN)
+
+(3.52)
+
+perplexity
+
+The perplexity of a model P on a sequence of words W is now formally deﬁned as
+2 raised to the power of this cross-entropy:
+
+3.10
+
+• SUMMARY
+
+57
+
+Perplexity(W ) = 2H(W )
+
+= P(w1w2 . . . wN)−
+
+1
+N
+
+= N
+(cid:115)
+
+1
+P(w1w2 . . . wN)
+
+N
+
+= N
+(cid:118)
+(cid:117)
+(cid:117)
+(cid:116)
+
+(cid:89)i=1
+
+3.10 Summary
+
+1
+w1 . . . wi
+
+1)
+
+−
+
+P(wi|
+
+(3.53)
+
+This chapter introduced language modeling and the n-gram, one of the most widely
+used tools in language processing.
+
+• Language models offer a way to assign a probability to a sentence or other
+
+sequence of words, and to predict a word from preceding words.
+
+• n-grams are Markov models that estimate words from a ﬁxed window of pre-
+vious words. n-gram probabilities can be estimated by counting in a corpus
+and normalizing (the maximum likelihood estimate).
+
+• n-gram language models are evaluated extrinsically in some task, or intrinsi-
+
+cally using perplexity.
+
+• The perplexity of a test set according to a language model is the geometric
+
+mean of the inverse test set probability computed by the model.
+
+• Smoothing algorithms provide a more sophisticated way to estimate the prob-
+ability of n-grams. Commonly used smoothing algorithms for n-grams rely on
+lower-order n-gram counts through backoff or interpolation.
+
+• Both backoff and interpolation require discounting to create a probability dis-
+
+tribution.
+
+• Kneser-Ney smoothing makes use of the probability of a word being a novel
+continuation. The interpolated Kneser-Ney smoothing algorithm mixes a
+discounted probability with a lower-order continuation probability.
+
+Bibliographical and Historical Notes
+
+The underlying mathematics of the n-gram was ﬁrst proposed by Markov (1913),
+who used what are now called Markov chains (bigrams and trigrams) to predict
+whether an upcoming letter in Pushkin’s Eugene Onegin would be a vowel or a con-
+sonant. Markov classiﬁed 20,000 letters as V or C and computed the bigram and
+trigram probability that a given letter would be a vowel given the previous one or
+two letters. Shannon (1948) applied n-grams to compute approximations to English
+word sequences. Based on Shannon’s work, Markov models were commonly used in
+engineering, linguistic, and psychological work on modeling word sequences by the
+1950s. In a series of extremely inﬂuential papers starting with Chomsky (1956) and
+including Chomsky (1957) and Miller and Chomsky (1963), Noam Chomsky argued
+that “ﬁnite-state Markov processes”, while a possibly useful engineering heuristic,
+
+58 CHAPTER 3
+
+• N-GRAM LANGUAGE MODELS
+
+were incapable of being a complete cognitive model of human grammatical knowl-
+edge. These arguments led many linguists and computational linguists to ignore
+work in statistical modeling for decades.
+
+The resurgence of n-gram models came from Fred Jelinek and colleagues at the
+IBM Thomas J. Watson Research Center, who were inﬂuenced by Shannon, and
+James Baker at CMU, who was inﬂuenced by the prior, classiﬁed work of Leonard
+Baum and colleagues on these topics at labs like IDA. Independently these two labs
+successfully used n-grams in their speech recognition systems at the same time
+(Baker 1975b, Jelinek et al. 1975, Baker 1975a, Bahl et al. 1983, Jelinek 1990).
+The terms “language model” and “perplexity” were ﬁrst used for this technology by
+the IBM group. Jelinek and his colleagues used the term language model in pretty
+modern way, to mean the entire set of linguistic inﬂuences on word sequence prob-
+abilities, including grammar, semantics, discourse, and even speaker characteristics,
+rather than just the particular n-gram model itself.
+
+Add-one smoothing derives from Laplace’s 1812 law of succession and was ﬁrst
+applied as an engineering solution to the zero frequency problem by Jeffreys (1948)
+based on an earlier Add-K suggestion by Johnson (1932). Problems with the add-
+one algorithm are summarized in Gale and Church (1994).
+
+A wide variety of different language modeling and smoothing techniques were
+proposed in the 80s and 90s, including Good-Turing discounting—ﬁrst applied to the
+n-gram smoothing at IBM by Katz (N´adas 1984, Church and Gale 1991)— Witten-
+Bell discounting (Witten and Bell, 1991), and varieties of class-based n-gram mod-
+els that used information about word classes. Starting in the late 1990s, Chen and
+Goodman performed a number of carefully controlled experiments comparing differ-
+ent discounting algorithms, cache models, class-based models, and other language
+model parameters (Chen and Goodman 1999, Goodman 2006, inter alia). They
+showed the advantages of Modiﬁed Interpolated Kneser-Ney, which became the
+standard baseline for n-gram language modeling, especially because they showed
+that caches and class-based models provided only minor additional improvement.
+SRILM (Stolcke, 2002) and KenLM (Heaﬁeld 2011, Heaﬁeld et al. 2013) are pub-
+licly available toolkits for building n-gram language models.
+
+Modern language modeling is more commonly done with neural network lan-
+guage models, which solve the major problems with n-grams: the number of param-
+eters increases exponentially as the n-gram order increases, and n-grams have no
+way to generalize from training to test set. Neural language models instead project
+words into a continuous space in which words with similar contexts have similar
+representations. We’ll introduce feedforward language models (Bengio et al. 2006,
+Schwenk 2007) in Chapter 7, recurrent language models (Mikolov, 2012) in Chap-
+ter 9, and transformer-based large language models in Chapter 10.
+
+class-based
+n-gram
+
+Exercises
+
+3.1 Write out the equation for trigram probability estimation (modifying Eq. 3.11).
+Now write out all the non-zero trigram probabilities for the I am Sam corpus
+on page 35.
+
+3.2 Calculate the probability of the sentence i want chinese food. Give two
+probabilities, one using Fig. 3.2 and the ‘useful probabilities’ just below it on
+page 37, and another using the add-1 smoothed table in Fig. 3.7. Assume the
+additional add-1 smoothed probabilities P(i|<s>) = 0.19 and P(</s>|food) =
+0.40.
+
+EXERCISES
+
+59
+
+3.3 Which of the two probabilities you computed in the previous exercise is higher,
+
+unsmoothed or smoothed? Explain why.
+
+3.4 We are given the following corpus, modiﬁed from the one in the chapter:
+
+<s> I am Sam </s>
+<s> Sam I am </s>
+<s> I am Sam </s>
+<s> I do not like green eggs and Sam </s>
+
+Using a bigram language model with add-one smoothing, what is P(Sam
+am)? Include <s> and </s> in your counts just like any other token.
+Suppose we didn’t use the end-symbol </s>. Train an unsmoothed bigram
+grammar on the following training corpus without using the end-symbol </s>:
+
+|
+
+3.5
+
+<s> a b
+<s> b b
+<s> b a
+<s> a a
+
+Demonstrate that your bigram model does not assign a single probability dis-
+tribution across all sentence lengths by showing that the sum of the probability
+of the four possible 2 word sentences over the alphabet
+is 1.0, and the
+sum of the probability of all possible 3 word sentences over the alphabet
+is also 1.0.
+
+a,b
+}
+{
+
+a,b
+}
+
+{
+
+3.6
+
+Suppose we train a trigram language model with add-one smoothing on a
+given corpus. The corpus contains V word types. Express a formula for esti-
+mating P(w3
+w1,w2), where w3 is a word which follows the bigram (w1,w2),
+|
+in terms of various n-gram counts and V. Use the notation c(w1,w2,w3) to
+denote the number of times that trigram (w1,w2,w3) occurs in the corpus, and
+so on for bigrams and unigrams.
+
+3.7 We are given the following corpus, modiﬁed from the one in the chapter:
+
+<s> I am Sam </s>
+<s> Sam I am </s>
+<s> I am Sam </s>
+<s> I do not like green eggs and Sam </s>
+
+If we use linear interpolation smoothing between a maximum-likelihood bi-
+gram model and a maximum-likelihood unigram model with λ1 = 1
+2 and λ2 =
+1
+am)? Include <s> and </s> in your counts just like any
+2 , what is P(Sam
+|
+other token.
+
+3.8 Write a program to compute unsmoothed unigrams and bigrams.
+
+3.9 Run your n-gram program on two different small corpora of your choice (you
+might use email text or newsgroups). Now compare the statistics of the two
+corpora. What are the differences in the most common unigrams between the
+two? How about interesting differences in bigrams?
+
+3.10 Add an option to your program to generate random sentences.
+
+3.11 Add an option to your program to compute the perplexity of a test set.
+
+3.12 You are given a training set of 100 numbers that consists of 91 zeros and 1
+each of the other digits 1-9. Now we see the following test set: 0 0 0 0 0 3 0 0
+0 0. What is the unigram perplexity?
+
+60 CHAPTER 4
+
+• NAIVE BAYES, TEXT CLASSIFICATION, AND SENTIMENT
+
+CHAPTER
+
+4 Naive Bayes, Text Classiﬁca-
+
+tion, and Sentiment
+
+Classiﬁcation lies at the heart of both human and machine intelligence. Deciding
+what letter, word, or image has been presented to our senses, recognizing faces
+or voices, sorting mail, assigning grades to homeworks; these are all examples of
+assigning a category to an input. The potential challenges of this task are highlighted
+by the fabulist Jorge Luis Borges (1964), who imagined classifying animals into:
+
+(a) those that belong to the Emperor, (b) embalmed ones, (c) those that
+are trained, (d) suckling pigs, (e) mermaids, (f) fabulous ones, (g) stray
+dogs, (h) those that are included in this classiﬁcation, (i) those that
+tremble as if they were mad, (j) innumerable ones, (k) those drawn with
+a very ﬁne camel’s hair brush, (l) others, (m) those that have just broken
+a ﬂower vase, (n) those that resemble ﬂies from a distance.
+
+Many language processing tasks involve classiﬁcation, although luckily our classes
+
+are much easier to deﬁne than those of Borges. In this chapter we introduce the naive
+Bayes algorithm and apply it to text categorization, the task of assigning a label or
+category to an entire text or document.
+
+We focus on one common text categorization task, sentiment analysis, the ex-
+traction of sentiment, the positive or negative orientation that a writer expresses
+toward some object. A review of a movie, book, or product on the web expresses the
+author’s sentiment toward the product, while an editorial or political text expresses
+sentiment toward a candidate or political action. Extracting consumer or public sen-
+timent is thus relevant for ﬁelds from marketing to politics.
+
+The simplest version of sentiment analysis is a binary classiﬁcation task, and
+the words of the review provide excellent cues. Consider, for example, the follow-
+ing phrases extracted from positive and negative reviews of movies and restaurants.
+Words like great, richly, awesome, and pathetic, and awful and ridiculously are very
+informative cues:
+
++ ...zany characters and richly applied satire, and some great plot twists
+
+It was pathetic. The worst part about it was the boxing scenes...
+
+−
++ ...awesome caramel sauce and sweet toasty almonds. I love this place!
+
+...awful pizza and ridiculously overpriced...
+
+−
+
+Spam detection is another important commercial application, the binary clas-
+siﬁcation task of assigning an email to one of the two classes spam or not-spam.
+Many lexical and other features can be used to perform this classiﬁcation. For ex-
+ample you might quite reasonably be suspicious of an email containing phrases like
+“online pharmaceutical” or “WITHOUT ANY COST” or “Dear Winner”.
+
+text
+categorization
+
+sentiment
+analysis
+
+spam detection
+
+language id
+
+authorship
+attribution
+
+Another thing we might want to know about a text is the language it’s written
+in. Texts on social media, for example, can be in any number of languages and
+we’ll need to apply different processing. The task of language id is thus the ﬁrst
+step in most language processing pipelines. Related text classiﬁcation tasks like au-
+thorship attribution— determining a text’s author— are also relevant to the digital
+humanities, social sciences, and forensic linguistics.
+
+4.1
+
+• NAIVE BAYES CLASSIFIERS
+
+61
+
+Finally, one of the oldest tasks in text classiﬁcation is assigning a library sub-
+ject category or topic label to a text. Deciding whether a research paper concerns
+epidemiology or instead, perhaps, embryology, is an important component of infor-
+mation retrieval. Various sets of subject categories exist, such as the MeSH (Medical
+Subject Headings) thesaurus. In fact, as we will see, subject category classiﬁcation
+is the task for which the naive Bayes algorithm was invented in 1961 Maron (1961).
+Classiﬁcation is essential for tasks below the level of the document as well.
+We’ve already seen period disambiguation (deciding if a period is the end of a sen-
+tence or part of a word), and word tokenization (deciding if a character should be
+a word boundary). Even language modeling can be viewed as classiﬁcation: each
+word can be thought of as a class, and so predicting the next word is classifying the
+context-so-far into a class for each next word. A part-of-speech tagger (Chapter 8)
+classiﬁes each occurrence of a word in a sentence as, e.g., a noun or a verb.
+
+The goal of classiﬁcation is to take a single observation, extract some useful
+features, and thereby classify the observation into one of a set of discrete classes.
+One method for classifying text is to use rules handwritten by humans. Handwrit-
+ten rule-based classiﬁers can be components of state-of-the-art systems in language
+processing. But rules can be fragile, as situations or data change over time, and for
+some tasks humans aren’t necessarily good at coming up with the rules.
+
+The most common way of doing text classiﬁcation in language processing is
+instead via supervised machine learning, the subject of this chapter. In supervised
+learning, we have a data set of input observations, each associated with some correct
+output (a ‘supervision signal’). The goal of the algorithm is to learn how to map
+from a new observation to a correct output.
+
+supervised
+machine
+learning
+
+y1, y2, ..., yM}
+{
+
+and return a predicted class y
+
+Formally, the task of supervised classiﬁcation is to take an input x and a ﬁxed
+set of output classes Y =
+Y . For
+text classiﬁcation, we’ll sometimes talk about c (for “class”) instead of y as our
+output variable, and d (for “document”) instead of x as our input variable. In the
+supervised situation we have a training set of N documents

@@ -1,0 +1,529 @@
+ce algorithm for comparing
+strings. Here’s a summary of the main points we covered about these ideas:
+
+• The regular expression language is a powerful tool for pattern-matching.
+• Basic operations in regular expressions include concatenation of symbols,
+disjunction of symbols ([], |, and .), counters (*, +, and {n,m}), anchors
+
+30 CHAPTER 2
+
+• REGULAR EXPRESSIONS, TEXT NORMALIZATION, EDIT DISTANCE
+
+(ˆ, $) and precedence operators ((,)).
+
+• Word tokenization and normalization are generally done by cascades of
+
+simple regular expression substitutions or ﬁnite automata.
+
+• The Porter algorithm is a simple and efﬁcient way to do stemming, stripping
+off afﬁxes. It does not have high accuracy but may be useful for some tasks.
+
+• The minimum edit distance between two strings is the minimum number of
+operations it takes to edit one into the other. Minimum edit distance can be
+computed by dynamic programming, which also results in an alignment of
+the two strings.
+
+Bibliographical and Historical Notes
+
+Kleene 1951; 1956 ﬁrst deﬁned regular expressions and the ﬁnite automaton, based
+on the McCulloch-Pitts neuron. Ken Thompson was one of the ﬁrst to build regular
+expressions compilers into editors for text searching (Thompson, 1968). His edi-
+tor ed included a command “g/regular expression/p”, or Global Regular Expression
+Print, which later became the Unix grep utility.
+
+Text normalization algorithms have been applied since the beginning of the
+ﬁeld. One of the earliest widely used stemmers was Lovins (1968). Stemming
+was also applied early to the digital humanities, by Packard (1973), who built an
+afﬁx-stripping morphological parser for Ancient Greek. Currently a wide vari-
+ety of code for tokenization and normalization is available, such as the Stanford
+Tokenizer (https://nlp.stanford.edu/software/tokenizer.shtml) or spe-
+cialized tokenizers for Twitter (O’Connor et al., 2010), or for sentiment (http:
+//sentiment.christopherpotts.net/tokenizing.html). See Palmer (2012)
+for a survey of text preprocessing. NLTK is an essential tool that offers both useful
+Python libraries (https://www.nltk.org) and textbook descriptions (Bird et al.,
+2009) of many algorithms including text normalization and corpus interfaces.
+
+For more on Herdan’s law and Heaps’ Law, see Herdan (1960, p. 28), Heaps
+(1978), Egghe (2007) and Baayen (2001); Yasseri et al. (2012) discuss the relation-
+ship with other measures of linguistic complexity. For more on edit distance, see the
+excellent Gusﬁeld (1997). Our example measuring the edit distance from ‘intention’
+to ‘execution’ was adapted from Kruskal (1983). There are various publicly avail-
+able packages to compute edit distance, including Unix diff and the NIST sclite
+program (NIST, 2005).
+
+In his autobiography Bellman (1984) explains how he originally came up with
+
+the term dynamic programming:
+
+I decided therefore to use the word, “programming”.
+
+“...The 1950s were not good years for mathematical research. [the]
+Secretary of Defense ...had a pathological fear and hatred of the word,
+I
+research...
+wanted to get across the idea that this was dynamic, this was multi-
+stage... I thought, let’s ...
+take a word that has an absolutely precise
+meaning, namely dynamic... it’s impossible to use the word, dynamic,
+in a pejorative sense. Try thinking of some combination that will pos-
+sibly give it a pejorative meaning.
+It’s impossible. Thus, I thought
+dynamic programming was a good name. It was something not even a
+Congressman could object to.”
+
+Exercises
+
+EXERCISES
+
+31
+
+2.1 Write regular expressions for the following languages.
+
+1. the set of all alphabetic strings;
+2. the set of all lower case alphabetic strings ending in a b;
+3. the set of all strings from the alphabet a, b such that each a is immedi-
+
+ately preceded by and immediately followed by a b;
+
+2.2 Write regular expressions for the following languages. By “word”, we mean
+an alphabetic string separated from other words by whitespace, any relevant
+punctuation, line breaks, and so forth.
+
+1. the set of all strings with two consecutive repeated words (e.g., “Hum-
+
+bert Humbert” and “the the” but not “the bug” or “the big bug”);
+
+2. all strings that start at the beginning of the line with an integer and that
+
+end at the end of the line with a word;
+
+3. all strings that have both the word grotto and the word raven in them
+(but not, e.g., words like grottos that merely contain the word grotto);
+4. write a pattern that places the ﬁrst word of an English sentence in a
+
+register. Deal with punctuation.
+
+2.3
+
+Implement an ELIZA-like program, using substitutions such as those described
+on page 13. You might want to choose a different domain than a Rogerian psy-
+chologist, although keep in mind that you would need a domain in which your
+program can legitimately engage in a lot of simple repetition.
+
+2.4 Compute the edit distance (using insertion cost 1, deletion cost 1, substitution
+
+cost 1) of “leda” to “deal”. Show your work (using the edit distance grid).
+
+2.5
+
+Figure out whether drive is closer to brief or to divers and what the edit dis-
+tance is to each. You may use any version of distance that you like.
+
+2.6 Now implement a minimum edit distance algorithm and use your hand-computed
+
+results to check your code.
+
+2.7 Augment the minimum edit distance algorithm to output an alignment; you
+
+will need to store pointers and add a stage to compute the backtrace.
+
+32 CHAPTER 3
+
+• N-GRAM LANGUAGE MODELS
+
+CHAPTER
+
+3 N-gram Language Models
+
+“You are uniformly charming!” cried he, with a smile of associating and now
+and then I bowed and they perceived a chaise and four to wish for.
+
+Random sentence generated from a Jane Austen trigram model
+
+Predicting is difﬁcult—especially about the future, as the old quip goes. But how
+about predicting something that seems much easier, like the next few words someone
+is going to say? What word, for example, is likely to follow
+
+Please turn your homework ...
+
+Hopefully, most of you concluded that a very likely word is in, or possibly over,
+but probably not refrigerator or the. In this chapter we formalize this intuition by
+introducing models that assign a probability to each possible next word.
+
+Models that assign probabilities to upcoming words, or sequences of words
+in general, are called language models or LMs. Why would we want to predict
+upcoming words? It turns out that the large language models that revolutionized
+modern NLP are trained just by predicting words!! As we’ll see in chapters 7-10,
+large language models learn an enormous amount about language solely from being
+trained to predict upcoming words from neighboring words.
+
+Language models can also assign a probability to an entire sentence. For exam-
+ple, they can predict that the following sequence has a much higher probability of
+appearing in a text:
+
+all of a sudden I notice three guys standing on the sidewalk
+
+than does this same set of words in a different order:
+
+on guys all I of notice sidewalk three a sudden standing the
+
+Why does it matter what the probability of a sentence is or how probable the
+next word is? In many NLP applications we can use the probability as a way to
+choose a better sentence or word over a less-appropriate one. For example we can
+correct grammar or spelling errors like Their are two midterms, in which There was
+mistyped as Their, or Everything has improve, in which improve should have been
+improved. The phrase There are will be much more probable than Their are, and has
+improved than has improve, allowing a language model to help users select the more
+grammatical variant. Or for a speech recognizer to realize that you said I will be back
+soonish and not I will be bassoon dish, it helps to know that back soonish is a much
+more probable sequence. Language models can also help in augmentative and
+alternative communication systems (Trnka et al. 2007, Kane et al. 2017). People
+often use such AAC devices if they are physically unable to speak or sign but can
+instead use eye gaze or other speciﬁc movements to select words from a menu. Word
+prediction can be used to suggest likely words for the menu.
+
+language model
+
+LM
+
+AAC
+
+3.1
+
+• N-GRAMS
+
+33
+
+n-gram
+
+In this chapter we introduce the simplest kind of language model: the n-gram
+language model. An n-gram is a sequence of n words: a 2-gram (which we’ll
+call bigram) is a two-word sequence of words like “please turn”, “turn your”, or
+”your homework”, and a 3-gram (a trigram) is a three-word sequence of words like
+“please turn your”, or “turn your homework”. But we also (in a bit of terminological
+ambiguity) use the word ‘n-gram’ to mean a probabilistic model that can estimate
+the probability of a word given the n-1 previous words, and thereby also to assign
+probabilities to entire sequences.
+
+In later chapters we will introduce the much more powerful neural large lan-
+guage models, based on the transformer architecture of Chapter 10. But because n-
+grams have a remarkably simple and clear formalization, we begin our study of lan-
+guage modeling with them, introducing major concepts that will play a role through-
+out language modeling, concepts like training and test sets, perplexity, sampling,
+and interpolation.
+
+3.1 N-Grams
+
+Let’s begin with the task of computing P(w
+h), the probability of a word w given
+|
+some history h. Suppose the history h is “its water is so transparent that” and we
+want to know the probability that the next word is the:
+
+its water is so transparent that).
+P(the
+|
+
+(3.1)
+
+One way to estimate this probability is from relative frequency counts: take a
+very large corpus, count the number of times we see its water is so transparent that,
+and count the number of times this is followed by the. This would be answering the
+question “Out of the times we saw the history h, how many times was it followed by
+the word w”, as follows:
+
+its water is so transparent that) =
+P(the
+|
+C(its water is so transparent that the)
+C(its water is so transparent that)
+
+(3.2)
+
+With a large enough corpus, such as the web, we can compute these counts and
+estimate the probability from Eq. 3.2. You should pause now, go to the web, and
+compute this estimate for yourself.
+
+While this method of estimating probabilities directly from counts works ﬁne in
+many cases, it turns out that even the web isn’t big enough to give us good estimates
+in most cases. This is because language is creative; new sentences are created all the
+time, and we won’t always be able to count entire sentences. Even simple extensions
+of the example sentence may have counts of zero on the web (such as “Walden
+Pond’s water is so transparent that the”; well, used to have counts of zero).
+
+Similarly, if we wanted to know the joint probability of an entire sequence of
+words like its water is so transparent, we could do it by asking “out of all possible
+sequences of ﬁve words, how many of them are its water is so transparent?” We
+would have to get the count of its water is so transparent and divide by the sum of
+the counts of all possible ﬁve word sequences. That seems rather a lot to estimate!
+
+For this reason, we’ll need to introduce more clever ways of estimating the prob-
+ability of a word w given a history h, or the probability of an entire word sequence
+W . Let’s start with a little formalizing of notation. To represent the probability of a
+
+34 CHAPTER 3
+
+• N-GRAM LANGUAGE MODELS
+
+particular random variable Xi taking on the value “the”, or P(Xi = “the”), we will use
+the simpliﬁcation P(the). We’ll represent a sequence of n words either as w1 . . . wn
+or w1:n. Thus the expression w1:n
+1, but we’ll also
+be using the equivalent notation w<n, which can be read as “all the elements of w
+from w1 up to and including wn
+1. For the joint probability of each word in a se-
+quence having a particular value P(X1 = w1, X2 = w2, X3 = w3, ..., Xn = wn) we’ll
+use P(w1, w2, ..., wn).
+
+1 means the string w1, w2, ..., wn
+
+−
+
+−
+
+−
+
+Now, how can we compute probabilities of entire sequences like P(w1, w2, ..., wn)?
+One thing we can do is decompose this probability using the chain rule of proba-
+bility:
+
+P(X1...Xn) = P(X1)P(X2|
+=
+X1:k
+
+X1)P(X3|
+1)
+
+n
+
+P(Xk|
+
+−
+
+(cid:89)k=1
+
+X1:2) . . . P(Xn|
+
+X1:n
+
+1)
+
+−
+
+Applying the chain rule to words, we get
+
+P(w1:n) = P(w1)P(w2|
+w1:k
+
+w1)P(w3|
+1)
+
+=
+
+n
+
+P(wk|
+
+−
+
+(cid:89)k=1
+
+w1:2) . . . P(wn|
+
+w1:n
+
+1)
+
+−
+
+(3.3)
+
+(3.4)
+
+The chain rule shows the link between computing the joint probability of a sequence
+and computing the conditional probability of a word given previous words. Equa-
+tion 3.4 suggests that we could estimate the joint probability of an entire sequence of
+words by multiplying together a number of conditional probabilities. But using the
+chain rule doesn’t really seem to help us! We don’t know any way to compute the
+1).
+exact probability of a word given a long sequence of preceding words, P(wn|
+As we said above, we can’t just estimate by counting the number of times every word
+occurs following every long string, because language is creative and any particular
+context might have never occurred before!
+
+w1:n
+
+−
+
+The intuition of the n-gram model is that instead of computing the probability of
+a word given its entire history, we can approximate the history by just the last few
+words.
+
+The bigram model, for example, approximates the probability of a word given
+1) by using only the conditional probability of the
+
+w1:n
+
+−
+
+1). In other words, instead of computing the probability
+
+all the previous words P(wn|
+preceding word P(wn|
+P(the
+
+wn
+
+−
+
+Walden Pond’s water is so transparent that)
+|
+
+bigram
+
+we approximate it with the probability
+
+that)
+P(the
+|
+
+When we use a bigram model to predict the conditional probability of the next word,
+we are thus making the following approximation:
+
+P(wn|
+
+w1:n
+
+1)
+
+−
+
+≈
+
+P(wn|
+
+wn
+
+−
+
+1)
+
+(3.7)
+
+Markov
+
+The assumption that the probability of a word depends only on the previous word is
+called a Markov assumption. Markov models are the class of probabilistic models
+that assume we can predict the probability of some future unit without looking too
+
+(3.5)
+
+(3.6)
+
+3.1
+
+• N-GRAMS
+
+35
+
+n-gram
+
+−
+
+far into the past. We can generalize the bigram (which looks one word into the past)
+to the trigram (which looks two words into the past) and thus to the n-gram (which
+looks n
+
+1 words into the past).
+
+Let’s see a general equation for this n-gram approximation to the conditional
+probability of the next word in a sequence. We’ll use N here to mean the n-gram
+size, so N = 2 means bigrams and N = 3 means trigrams. Then we approximate the
+probability of a word given its entire context as follows:
+
+P(wn|
+Given the bigram assumption for the probability of an individual word, we can com-
+pute the probability of a complete word sequence by substituting Eq. 3.7 into Eq. 3.4:
+
+P(wn|
+
+w1:n
+
+N+1:n
+
+(3.8)
+
+wn
+
+1)
+
+1)
+
+≈
+
+−
+
+−
+
+−
+
+P(w1:n)
+
+n
+
+≈
+
+(cid:89)k=1
+
+P(wk|
+
+wk
+
+1)
+
+−
+
+(3.9)
+
+maximum
+likelihood
+estimation
+
+normalize
+
+How do we estimate these bigram or n-gram probabilities? An intuitive way to
+estimate probabilities is called maximum likelihood estimation or MLE. We get
+the MLE estimate for the parameters of an n-gram model by getting counts from a
+corpus, and normalizing the counts so that they lie between 0 and 1.1
+
+For example, to compute a particular bigram probability of a word wn given a
+1wn) and normal-
+1:
+
+1, we’ll compute the count of the bigram C(wn
+previous word wn
+−
+ize by the sum of all the bigrams that share the same ﬁrst word wn
+
+−
+
+−
+
+P(wn|
+
+wn
+
+−
+
+1) =
+
+1wn)
+
+C(wn
+−
+w C(wn
+−
+
+1w)
+
+(3.1

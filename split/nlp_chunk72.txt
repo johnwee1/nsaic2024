@@ -1,0 +1,492 @@
+
+(cid:88)
+∈
+Graph-based algorithms have to solve two problems: (1) assigning a score to
+each edge, and (2) ﬁnding the best parse tree given the scores of all potential edges.
+In the next few sections we’ll introduce solutions to these two problems, beginning
+with the second problem of ﬁnding trees, and then giving a feature-based and a
+neural algorithm for solving the ﬁrst problem of assigning scores.
+
+18.3.1 Parsing via ﬁnding the maximum spanning tree
+
+In graph-based parsing, given a sentence S we start by creating a graph G which is a
+fully-connected, weighted, directed graph where the vertices are the input words and
+the directed edges represent all possible head-dependent assignments. We’ll include
+an additional ROOT node with outgoing edges directed at all of the other vertices.
+The weights of each edge in G reﬂect the score for each possible head-dependent
+relation assigned by some scoring algorithm.
+
+It turns out that ﬁnding the best dependency parse for S is equivalent to ﬁnding
+the maximum spanning tree over G. A spanning tree over a graph G is a subset
+of G that is a tree and covers all the vertices in G; a spanning tree over G that starts
+from the ROOT is a valid parse of S. A maximum spanning tree is the spanning tree
+with the highest score. Thus a maximum spanning tree of G emanating from the
+ROOT is the optimal dependency parse for the sentence.
+
+A directed graph for the example Book that ﬂight is shown in Fig. 18.11, with the
+maximum spanning tree corresponding to the desired parse shown in blue. For ease
+of exposition, we’ll describe here the algorithm for unlabeled dependency parsing.
+
+maximum
+spanning tree
+
+Figure 18.11
+
+Initial rooted, directed graph for Book that ﬂight.
+
+Before describing the algorithm it’s useful to consider two intuitions about di-
+rected graphs and their spanning trees. The ﬁrst intuition begins with the fact that
+every vertex in a spanning tree has exactly one incoming edge. It follows from this
+that every connected component of a spanning tree (i.e., every set of vertices that
+are linked to each other by paths over edges) will also have one incoming edge.
+The second intuition is that the absolute values of the edge scores are not critical
+to determining its maximum spanning tree. Instead, it is the relative weights of the
+edges entering each vertex that matters. If we were to subtract a constant amount
+from each edge entering a given vertex it would have no impact on the choice of
+
+rootBookthatﬂight124456875718.3
+
+• GRAPH-BASED DEPENDENCY PARSING
+
+407
+
+the maximum spanning tree since every possible spanning tree would decrease by
+exactly the same amount.
+
+The ﬁrst step of the algorithm itself is quite straightforward. For each vertex
+in the graph, an incoming edge (representing a possible head assignment) with the
+highest score is chosen. If the resulting set of edges produces a spanning tree then
+we’re done. More formally, given the original fully-connected graph G = (V, E), a
+subgraph T = (V, F) is a spanning tree if it has no cycles and each vertex (other than
+the root) has exactly one edge entering it. If the greedy selection process produces
+such a tree then it is the best possible one.
+
+Unfortunately, this approach doesn’t always lead to a tree since the set of edges
+selected may contain cycles. Fortunately, in yet another case of multiple discovery,
+there is a straightforward way to eliminate cycles generated during the greedy se-
+lection phase. Chu and Liu (1965) and Edmonds (1967) independently developed
+an approach that begins with greedy selection and follows with an elegant recursive
+cleanup phase that eliminates cycles.
+
+The cleanup phase begins by adjusting all the weights in the graph by subtracting
+the score of the maximum edge entering each vertex from the score of all the edges
+entering that vertex. This is where the intuitions mentioned earlier come into play.
+We have scaled the values of the edges so that the weights of the edges in the cycle
+have no bearing on the weight of any of the possible spanning trees. Subtracting the
+value of the edge with maximum weight from each edge entering a vertex results
+in a weight of zero for all of the edges selected during the greedy selection phase,
+including all of the edges involved in the cycle.
+
+Having adjusted the weights, the algorithm creates a new graph by selecting a
+cycle and collapsing it into a single new node. Edges that enter or leave the cycle
+are altered so that they now enter or leave the newly collapsed node. Edges that do
+not touch the cycle are included and edges within the cycle are dropped.
+
+Now, if we knew the maximum spanning tree of this new graph, we would have
+what we need to eliminate the cycle. The edge of the maximum spanning tree di-
+rected towards the vertex representing the collapsed cycle tells us which edge to
+delete in order to eliminate the cycle. How do we ﬁnd the maximum spanning tree
+of this new graph? We recursively apply the algorithm to the new graph. This will
+either result in a spanning tree or a graph with a cycle. The recursions can continue
+as long as cycles are encountered. When each recursion completes we expand the
+collapsed vertex, restoring all the vertices and edges from the cycle with the excep-
+tion of the single edge to be deleted.
+
+Putting all this together, the maximum spanning tree algorithm consists of greedy
+edge selection, re-scoring of edge costs and a recursive cleanup phase when needed.
+The full algorithm is shown in Fig. 18.12.
+
+Fig. 18.13 steps through the algorithm with our Book that ﬂight example. The
+ﬁrst row of the ﬁgure illustrates greedy edge selection with the edges chosen shown
+in blue (corresponding to the set F in the algorithm). This results in a cycle between
+that and ﬂight. The scaled weights using the maximum value entering each node are
+shown in the graph to the right.
+
+Collapsing the cycle between that and ﬂight to a single node (labelled tf) and
+recursing with the newly scaled costs is shown in the second row. The greedy selec-
+tion step in this recursion yields a spanning tree that links root to book, as well as an
+edge that links book to the contracted node. Expanding the contracted node, we can
+see that this edge corresponds to the edge from book to ﬂight in the original graph.
+This in turn tells us which edge to drop to eliminate the cycle.
+
+408 CHAPTER 18
+
+• DEPENDENCY PARSING
+
+function MAXSPANNINGTREE(G=(V,E), root, score) returns spanning tree
+
+F
+[]
+←
+T’
+[]
+←
+score’
+[]
+for each v
+
+←
+
+argmaxe=(u,v)
+∈
+
+E score[e]
+
+V do
+
+←
+
+∈
+bestInEdge
+F
+F
+∪
+for each e=(u,v)
+score’[e]
+
+←
+
+←
+
+bestInEdge
+
+E do
+score[e]
+
+∈
+
+−
+
+score[bestInEdge]
+
+if T=(V,F) is a spanning tree then return it
+else
+C
+G’
+T’
+T
+return T
+
+a cycle in F
+CONTRACT(G, C)
+MAXSPANNINGTREE(G’, root, score’)
+EXPAND(T’, C)
+
+←
+←
+←
+←
+
+function CONTRACT(G, C) returns contracted graph
+
+function EXPAND(T, C) returns expanded graph
+
+Figure 18.12 The Chu-Liu Edmonds algorithm for ﬁnding a maximum spanning tree in a
+weighted directed graph.
+
+On arbitrary directed graphs, this version of the CLE algorithm runs in O(mn)
+time, where m is the number of edges and n is the number of nodes. Since this par-
+ticular application of the algorithm begins by constructing a fully connected graph
+m = n2 yielding a running time of O(n3). Gabow et al. (1986) present a more efﬁ-
+cient implementation with a running time of O(m + nlogn).
+
+18.3.2 A feature-based algorithm for assigning scores
+
+Recall that given a sentence, S, and a candidate tree, T , edge-factored parsing models
+make the simpliﬁcation that the score for the tree is the sum of the scores of the edges
+that comprise the tree:
+
+score(S, T ) =
+
+score(S, e)
+
+T
+(cid:88)e
+∈
+
+In a feature-based algorithm we compute the edge score as a weighted sum of fea-
+tures extracted from it:
+
+Or more succinctly.
+
+N
+
+score(S, e) =
+
+wi fi(S, e)
+
+(cid:88)i=1
+
+score(S, e) = w
+
+f
+
+·
+
+Given this formulation, we need to identify relevant features and train the weights.
+The features (and feature combinations) used to train edge-factored models mir-
+
+ror those used in training transition-based parsers, such as
+
+18.3
+
+• GRAPH-BASED DEPENDENCY PARSING
+
+409
+
+Figure 18.13 Chu-Liu-Edmonds graph-based example for Book that ﬂight
+
+• Wordforms, lemmas, and parts of speech of the headword and its dependent.
+
+• Corresponding features from the contexts before, after and between the words.
+
+• Word embeddings.
+
+• The dependency relation itself.
+
+• The direction of the relation (to the right or left).
+
+• The distance from the head to the dependent.
+
+inference-based
+learning
+
+Given a set of features, our next problem is to learn a set of weights correspond-
+ing to each. Unlike many of the learning problems discussed in earlier chapters,
+here we are not training a model to associate training items with class labels, or
+parser actions. Instead, we seek to train a model that assigns higher scores to cor-
+rect trees than to incorrect ones. An effective framework for problems like this is to
+use inference-based learning combined with the perceptron learning rule. In this
+framework, we parse a sentence (i.e, perform inference) from the training set using
+some initially random set of initial weights. If the resulting parse matches the cor-
+responding tree in the training data, we do nothing to the weights. Otherwise, we
+ﬁnd those features in the incorrect parse that are not present in the reference parse
+and we lower their weights by a small amount based on the learning rate. We do this
+incrementally for each sentence in our training data until the weights converge.
+
+rootBooktfrootBookthatﬂight0-3-4-7-1-6-2rootBook12that7ﬂight8-4-30-2-6-1-700rootBook0tf-10-3-4-7-1-6-2rootBook12that7ﬂight81244568757Deleted from cycle410 CHAPTER 18
+
+• DEPENDENCY PARSING
+
+18.3.3 A neural algorithm for assigning scores
+
+State-of-the-art graph-based multilingual parsers are based on neural networks. In-
+stead of extracting hand-designed features to represent each edge between words wi
+and w j, these parsers run the sentence through an encoder, and then pass the encoded
+representation of the two words wi and w j through a network that estimates a score
+for the edge i
+
+j.
+
+→
+
+ﬂight) in the biafﬁne parser of
+Figure 18.14 Computing scores for a single edge (book
+Dozat and Manning (2017); Dozat et al. (2017). The parser uses distinct feedforward net-
+works to turn the encoder output for each word into a head and dependent representation for
+the word. The biafﬁne function turns the head embedding of the head and the dependent
+embedding of the dependent into a score for the dependency edge.
+
+→
+
+Here we’ll sketch the biafﬁne algorithm of Dozat and Manning (2017) and Dozat
+et al. (2017) shown in Fig. 18.14, drawing on the work of Gr¨unewald et al. (2021)
+who tested many versions of the algorithm via their STEPS system. The algorithm
+ﬁrst runs the sentence X = x1, ..., xn through an encoder to produce a contextual
+embedding representation for each token R = r1, ..., rn. The embedding for each
+token is now passed through two separate feedforward networks, one to produce a
+representation of this token as a head, and one to produce a representation of this
+token as a dependent:
+
+i = FFNhead(ri)
+hhead
+hdep
+i = FFNdep(ri)
+
+(18.13)
+
+(18.14)
+
+Now to assign a score to the directed edge i
+dent), we feed the head representation of i, hhead
+of j, hdep
+, into a biafﬁne scoring function:
+
+→
+i
+
+j
+
+j, (wi is the head and w j is the depen-
+, and the dependent representation
+
+Score(i
+
+→
+
+j) = Biaff(hhead
+
+i
+
+, hdep
+j
+
+)
+
+Biaff(x, y) = x(cid:124)Uy + W(x
+
+y) + b
+
+⊕
+
+(18.15)
+
+(18.16)
+
+bookthatﬂightr1score(h1head, h3dep)BiaﬃnebENCODERUh1 headFFNheadFFNheadFFNdepFFNdeph1 depFFNheadFFNdeph2 headh2 deph3 headh3 depWr2r3∑+18.4
+
+• EVALUATION
+
+411
+
+where U, W, and b are weights learned by the model. The idea of using a biafﬁne
+function is to allow the system to learn multiplicative interactions between the vec-
+tors x and y.
+
+If we pass Score(i
+
+j) through a softmax, we end up with a probability distri-
+
+bution, for each token j, over potential heads i (all other tokens in the sentence):
+
+→
+
+p(i
+
+→
+
+j) = softmax([Score(k
+
+j);
+
+k
+∀
+
+→
+
+= j, 1
+
+k
+
+≤
+
+≤
+
+n])
+
+(18.17)
+
+This probability can then be passed to the maximum spanning tree algorithm of
+Section 18.3.1 to ﬁnd the best tree.
+
+→
+
+j) classiﬁer is trained by optimizing the cross-entropy loss.
+
+This p(i
+Note that the algorithm as we’ve described it is unlabeled. To make this into
+a labeled algorithm, the Dozat and Manning (2017) algorithm actually trains two
+classiﬁers. The ﬁrst classiﬁer, the edge-scorer, the one we described above, assigns
+j) to each word wi and w j. Then the Maximum Spanning Tree
+a probability p(i
+algorithm is run to get a single best dependency parse tree for the second. We then
+apply a second classiﬁer, the label-scorer, whose job is to ﬁnd the maximum prob-
+ability label for each edge in this parse. This second classiﬁer has the same form
+as (18.15-18.17), but instead of being trained to predict with binary softmax the
+probability of an edge existing between two words, it is trained with a softmax over
+dependency labels to predict the dependency label between the words.
+
+→
+
+18.4 Evaluation
+
+As with phrase structure-based parsing, the evaluation of dependency parsers pro-
+ceeds by measuring how well they work on a test set. An obvious metric would be
+exact match (EM)—how many sentences are parsed correctly. This metric is quite
+pessimistic, with most sentences being marked wrong. Such measures are not ﬁne-
+grained enough to guide the development process. Our metrics need to be sensitive
+enough to tell if actual improvements are being made.
+
+For these reasons, the most common method for evaluating dependency parsers
+are labeled and unlabeled attachment accuracy. Labeled attachment refers to the
+proper assignment of a word to its head along with the correct dependency relation.
+Unlabeled attachment simply looks at the correctness of the assigned head, ignor-
+ing the dependency relation. Given a system output and a corresponding reference
+parse, accuracy is simply the percentage of words in an input that are assigned the
+correct head with the correct relation. These metrics are usually referred to as the
+labeled attachment score (LAS) and unlabeled attachment score (UAS). Finally, we
+can make use of a label accuracy score (LS), the percentage of tokens with correct
+labels, ignoring where the relations are coming from.
+
+As an example, consider the reference parse and system parse for the following
+
+example shown in Fig. 18.15.
+
+(18.18) Book me the ﬂight through Houston.
+
+The system correctly ﬁnds 4 of the 6 dependency relations present in the reference
+parse and receives an LAS of 2/3. However, one of the 2 incorrect relations found
+by the system holds between book and ﬂight, which are in a head-dependent relation
+in the reference parse; the system therefore achieves a UAS of 5/6.
+
+Beyond attachment scores, we may also be interested in how well a system is
+performing on a particular kind of dependency relation, for example NSUBJ, across
+
+(cid:54)
+412 CHAPTER 18
+
+• DEPENDENCY PARSING
+
+root
+
+obj
+
+iobj
+
+det
+
+nmod
+
+case
+
+root
+
+xcomp
+
+nsubj
+
+det
+
+nmod
+
+case
+
+Book me the
+
+ﬂight
+(a) Reference
+
+through Houston
+
+Book me the
+
+ﬂight
+(b) System
+
+through Houston
+
+Figure 18.15 Reference and system parses for Book me the ﬂight through Houston, resulting in an LAS of
+2/3 and an UAS of 5/6.
+
+a development corpus. Here we can make use of the notions of precision and recall
+introduced in Ch

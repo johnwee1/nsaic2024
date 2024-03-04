@@ -1,0 +1,706 @@
+e label y is a vector with K elements, each corresponding
+to a class, with yc = 1 if the correct class is c, with all other elements of y being 0.
+And our classiﬁer will produce an estimate vector with K elements ˆy, each element
+x).
+ˆyk of which represents the estimated probability p(yk = 1
+|
+
+The loss function for a single example x, generalizing from binary logistic re-
+gression, is the sum of the logs of the K output classes, each weighted by their
+probability yk (Eq. 5.45). This turns out to be just the negative log probability of the
+correct class c (Eq. 5.46):
+
+LCE(ˆy, y) =
+
+=
+
+=
+
+=
+
+−
+
+−
+
+−
+
+−
+
+K
+
+yk log ˆyk
+
+(cid:88)k=1
+log ˆyc,
+
+(where c is the correct class)
+
+(5.45)
+
+(5.46)
+
+(where c is the correct class)
+
+x)
+log ˆp(yc = 1
+|
+exp (wc
+K
+j=1 exp (wj
+
+log
+
+·
+
+x + bc)
+
+x + b j)
+
+·
+
+(c is the correct class)
+
+(5.47)
+
+negative log
+likelihood loss
+
+(cid:80)
+
+How did we get from Eq. 5.45 to Eq. 5.46? Because only one class (let’s call it c) is
+the correct one, the vector y takes the value 1 only for this value of k, i.e., has yc = 1
+and y j = 0
+= c. That means the terms in the sum in Eq. 5.45 will all be 0 except
+for the term corresponding to the true class c. Hence the cross-entropy loss is simply
+the log of the output probability corresponding to the correct class, and we therefore
+also call Eq. 5.46 the negative log likelihood loss.
+
+∀
+
+j
+
+−
+
+Of course for gradient descent we don’t need the loss, we need its gradient. The
+gradient for a single example turns out to be very similar to the gradient for binary
+y)x, that we saw in Eq. 5.30. Let’s consider one piece of the
+logistic regression, ( ˆy
+gradient, the derivative for a single weight. For each class k, the weight of the ith
+element of input x is wk,i. What is the partial derivative of the loss with respect to
+wk,i? This derivative turns out to be just the difference between the true value for the
+class k (which is either 1 or 0) and the probability the classiﬁer outputs for class k,
+weighted by the value of the input xi corresponding to the ith element of the weight
+vector for class k:
+
+∂ LCE
+∂ wk,i
+
+=
+
+=
+
+=
+
+ˆyk)xi
+
+(yk −
+−
+(yk −
+−
+yk −
+
+− (cid:32)
+
+x))xi
+p(yk = 1
+|
+exp (wk
+K
+j=1 exp (wj
+
+·
+
+x + bk)
+
+x + b j) (cid:33)
+
+·
+
+xi
+
+(5.48)
+
+We’ll return to this case of the gradient for softmax regression when we introduce
+neural networks in Chapter 7, and at that time we’ll also discuss the derivation of
+this gradient in equations Eq. 7.33–Eq. 7.41.
+
+(cid:80)
+
+(cid:54)
+102 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+5.9
+
+Interpreting models
+
+interpretable
+
+Often we want to know more than just the correct classiﬁcation of an observation.
+We want to know why the classiﬁer made the decision it did. That is, we want our
+decision to be interpretable. Interpretability can be hard to deﬁne strictly, but the
+core idea is that as humans we should know why our algorithms reach the conclu-
+sions they do. Because the features to logistic regression are often human-designed,
+one way to understand a classiﬁer’s decision is to understand the role each feature
+plays in the decision. Logistic regression can be combined with statistical tests (the
+likelihood ratio test, or the Wald test); investigating whether a particular feature is
+signiﬁcant by one of these tests, or inspecting its magnitude (how large is the weight
+w associated with the feature?) can help us interpret why the classiﬁer made the
+decision it makes. This is enormously important for building transparent models.
+
+Furthermore, in addition to its use as a classiﬁer, logistic regression in NLP and
+many other ﬁelds is widely used as an analytic tool for testing hypotheses about the
+effect of various explanatory variables (features). In text classiﬁcation, perhaps we
+want to know if logically negative words (no, not, never) are more likely to be asso-
+ciated with negative sentiment, or if negative reviews of movies are more likely to
+discuss the cinematography. However, in doing so it’s necessary to control for po-
+tential confounds: other factors that might inﬂuence sentiment (the movie genre, the
+year it was made, perhaps the length of the review in words). Or we might be study-
+ing the relationship between NLP-extracted linguistic features and non-linguistic
+outcomes (hospital readmissions, political outcomes, or product sales), but need to
+control for confounds (the age of the patient, the county of voting, the brand of the
+product). In such cases, logistic regression allows us to test whether some feature is
+associated with some outcome above and beyond the effect of other features.
+
+5.10 Advanced: Deriving the Gradient Equation
+
+In this section we give the derivation of the gradient of the cross-entropy loss func-
+tion LCE for logistic regression. Let’s start with some quick calculus refreshers.
+First, the derivative of ln(x):
+
+d
+dx
+
+ln(x) =
+
+1
+x
+
+Second, the (very elegant) derivative of the sigmoid:
+
+dσ (z)
+dz
+
+= σ (z)(1
+
+σ (z))
+
+−
+
+(5.49)
+
+(5.50)
+
+chain rule
+
+Finally, the chain rule of derivatives. Suppose we are computing the derivative
+of a composite function f (x) = u(v(x)). The derivative of f (x) is the derivative of
+u(x) with respect to v(x) times the derivative of v(x) with respect to x:
+
+d f
+dx
+
+=
+
+du
+dv ·
+
+dv
+dx
+
+(5.51)
+
+First, we want to know the derivative of the loss function with respect to a single
+
+weight w j (we’ll need to compute it for each weight, and for the bias):
+
+∂ LCE
+∂ w j
+
+=
+
+=
+
+∂
+∂ w j −
+∂
+∂ w j
+
+−
+
+(cid:20)
+
+[y log σ (w
+
+x + b) + (1
+
+y log σ (w
+
+x + b) +
+
+·
+
+·
+
+5.11
+
+• SUMMARY
+
+103
+
+y) log (1
+
+σ (w
+
+·
+
+−
+
+x + b))]
+
+y) log [1
+
+(1
+
+−
+
+σ (w
+
+−
+
+·
+
+x + b)]
+(cid:21)
+(5.52)
+
+−
+∂
+∂ w j
+
+Next, using the chain rule, and relying on the derivative of log:
+
+∂ LCE
+∂ w j
+
+=
+
+−
+
+σ (w
+
+y
+x + b)
+
+·
+
+∂
+∂ w j
+
+σ (w
+
+·
+
+x + b)
+
+1
+−
+σ (w
+·
+
+y
+x + b)
+
+∂
+∂ w j
+
+1
+
+−
+
+−
+
+1
+
+−
+
+σ (w
+
+·
+
+x + b)
+
+(5.53)
+
+Rearranging terms:
+
+∂ LCE
+∂ w j
+
+=
+
+y
+x + b) −
+
+·
+
+1
+−
+σ (w
+·
+
+y
+x + b)
+
+(cid:21)
+
+∂
+∂ w j
+
+1
+
+−
+
+σ (w
+
+−
+
+(cid:20)
+
+σ (w
+
+·
+
+x + b)
+
+(5.54)
+
+And now plugging in the derivative of the sigmoid, and using the chain rule one
+more time, we end up with Eq. 5.55:
+
+∂ LCE
+∂ w j
+
+=
+
+=
+
+σ (w
+
+−
+
+(cid:20)
+
+·
+
+−
+
+σ (w
+
+(cid:20)
+[y
+
+=
+−
+−
+= [σ (w
+
+·
+σ (w
+·
+x + b)
+
+·
+
+x + b)
+σ (w
+·
+x + b)
+σ (w
+
+·
+
+σ (w
+y
+·
+−
+x + b)[1
+−
+σ (w
+y
+·
+−
+x + b)[1
+−
+x + b)]x j
+y]x j
+
+−
+
+x + b)]
+
+x + b)]
+
+σ (w
+
+σ (w
+
+·
+
+·
+
+(cid:21)
+
+(cid:21)
+
+x + b)[1
+
+x + b)[1
+
+σ (w
+
+σ (w
+
+·
+
+·
+
+−
+
+−
+
+x + b)]
+
+∂ (w
+
+x + b)
+
+·
+∂ w j
+
+x + b)]x j
+
+(5.55)
+
+5.11 Summary
+
+This chapter introduced the logistic regression model of classiﬁcation.
+
+• Logistic regression is a supervised machine learning classiﬁer that extracts
+real-valued features from the input, multiplies each by a weight, sums them,
+and passes the sum through a sigmoid function to generate a probability. A
+threshold is used to make a decision.
+
+• Logistic regression can be used with two classes (e.g., positive and negative
+sentiment) or with multiple classes (multinomial logistic regression, for ex-
+ample for n-ary text classiﬁcation, part-of-speech labeling, etc.).
+
+• Multinomial logistic regression uses the softmax function to compute proba-
+
+bilities.
+
+• The weights (vector w and bias b) are learned from a labeled training set via a
+
+loss function, such as the cross-entropy loss, that must be minimized.
+
+• Minimizing this loss function is a convex optimization problem, and iterative
+
+algorithms like gradient descent are used to ﬁnd the optimal weights.
+
+• Regularization is used to avoid overﬁtting.
+• Logistic regression is also one of the most useful analytic tools, because of its
+
+ability to transparently study the importance of individual features.
+
+104 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+Bibliographical and Historical Notes
+
+Logistic regression was developed in the ﬁeld of statistics, where it was used for
+the analysis of binary data by the 1960s, and was particularly common in medicine
+(Cox, 1969). Starting in the late 1970s it became widely used in linguistics as one
+of the formal foundations of the study of linguistic variation (Sankoff and Labov,
+1979).
+
+Nonetheless, logistic regression didn’t become common in natural language pro-
+cessing until the 1990s, when it seems to have appeared simultaneously from two
+directions. The ﬁrst source was the neighboring ﬁelds of information retrieval and
+speech processing, both of which had made use of regression, and both of which
+lent many other statistical techniques to NLP. Indeed a very early use of logistic
+regression for document routing was one of the ﬁrst NLP applications to use (LSI)
+embeddings as word representations (Sch¨utze et al., 1995).
+
+At the same time in the early 1990s logistic regression was developed and ap-
+plied to NLP at IBM Research under the name maximum entropy modeling or
+maxent (Berger et al., 1996), seemingly independent of the statistical literature. Un-
+der that name it was applied to language modeling (Rosenfeld, 1996), part-of-speech
+tagging (Ratnaparkhi, 1996), parsing (Ratnaparkhi, 1997), coreference resolution
+(Kehler, 1997b), and text classiﬁcation (Nigam et al., 1999).
+
+More on classiﬁcation can be found in machine learning textbooks (Hastie et al.
+
+2001, Witten and Frank 2005, Bishop 2006, Murphy 2012).
+
+maximum
+entropy
+
+Exercises
+
+CHAPTER
+
+6 Vector Semantics and
+
+Embeddings
+
+荃者所以在鱼，得鱼而忘荃 Nets are for ﬁsh;
+
+言者所以在意，得意而忘言 Words are for meaning;
+
+Once you get the ﬁsh, you can forget the net.
+
+Once you get the meaning, you can forget the words
+庄子(Zhuangzi), Chapter 26
+
+The asphalt that Los Angeles is famous for occurs mainly on its freeways. But
+in the middle of the city is another patch of asphalt, the La Brea tar pits, and this
+asphalt preserves millions of fossil bones from the last of the Ice Ages of the Pleis-
+tocene Epoch. One of these fossils is the Smilodon, or saber-toothed tiger, instantly
+recognizable by its long canines. Five million years ago or so, a completely different
+saber-tooth tiger called Thylacosmilus lived
+in Argentina and other parts of South Amer-
+ica. Thylacosmilus was a marsupial whereas
+Smilodon was a placental mammal, but Thy-
+lacosmilus had the same long upper canines
+and, like Smilodon, had a protective bone
+ﬂange on the lower jaw. The similarity of
+these two mammals is one of many examples
+of parallel or convergent evolution, in which particular contexts or environments
+lead to the evolution of very similar structures in different species (Gould, 1980).
+
+The role of context is also important in the similarity of a less biological kind
+of organism: the word. Words that occur in similar contexts tend to have similar
+meanings. This link between similarity in how words are distributed and similarity
+in what they mean is called the distributional hypothesis. The hypothesis was
+ﬁrst formulated in the 1950s by linguists like Joos (1950), Harris (1954), and Firth
+(1957), who noticed that words which are synonyms (like oculist and eye-doctor)
+tended to occur in the same environment (e.g., near words like eye or examined)
+with the amount of meaning difference between two words “corresponding roughly
+to the amount of difference in their environments” (Harris, 1954, 157).
+
+In this chapter we introduce vector semantics, which instantiates this linguistic
+hypothesis by learning representations of the meaning of words, called embeddings,
+directly from their distributions in texts. These representations are used in every nat-
+ural language processing application that makes use of meaning, and the static em-
+beddings we introduce here underlie the more powerful dynamic or contextualized
+embeddings like BERT that we will see in Chapter 11.
+
+These word representations are also the ﬁrst example in this book of repre-
+sentation learning, automatically learning useful representations of the input text.
+Finding such self-supervised ways to learn representations of the input, instead of
+creating representations by hand via feature engineering, is an important focus of
+NLP research (Bengio et al., 2013).
+
+distributional
+hypothesis
+
+vector
+semantics
+embeddings
+
+representation
+learning
+
+106 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+6.1 Lexical Semantics
+
+Let’s begin by introducing some basic principles of word meaning. How should
+we represent the meaning of a word? In the n-gram models of Chapter 3, and in
+classical NLP applications, our only representation of a word is as a string of letters,
+or an index in a vocabulary list. This representation is not that different from a
+tradition in philosophy, perhaps you’ve seen it in introductory logic classes, in which
+the meaning of words is represented by just spelling the word with small capital
+letters; representing the meaning of “dog” as DOG, and “cat” as CAT, or by using an
+apostrophe (DOG’).
+
+Representing the meaning of a word by capitalizing it is a pretty unsatisfactory
+model. You might have seen a version of a joke due originally to semanticist Barbara
+Partee (Carlson, 1977):
+
+Q: What’s the meaning of life?
+A: LIFE’
+
+Surely we can do better than this! After all, we’ll want a model of word meaning
+to do all sorts of things for us. It should tell us that some words have similar mean-
+ings (cat is similar to dog), others are antonyms (cold is the opposite of hot), some
+have positive connotations (happy) while others have negative connotations (sad). It
+should represent the fact that the meanings of buy, sell, and pay offer differing per-
+spectives on the same underlying purchasing event. (If I buy something from you,
+you’ve probably sold it to me, and I likely paid you.) More generally, a model of
+word meaning should allow us to draw inferences to address meaning-related tasks
+like question-answering or dialogue.
+
+In this section we summarize some of these desiderata, drawing on results in the
+linguistic study of word meaning, which is called lexical semantics; we’ll return to
+and expand on this list in Chapter 23 and Chapter 24.
+
+Lemmas and Senses Let’s start by looking at how one word (we’ll choose mouse)
+might be deﬁned in a dictionary (simpliﬁed from the online dictionary WordNet):
+mouse (N)
+1.
+2.
+
+any of numerous small rodents...
+a hand-operated device that controls a cursor...
+
+Here the form mouse is the lemma, also called the citation form. The form
+mouse would also be the lemma for the word mice; dictionaries don’t have separate
+deﬁnitions for inﬂected forms like mice. Similarly sing is the lemma for sing, sang,
+sung. In many languages the inﬁnitive form is used as the lemma for the verb, so
+Spanish dormir “to sleep” is the lemma for duermes “you sleep”. The speciﬁc forms
+sung or carpets or sing or duermes are called wordforms.
+
+As the example above shows, each lemma can have multiple meanings; the
+lemma mouse can refer to the rodent or the cursor control device. We call each
+of these aspects of the meaning of mouse a word sense. The fact that lemmas can
+be polysemous (have multiple senses) can make interpretation difﬁcult (is someone
+who types “mouse info” into a search engine looking for a pet or a tool?). Chap-
+ter 11 and Chapter 23 will discuss the problem of polysemy, and introduce word
+sense disambiguation, the task of determining which sense of a word is being used
+in a particular context.
+
+Synonymy One important component of word meaning is the relationship be-
+tween word senses. For example when one word has a sense whose meaning is
+
+lexical
+semantics
+
+lemma
+
+citation form
+
+wordform
+
+synonym
+
+identical to a sense of another word, or nearly identical, we say the two senses of
+those two words are synonyms. Synonyms include such pairs as
+
+6.1
+
+• LEXICAL 

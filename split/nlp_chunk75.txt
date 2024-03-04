@@ -1,0 +1,423 @@
+that mention Einstein and Ulm.
+
+Because distant supervision has very large training sets, it is also able to use very
+rich features that are conjunctions of these individual features. So we will extract
+thousands of patterns that conjoin the entity types with the intervening words or
+dependency paths like these:
+
+PER was born in LOC
+PER, born (XXXX), LOC
+PER’s birthplace in LOC
+
+To return to our running example, for this sentence:
+
+(19.12) American Airlines, a unit of AMR, immediately matched the move,
+
+spokesman Tim Wagner said
+
+we would learn rich conjunction features like this one:
+
+M1 = ORG & M2 = PER & nextword=“said”& path= NP
+
+NP
+
+S
+
+↑
+
+↑
+
+S
+
+↓
+
+NP
+
+↑
+
+The result is a supervised classiﬁer that has a huge rich set of features to use
+in detecting relations. Since not every test sentence will have one of the training
+
+424 CHAPTER 19
+
+•
+
+INFORMATION EXTRACTION: RELATIONS, EVENTS, AND TIME
+
+relations, the classiﬁer will also need to be able to label an example as no-relation.
+This label is trained by randomly selecting entity pairs that do not appear in any
+Freebase relation, extracting features for them, and building a feature vector for
+each such tuple. The ﬁnal algorithm is sketched in Fig. 19.8.
+
+function DISTANT SUPERVISION(Database D, Text T) returns relation classiﬁer C
+
+foreach relation R
+
+foreach tuple (e1,e2) of entities with relation R in D
+Sentences in T that contain e1 and e2
+
+Frequent features in sentences
+
+sentences
+f
+←
+observations
+Train supervised classiﬁer on observations
+
+←
+
+←
+
+observations + new training tuple (e1, e2, f, R)
+
+C
+return C
+
+←
+
+Figure 19.8 The distant supervision algorithm for relation extraction. A neural classiﬁer
+would skip the feature set f .
+
+Distant supervision shares advantages with each of the methods we’ve exam-
+ined. Like supervised classiﬁcation, distant supervision uses a classiﬁer with lots
+of features, and supervised by detailed hand-created knowledge. Like pattern-based
+classiﬁers, it can make use of high-precision evidence for the relation between en-
+tities. Indeed, distance supervision systems learn patterns just like the hand-built
+patterns of early relation extractors. For example the is-a or hypernym extraction
+system of Snow et al. (2005) used hypernym/hyponym NP pairs from WordNet as
+distant supervision, and then learned new patterns from large amounts of text. Their
+system induced exactly the original 5 template patterns of Hearst (1992a), but also
+70,000 additional patterns including these four:
+
+NPH like NP Many hormones like leptin...
+NPH called NP ...using a markup language called XHTML
+NP is a NPH
+NP, a NPH
+
+Ruby is a programming language...
+IBM, a company with a long...
+
+This ability to use a large number of features simultaneously means that, un-
+like the iterative expansion of patterns in seed-based systems, there’s no semantic
+drift. Like unsupervised classiﬁcation, it doesn’t use a labeled training corpus of
+texts, so it isn’t sensitive to genre issues in the training corpus, and relies on very
+large amounts of unlabeled data. Distant supervision also has the advantage that it
+can create training tuples to be used with neural classiﬁers, where features are not
+required.
+
+The main problem with distant supervision is that it tends to produce low-precision
+
+results, and so current research focuses on ways to improve precision. Furthermore,
+distant supervision can only help in extracting relations for which a large enough
+database already exists. To extract new relations without datasets, or relations for
+new domains, purely unsupervised methods must be used.
+
+19.2.5 Unsupervised Relation Extraction
+
+The goal of unsupervised relation extraction is to extract relations from the web
+when we have no labeled training data, and not even any list of relations. This task
+is often called open information extraction or Open IE. In Open IE, the relations
+
+open
+information
+extraction
+
+19.2
+
+• RELATION EXTRACTION ALGORITHMS
+
+425
+
+are simply strings of words (usually beginning with a verb).
+
+For example, the ReVerb system (Fader et al., 2011) extracts a relation from a
+
+sentence s in 4 steps:
+
+1. Run a part-of-speech tagger and entity chunker over s
+2. For each verb in s, ﬁnd the longest sequence of words w that start with a verb
+
+and satisfy syntactic and lexical constraints, merging adjacent matches.
+
+3. For each phrase w, ﬁnd the nearest noun phrase x to the left which is not a
+relative pronoun, wh-word or existential “there”. Find the nearest noun phrase
+y to the right.
+
+4. Assign conﬁdence c to the relation r = (x, w, y) using a conﬁdence classiﬁer
+
+and return it.
+
+A relation is only accepted if it meets syntactic and lexical constraints. The
+syntactic constraints ensure that it is a verb-initial sequence that might also include
+nouns (relations that begin with light verbs like make, have, or do often express the
+core of the relation with a noun, like have a hub in):
+
+|
+
+|
+
+VP
+
+V
+VW*P
+V = verb particle? adv?
+W = (noun
+P = (prep
+
+adj
+|
+particle
+
+adv
+
+|
+
+|
+
+|
+
+|
+
+pron
+
+det )
+|
+inﬁnitive “to”)
+
+The lexical constraints are based on a dictionary D that is used to prune very rare,
+long relation strings. The intuition is to eliminate candidate relations that don’t oc-
+cur with sufﬁcient number of distinct argument types and so are likely to be bad
+examples. The system ﬁrst runs the above relation extraction algorithm ofﬂine on
+500 million web sentences and extracts a list of all the relations that occur after nor-
+malizing them (removing inﬂection, auxiliary verbs, adjectives, and adverbs). Each
+relation r is added to the dictionary if it occurs with at least 20 different arguments.
+Fader et al. (2011) used a dictionary of 1.7 million normalized relations.
+
+Finally, a conﬁdence value is computed for each relation using a logistic re-
+gression classiﬁer. The classiﬁer is trained by taking 1000 random web sentences,
+running the extractor, and hand labeling each extracted relation as correct or incor-
+rect. A conﬁdence classiﬁer is then trained on this hand-labeled data, using features
+of the relation and the surrounding words. Fig. 19.9 shows some sample features
+used in the classiﬁcation.
+
+≤
+
+10
+
+(x,r,y) covers all words in s
+the last preposition in r is for
+the last preposition in r is on
+len(s)
+there is a coordinating conjunction to the left of r in s
+r matches a lone V in the syntactic constraints
+there is preposition to the left of x in s
+there is an NP to the right of y in s
+Figure 19.9 Features for the classiﬁer that assigns conﬁdence to relations extracted by the
+Open Information Extraction system REVERB (Fader et al., 2011).
+
+For example the following sentence:
+
+(19.13) United has a hub in Chicago, which is the headquarters of United
+
+Continental Holdings.
+
+426 CHAPTER 19
+
+•
+
+INFORMATION EXTRACTION: RELATIONS, EVENTS, AND TIME
+
+has the relation phrases has a hub in and is the headquarters of (it also has has and
+is, but longer phrases are preferred). Step 3 ﬁnds United to the left and Chicago to
+the right of has a hub in, and skips over which to ﬁnd Chicago to the left of is the
+headquarters of. The ﬁnal output is:
+
+r1:
+r2:
+
+<United, has a hub in, Chicago>
+<Chicago, is the headquarters of, United Continental Holdings>
+
+The great advantage of unsupervised relation extraction is its ability to handle
+a huge number of relations without having to specify them in advance. The dis-
+advantage is the need to map all the strings into some canonical form for adding
+to databases or knowledge graphs. Current methods focus heavily on relations ex-
+pressed with verbs, and so will miss many relations that are expressed nominally.
+
+19.2.6 Evaluation of Relation Extraction
+
+Supervised relation extraction systems are evaluated by using test sets with human-
+annotated, gold-standard relations and computing precision, recall, and F-measure.
+Labeled precision and recall require the system to classify the relation correctly,
+whereas unlabeled methods simply measure a system’s ability to detect entities that
+are related.
+
+Semi-supervised and unsupervised methods are much more difﬁcult to evalu-
+ate, since they extract totally new relations from the web or a large text. Because
+these methods use very large amounts of text, it is generally not possible to run them
+solely on a small labeled test set, and as a result it’s not possible to pre-annotate a
+gold set of correct instances of relations.
+
+For these methods it’s possible to approximate (only) precision by drawing a
+random sample of relations from the output, and having a human check the accuracy
+of each of these relations. Usually this approach focuses on the tuples to be extracted
+from a body of text rather than on the relation mentions; systems need not detect
+every mention of a relation to be scored correctly. Instead, the evaluation is based
+on the set of tuples occupying the database when the system is ﬁnished. That is,
+we want to know if the system can discover that Ryanair has a hub at Charleroi; we
+don’t really care how many times it discovers it. The estimated precision ˆP is then
+
+ˆP =
+
+# of correctly extracted relation tuples in the sample
+total # of extracted relation tuples in the sample.
+
+(19.14)
+
+Another approach that gives us a little bit of information about recall is to com-
+pute precision at different levels of recall. Assuming that our system is able to
+rank the relations it produces (by probability, or conﬁdence) we can separately com-
+pute precision for the top 1000 new relations, the top 10,000 new relations, the top
+100,000, and so on. In each case we take a random sample of that set. This will
+show us how the precision curve behaves as we extract more and more tuples. But
+there is no way to directly evaluate recall.
+
+19.3 Extracting Events
+
+event
+extraction
+
+The task of event extraction is to identify mentions of events in texts. For the
+purposes of this task, an event mention is any expression denoting an event or state
+that can be assigned to a particular point, or interval, in time. The following markup
+of the sample text on page 415 shows all the events in this text.
+
+19.4
+
+• REPRESENTING TIME
+
+427
+
+[EVENT Citing] high fuel prices, United Airlines [EVENT said] Fri-
+day it has [EVENT increased] fares by $6 per round trip on ﬂights to
+some cities also served by lower-cost carriers. American Airlines, a unit
+of AMR Corp., immediately [EVENT matched]
+[EVENT the move],
+spokesman Tim Wagner [EVENT said]. United, a unit of UAL Corp.,
+[EVENT said] [EVENT the increase] took effect Thursday and [EVENT
+applies] to most routes where it [EVENT competes] against discount
+carriers, such as Chicago to Dallas and Denver to San Francisco.
+
+In English, most event mentions correspond to verbs, and most verbs introduce
+events. However, as we can see from our example, this is not always the case. Events
+can be introduced by noun phrases, as in the move and the increase, and some verbs
+fail to introduce events, as in the phrasal verb took effect, which refers to when the
+event began rather than to the event itself. Similarly, light verbs such as make, take,
+and have often fail to denote events. A light verb is a verb that has very little meaning
+itself, and the associated event is instead expressed by its direct object noun. In light
+verb examples like took a ﬂight, it’s the word ﬂight that deﬁnes the event; these light
+verbs just provide a syntactic structure for the noun’s arguments.
+
+Various versions of the event extraction task exist, depending on the goal. For
+example in the TempEval shared tasks (Verhagen et al. 2009) the goal is to extract
+events and aspects like their aspectual and temporal properties. Events are to be
+classiﬁed as actions, states, reporting events (say, report, tell, explain), perception
+events, and so on. The aspect, tense, and modality of each event also needs to be
+extracted. Thus for example the various said events in the sample text would be
+annotated as (class=REPORTING, tense=PAST, aspect=PERFECTIVE).
+
+Event extraction is generally modeled via supervised learning, detecting events
+via IOB sequence models and assigning event classes and attributes with multi-class
+classiﬁers. The input can be neural models starting from encoders; or classic feature-
+based models using features like those in Fig. 19.10.
+
+light verbs
+
+reporting
+events
+
+Explanation
+Character-level preﬁxes and sufﬁxes of target word
+Character-level sufﬁxes for nominalizations (e.g., -tion)
+Part of speech of the target word
+Binary feature indicating that the target is governed by a light verb
+
+Feature
+Character afﬁxes
+Nominalization sufﬁx
+Part of speech
+Light verb
+Subject syntactic category Syntactic category of the subject of the sentence
+Morphological stem
+Verb root
+WordNet hypernyms
+Figure 19.10 Features commonly used in classic feature-based approaches to event detection.
+
+Stemmed version of the target word
+Root form of the verb basis for a nominalization
+Hypernym set for the target
+
+19.4 Representing Time
+
+temporal logic
+
+Let’s begin by introducing the basics of temporal logic and how human languages
+convey temporal information. The most straightforward theory of time holds that it
+ﬂows inexorably forward and that events are associated with either points or inter-
+vals in time, as on a timeline. We can order distinct events by situating them on the
+timeline; one event precedes another if the ﬂow of time leads from the ﬁrst event
+
+428 CHAPTER 19
+
+•
+
+INFORMATION EXTRACTION: RELATIONS, EVENTS, AND TIME
+
+to the second. Accompanying these notions in most theories is the idea of the cur-
+rent moment in time. Combining this notion with the idea of a temporal ordering
+relationship yields the familiar notions of past, present, and future.
+
+Various kinds of temporal representation systems can be used to talk about tem-
+poral ordering relationship. One of the most commonly used in computational mod-
+eling is the interval algebra of Allen (1984). Allen models all events and time
+expressions as intervals there is no representation for points (although intervals can
+be very short). In order to deal with intervals without points, he identiﬁes 13 primi-
+tive relations that can hold between these temporal intervals. Fig. 19.11 shows these
+13 Allen relations.
+
+interval algebra
+
+Allen relations
+
+Figure 19.11 The 13 temporal relations from Allen (1984).
+
+19.4.1 Reichenbach’s reference point
+
+The relation between simple verb tenses and points in time is by no means straight-
+forward. The present tense can be used to refer to a future event, as in this example:
+
+(19.15) Ok, we ﬂy from San Francisco to Boston at 10.
+
+Or consider the following examples:
+
+(19.16) Flight 1902 arrived late.
+(19.17) Flight 1902 had arrived late.
+
+Although both refer to events in the past, representing them in the same way seems
+wrong. The second example seems to have another unnamed event lurking in the
+background (e.g., Flight 1902 had already arrived late when something else hap-
+pened).
+
+BABABAAABBABTime A  before BB after  AA overlaps BB overlaps' AA meets BB meets' AA equals B(B equals A)A starts BB starts' AA finishes BB finishes' ABA during BB during' AA19.4
+
+• REPRESENTING TIME
+
+429
+
+reference point
+
+To account for this phenomena, Reichenbach (1947) introduced the notion of
+a reference point. In our simple temporal scheme, the current moment in time is
+equated with the time of the utterance and is used as a reference point for when
+the event occurred (before, at, or after). In Reichenbach’s approach, the notion of
+the reference point is separated fr

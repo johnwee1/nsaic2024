@@ -1,0 +1,585 @@
+M25 weighting
+scheme (sometimes called Okapi BM25 after the Okapi IR system in which it was
+introduced (Robertson et al., 1995)). BM25 adds two parameters: k, a knob that
+adjust the balance between term frequency and IDF, and b, which controls the im-
+portance of document length normalization. The BM25 score of a document d given
+a query q is:
+
+IDF
+
+weighted tf
+
+log
+(cid:122)
+
+N
+dft (cid:19)
+(cid:125)(cid:124)
+(cid:123)
+(cid:18)
+
+(cid:122)
+k
+
+1
+
+q
+t
+(cid:88)
+∈
+
+tft,d
+d
+(cid:125)(cid:124)
+|
+|
+davg|
+|
+
+(cid:16)
+
+(cid:17)(cid:17)
+
+b + b
+
+−
+
+(cid:16)
+
+(cid:123)
++ tft,d
+
+(14.11)
+
+davg|
+|
+
+is the length of the average document. When k is 0, BM25 reverts to
+where
+no use of term frequency, just a binary selection of terms in the query (plus idf).
+A large k results in raw term frequency (plus idf). b ranges from 1 (scaling by
+document length) to 0 (no length scaling). Manning et al. (2008) suggest reasonable
+values are k = [1.2,2] and b = 0.75. Kamphuis et al. (2020) is a useful summary of
+the many minor variants of BM25.
+
+stop list
+
+In the past it was common to remove high-frequency words from both
+Stop words
+the query and document before representing them. The list of such high-frequency
+words to be removed is called a stop list. The intuition is that high-frequency terms
+(often function words like the, a, to) carry little semantic weight and may not help
+with retrieval, and can also help shrink the inverted index ﬁles we describe below.
+The downside of using a stop list is that it makes it difﬁcult to search for phrases
+that contain words in the stop list. For example, common stop lists would reduce the
+phrase to be or not to be to the phrase not. In modern IR systems, the use of stop lists
+is much less common, partly due to improved efﬁciency and partly because much
+of their function is already handled by IDF weighting, which downweights function
+words that occur in every document. Nonetheless, stop word removal is occasionally
+useful in various NLP tasks so is worth keeping in mind.
+
+inverted index
+
+postings
+
+14.1
+
+•
+
+INFORMATION RETRIEVAL
+
+299
+
+14.1.3
+
+Inverted Index
+
+In order to compute scores, we need to efﬁciently ﬁnd documents that contain words
+in the query. (Any document that contains none of the query terms will have a score
+of 0 and can be ignored.) The basic search problem in IR is thus to ﬁnd all documents
+d
+
+C that contain a term q
+The data structure for this task is the inverted index, which we use for mak-
+ing this search efﬁcient, and also conveniently storing useful information like the
+document frequency and the count of each term in each document.
+
+Q.
+
+∈
+
+∈
+
+An inverted index, given a query term, gives a list of documents that contain the
+term. It consists of two parts, a dictionary and the postings. The dictionary is a list
+of terms (designed to be efﬁciently accessed), each pointing to a postings list for the
+term. A postings list is the list of document IDs associated with each term, which
+can also contain information like the term frequency or even the exact positions of
+terms in the document. The dictionary can also start the document frequency for
+each term For example, a simple inverted index for our 4 sample documents above,
+with each word containing its document frequency in
+, and a pointer to a postings
+list that contains document IDs and term counts in [], might look like the following:
+
+{}
+
+1
+how
+} →
+{
+is
+1
+→
+}
+{
+2
+love
+} →
+{
+nurse
+2
+{
+} →
+1
+sorry
+} →
+{
+3
+sweet
+} →
+{
+
+3 [1]
+3 [1]
+1 [1]
+1 [1]
+2 [1]
+1 [2]
+
+3 [1]
+4 [1]
+
+2 [1]
+
+→
+→
+
+→
+
+3 [1]
+
+→
+
+Given a list of terms in query, we can very efﬁciently get lists of all candidate
+documents, together with the information necessary to compute the tf-idf scores we
+need.
+
+There are alternatives to the inverted index. For the question-answering domain
+of ﬁnding Wikipedia pages to match a user query, Chen et al. (2017a) show that
+indexing based on bigrams works better than unigrams, and use efﬁcient hashing
+algorithms rather than the inverted index to make the search efﬁcient.
+
+14.1.4 Evaluation of Information-Retrieval Systems
+
+We measure the performance of ranked retrieval systems using the same precision
+and recall metrics we have been using. We make the assumption that each docu-
+ment returned by the IR system is either relevant to our purposes or not relevant.
+Precision is the fraction of the returned documents that are relevant, and recall is the
+fraction of all relevant documents that are returned. More formally, let’s assume a
+system returns T ranked documents in response to an information request, a subset
+R of these are relevant, a disjoint subset, N, are the remaining irrelevant documents,
+and U documents in the collection as a whole are relevant to this request. Precision
+and recall are then deﬁned as:
+
+R
+Precision = |
+|
+T
+|
+|
+
+R
+Recall = |
+|
+U
+|
+|
+
+(14.12)
+
+Unfortunately, these metrics don’t adequately measure the performance of a system
+that ranks the documents it returns. If we are comparing the performance of two
+ranked retrieval systems, we need a metric that prefers the one that ranks the relevant
+documents higher. We need to adapt precision and recall to capture how well a
+system does at putting relevant documents higher in the ranking.
+
+300 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+Rank
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+
+Judgment
+R
+N
+R
+N
+R
+R
+N
+R
+N
+N
+R
+N
+N
+N
+R
+N
+N
+R
+N
+N
+N
+N
+N
+N
+R
+
+PrecisionRank
+1.0
+.50
+.66
+.50
+.60
+.66
+.57
+.63
+.55
+.50
+.55
+.50
+.46
+.43
+.47
+.44
+.44
+.44
+.42
+.40
+.38
+.36
+.35
+.33
+.36
+
+RecallRank
+.11
+.11
+.22
+.22
+.33
+.44
+.44
+.55
+.55
+.55
+.66
+.66
+.66
+.66
+.77
+.77
+.77
+.88
+.88
+.88
+.88
+.88
+.88
+.88
+1.0
+
+Figure 14.3 Rank-speciﬁc precision and recall values calculated as we proceed down
+through a set of ranked documents (assuming the collection has 9 relevant documents).
+
+Figure 14.4 The precision recall curve for the data in table 14.3.
+
+Let’s turn to an example. Assume the table in Fig. 14.3 gives rank-speciﬁc pre-
+cision and recall values calculated as we proceed down through a set of ranked doc-
+uments for a particular query; the precisions are the fraction of relevant documents
+seen at a given rank, and recalls the fraction of relevant documents found at the same
+rank. The recall measures in this example are based on this query having 9 relevant
+documents in the collection as a whole.
+
+Note that recall is non-decreasing; when a relevant document is encountered,
+
+0.00.20.40.60.81.0Recall0.00.20.40.60.81.0Precision14.1
+
+•
+
+INFORMATION RETRIEVAL
+
+301
+
+precision-recall
+curve
+
+interpolated
+precision
+
+recall increases, and when a non-relevant document is found it remains unchanged.
+Precision, on the other hand, jumps up and down, increasing when relevant doc-
+uments are found, and decreasing otherwise. The most common way to visualize
+precision and recall is to plot precision against recall in a precision-recall curve,
+like the one shown in Fig. 14.4 for the data in table 14.3.
+
+Fig. 14.4 shows the values for a single query. But we’ll need to combine values
+for all the queries, and in a way that lets us compare one system to another. One way
+of doing this is to plot averaged precision values at 11 ﬁxed levels of recall (0 to 100,
+in steps of 10). Since we’re not likely to have datapoints at these exact levels, we
+use interpolated precision values for the 11 recall values from the data points we do
+have. We can accomplish this by choosing the maximum precision value achieved
+at any level of recall at or above the one we’re calculating. In other words,
+
+IntPrecision(r) = max
+i>=r
+
+Precision(i)
+
+(14.13)
+
+This interpolation scheme not only lets us average performance over a set of queries,
+but also helps smooth over the irregular precision values in the original data. It is
+designed to give systems the beneﬁt of the doubt by assigning the maximum preci-
+sion value achieved at higher levels of recall from the one being measured. Fig. 14.5
+and Fig. 14.6 show the resulting interpolated data points from our example.
+
+Interpolated Precision
+1.0
+1.0
+.66
+.66
+.66
+.63
+.55
+.47
+.44
+.36
+.36
+
+Recall
+0.0
+.10
+.20
+.30
+.40
+.50
+.60
+.70
+.80
+.90
+1.0
+
+mean average
+precision
+
+Figure 14.5
+
+Interpolated data points from Fig. 14.3.
+
+Given curves such as that in Fig. 14.6 we can compare two systems or approaches
+by comparing their curves. Clearly, curves that are higher in precision across all
+recall values are preferred. However, these curves can also provide insight into the
+overall behavior of a system. Systems that are higher in precision toward the left
+may favor precision over recall, while systems that are more geared towards recall
+will be higher at higher levels of recall (to the right).
+
+A second way to evaluate ranked retrieval is mean average precision (MAP),
+which provides a single metric that can be used to compare competing systems or
+approaches. In this approach, we again descend through the ranked list of items,
+but now we note the precision only at those points where a relevant item has been
+encountered (for example at ranks 1, 3, 5, 6 but not 2 or 4 in Fig. 14.3). For a single
+query, we average these individual precision measurements over the return set (up
+to some ﬁxed cutoff). More formally, if we assume that Rr is the set of relevant
+documents at or above r, then the average precision (AP) for a single query is
+
+AP =
+
+1
+
+Rr| (cid:88)d
+
+Rr
+
+∈
+
+|
+
+Precisionr(d)
+
+(14.14)
+
+302 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+Figure 14.6 An 11 point interpolated precision-recall curve. Precision at each of the 11
+standard recall levels is interpolated for each query from the maximum at any higher level of
+recall. The original measured precision recall points are also shown.
+
+where Precisionr(d) is the precision measured at the rank at which document d was
+found. For an ensemble of queries Q, we then average over these averages, to get
+our ﬁnal MAP measure:
+
+MAP =
+
+AP(q)
+
+1
+Q
+|
+
+| (cid:88)q
+Q
+∈
+
+(14.15)
+
+The MAP for the single query (hence = AP) in Fig. 14.3 is 0.6.
+
+14.2
+
+Information Retrieval with Dense Vectors
+
+The classic tf-idf or BM25 algorithms for IR have long been known to have a con-
+ceptual ﬂaw: they work only if there is exact overlap of words between the query
+and document. In other words, the user posing a query (or asking a question) needs
+to guess exactly what words the writer of the answer might have used, an issue called
+the vocabulary mismatch problem (Furnas et al., 1987).
+
+The solution to this problem is to use an approach that can handle synonymy:
+instead of (sparse) word-count vectors, using (dense) embeddings. This idea was
+ﬁrst proposed for retrieval in the last century under the name of Latent Semantic
+Indexing approach (Deerwester et al., 1990), but is implemented in modern times
+via encoders like BERT.
+
+The most powerful approach is to present both the query and the document to a
+single encoder, allowing the transformer self-attention to see all the tokens of both
+the query and the document, and thus building a representation that is sensitive to
+the meanings of both query and document. Then a linear layer can be put on top of
+the [CLS] token to predict a similarity score for the query/document tuple:
+
+z = BERT(q; [SEP]; d)[CLS]
+score(q, d) = softmax(U(z))
+
+(14.16)
+
+Interpolated Precision Recall Curve00.10.20.30.40.50.60.70.80.9100.10.20.30.40.50.60.70.80.91RecallPrecision14.2
+
+•
+
+INFORMATION RETRIEVAL WITH DENSE VECTORS
+
+303
+
+This architecture is shown in Fig. 14.7a. Usually the retrieval step is not done on
+an entire document. Instead documents are broken up into smaller passages, such
+as non-overlapping ﬁxed-length chunks of say 100 tokens, and the retriever encodes
+and retrieves these passages rather than entire documents. The query and document
+have to be made to ﬁt in the BERT 512-token window, for example by truncating
+the query to 64 tokens and truncating the document if necessary so that it, the query,
+[CLS], and [SEP] ﬁt in 512 tokens. The BERT system together with the linear layer
+U can then be ﬁne-tuned for the relevance task by gathering a tuning dataset of
+relevant and non-relevant passages.
+
+(a)
+
+(b)
+
+Figure 14.7 Two ways to do dense retrieval, illustrated by using lines between layers to schematically rep-
+resent self-attention: (a) Use a single encoder to jointly encode query and document and ﬁnetune to produce a
+relevance score with a linear layer over the CLS token. This is too compute-expensive to use except in rescoring
+(b) Use separate encoders for query and document, and use the dot product between CLS token outputs for the
+query and document as the score. This is less compute-expensive, but not as accurate.
+
+The problem with the full BERT architecture in Fig. 14.7a is the expense in
+computation and time. With this architecture, every time we get a query, we have to
+pass every single single document in our entire collection through a BERT encoder
+jointly with the new query! This enormous use of resources is impractical for real
+cases.
+
+At the other end of the computational spectrum is a much more efﬁcient archi-
+tecture, the bi-encoder. In this architecture we can encode the documents in the
+collection only one time by using two separate encoder models, one to encode the
+query and one to encode the document. We encode each document, and store all
+the encoded document vectors in advance. When a query comes in, we encode just
+this query and then use the dot product between the query vector and the precom-
+puted document vectors as the score for each candidate document (Fig. 14.7b). For
+example, if we used BERT, we would have two encoders BERTQ and BERTD and
+we could represent the query and document as the [CLS] token of the respective
+encoders (Karpukhin et al., 2020):
+
+zq = BERTQ(q)[CLS]
+zd = BERTD(d)[CLS]
+zd
+score(q, d) = zq ·
+The bi-encoder is much cheaper than a full query/document encoder, but is also
+
+(14.17)
+
+QueryDocument………………[sep]s(q,d)zCLSUQueryzCLS_QzCLS_DDocument………………•s(q,d)304 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+ColBERT
+
+less accurate, since its relevance decision can’t take full advantage of all the possi-
+ble meaning interactions between all the tokens in the query and the tokens in the
+document.
+
+There are numerous approaches that lie in between the full encoder and the bi-
+encoder. One intermediate alternative is to use cheaper methods (like BM25) as the
+ﬁrst pass relevance ranking for each document, take the top N ranked documents,
+and use expensive methods like the full BERT scoring to rerank only the top N
+documents rather than the whole set.
+
+Another intermediate approach is the ColBERT approach of Khattab and Za-
+haria (2020) and Khattab et al. (2021), shown in Fig. 14.8. This method separately
+encodes the query and document, but rather than encoding the entire query or doc-
+ument into one vector, it separately encodes each of them into contextual represen-
+tations for each token. These BERT representations of each document word can be
+pre-stored for efﬁciency. The relevance score between a query q and a document d is
+a sum of maximum similarity (MaxSim) operators between tokens in q and tokens
+in d. Essentially, for each token in q, ColBERT ﬁnds the most contextually simi-
+lar token in d, and then sums up these similarities. A relevant document will have
+tokens that are contextually very similar to the query.
+
+Figure 14.8 A sketch of the ColBERT algorithm at inference time. The query and docu-
+ment are ﬁrst passed through separate BERT encoders. Similarity between query and doc-
+umen

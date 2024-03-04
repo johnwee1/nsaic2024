@@ -1,0 +1,456 @@
+mbiguation) can be
+
+done by neural constituency parsers.
+
+• Span-based neural constituency parses train a neural classiﬁer to assign a score
+to each constituent, and then use a modiﬁed version of CKY to combine these
+constituent scores to ﬁnd the best-scoring parse tree.
+
+• Parsers are evaluated with three metrics: labeled recall, labeled precision,
+
+and cross-brackets.
+
+• Partial parsing and chunking are methods for identifying shallow syntac-
+tic constituents in a text. They are solved by sequence models trained on
+syntactically-annotated data.
+
+Bibliographical and Historical Notes
+
+According to Percival (1976), the idea of breaking up a sentence into a hierarchy of
+constituents appeared in the V¨olkerpsychologie of the groundbreaking psychologist
+Wilhelm Wundt (Wundt, 1900):
+
+...den sprachlichen Ausdruck f¨ur die willk¨urliche Gliederung einer Ge-
+sammtvorstellung in ihre in logische Beziehung zueinander gesetzten
+Bestandteile
+
+[the linguistic expression for the arbitrary division of a total idea
+
+into its constituent parts placed in logical relations to one another]
+
+Wundt’s idea of constituency was taken up into linguistics by Leonard Bloom-
+ﬁeld in his early book An Introduction to the Study of Language (Bloomﬁeld, 1914).
+By the time of his later book, Language (Bloomﬁeld, 1933), what was then called
+“immediate-constituent analysis” was a well-established method of syntactic study
+in the United States. By contrast, traditional European grammar, dating from the
+Classical period, deﬁned relations between words rather than constituents, and Eu-
+ropean syntacticians retained this emphasis on such dependency grammars, the sub-
+ject of Chapter 18. (And indeed, both dependency and constituency grammars have
+been in vogue in computational linguistics at different times).
+
+American Structuralism saw a number of speciﬁc deﬁnitions of the immediate
+constituent, couched in terms of their search for a “discovery procedure”: a method-
+ological algorithm for describing the syntax of a language. In general, these attempt
+to capture the intuition that “The primary criterion of the immediate constituent
+is the degree in which combinations behave as simple units” (Bazell, 1952/1966, p.
+284). The most well known of the speciﬁc deﬁnitions is Harris’ idea of distributional
+similarity to individual units, with the substitutability test. Essentially, the method
+proceeded by breaking up a construction into constituents by attempting to substitute
+simple structures for possible constituents—if a substitution of a simple form, say,
+
+EXERCISES
+
+389
+
+man, was substitutable in a construction for a more complex set (like intense young
+man), then the form intense young man was probably a constituent. Harris’s test was
+the beginning of the intuition that a constituent is a kind of equivalence class.
+
+The context-free grammar was a formalization of this idea of hierarchical
+constituency deﬁned in Chomsky (1956) and further expanded upon (and argued
+against) in Chomsky (1957) and Chomsky (1956/1975). Shortly after Chomsky’s
+initial work, the context-free grammar was reinvented by Backus (1959) and inde-
+pendently by Naur et al. (1960) in their descriptions of the ALGOL programming
+language; Backus (1996) noted that he was inﬂuenced by the productions of Emil
+Post and that Naur’s work was independent of his (Backus’) own. After this early
+work, a great number of computational models of natural language processing were
+based on context-free grammars because of the early development of efﬁcient pars-
+ing algorithms.
+
+Dynamic programming parsing has a history of independent discovery. Ac-
+cording to the late Martin Kay (personal communication), a dynamic programming
+parser containing the roots of the CKY algorithm was ﬁrst implemented by John
+Cocke in 1960. Later work extended and formalized the algorithm, as well as prov-
+ing its time complexity (Kay 1967, Younger 1967, Kasami 1965). The related well-
+formed substring table (WFST) seems to have been independently proposed by
+Kuno (1965) as a data structure that stores the results of all previous computations
+in the course of the parse. Based on a generalization of Cocke’s work, a similar
+data structure had been independently described in Kay (1967) (and Kay 1973). The
+top-down application of dynamic programming to parsing was described in Earley’s
+Ph.D. dissertation (Earley 1968, Earley 1970). Sheil (1976) showed the equivalence
+of the WFST and the Earley algorithm. Norvig (1991) shows that the efﬁciency of-
+fered by dynamic programming can be captured in any language with a memoization
+function (such as in LISP) simply by wrapping the memoization operation around a
+simple top-down parser.
+
+The earliest disambiguation algorithms for parsing were based on probabilistic
+context-free grammars, ﬁrst worked out by Booth (1969) and Salomaa (1969); see
+Appendix C for more history. Neural methods were ﬁrst applied to parsing at around
+the same time as statistical parsing methods were developed (Henderson, 1994). In
+the earliest work neural networks were used to estimate some of the probabilities for
+statistical constituency parsers (Henderson, 2003, 2004; Emami and Jelinek, 2005)
+. The next decades saw a wide variety of neural parsing algorithms, including re-
+cursive neural architectures (Socher et al., 2011, 2013), encoder-decoder models
+(Vinyals et al., 2015; Choe and Charniak, 2016), and the idea of focusing on spans
+(Cross and Huang, 2016). For more on the span-based self-attention approach we
+describe in this chapter see Stern et al. (2017), Gaddy et al. (2018), Kitaev and Klein
+(2018), and Kitaev et al. (2019). See Chapter 18 for the parallel history of neural
+dependency parsing.
+
+The classic reference for parsing algorithms is Aho and Ullman (1972); although
+the focus of that book is on computer languages, most of the algorithms have been
+applied to natural language.
+
+WFST
+
+probabilistic
+context-free
+grammars
+
+Exercises
+
+17.1 Implement the algorithm to convert arbitrary context-free grammars to CNF.
+
+390 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+Apply your program to the L1 grammar.
+
+17.2 Implement the CKY algorithm and test it with your converted L1 grammar.
+17.3 Rewrite the CKY algorithm given in Fig. 17.12 on page 380 so that it can
+
+accept grammars that contain unit productions.
+
+17.4 Discuss how to augment a parser to deal with input that may be incorrect, for
+example, containing spelling errors or mistakes arising from automatic speech
+recognition.
+
+17.5 Implement the PARSEVAL metrics described in Section 17.8. Next, use a
+parser and a treebank, compare your metrics against a standard implementa-
+tion. Analyze the errors in your approach.
+
+CHAPTER
+
+18 Dependency Parsing
+
+Tout mot qui fait partie d’une phrase... Entre lui et ses voisins, l’esprit aperc¸oit
+des connexions, dont l’ensemble forme la charpente de la phrase.
+
+[Between each word in a sentence and its neighbors, the mind perceives con-
+nections. These connections together form the scaffolding of the sentence.]
+
+Lucien Tesni`ere. 1959. ´El´ements de syntaxe structurale, A.1.§4
+
+dependency
+grammars
+
+The focus of the last chapter was on context-free grammars and constituent-
+based representations. Here we present another important family of grammar for-
+malisms called dependency grammars. In dependency formalisms, phrasal con-
+stituents and phrase-structure rules do not play a direct role. Instead, the syntactic
+structure of a sentence is described solely in terms of directed binary grammatical
+relations between the words, as in the following dependency parse:
+
+root
+
+obj
+
+det
+
+nsubj
+
+compound
+
+nmod
+
+case
+
+(18.1)
+
+I prefer the morning
+
+ﬂight through Denver
+
+Relations among the words are illustrated above the sentence with directed, labeled
+arcs from heads to dependents. We call this a typed dependency structure because
+the labels are drawn from a ﬁxed inventory of grammatical relations. A root node
+explicitly marks the root of the tree, the head of the entire structure.
+
+Figure 18.1 on the next page shows the dependency analysis from (18.1) but vi-
+sualized as a tree, alongside its corresponding phrase-structure analysis of the kind
+given in the prior chapter. Note the absence of nodes corresponding to phrasal con-
+stituents or lexical categories in the dependency parse; the internal structure of the
+dependency parse consists solely of directed relations between words. These head-
+dependent relationships directly encode important information that is often buried in
+the more complex phrase-structure parses. For example, the arguments to the verb
+prefer are directly linked to it in the dependency structure, while their connection
+to the main verb is more distant in the phrase-structure tree. Similarly, morning
+and Denver, modiﬁers of ﬂight, are linked to it directly in the dependency structure.
+This fact that the head-dependent relations are a good proxy for the semantic rela-
+tionship between predicates and their arguments is an important reason why depen-
+dency grammars are currently more common than constituency grammars in natural
+language processing.
+
+Another major advantage of dependency grammars is their ability to deal with
+languages that have a relatively free word order. For example, word order in Czech
+can be much more ﬂexible than in English; a grammatical object might occur before
+or after a location adverbial. A phrase-structure grammar would need a separate rule
+
+typed
+dependency
+
+free word order
+
+392 CHAPTER 18
+
+• DEPENDENCY PARSING
+
+prefer
+
+S
+
+I
+
+ﬂight
+
+NP
+
+VP
+
+the
+
+morning
+
+Denver
+
+Pro
+
+Verb
+
+NP
+
+I
+
+prefer
+
+Det
+
+Nom
+
+through
+
+the
+
+Nom
+
+PP
+
+Nom
+
+Noun
+
+P
+
+NP
+
+Noun
+
+ﬂight
+
+through
+
+Pro
+
+morning
+
+Denver
+
+Figure 18.1 Dependency and constituent analyses for I prefer the morning ﬂight through Denver.
+
+for each possible place in the parse tree where such an adverbial phrase could occur.
+A dependency-based approach can have just one link type representing this particu-
+lar adverbial relation; dependency grammar approaches can thus abstract away a bit
+more from word order information.
+
+In the following sections, we’ll give an inventory of relations used in dependency
+parsing, discuss two families of parsing algorithms (transition-based, and graph-
+based), and discuss evaluation.
+
+18.1 Dependency Relations
+
+grammatical
+relation
+
+head
+
+dependent
+
+grammatical
+function
+
+The traditional linguistic notion of grammatical relation provides the basis for the
+binary relations that comprise these dependency structures. The arguments to these
+relations consist of a head and a dependent. The head plays the role of the central
+organizing word, and the dependent as a kind of modiﬁer. The head-dependent rela-
+tionship is made explicit by directly linking heads to the words that are immediately
+dependent on them.
+
+In addition to specifying the head-dependent pairs, dependency grammars allow
+us to classify the kinds of grammatical relations, or grammatical function that the
+dependent plays with respect to its head. These include familiar notions such as
+subject, direct object and indirect object. In English these notions strongly corre-
+late with, but by no means determine, both position in a sentence and constituent
+type and are therefore somewhat redundant with the kind of information found in
+phrase-structure trees. However, in languages with more ﬂexible word order, the
+information encoded directly in these grammatical relations is critical since phrase-
+based constituent syntax provides little help.
+
+Linguists have developed taxonomies of relations that go well beyond the famil-
+iar notions of subject and object. While there is considerable variation from theory
+
+18.1
+
+• DEPENDENCY RELATIONS
+
+393
+
+Clausal Argument Relations Description
+NSUBJ
+
+OBJ
+IOBJ
+CCOMP
+Nominal Modiﬁer Relations Description
+NMOD
+AMOD
+
+Nominal subject
+Direct object
+Indirect object
+Clausal complement
+
+APPOS
+DET
+CASE
+Other Notable Relations
+CONJ
+CC
+Figure 18.2 Some of the Universal Dependency relations (de Marneffe et al., 2021).
+
+Nominal modiﬁer
+Adjectival modiﬁer
+Appositional modiﬁer
+Determiner
+Prepositions, postpositions and other case markers
+Description
+Conjunct
+Coordinating conjunction
+
+Universal
+Dependencies
+
+to theory, there is enough commonality that cross-linguistic standards have been
+developed. The Universal Dependencies (UD) project (de Marneffe et al., 2021),
+an open community effort to annotate dependencies and other aspects of grammar
+across more than 100 languages, provides an inventory of 37 dependency relations.
+Fig. 18.2 shows a subset of the UD relations and Fig. 18.3 provides some examples.
+The motivation for all of the relations in the Universal Dependency scheme is
+beyond the scope of this chapter, but the core set of frequently used relations can be
+broken into two sets: clausal relations that describe syntactic roles with respect to a
+predicate (often a verb), and modiﬁer relations that categorize the ways that words
+can modify their heads.
+
+Consider, for example, the following sentence:
+
+root
+
+obj
+
+det
+
+nsubj
+
+compound
+
+nmod
+
+case
+
+(18.2)
+
+United canceled the morning
+
+ﬂights to Houston
+
+Here the clausal relations NSUBJ and DOBJ identify the subject and direct object of
+the predicate cancel, while the NMOD, DET, and CASE relations denote modiﬁers of
+the nouns ﬂights and Houston.
+
+18.1.1 Dependency Formalisms
+
+A dependency structure can be represented as a directed graph G = (V, A), consisting
+of a set of vertices V , and a set of ordered pairs of vertices A, which we’ll call arcs.
+For the most part we will assume that the set of vertices, V , corresponds exactly
+to the set of words in a given sentence. However, they might also correspond to
+punctuation, or when dealing with morphologically complex languages the set of
+vertices might consist of stems and afﬁxes. The set of arcs, A, captures the head-
+dependent and grammatical function relationships between the elements in V .
+
+Different grammatical theories or formalisms may place further constraints on
+these dependency structures. Among the more frequent restrictions are that the struc-
+tures must be connected, have a designated root node, and be acyclic or planar. Of
+most relevance to the parsing approaches discussed in this chapter is the common,
+
+394 CHAPTER 18
+
+• DEPENDENCY PARSING
+
+Relation
+NSUBJ
+
+OBJ
+
+IOBJ
+COMPOUND
+NMOD
+AMOD
+
+APPOS
+DET
+
+Examples with head and dependent
+United canceled the ﬂight.
+United diverted the ﬂight to Reno.
+We booked her the ﬁrst ﬂight to Miami.
+We booked her the ﬂight to Miami.
+We took the morning ﬂight.
+ﬂight to Houston.
+Book the cheapest ﬂight.
+United, a unit of UAL, matched the fares.
+The ﬂight was canceled.
+Which ﬂight was delayed?
+We ﬂew to Denver and drove to Steamboat.
+We ﬂew to Denver and drove to Steamboat.
+Book the ﬂight through Houston.
+
+CONJ
+CC
+CASE
+Figure 18.3 Examples of some Universal Dependency relations.
+
+dependency
+tree
+
+computationally-motivated, restriction to rooted trees. That is, a dependency tree
+is a directed graph that satisﬁes the following constraints:
+
+1. There is a single designated root node that has no incoming arcs.
+2. With the exception of the root node, each vertex has exactly one incoming arc.
+3. There is a unique path from the root node to each vertex in V .
+
+Taken together, these constraints ensure that each word has a single head, that the
+dependency structure is connected, and that there is a single root node from which
+one can follow a unique directed path to each of the words in the sentence.
+
+18.

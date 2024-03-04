@@ -1,0 +1,451 @@
+y both guppy and guppies? We cannot simply
+say /guppy|ies/, because that would match only the strings guppy and ies. This
+is because sequences like guppy take precedence over the disjunction operator |.
+To make the disjunction operator apply only to a speciﬁc pattern, we need to use the
+parenthesis operators ( and ). Enclosing a pattern in parentheses makes it act like
+a single character for the purposes of neighboring operators like the pipe | and the
+Kleene*. So the pattern /gupp(y|ies)/ would specify that we meant the disjunc-
+tion only to apply to the sufﬁxes y and ies.
+
+The parenthesis operator ( is also useful when we are using counters like the
+Kleene*. Unlike the | operator, the Kleene* operator applies by default only to
+a single character, not to a whole sequence. Suppose we want to match repeated
+instances of a string. Perhaps we have a line that has column labels of the form
+Column 1 Column 2 Column 3. The expression /Column(cid:32)[0-9]+(cid:32)*/ will not
+match any number of columns; instead, it will match a single column followed by
+
+disjunction
+
+precedence
+
+2.1
+
+• REGULAR EXPRESSIONS
+
+9
+
+any number of spaces! The star here applies only to the space (cid:32) that precedes it,
+not to the whole sequence. With the parentheses, we could write the expression
+/(Column(cid:32)[0-9]+(cid:32)*)*/ to match the word Column, followed by a number and
+optional spaces, the whole pattern repeated zero or more times.
+
+This idea that one operator may take precedence over another, requiring us to
+sometimes use parentheses to specify what we mean, is formalized by the operator
+precedence hierarchy for regular expressions. The following table gives the order
+of RE operator precedence, from highest precedence to lowest precedence.
+
+operator precedence:
+Parenthesis
+Counters
+Sequences and anchors
+Disjunction
+
+()
+* + ? {}
+
+the ˆmy end$
+
+|
+
+Thus,
+
+because
+
+than sequences,
+/the*/ matches theeeee but not thethe. Because sequences have a higher prece-
+dence than disjunction, /the|any/ matches the or any but not thany or theny.
+
+a higher precedence
+
+counters have
+
+Patterns can be ambiguous in another way. Consider the expression /[a-z]*/
+when matching against the text once upon a time. Since /[a-z]*/ matches zero or
+more letters, this expression could match nothing, or just the ﬁrst letter o, on, onc,
+or once. In these cases regular expressions always match the largest string they can;
+we say that patterns are greedy, expanding to cover as much of a string as they can.
+There are, however, ways to enforce non-greedy matching, using another mean-
+ing of the ? qualiﬁer. The operator *? is a Kleene star that matches as little text as
+possible. The operator +? is a Kleene plus that matches as little text as possible.
+
+greedy
+
+non-greedy
+
+*?
+
++?
+
+2.1.3 A Simple Example
+
+Suppose we wanted to write a RE to ﬁnd cases of the English article the. A simple
+(but incorrect) pattern might be:
+
+/the/
+
+One problem is that this pattern will miss the word when it begins a sentence and
+hence is capitalized (i.e., The). This might lead us to the following pattern:
+
+/[tT]he/
+
+But we will still incorrectly return texts with the embedded in other words (e.g.,
+other or theology). So we need to specify that we want instances with a word bound-
+ary on both sides:
+
+/\b[tT]he\b/
+
+Suppose we wanted to do this without the use of /\b/. We might want this since
+/\b/ won’t treat underscores and numbers as word boundaries; but we might want
+to ﬁnd the in some context where it might also have underlines or numbers nearby
+(the or the25). We need to specify that we want instances in which there are no
+alphabetic letters on either side of the the:
+
+/[ˆa-zA-Z][tT]he[ˆa-zA-Z]/
+
+But there is still one more problem with this pattern: it won’t ﬁnd the word the
+when it begins a line. This is because the regular expression [ˆa-zA-Z], which
+
+10 CHAPTER 2
+
+• REGULAR EXPRESSIONS, TEXT NORMALIZATION, EDIT DISTANCE
+
+we used to avoid embedded instances of the, implies that there must be some single
+(although non-alphabetic) character before the the. We can avoid this by specify-
+ing that before the the we require either the beginning-of-line or a non-alphabetic
+character, and the same at the end of the line:
+
+/(ˆ|[ˆa-zA-Z])[tT]he([ˆa-zA-Z]|$)/
+
+false positives
+
+false negatives
+
+The process we just went through was based on ﬁxing two kinds of errors: false
+positives, strings that we incorrectly matched like other or there, and false nega-
+tives, strings that we incorrectly missed, like The. Addressing these two kinds of
+errors comes up again and again in implementing speech and language processing
+systems. Reducing the overall error rate for an application thus involves two antag-
+onistic efforts:
+
+• Increasing precision (minimizing false positives)
+• Increasing recall (minimizing false negatives)
+
+We’ll come back to precision and recall with more precise deﬁnitions in Chapter 4.
+
+2.1.4 More Operators
+
+Figure 2.8 shows some aliases for common ranges, which can be used mainly to
+save typing. Besides the Kleene * and Kleene + we can also use explicit numbers as
+counters, by enclosing them in curly brackets. The regular expression /{3}/ means
+“exactly 3 occurrences of the previous character or expression”. So /a\.{24}z/
+will match a followed by 24 dots followed by z (but not a followed by 23 or 25 dots
+followed by a z).
+
+Regex
+\d
+\D
+\w
+\W
+\s
+\S
+
+Expansion
+[0-9]
+[ˆ0-9]
+[a-zA-Z0-9_]
+[ˆ\w]
+[(cid:32)\r\t\n\f]
+[ˆ\s]
+
+First Matches
+Party(cid:32)of(cid:32)5
+Blue(cid:32)moon
+
+Match
+any digit
+any non-digit
+any alphanumeric/underscore Daiyu
+a non-alphanumeric
+whitespace (space, tab)
+Non-whitespace
+
+!!!!
+in Concord
+in(cid:32)Concord
+
+Figure 2.8 Aliases for common sets of characters.
+
+A range of numbers can also be speciﬁed. So /{n,m}/ speciﬁes from n to m
+occurrences of the previous char or expression, and /{n,}/ means at least n occur-
+rences of the previous expression. REs for counting are summarized in Fig. 2.9.
+
+Regex
+*
++
+?
+{n}
+{n,m}
+{n,}
+{,m}
+
+Match
+zero or more occurrences of the previous char or expression
+one or more occurrences of the previous char or expression
+zero or one occurrence of the previous char or expression
+exactly n occurrences of the previous char or expression
+from n to m occurrences of the previous char or expression
+at least n occurrences of the previous char or expression
+up to m occurrences of the previous char or expression
+
+Figure 2.9 Regular expression operators for counting.
+
+Finally, certain special characters are referred to by special notation based on the
+backslash (\) (see Fig. 2.10). The most common of these are the newline character
+
+newline
+
+2.1
+
+• REGULAR EXPRESSIONS
+
+11
+
+\n and the tab character \t. To refer to characters that are special themselves (like
+., *, [, and \), precede them with a backslash, (i.e., /\./, /\*/, /\[/, and /\\/).
+
+Regex
+\*
+\.
+\?
+\n
+\t
+
+Match
+an asterisk “*”
+a period “.”
+a question mark
+a newline
+a tab
+
+First Patterns Matched
+“K*A*P*L*A*N”
+“Dr. Livingston, I presume”
+“Why don’t they come and lend a hand?”
+
+Figure 2.10 Some characters that need to be backslashed.
+
+2.1.5 A More Complex Example
+
+Let’s try out a more signiﬁcant example of the power of REs. Suppose we want to
+build an application to help a user buy a computer on the Web. The user might want
+“any machine with at least 6 GHz and 500 GB of disk space for less than $1000”.
+To do this kind of retrieval, we ﬁrst need to be able to look for expressions like 6
+GHz or 500 GB or Mac or $999.99. In the rest of this section we’ll work out some
+simple regular expressions for this task.
+
+First, let’s complete our regular expression for prices. Here’s a regular expres-
+
+sion for a dollar sign followed by a string of digits:
+
+/$[0-9]+/
+
+Note that the $ character has a different function here than the end-of-line function
+we discussed earlier. Most regular expression parsers are smart enough to realize
+that $ here doesn’t mean end-of-line. (As a thought experiment, think about how
+regex parsers might ﬁgure out the function of $ from the context.)
+
+Now we just need to deal with fractions of dollars. We’ll add a decimal point
+
+and two digits afterwards:
+
+/$[0-9]+\.[0-9][0-9]/
+
+This pattern only allows $199.99 but not $199. We need to make the cents
+
+optional and to make sure we’re at a word boundary:
+
+/(ˆ|\W)$[0-9]+(\.[0-9][0-9])?\b/
+
+One last catch! This pattern allows prices like $199999.99 which would be far
+
+too expensive! We need to limit the dollars:
+
+/(ˆ|\W)$[0-9]{0,3}(\.[0-9][0-9])?\b/
+
+Further ﬁxes (like avoiding matching a dollar sign with no price after it) are left
+
+as an exercise for the reader.
+
+How about disk space? We’ll need to allow for optional fractions again (5.5 GB);
+note the use of ? for making the ﬁnal s optional, and the use of /(cid:32)*/ to mean “zero
+or more spaces” since there might always be extra spaces lying around:
+
+/\b[0-9]+(\.[0-9]+)?(cid:32)*(GB|[Gg]igabytes?)\b/
+
+Modifying this regular expression so that it only matches more than 500 GB is
+
+left as an exercise for the reader.
+
+12 CHAPTER 2
+
+• REGULAR EXPRESSIONS, TEXT NORMALIZATION, EDIT DISTANCE
+
+2.1.6 Substitution, Capture Groups, and ELIZA
+
+substitution
+
+An important use of regular expressions is in substitutions. For example, the substi-
+tution operator s/regexp1/pattern/ used in Python and in Unix commands like
+vim or sed allows a string characterized by a regular expression to be replaced by
+another string:
+
+s/colour/color/
+
+It is often useful to be able to refer to a particular subpart of the string matching
+the ﬁrst pattern. For example, suppose we wanted to put angle brackets around all
+integers in a text, for example, changing the 35 boxes to the <35> boxes. We’d
+like a way to refer to the integer we’ve found so that we can easily add the brackets.
+To do this, we put parentheses ( and ) around the ﬁrst pattern and use the number
+operator \1 in the second pattern to refer back. Here’s how it looks:
+
+s/([0-9]+)/<\1>/
+
+The parenthesis and number operators can also specify that a certain string or
+expression must occur twice in the text. For example, suppose we are looking for
+the pattern “the Xer they were, the Xer they will be”, where we want to constrain
+the two X’s to be the same string. We do this by surrounding the ﬁrst X with the
+parenthesis operator, and replacing the second X with the number operator \1, as
+follows:
+
+/the (.*)er they were, the \1er they will be/
+
+Here the \1 will be replaced by whatever string matched the ﬁrst item in paren-
+theses. So this will match the bigger they were, the bigger they will be but not the
+bigger they were, the faster they will be.
+
+This use of parentheses to store a pattern in memory is called a capture group.
+Every time a capture group is used (i.e., parentheses surround a pattern), the re-
+sulting match is stored in a numbered register. If you match two different sets of
+parentheses, \2 means whatever matched the second capture group. Thus
+
+capture group
+
+register
+
+/the (.*)er they (.*), the \1er we \2/
+
+will match the faster they ran, the faster we ran but not the faster they ran, the faster
+we ate. Similarly, the third capture group is stored in \3, the fourth is \4, and so on.
+Parentheses thus have a double function in regular expressions; they are used
+to group terms for specifying the order in which operators should apply, and they
+are used to capture something in a register. Occasionally we might want to use
+parentheses for grouping, but don’t want to capture the resulting pattern in a register.
+In that case we use a non-capturing group, which is speciﬁed by putting the special
+commands ?: after the open parenthesis, in the form (?: pattern ).
+
+non-capturing
+group
+
+/(?:some|a few) (people|cats) like some \1/
+
+will match some cats like some cats but not some cats like some some.
+
+Substitutions and capture groups are very useful in implementing simple chat-
+bots like ELIZA (Weizenbaum, 1966). Recall that ELIZA simulates a Rogerian
+psychologist by carrying on conversations like the following:
+
+2.2
+
+• WORDS
+
+13
+
+They’re always bugging us about something or other.
+
+User1: Men are all alike.
+ELIZA1: IN WHAT WAY
+User2:
+ELIZA2: CAN YOU THINK OF A SPECIFIC EXAMPLE
+User3: Well, my boyfriend made me come here.
+ELIZA3: YOUR BOYFRIEND MADE YOU COME HERE
+User4:
+He says I’m depressed much of the time.
+ELIZA4: I AM SORRY TO HEAR YOU ARE DEPRESSED
+
+ELIZA works by having a series or cascade of regular expression substitutions
+each of which matches and changes some part of the input lines. After the input
+is uppercased, substitutions change all instances of MY to YOUR, and I’M to YOU
+ARE, and so on. That way when ELIZA repeats back part of the user utterance, it
+will seem to be referring correctly to the user. The next set of substitutions matches
+and replaces other patterns in the input. Here are some examples:
+
+s/.* YOU ARE (depressed|sad) .*/I AM SORRY TO HEAR YOU ARE \1/
+s/.* YOU ARE (depressed|sad) .*/WHY DO YOU THINK YOU ARE \1/
+s/.* all .*/IN WHAT WAY/
+s/.* always .*/CAN YOU THINK OF A SPECIFIC EXAMPLE/
+
+Since multiple substitutions can apply to a given input, substitutions are assigned
+a rank and applied in order. Creating patterns is the topic of Exercise 2.3, and we
+return to the details of the ELIZA architecture in Chapter 15.
+
+2.1.7 Lookahead Assertions
+
+Finally, there will be times when we need to predict the future: look ahead in the
+text to see if some pattern matches, but not yet advance the pointer we always keep
+to where we are in the text, so that we can then deal with the pattern if it occurs, but
+if it doesn’t we can check for something else instead.
+
+These lookahead assertions make use of the (? syntax that we saw in the previ-
+ous section for non-capture groups. The operator (?= pattern) is true if pattern
+occurs, but is zero-width, i.e.
+the match pointer doesn’t advance. The operator
+(?! pattern) only returns true if a pattern does not match, but again is zero-width
+and doesn’t advance the pointer. Negative lookahead is commonly used when we
+are parsing some complex pattern but want to rule out a special case. For example
+suppose we want to match, at the beginning of a line, any single word that doesn’t
+start with “Volcano”. We can use negative lookahead to do this:
+
+/ˆ(?!Volcano)[A-Za-z]+/
+
+lookahead
+
+zero-width
+
+2.2 Words
+
+corpus
+
+corpora
+
+Before we talk about processing words, we need to decide what counts as a word.
+Let’s start by looking at one particular corpus (plural corpora), a computer-readable
+collection of text or speech. For example the Brown corpus is a million-word col-
+lection of samples from 500 written English texts from different genres (newspa-
+per, ﬁction, non-ﬁction, academic, etc.), assembled at Brown University in 1963–64
+(Kuˇcera and Francis, 1967). How many words are in the following Brown sentence?
+
+14 CHAPTER 2
+
+• REGULAR EXPRESSIONS, TEXT NORMALIZATION, EDIT DISTANCE
+
+utterance
+
+disﬂuency
+
+fragment
+
+ﬁlled pause
+
+word type
+
+word instance
+
+He stepped out into the hall, was delighted to encounter a water brother.
+
+This sentence has 13 words if we don’t count punctuation marks as words, 15
+if we count punctuation. Whether we treat period (“.”), comma (“,”), and so on as
+words depends on the task. Punctuation is critical for ﬁnding boundaries of things
+(commas, periods, colons) and for identifying some aspects of meaning (question
+marks, exclamation marks, quotation marks). For some tasks, like part-of-speech
+tagging or parsing or speech synthesis, we sometimes treat punctuation marks as if
+they were s

@@ -1,0 +1,392 @@
+So the representation of thanks for all the might be w =
+[5, 4000, 10532, 2224]. Next we use indexing to select the corresponding rows from
+E, (row 5, row 4000, row 10532, row 2224).
+
+| ×
+
+d].
+
+Another way to think about selecting token embeddings from the embedding
+], i.e., with one
+matrix is to represent tokens as one-hot vectors of shape [1
+|
+dimension for each word in the vocabulary. Recall that in a one-hot vector all the
+elements are 0 except one, the element whose dimension is the word’s index in the
+vocabulary, which has value 1. So if the word “thanks” has index 5 in the vocabulary,
+x5 = 1, and xi = 0
+
+= 5, as shown here:
+
+× |
+
+V
+
+i
+∀
+[0 0 0 0 1 0 0 ... 0 0 0 0]
+... |V|
+
+1 2 3 4 5 6 7 ...
+
+one-hot vector
+
+Multiplying by a one-hot vector that has only one non-zero element xi = 1 simply
+selects out the relevant row vector for word i, resulting in the embedding for word i,
+as depicted in Fig. 10.10.
+
+Figure 10.10 Selecting the embedding vector for word V5 by multiplying the embedding
+matrix E with a one-hot vector with a 1 in index 5.
+
+We can extend this idea to represent the entire token sequence as a matrix of one-
+hot vectors, one for each of the N positions in the transformer’s context window, as
+shown in Fig. 10.11.
+
+Figure 10.11 Selecting the embedding matrix for the input sequence of token ids W by
+multiplying a one-hot matrix corresponding to W by the embedding matrix E.
+
+positional
+embeddings
+
+absolute
+position
+
+These token embeddings are not position-dependent. To represent the position
+of each token in the sequence, we combine these token embeddings with positional
+embeddings speciﬁc to each position in an input sequence.
+
+Where do we get these positional embeddings? The simplest method, called
+absolute position, is to start with randomly initialized embeddings corresponding
+to each possible input position up to some maximum length. For example, just as
+we have an embedding for the word ﬁsh, we’ll have an embedding for the position 3.
+
+E|V|d1|V|d=✕550 0 0 0 1 0 0 … 0 0 0 0 1E|V|ddN=✕|V|N0 0 0 0 0 0 0 … 0 0 1 0 0 0 0 0 1 0 0 … 0 0 0 0 1 0 0 0 0 0 0 … 0 0 0 0 0 0 0 0 1 0 0 … 0 0 0 0 …(cid:54)
+228 CHAPTER 10
+
+• TRANSFORMERS AND LARGE LANGUAGE MODELS
+
+As with word embeddings, these positional embeddings are learned along with other
+parameters during training. We can store them in a matrix Epos of shape [1timesN].
+To produce an input embedding that captures positional information, we just add
+the word embedding for each input to its corresponding positional embedding. The
+individual token and position embeddings are both of size [1
+d], so their sum is also
+d], This new embedding serves as the input for further processing. Fig. 10.12
+[1
+shows the idea.
+
+×
+
+×
+
+Figure 10.12 A simple way to model position: add an embedding of the absolute position
+to the token embedding to produce a new embedding of the same dimenionality.
+
+The ﬁnal representation of the input, the matrix X, is an [N
+
+d] matrix in which
+each row i is the representation of the ith token in the input, computed by adding
+E[id(i)]—the embedding of the id of the token that occurred at position i—, to P[i],
+the positional embedding of position i.
+
+×
+
+A potential problem with the simple absolute position embedding approach is
+that there will be plenty of training examples for the initial positions in our inputs
+and correspondingly fewer at the outer length limits. These latter embeddings may
+be poorly trained and may not generalize well during testing. An alternative ap-
+proach to absolute positional embeddings is to choose a static function that maps
+integer inputs to real-valued vectors in a way that captures the inherent relation-
+ships among the positions. That is, it captures the fact that position 4 in an input is
+more closely related to position 5 than it is to position 17. A combination of sine
+and cosine functions with differing frequencies was used in the original transformer
+work. Even more complex positional embedding methods exist, such as ones that
+represent relative position instead of absolute position, often implemented in the
+attention mechanism at each layer rather than being added once at the initial input.
+
+10.6 The Language Modeling Head
+
+language
+modeling head
+head
+
+The last component of the transformer we must introduce is the language modeling
+head. When we apply pretrained transformer models to various tasks, we use the
+term head to mean the additional neural circuitry we add on top of the basic trans-
+former architecture to enable that task. The language modeling head is the circuitry
+we need to do language modeling.
+
+Recall that language models, from the simple n-gram models of Chapter 3 through
+the feedforward and RNN language models of Chapter 7 and Chapter 9, are word
+predictors. Given a context of words, they assign a probability to each possible next
+
+X = CompositeEmbeddings(word + position)Transformer BlockJanet1will2back3Janetwillbackthebillthe4bill5+++++PositionEmbeddingsWordEmbeddings10.6
+
+• THE LANGUAGE MODELING HEAD
+
+229
+
+word. For example, if the preceding context is “Thanks for all the” and we want to
+know how likely the next word is “ﬁsh” we would compute:
+
+Thanks for all the)
+P(ﬁsh
+|
+
+−
+
+1 prior words. The context is thus of size n
+
+Language models give us the ability to assign such a conditional probability to every
+possible next word, giving us a distribution over the entire vocabulary. The n-gram
+language models of Chapter 3 compute the probability of a word given counts of
+its occurrence with the n
+1. For
+transformer language models, the context is the size of the transformer’s context
+window, which can be quite large: up to 2048 or even 4096 tokens for large models.
+The job of the language modeling head is to take the the output of the ﬁnal
+transformer layer from the last token N and use it to predict the upcoming word at
+position N + 1. Fig. 10.13 shows how to accomplish this task, taking the output of
+d])
+the last token at the last layer (the d-dimensional output embedding of shape [1
+and producing a probability distribution over words (from which we will choose one
+to generate).
+
+×
+
+−
+
+Figure 10.13 The language modeling head: the circuit at the top of a transformer that maps from the output
+embedding for token N from the last transformer layer (hL
+N ) to a probability distribution over words in the
+vocabulary V .
+
+|
+× |
+
+.
+|
+
+The ﬁrst module in Fig. 10.13 is a linear layer, whose job is to project from the
+N, which represents the output token embedding at position N from the ﬁnal
+d]) to the logit vector, or score vector, that will have a
+possible words in the vocabulary V . The logit vector
+V
+
+output hL
+block L, (hence of shape [1
+×
+V
+single score for each of the
+|
+u is thus of dimensionality 1
+
+This linear layer can be learned, but more commonly we tie this matrix to (the
+transpose of) the embedding matrix E. Recall that in weight tying, we use the
+same weights for two different matrices in the model. Thus at the input stage of the
+d]) is used to map from a one-hot
+transformer the embedding matrix (of shape [
+V
+|
+vector over the vocabulary (of shape [1
+d]).
+]) to an embedding (of shape [1
+V
+|
+× |
+And then in the language model head, ET, the transpose of the embedding matrix (of
+d]) to a vector
+]) is used to map back from an embedding (shape [1
+shape [d
+|
+]). In the learning process, E will be optimized to
+over the vocabulary (shape [1
+|
+be good at doing both of these mappings. We therefore sometimes call the transpose
+ET the unembedding layer because it is performing this reverse mapping.
+
+× |
+
+| ×
+
+×|
+
+×
+
+×
+
+V
+
+V
+
+logit
+
+weight tying
+
+unembedding
+
+Layer LTransformerBlockSoftmax over vocabulary VUnembedding layer…1 x |V|Logits Word probabilities1 x |V|hL1w1w2wNhL2hLNd x |V|1 x d   Unembedding    layer = ETy1y2y|V|…u1u2u|V|…Language Model Headtakes hLN and outputs adistribution over vocabulary V230 CHAPTER 10
+
+• TRANSFORMERS AND LARGE LANGUAGE MODELS
+
+A softmax layer turns the logits u into the probabilities y over the vocabulary.
+
+u = hL
+N ET
+y = softmax(u)
+
+(10.44)
+
+(10.45)
+
+We can use these probabilities to do things like help assign a probability to a
+given text. But the most important usage to generate text, which we do by sampling
+a word from these probabilities y. We might sample the highest probability word
+(‘greedy’ decoding), or use another of the sampling methods we’ll introduce in Sec-
+tion 10.8. In either case, whatever entry yk we choose from the probability vector y,
+we generate the word that has that index k.
+
+Figure 10.14 A ﬁnal transformer decoder-only model, stacking post-norm transformer
+blocks and mapping from a set of input tokens w1 to wN to a predicted next word wN+1.
+
+Fig. 10.14 shows the total stacked architecture. Note that the input to the ﬁrst
+transformer block is represented as X, which is the N indexed word embeddings +
+position embeddings, E[w] + P), but the input to all the other layers is the output H
+from the layer just below the current one).
+
+Now that we see all these transformer layers spread out on the page, we can point
+out another useful feature of the unembedding layer: as a tool for interpretability of
+
+X x1 x2      …      xNMultihead Self-AttentionLayer NormFeedforwardLayer NormLayer 1h1 h2      …     hNMultihead Self-AttentionLayer NormFeedforwardLayer NormLayer 2h1 h2      …     hNMultihead Self-AttentionLayer NormFeedforwardLayer NormLayer  Lh1 h2      …     hN…Sample token to generateat position N+1wN+1w1 w2      …      wNInput tokensP1       P2     …    PN        Add token + position embeddings+Language ModelHeadToken probabilitiesy1y2y|V|…E[w1] E[w2]  … E[wN]logit lens
+
+decoder-only
+model
+
+10.7
+
+• LARGE LANGUAGE MODELS WITH TRANSFORMERS
+
+231
+
+the internals of the transformer that we call the logit lens (Nostalgebraist, 2020).
+We can take a vector from any layer of the transformer and, pretending that it is
+the preﬁnal embedding, simply multiply it by the unembedding layer to get logits,
+and compute a softmax to see the distribution over words that that vector might
+be representing. This can be a useful window into the internal representations of
+the model. Since the network wasn’t trained to make the internal representations
+function in this way, the logit lens doesn’t always work perfectly, but this can still
+be a useful trick.
+
+Anyhow, the Fig. 10.14 thus sketches out the entire process of taking a series of
+
+words w1 . . . wN and using the model to predict the next word wN+1.
+
+A terminological note before we conclude: You will sometimes see a trans-
+former used for this kind of unidirectional causal language model called a decoder-
+only model. This is because this model constitutes roughly half of the encoder-
+decoder model for transformers that we’ll see how to apply to machine translation
+(Confusingly, the original introduction of the transformer had an
+in Chapter 13.
+encoder-decoder architecture, and it was only later that the standard paradigm for
+causal language model was deﬁned by using only the decoder part of this original
+architecture).
+
+In the next sections we’ll introduce what kind of tasks large language models can
+be used for, discuss various generation methods for sampling possible next words,
+and show how to train a transformer-based large language model. In the follow-
+ing chapters we’ll expand on these ideas to introduce ﬁne-tuning, prompting, and
+encoder-decoder architectures for transformer-based large language models.
+
+10.7 Large Language Models with Transformers
+
+We’ve now seen most of the components of a transformer for language modeling
+(what remains is sampling and training, which we’ll get to in the following sec-
+tions). Before we do that, we use this section to talk about why and how we apply
+transformer-based large language models to NLP tasks.
+
+All of these tasks are cases of conditional generation, the task of generating text
+conditioned on an input piece of text, a prompt. The fact that transformers have such
+long contexts (1024 or even 4096 tokens) makes them very powerful for conditional
+generation, because they can look back so far into the prompting text.
+
+Consider the simple task of text completion, illustrated in Fig. 10.15. Here a
+language model is given a text preﬁx and is asked to generate a possible completion.
+Note that as the generation process proceeds, the model has direct access to the
+priming context as well as to all of its own subsequently generated outputs (at least
+as much as ﬁts in the large context window).. This ability to incorporate the entirety
+of the earlier context and generated outputs at each time step is the key to the power
+of large language models built from transformers.
+
+So why should we care about predicting upcoming words? The insight of large
+language modeling is that many practical NLP tasks can be cast as word predic-
+tion, and that a powerful-enough language model can solve them with a high degree
+of accuracy. For example, we can cast sentiment analysis as language modeling by
+giving a language model a context like:
+
+The sentiment of the sentence “I like Jackie Chan” is:
+
+and comparing the following conditional probability of the words “positive” and the
+
+232 CHAPTER 10
+
+• TRANSFORMERS AND LARGE LANGUAGE MODELS
+
+Figure 10.15 Autoregressive text completion with transformer-based large language models.
+
+word “negative” to see which is higher:
+
+The sentiment of the sentence “I like Jackie Chan” is:)
+P(positive
+|
+The sentiment of the sentence “I like Jackie Chan” is:)
+P(negative
+|
+
+If the word “positive” is more probable, we say the sentiment of the sentence is
+positive, otherwise we say the sentiment is negative.
+
+We can also cast more complex tasks as word prediction. Consider the task
+of answering simple questions, a task we return to in Chapter 14. In this task the
+system is given some question and must give a textual answer. We can cast the task
+of question answering as word prediction by giving a language model a question and
+a token like A: suggesting that an answer should come next:
+
+Q: Who wrote the book ‘‘The Origin of Species"?
+
+A:
+
+If we ask a language model to compute
+
+Q: Who wrote the book “The Origin of Species”? A:)
+P(w
+|
+
+and look at which words w have high probabilities, we might expect to see that
+Charles is very likely, and then if we choose Charles and continue and ask
+
+Q: Who wrote the book “The Origin of Species”? A: Charles)
+P(w
+|
+
+we might now see that Darwin is the most probable word, and select it.
+
+Conditional generation can even be used to accomplish tasks that must generate
+longer responses. Consider the task of text summarization, which is to take a long
+text, such as a full-length article, and produce an effective shorter summary of it.
+We can cast summarization as language modeling by giving a large language model
+a text, and follow the text by a token like tl;dr; this token is short for something
+like ‘too long; don’t read’ and in recent years people often use this token, especially
+in informal work emails, when they are going to give a short summary. We can
+then do conditional generation: give the language model this preﬁx, and then ask
+
+text
+summarization
+
+Preﬁx TextCompletion TextInputEmbeddingsTransformerBlocksSample from SoftmaxSolongallandthanksforallthethe…linear layer10.7
+
+• LARGE LANGUAGE MODELS WITH TRANSFORMERS
+
+233
+
+it to generate the following words, one by one, and take the entire response as a
+summary. Fig. 10.16 shows an example of a text and a human-produced summary
+from a widely-used summarization corpus consisting 

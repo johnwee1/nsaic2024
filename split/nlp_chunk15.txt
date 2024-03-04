@@ -1,0 +1,778 @@
+x) is the probability that the document has negative sentiment.
+and P(y = 0
+|
+Logistic regression solves this task by learning, from a training set, a vector of
+weights and a bias term. Each weight wi is a real number, and is associated with one
+of the input features xi. The weight wi represents how important that input feature
+is to the classiﬁcation decision, and can be positive (providing evidence that the in-
+stance being classiﬁed belongs in the positive class) or negative (providing evidence
+that the instance being classiﬁed belongs in the negative class). Thus we might
+expect in a sentiment task the word awesome to have a high positive weight, and
+abysmal to have a very negative weight. The bias term, also called the intercept, is
+another real number that’s added to the weighted inputs.
+
+To make a decision on a test instance—after we’ve learned the weights in training—
+
+the classiﬁer ﬁrst multiplies each xi by its weight wi, sums up the weighted features,
+and adds the bias term b. The resulting single number z expresses the weighted sum
+of the evidence for the class.
+
+z =
+
+n
+
+wixi
+
+(cid:32)
+
+(cid:33)
+
++ b
+
+(5.2)
+
+(cid:88)i=1
+In the rest of the book we’ll represent such sums using the dot product notation
+from linear algebra. The dot product of two vectors a and b, written as a
+b, is the
+sum of the products of the corresponding elements of each vector. (Notice that we
+represent vectors using the boldface notation b). Thus the following is an equivalent
+formation to Eq. 5.2:
+
+·
+
+bias term
+
+intercept
+
+dot product
+
+z = w
+
+x + b
+
+·
+
+(5.3)
+
+But note that nothing in Eq. 5.3 forces z to be a legal probability, that is, to lie
+between 0 and 1. In fact, since weights are real-valued, the output might even be
+negative; z ranges from
+
+∞ to ∞.
+
+−
+
+Figure 5.1 The sigmoid function σ (z) = 1
+1+e−
+(0, 1). It is nearly linear around 0 but outlier values get squashed toward 0 or 1.
+
+z takes a real value and maps it to the range
+
+sigmoid
+
+logistic
+function
+
+To create a probability, we’ll pass z through the sigmoid function, σ (z). The
+sigmoid function (named because it looks like an s) is also called the logistic func-
+tion, and gives logistic regression its name. The sigmoid has the following equation,
+shown graphically in Fig. 5.1:
+
+σ (z) =
+
+1
+1 + e−
+
+z =
+
+1
+
+1 + exp (
+
+z)
+
+−
+
+(5.4)
+
+(For the rest of the book, we’ll use the notation exp(x) to mean ex.) The sigmoid
+has a number of advantages; it takes a real-valued number and maps it into the range
+
+84 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+(0, 1), which is just what we want for a probability. Because it is nearly linear around
+0 but ﬂattens toward the ends, it tends to squash outlier values toward 0 or 1. And
+it’s differentiable, which as we’ll see in Section 5.10 will be handy for learning.
+
+We’re almost there. If we apply the sigmoid to the sum of the weighted features,
+we get a number between 0 and 1. To make it a probability, we just need to make
+sure that the two cases, p(y = 1) and p(y = 0), sum to 1. We can do this as follows:
+
+P(y = 1) = σ (w
+
+·
+
+x + b)
+1
+(w
+
+=
+
+1 + exp (
+
+x + b))
+
+P(y = 0) = 1
+
+σ (w
+
+−
+
+·
+
+·
+−
+x + b)
+1
+(w
+−
+x + b))
+·
+(w
+
+·
+
+−
+
+·
+
+x + b))
+
+x + b))
+
+= 1
+
+=
+
+1 + exp (
+(w
+
+−
+exp (
+−
+1 + exp (
+
+The sigmoid function has the property
+
+(5.5)
+
+(5.6)
+
+p :
+
+(5.7)
+
+−
+so we could also have expressed P(y = 0) as σ (
+
+−
+
+1
+
+σ (x) = σ (
+
+x)
+
+(w
+
+x + b)).
+
+−
+
+·
+
+logit
+
+Finally, one terminological point. The input to the sigmoid function, the score
+x + b from (5.3), is often called the logit. This is because the logit function
+
+z = w
+is the inverse of the sigmoid. The logit function is the log of the odds ratio p
+1
+−
+
+·
+
+logit(p) = σ −
+
+1(p) = ln
+
+p
+
+−
+
+1
+
+p
+
+Using the term logit for z is a way of reminding us that by using the sigmoid to turn
+∞ to ∞) into a probability, we are implicitly interpreting z as
+z (which ranges from
+not just any real-valued number, but as speciﬁcally a log odds.
+
+−
+
+5.2 Classiﬁcation with Logistic Regression
+
+The sigmoid function from the prior section thus gives us a way to take an instance
+x).
+x and compute the probability P(y = 1
+|
+
+How do we make a decision about which class to apply to a test instance x? For
+x) is more than .5, and no otherwise.
+a given x, we say yes if the probability P(y = 1
+|
+We call .5 the decision boundary:
+
+decision
+boundary
+
+decision(x) =
+
+1 if P(y = 1
+x) > 0.5
+|
+0 otherwise
+
+(cid:26)
+
+Let’s have some examples of applying logistic regression as a classiﬁer for language
+tasks.
+
+5.2.1 Sentiment Classiﬁcation
+
+Suppose we are doing binary sentiment classiﬁcation on movie review text, and
+we would like to know whether to assign the sentiment class + or
+to a review
+
+−
+
+5.2
+
+• CLASSIFICATION WITH LOGISTIC REGRESSION
+
+85
+
+document doc. We’ll represent each input observation by the 6 features x1 . . . x6 of
+the input shown in the following table; Fig. 5.2 shows the features in a sample mini
+test document.
+
+Var Deﬁnition
+x1
+x2
+
+count(positive lexicon words
+count(negative lexicon words
+
+x3
+
+x4
+
+x5
+
+x6
+
+1 if “no”
+∈
+0 otherwise
+
+doc
+
+(cid:26)
+count(1st and 2nd pronouns
+
+1 if “!”
+0 otherwise
+
+∈
+
+doc
+
+(cid:26)
+ln(word count of doc)
+
+doc)
+doc)
+
+∈
+∈
+
+Value in Fig. 5.2
+3
+2
+
+doc)
+
+∈
+
+1
+
+3
+
+0
+
+ln(66) = 4.19
+
+Let’s assume for the moment that we’ve already learned a real-valued weight for
+
+Figure 5.2 A sample mini test document showing the extracted features in the vector x.
+
+−
+
+−
+
+5.0,
+
+each of these features, and that the 6 weights corresponding to the 6 features are
+[2.5,
+1.2, 0.5, 2.0, 0.7], while b = 0.1. (We’ll discuss in the next section how
+the weights are learned.) The weight w1, for example indicates how important a
+feature the number of positive lexicon words (great, nice, enjoyable, etc.)
+is to
+a positive sentiment decision, while w2 tells us the importance of negative lexicon
+words. Note that w1 = 2.5 is positive, while w2 =
+5.0, meaning that negative words
+are negatively associated with a positive sentiment decision, and are about twice as
+important as positive words.
+
+−
+
+x) and P(
+Given these 6 features and the input review x, P(+
+|
+
+−|
+
+x) can be com-
+
+puted using Eq. 5.5:
+
+x) = σ (w
+x) = P(y = 1
+p(+
+|
+|
+
+·
+
+x + b)
+5.0,
+
+−
+
+= σ ([2.5,
+= σ (.833)
+= 0.70
+
+1.2, 0.5, 2.0, 0.7]
+
+−
+
+·
+
+[3, 2, 1, 3, 0, 4.19] + 0.1)
+
+(5.8)
+
+p(
+
+x) = 1
+x) = P(y = 0
+|
+
+−|
+
+σ (w
+
+x + b)
+
+·
+
+−
+= 0.30
+
+5.2.2 Other classiﬁcation tasks and features
+
+period
+disambiguation
+
+Logistic regression is commonly applied to all sorts of NLP tasks, and any property
+of the input can be a feature. Consider the task of period disambiguation: deciding
+
+ It's hokey . There are virtually no surprises , and the writing is second-rate . So why was it so enjoyable  ? For one thing , the cast is great . Another nice touch is the music . I was overcome with the urge to get off the couch and start dancing .  It sucked me in , and it'll do the same to you  .x1=3x6=4.19x3=1x4=3x5=0x2=286 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+if a period is the end of a sentence or part of a word, by classifying each period
+into one of two classes EOS (end-of-sentence) and not-EOS. We might use features
+like x1 below expressing that the current word is lower case (perhaps with a positive
+weight), or that the current word is in our abbreviations dictionary (“Prof.”) (perhaps
+with a negative weight). A feature can also express a quite complex combination of
+properties. For example a period following an upper case word is likely to be an
+EOS, but if the word itself is St. and the previous word is capitalized, then the
+period is likely part of a shortening of the word street.
+
+x1 =
+
+x2 =
+
+x3 =
+
+(cid:26)
+
+(cid:26)
+
+(cid:26)
+
+1 if “Case(wi) = Lower”
+0 otherwise
+1 if “wi ∈
+0 otherwise
+
+AcronymDict”
+
+1 if “wi = St. & Case(wi
+0 otherwise
+
+−
+
+1) = Cap”
+
+feature
+interactions
+
+feature
+templates
+
+standardize
+
+z-score
+
+Designing features: Features are generally designed by examining the training
+set with an eye to linguistic intuitions and the linguistic literature on the domain. A
+careful error analysis on the training set or devset of an early version of a system
+often provides insights into features.
+
+For some tasks it is especially helpful to build complex features that are combi-
+nations of more primitive features. We saw such a feature for period disambiguation
+above, where a period on the word St. was less likely to be the end of the sentence
+if the previous word was capitalized. For logistic regression and naive Bayes these
+combination features or feature interactions have to be designed by hand.
+
+For many tasks (especially when feature values can reference speciﬁc words)
+we’ll need large numbers of features. Often these are created automatically via fea-
+ture templates, abstract speciﬁcations of features. For example a bigram template
+for period disambiguation might create a feature for every pair of words that occurs
+before a period in the training set. Thus the feature space is sparse, since we only
+have to create a feature if that n-gram exists in that position in the training set. The
+feature is generally created as a hash from the string descriptions. A user description
+of a feature as, “bigram(American breakfast)” is hashed into a unique integer i that
+becomes the feature number fi.
+
+In order to avoid the extensive human effort of feature design, recent research in
+NLP has focused on representation learning: ways to learn features automatically
+in an unsupervised way from the input. We’ll introduce methods for representation
+learning in Chapter 6 and Chapter 7.
+
+Scaling input features: When different input features have extremely different
+ranges of values, it’s common to rescale them so they have comparable ranges. We
+standardize input values by centering them to result in a zero mean and a standard
+deviation of one (this transformation is sometimes called the z-score). That is, if µi
+is the mean of the values of feature xi across the m observations in the input dataset,
+and σi is the standard deviation of the values of features xi across the input dataset,
+we can replace each feature xi by a new feature x(cid:48)i computed as follows:
+
+µi =
+
+1
+m
+
+m
+
+x( j)
+i
+
+(cid:88)j=1
+
+m
+
+(cid:88)j=1 (cid:16)
+
+x( j)
+i −
+
+µi
+
+2
+
+(cid:17)
+
+1
+m
+
+(cid:118)
+(cid:117)
+(cid:117)
+(cid:116)
+
+σi =
+
+x(cid:48)i =
+
+µi
+
+xi −
+σi
+
+(5.9)
+
+5.2
+
+• CLASSIFICATION WITH LOGISTIC REGRESSION
+
+87
+
+normalize
+
+Alternatively, we can normalize the input features values to lie between 0 and 1:
+
+x(cid:48)i =
+
+xi −
+max(xi)
+
+min(xi)
+
+min(xi)
+
+−
+
+(5.10)
+
+Having input data with comparable range is useful when comparing values across
+features. Data scaling is especially important in large neural networks, since it helps
+speed up gradient descent.
+
+5.2.3 Processing many examples at once
+
+We’ve shown the equations for logistic regression for a single example. But in prac-
+tice we’ll of course want to process an entire test set with many examples. Let’s
+suppose we have a test set consisting of m test examples each of which we’d like
+to classify. We’ll continue to use the notation from page 82, in which a superscript
+value in parentheses refers to the example index in some set of data (either for train-
+ing or for test). So in this case each test example x(i) has a feature vector x(i),
+1
+
+i
+One way to compute each output value ˆy(i) is just to have a for-loop, and compute
+
+m. (As usual, we’ll represent vectors and matrices in bold.)
+
+≤
+
+≤
+
+each test example one at a time:
+
+foreach x(i)
+
+in input [x(1), x(2), ..., x(m)]
+x(i) + b)
+
+y(i) = σ (w
+
+(5.11)
+
+·
+For the ﬁrst 3 test examples, then, we would be separately computing the pre-
+
+dicted ˆy(i) as follows:
+
+P(y(1) = 1
+P(y(2) = 1
+P(y(3) = 1
+
+x(1)) = σ (w
+|
+x(2)) = σ (w
+|
+x(3)) = σ (w
+|
+
+·
+
+·
+
+·
+
+x(1) + b)
+x(2) + b)
+x(3) + b)
+
+But it turns out that we can slightly modify our original equation Eq. 5.5 to do
+this much more efﬁciently. We’ll use matrix arithmetic to assign a class to all the
+examples with one matrix operation!
+
+First, we’ll pack all the input feature vectors for each input x into a single input
+matrix X, where each row i is a row vector consisting of the feature vector for in-
+put example x(i) (i.e., the vector x(i)). Assuming each example has f features and
+weights, X will therefore be a matrix of shape [m
+
+f ], as follows:
+
+
+
+X =
+
+
+
+(5.12)
+
+x(1)
+2
+x(2)
+2
+x(3)
+2
+
+x(1)
+1
+x(2)
+1
+x(3)
+1
+. . .
+
+
+
+
+
+
+
+×
+. . . x(1)
+f
+. . . x(2)
+f
+. . . x(3)
+f
+
+
+
+
+
+
+
+Now if we introduce b as a vector of length m which consists of the scalar bias
+term b repeated m times, b = [b, b, ..., b], and ˆy = [ ˆy(1), ˆy(2)..., ˆy(m)] as the vector of
+outputs (one scalar ˆy(i) for each input x(i) and its feature vector x(i)), and represent
+the weight vector w as a column vector, we can compute all the outputs with a single
+matrix multiplication and one addition:
+
+y = Xw + b
+
+(5.13)
+
+88 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+You should convince yourself that Eq. 5.13 computes the same thing as our for-loop
+in Eq. 5.11. For example ˆy(1), the ﬁrst entry of the output vector y, will correctly be:
+
+ˆy(1) = [x(1)
+
+1 , x(1)
+
+2 , ..., x(1)
+
+f
+
+]
+
+[w1, w2, ..., w f ] + b
+
+·
+Note that we had to reorder X and w from the order they appeared in in Eq. 5.5 to
+make the multiplications come out properly. Here is Eq. 5.13 again with the shapes
+shown:
+
+(5.14)
+
+y = X
+(m
+1)
+
+×
+
+(m
+
+×
+
+w + b
+1) (m
+
+×
+
+×
+
+f )( f
+
+1)
+
+(5.15)
+
+Modern compilers and compute hardware can compute this matrix operation
+very efﬁciently, making the computation much faster, which becomes important
+when training or testing on very large datasets.
+
+5.2.4 Choosing a classiﬁer
+
+Logistic regression has a number of advantages over naive Bayes. Naive Bayes has
+overly strong conditional independence assumptions. Consider two features which
+are strongly correlated; in fact, imagine that we just add the same feature f1 twice.
+Naive Bayes will treat both copies of f1 as if they were separate, multiplying them
+both in, overestimating the evidence. By contrast, logistic regression is much more
+robust to correlated features; if two features f1 and f2 are perfectly correlated, re-
+gression will simply assign part of the weight to w1 and part to w2. Thus when
+there are many correlated features, logistic regression will assign a more accurate
+probability than naive Bayes. So logistic regression generally works better on larger
+documents or datasets and is a common default.
+
+Despite the less accurate probabilities, naive Bayes still often makes the correct
+classiﬁcation decision. Furthermore, naive Bayes can work extremely well (some-
+times even better than logistic regression) on very small datasets (Ng and Jordan,
+2002) or short documents (Wang and Manning, 2012). Furthermore, naive Bayes is
+easy to implement and very fast to train (there’s no optimization step). So it’s still a
+reasonable approach to use in some situations.
+
+5.3 Multinomial logistic regression
+
+multinomial
+logistic
+regression
+
+Sometimes we need more than two classes. Perhaps we might want to do 3-way
+sentiment classiﬁcation (positive, negative, or neutral). Or we could be assigning
+some of the labels we will introduce in Chapter 8, like the part of speech of a word
+(choosing from 10, 30, or even 50 different parts of speech), or the named entity
+type of a phrase (choosing from tags like person, location, organization).
+
+In such cases we use multinomial logistic regression, also called softmax re-
+gression (in older NLP literature you will sometimes see the name maxent classi-
+ﬁer). In multinomial logistic regression we want to label each observation with a
+class k from a set of K classes, under the sti

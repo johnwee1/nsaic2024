@@ -1,0 +1,345 @@
+ulary by merging tokens,
+we start with a huge vocabulary of every individual unicode character plus all fre-
+quent sequences of characters (including all space-separated words, for languages
+with spaces), and iteratively remove some tokens to get to a desired ﬁnal vocabulary
+size. The algorithm is complex (involving sufﬁx-trees for efﬁciently storing many
+tokens, and the EM algorithm for iteratively assigning probabilities to tokens), so we
+don’t give it here, but see Kudo (2018) and Kudo and Richardson (2018b). Roughly
+speaking the algorithm proceeds iteratively by estimating the probability of each
+token, tokenizing the input data using various tokenizations, then removing a per-
+centage of tokens that don’t occur in high-probability tokenization, and then iterates
+until the vocabulary has been reduced down to the desired number of tokens.
+
+Why does unigram tokenization work better than BPE? BPE tends to creates lots
+of very small non-meaningful tokens (because BPE can only create larger words or
+morphemes by merging characters one at a time), and it also tends to merge very
+common tokens, like the sufﬁx ed, onto their neighbors. We can see from these
+examples from Bostrom and Durrett (2020) that unigram tends to produce tokens
+that are more semantically meaningful:
+
+Original: corrupted
+cor rupted
+BPE:
+Unigram: corrupt ed
+
+Original: Completely preposterous suggestions
+Comple t ely prep ost erous suggest ions
+BPE:
+Unigram: Complete ly pre post er ous suggestion s
+
+parallel corpus
+
+Europarl
+
+13.2.2 Creating the Training data
+
+Machine translation models are trained on a parallel corpus, sometimes called a
+bitext, a text that appears in two (or more) languages. Large numbers of paral-
+lel corpora are available. Some are governmental; the Europarl corpus (Koehn,
+2005), extracted from the proceedings of the European Parliament, contains between
+400,000 and 2 million sentences each from 21 European languages. The United Na-
+tions Parallel Corpus contains on the order of 10 million sentences in the six ofﬁcial
+languages of the United Nations (Arabic, Chinese, English, French, Russian, Span-
+ish) Ziemski et al. (2016). Other parallel corpora have been made from movie and
+
+13.2
+
+• MACHINE TRANSLATION USING ENCODER-DECODER
+
+275
+
+TV subtitles, like the OpenSubtitles corpus (Lison and Tiedemann, 2016), or from
+general web text, like the ParaCrawl corpus of 223 million sentence pairs between
+23 EU languages and English extracted from the CommonCrawl Ba˜n´on et al. (2020).
+
+Sentence alignment
+
+Standard training corpora for MT come as aligned pairs of sentences. When creat-
+ing new corpora, for example for underresourced languages or new domains, these
+sentence alignments must be created. Fig. 13.4 gives a sample hypothetical sentence
+alignment.
+
+Figure 13.4 A sample alignment between sentences in English and French, with sentences extracted from
+Antoine de Saint-Exupery’s Le Petit Prince and a hypothetical translation. Sentence alignment takes sentences
+e1, ..., en, and f1, ..., fn and ﬁnds minimal sets of sentences that are translations of each other, including single
+sentence mappings like (e1,f1), (e4,f3), (e5,f4), (e6,f6) as well as 2-1 alignments (e2/e3,f2), (e7/e8,f7), and null
+alignments (f5).
+
+Given two documents that are translations of each other, we generally need two
+
+steps to produce sentence alignments:
+
+• a cost function that takes a span of source sentences and a span of target sen-
+tences and returns a score measuring how likely these spans are to be transla-
+tions.
+
+• an alignment algorithm that takes these scores to ﬁnd a good alignment be-
+
+tween the documents.
+
+To score the similarity of sentences across languages, we need to make use of
+a multilingual embedding space, in which sentences from different languages are
+in the same embedding space (Artetxe and Schwenk, 2019). Given such a space,
+cosine similarity of such embeddings provides a natural scoring function (Schwenk,
+2018). Thompson and Koehn (2019) give the following cost function between two
+sentences or spans x,y from the source and target documents respectively:
+
+c(x, y) =
+
+(1
+−
+S
+s=1 1
+
+−
+
+cos(x, y))nSents(x) nSents(y)
+
+cos(x, ys) +
+
+S
+s=1 1
+
+cos(xs, y)
+
+−
+
+(13.10)
+
+where nSents() gives the number of sentences (this biases the metric toward many
+alignments of single sentences instead of aligning very large spans). The denom-
+inator helps to normalize the similarities, and so x1, ..., xS, y1, ..., yS, are randomly
+selected sentences sampled from the respective documents.
+
+(cid:80)
+
+(cid:80)
+
+Usually dynamic programming is used as the alignment algorithm (Gale and
+Church, 1993), in a simple extension of the minimum edit distance algorithm we
+introduced in Chapter 2.
+
+F1: -Bonjour, dit le petit prince.F2: -Bonjour, dit le marchand de pilules perfectionnées qui apaisent la soif.F3: On en avale une par semaine et l'on n'éprouve plus le besoin de boire.F4: -C’est une grosse économie de temps, dit le marchand.F5: Les experts ont fait des calculs.F6: On épargne cinquante-trois minutes par semaine.F7: “Moi, se dit le petit prince, si j'avais cinquante-trois minutes à dépenser, je marcherais tout doucement vers une fontaine..."E1: “Good morning," said the little prince.E2: “Good morning," said the merchant.E3: This was a merchant who sold pills that had been perfected to quench thirst.E4: You just swallow one pill a week and you won’t feel the need for anything to drink.E5: “They save a huge amount of time," said the merchant.E6: “Fifty−three minutes a week."E7: “If I had  fifty−three minutes to spend?" said the little prince to himself. E8: “I would take a stroll to a spring of fresh water”276 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+Finally, it’s helpful to do some corpus cleanup by removing noisy sentence pairs.
+This can involve handwritten rules to remove low-precision pairs (for example re-
+moving sentences that are too long, too short, have different URLs, or even pairs
+that are too similar, suggesting that they were copies rather than translations). Or
+pairs can be ranked by their multilingual embedding cosine score and low-scoring
+pairs discarded.
+
+13.3 Details of the Encoder-Decoder Model
+
+Figure 13.5 The encoder-decoder transformer architecture for machine translation. The encoder uses the
+transformer blocks we saw in Chapter 9, while the decoder uses a more powerful block with an extra cross-
+attention layer that can attend to all the encoder words. We’ll see this in more detail in the next section.
+
+The standard architecture for MT is the encoder-decoder transformer. The encoder-
+
+decoder architecture was introduced already for RNNs in Chapter 9, and the trans-
+former version has the same idea. Fig. 13.5 shows the intuition of the architecture
+at a high level You’ll see that the encoder-decoder architecture is made up of two
+transformers: an encoder, which is the same as the basic transformers from Chap-
+ter 10, and a decoder, which is augmented with a special new layer called the cross-
+attention layer. The encoder takes the source language input words X = x1, ..., xT
+and maps them to an output representation Henc = h1, ..., hT ; usually via N = 6
+stacked encoder blocks.
+
+The decoder is essentially a conditional language model that attends to the en-
+coder representation and generates the target words one by one, at each timestep
+conditioning on the source sentence and the previously generated target language
+words to generate a token. Decoding can use any of the decoding methods discussed
+in Chapter 10 like greedy, or temperature or nucleus sampling. But the most com-
+mon decoding algorithm for MT is the beam search algorithm that we’ll introduce
+in Section 13.4.
+
+But the components of the architecture differ somewhat from the RNN and also
+from the transformer block we’ve seen. First, in order to attend to the source lan-
+guage, the transformer blocks in the decoder have an extra cross-attention layer.
+Recall that the transformer block of Chapter 10 consists of a self-attention layer
+that attends to the input from the previous layer, followed by layer norm, a feed
+forward layer, and another layer norm. The decoder transformer block includes an
+extra layer with a special kind of attention, cross-attention (also sometimes called
+encoder-decoder attention or source attention). Cross-attention has the same form
+as the multi-headed self-attention in a normal transformer block, except that while
+
+cross-attention
+
+EncoderThegreenllegówitcharrived<s>llególalabrujabrujaverdeverde</s>Decodercross-attentiontransformerblocks13.3
+
+• DETAILS OF THE ENCODER-DECODER MODEL
+
+277
+
+the queries as usual come from the previous layer of the decoder, the keys and values
+come from the output of the encoder.
+
+Figure 13.6 The transformer block for the encoder and the decoder. The ﬁnal output of the encoder Henc =
+h1, ..., hT is the context used in the decoder. The decoder is a standard transformer except with one extra layer,
+the cross-attention layer, which takes that decoder output Henc and uses it to form its K and V inputs.
+
+That is, the ﬁnal output of the encoder Henc = h1, ..., ht is multiplied by the
+cross-attention layer’s key weights WK and value weights WV, but the output from
+the prior decoder layer Hdec[i
+1] is multiplied by the cross-attention layer’s query
+−
+weights WQ:
+
+1]; K = WKHenc; V = WVHenc
+Q = WQHdec[i
+−
+
+(13.11)
+
+CrossAttention(Q, K, V) = softmax
+
+QK(cid:124)
+√dk (cid:19)
+
+V
+
+(cid:18)
+
+(13.12)
+
+The cross attention thus allows the decoder to attend to each of the source language
+words as projected into the entire encoder ﬁnal output representations. The other
+attention layer in each decoder block, the self-attention layer, is the same causal (left-
+to-right) self-attention that we saw in Chapter 9. The self-attention in the encoder,
+however, is allowed to look ahead at the entire source language text.
+
+To train an encoder-decoder model, we use the same self-supervision model we
+used for training encoder-decoders RNNs in Chapter 9. The network is given the
+source text and then starting with the separator token is trained autoregressively to
+predict the next token yt , using cross-entropy loss:
+
+LCE ( ˆyt , yt ) =
+
+log ˆyt [wt+1]
+
+−
+
+(13.13)
+
+Encoderx1x2x3xn…Decoderhnhnhn…hnEncoderBlock 1Block 2Block 3y3y2y1…DecoderBlock 1Block 2Block 3Linear LayerymSelf-Attention LayerLayer NormalizeLayer Normalize++…FeedforwardCausal Self-Attention LayerLayer NormalizeLayer Normalize++…FeedforwardLayer Normalize+Cross-Attention Layer278 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+teacher forcing
+
+As in that case, we use teacher forcing in the decoder. Recall that in teacher forc-
+ing, at each time step in decoding we force the system to use the gold target token
+from training as the next input xt+1, rather than allowing it to rely on the (possibly
+erroneous) decoder output ˆyt .
+
+13.4 Decoding in MT: Beam Search
+
+Recall the greedy decoding algorithm from Chapter 10: at each time step t in gen-
+eration, the output yt is chosen by computing the probability for each word in the
+vocabulary and then choosing the highest probability word (the argmax):
+
+w<t )
+V P(w
+ˆwt = argmaxw
+|
+∈
+
+(13.14)
+
+A problem with greedy decoding is that what looks high probability at word t might
+turn out to have been the wrong choice once we get to word t + 1. The beam search
+algorithm maintains multiple choices until later when we can see which one is best.
+In beam search we model decoding as searching the space of possible genera-
+tions, represented as a search tree whose branches represent actions (generating a
+token), and nodes represent states (having generated a particular preﬁx). We search
+for the best action sequence, i.e., the string with the highest probability.
+
+search tree
+
+An illustration of the problem
+
+Fig. 13.7 shows a made-up example. The most probable sequence is ok ok EOS (its
+probability is .4
+1.0). But greedy search doesn’t ﬁnd it, incorrectly choosing
+yes as the ﬁrst word since it has the highest local probability (0.5).
+
+×
+
+×
+
+.7
+
+Figure 13.7 A search tree for generating the target string T = t1,t2, ... from vocabulary
+yes, ok, <s>
+V =
+, showing the probability of generating each token from that state. Greedy
+}
+{
+search chooses yes followed by yes, instead of the globally most probable sequence ok ok.
+
+Recall from Chapter 8 that for part-of-speech tagging we used dynamic pro-
+gramming search (the Viterbi algorithm) to address this problem. Unfortunately,
+dynamic programming is not applicable to generation problems with long-distance
+dependencies between the output decisions. The only method guaranteed to ﬁnd the
+best solution is exhaustive search: computing the probability of every one of the V T
+possible sentences (for some length value T ) which is obviously too slow.
+
+startokyesEOSokyesEOSokyesEOSEOSEOSEOSEOSt2t3p(t1|start)t1p(t2| t1)p(t3| t1,t2).1.5.4.3.4.3.1.2.71.01.01.01.013.4
+
+• DECODING IN MT: BEAM SEARCH
+
+279
+
+The solution: beam search
+
+beam search
+
+beam width
+
+Instead, MT systems generally decode using beam search, a heuristic search method
+ﬁrst proposed by Lowerre (1976). In beam search, instead of choosing the best token
+to generate at each timestep, we keep k possible tokens at each step. This ﬁxed-size
+memory footprint k is called the beam width, on the metaphor of a ﬂashlight beam
+that can be parameterized to be wider or narrower.
+
+Thus at the ﬁrst step of decoding, we compute a softmax over the entire vocab-
+ulary, assigning a probability to each word. We then select the k-best options from
+this softmax output. These initial k outputs are the search frontier and these k initial
+words are called hypotheses. A hypothesis is an output sequence, a translation-so-
+far, together with its probability.
+
+Figure 13.8 Beam search decoding with a beam width of k = 2. At each time step, we choose the k best
+V hypotheses and choose the best k = 2
+hypotheses, form the V possible extensions of each, score those k
+to continue. At time 1, the frontier has the best 2 options from the initial decoder state: arrived and the. We
+extend each, compute the probability of all the hypotheses so far (arrived the, arrived aardvark, the green, the
+witch) and again chose the best 2 (the green and the witch) to be the search frontier. The images on the arcs
+schematically represent the decoders that must be run at each step to score the next words (for simplicity not
+depicting cross-attention).
+
+×
+
+At subsequent steps, each of the k best hypotheses is extended incrementally
+by being passed to distinct decoders, which each generate a softmax over the entire
+vocabulary to extend the hypothesis to every possible next token. Each of these k
+V
+x, y<i): the product of the probability of the current
+hypotheses is scored by P(yi|
+word choice multiplied by the probability of the path that led to it. We then prune
+V hypotheses down to the k best hypotheses, so there are never more than k
+the k
+
+×
+
+×
+
+a…aardvark..arrived..the…zebrastartt1a…aardvark..the..witch…zebraa…aardvark..green..witch…zebrat2hd1y1BOSy1y2y2hd1hd2thetheBOShd2greengreeny3hd1hd2arrivedarrivedBOSy2t3hd1hd2thetheBOSy2hd1hd2thetheBOShd2witchwitchy3a…mage..the..witch…zebraarrived…aardvark..green..who…zebray3y3280 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+hypotheses at the frontier of the search, and never more than k decoders. Fig. 13.8
+illustrates this with a beam width of 2 for the beginning of The green witch arrived.
+This process continues until an EOS is generated indicating that a complete can-
+didate output has been found. At this point

@@ -1,0 +1,376 @@
+t is computed by summing a soft alignment between the contextual representations of
+tokens in the query and the document. Training is end-to-end. (Various details aren’t de-
+picted; for example the query is prepended by a [CLS] and [Q:] tokens, and the document
+by [CLS] and [D:] tokens). Figure adapted from Khattab and Zaharia (2020).
+
+More formally, a question q is tokenized as [q1, . . . , qn], prepended with a [CLS]
+and a special [Q] token, truncated to N=32 tokens (or padded with [MASK] tokens if
+it is shorter), and passed through BERT to get output vectors q = [q1, . . . , qN]. The
+passage d with tokens [d1, . . . , dm], is processed similarly, including a [CLS] and
+special [D] token. A linear layer is applied on top of d and q to control the output
+dimension, so as to keep the vectors small for storage efﬁciency, and vectors are
+rescaled to unit length, producing the ﬁnal vector sequences Eq (length N) and Ed
+
+QueryDocument………………s(q,d)MaxSimMaxSimMaxSim∑normnormnormnormnormnorm14.3
+
+• USING NEURAL IR FOR QUESTION ANSWERING
+
+305
+
+(length m). The ColBERT scoring mechanism is:
+
+score(q, d) =
+
+N
+
+(cid:88)i=1
+
+m
+max
+j=1
+
+Eqi ·
+
+Ed j
+
+(14.18)
+
+While the interaction mechanism has no tunable parameters, the ColBERT ar-
+chitecture still needs to be trained end-to-end to ﬁne-tune the BERT encoders and
+train the linear layers (and the special [Q] and [D] embeddings) from scratch. It
+of query q, positive document d+ and negative doc-
+is trained on triples
+ument d− to produce a score for each document using (14.18), optimizing model
+parameters using a cross-entropy loss.
+
+q, d+, d−(cid:105)
+(cid:104)
+
+All the supervised algorithms (like ColBERT or the full-interaction version of
+the BERT algorithm applied for reranking) need training data in the form of queries
+together with relevant and irrelevant passages or documents (positive and negative
+examples). There are various semi-supervised ways to get labels; some datasets (like
+MS MARCO Ranking, Section 14.3.1) contain gold positive examples. Negative
+examples can be sampled randomly from the top-1000 results from some existing
+IR system. If datasets don’t have labeled positive examples, iterative methods like
+relevance-guided supervision can be used (Khattab et al., 2021) which rely on the
+fact that many datasets contain short answer strings. In this method, an existing IR
+system is used to harvest examples that do contain short answer strings (the top few
+are taken as positives) or don’t contain short answer strings (the top few are taken as
+negatives), these are used to train a new retriever, and then the process is iterated.
+
+Efﬁciency is an important issue, since every possible document must be ranked
+for its similarity to the query. For sparse word-count vectors, the inverted index
+allows this very efﬁciently. For dense vector algorithms ﬁnding the set of dense
+document vectors that have the highest dot product with a dense query vector is
+an instance of the problem of nearest neighbor search. Modern systems there-
+fore make use of approximate nearest neighbor vector search algorithms like Faiss
+(Johnson et al., 2017).
+
+Faiss
+
+14.3 Using Neural IR for Question Answering
+
+retrieval-based
+QA
+
+The goal of retrieval-based QA (sometimes called open domain QA) is to an-
+swer a user’s question by either ﬁnding short text segments from the web or some
+other large collection of documents, or by generating an answer based on them.
+Figure 14.9 shows some sample factoid questions with answers.
+
+Question
+Where is the Louvre Museum located?
+What are the names of Odin’s ravens?
+What kind of nuts are used in marzipan?
+What instrument did Max Roach play?
+What’s the ofﬁcial language of Algeria?
+
+Figure 14.9 Some factoid questions and their answers.
+
+Answer
+in Paris, France
+Huginn and Muninn
+almonds
+drums
+Arabic
+
+retrieve and
+read
+
+The dominant paradigm for retrieval-based QA is sometimes called the retrieve
+and read model shown in Fig. 14.10. In the ﬁrst stage of this 2-stage model we re-
+trieve relevant passages from a text collection, for example using the dense retrievers
+of the previous section.
+
+306 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+The second stage, called the reader, is commonly implemented as either an ex-
+tractor or a generator. The ﬁrst method is span extraction, using a neural reading
+comprehension algorithm that passes over each passage and is trained to ﬁnd spans
+of text that answer the question. The second method is also known as retrieval-
+augmented generation: we take a large pretrained language model, give it some set
+of retrieved passages and other text as its prompt, and autoregressively generate a
+new answer token by token.
+
+Figure 14.10 Retrieval-based question answering has two stages: retrieval, which returns relevant docu-
+ments from the collection, and reading, in which a neural reading comprehension system extracts answer
+spans, or a large pretrained language model that generates answers autoregressively given the documents as a
+prompt.
+
+In the next few sections we’ll describe these two standard reader algorithms.
+
+But ﬁrst, we’ll introduce some commonly-used question answering datasets.
+
+14.3.1 Retrieval-based QA: Datasets
+
+Datasets for retrieval-based QA are most commonly created by ﬁrst developing
+reading comprehension datasets containing tuples of (passage, question, answer).
+Reading comprehension systems can use the datasets to train a reader that is given a
+passage and a question, and predicts a span in the passage as the answer. Including
+the passage from which the answer is to be extracted eliminates the need for reading
+comprehension systems to deal with IR.
+
+For example the Stanford Question Answering Dataset (SQuAD) consists of
+passages from Wikipedia and associated questions whose answers are spans from
+the passage (Rajpurkar et al. 2016). Squad 2.0 in addition adds some questions
+that are designed to be unanswerable (Rajpurkar et al. 2018), with a total of just
+over 150,000 questions. Fig. 14.11 shows a (shortened) excerpt from a SQUAD 2.0
+passage together with three questions and their gold answer spans.
+
+SQuAD was built by having humans read a given Wikipedia passage, write ques-
+
+tions about the passage, and choose a speciﬁc answer span.
+
+Other datasets are created by similar techniques but try to make the questions
+more complex. The HotpotQA dataset (Yang et al., 2018) was created by showing
+crowd workers multiple context documents and asked to come up with questions
+that require reasoning about all of the documents.
+
+The fact that questions in datasets like SQuAD or HotpotQA are created by an-
+notators who have ﬁrst read the passage may make their questions easier to answer,
+since the annotator may (subconsciously) make use of words from the answer text.
+A solution to this possible bias is to make datasets from questions that were not
+written with a passage in mind. The TriviaQA dataset (Joshi et al., 2017) contains
+
+SQuAD
+
+HotpotQA
+
+Q: When wasthe premiere ofThe Magic Flute?RelevantDocsBERT[CLS] q1 q2 [SEP]  d1 d2start   endA:  1791RetrieverIndexed DocsquerydocsGeneratoror ExtracterLLMDocs and promptReader14.3
+
+• USING NEURAL IR FOR QUESTION ANSWERING
+
+307
+
+Beyonc´e Giselle Knowles-Carter (born September 4, 1981) is an American singer, songwriter,
+record producer and actress. Born and raised in Houston, Texas, she performed in various
+singing and dancing competitions as a child, and rose to fame in the late 1990s as lead singer
+of R&B girl-group Destiny’s Child. Managed by her father, Mathew Knowles, the group became
+one of the world’s best-selling girl groups of all time. Their hiatus saw the release of Beyonc´e’s
+debut album, Dangerously in Love (2003), which established her as a solo artist worldwide, earned
+ﬁve Grammy Awards and featured the Billboard Hot 100 number-one singles “Crazy in Love” and
+“Baby Boy”.
+Q: “In what city and state did Beyonc´e grow up?”
+A: “Houston, Texas”
+Q: “What areas did Beyonc´e compete in when she was growing up?”
+A: “singing and dancing”
+Q: “When did Beyonc´e release Dangerously in Love?”
+A: “2003”
+Figure 14.11 A (Wikipedia) passage from the SQuAD 2.0 dataset (Rajpurkar et al., 2018) with 3 sample
+questions and the labeled answer spans.
+
+MS MARCO
+
+Natural
+Questions
+
+TyDi QA
+
+94K questions written by trivia enthusiasts, together with supporting documents
+from Wikipedia and the web resulting in 650K question-answer-evidence triples.
+
+MS MARCO (Microsoft Machine Reading Comprehension) is a collection of
+datasets, including 1 million real anonymized questions from Microsoft Bing query
+logs together with a human generated answer and 9 million passages (Nguyen et al.,
+2016), that can be used both to test retrieval ranking and question answering. The
+Natural Questions dataset (Kwiatkowski et al., 2019) similarly incorporates real
+anonymized queries to the Google search engine. Annotators are presented a query,
+along with a Wikipedia page from the top 5 search results, and annotate a paragraph-
+length long answer and a short span answer, or mark null if the text doesn’t contain
+the paragraph. For example the question “When are hops added to the brewing
+process?” has the short answer the boiling process and a long answer which the
+surrounding entire paragraph from the Wikipedia page on Brewing. In using this
+dataset, a reading comprehension model is given a question and a Wikipedia page
+and must return a long answer, short answer, or ’no answer’ response.
+
+The above datasets are all in English. The TyDi QA dataset contains 204K
+question-answer pairs from 11 typologically diverse languages, including Arabic,
+Bengali, Kiswahili, Russian, and Thai (Clark et al., 2020a). In the TYDI QA task,
+a system is given a question and the passages from a Wikipedia article and must
+(a) select the passage containing the answer (or NULL if no passage contains the
+answer), and (b) mark the minimal answer span (or NULL). Many questions have
+no answer. The various languages in the dataset bring up challenges for QA systems
+like morphological variation between the question and the answer, or complex issue
+with word segmentation or multiple alphabets.
+
+In the reading comprehension task, a system is given a question and the passage
+in which the answer should be found. In the full two-stage QA task, however, sys-
+tems are not given a passage, but are required to do their own retrieval from some
+document collection. A common way to create open-domain QA datasets is to mod-
+ify a reading comprehension dataset. For research purposes this is most commonly
+done by using QA datasets that annotate Wikipedia (like SQuAD or HotpotQA). For
+training, the entire (question, passage, answer) triple is used to train the reader. But
+at inference time, the passages are removed and system is given only the question,
+together with access to the entire Wikipedia corpus. The system must then do IR to
+
+308 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+ﬁnd a set of pages and then read them.
+
+14.3.2 Reader algorithms: Answer Span Extraction
+
+The job of the reader is to take a passage as input and produce the answer. Here we
+introduce the span extraction style of reader, in which the answer is a span of text
+in the passage. For example given a question like “How tall is Mt. Everest?” and
+a passage that contains the clause Reaching 29,029 feet at its summit, a reader will
+output 29,029 feet.
+
+The answer extraction task is commonly modeled by span labeling: identifying
+in the passage a span (a continuous string of text) that constitutes an answer. Neural
+algorithms for reading comprehension are given a question q of n tokens q1, ..., qn
+and a passage p of m tokens p1, ..., pm. Their goal is thus to compute the probability
+q, p) that each possible span a is the answer.
+P(a
+|
+If each span a starts at position as and ends at position ae, we make the simplify-
+
+span
+
+ing assumption that this probability can be estimated as P(a
+q, p) = Pstart(as|
+|
+Thus for for each token pi in the passage we’ll compute two probabilities: pstart(i)
+that pi is the start of the answer span, and pend(i) that pi is the end of the answer
+span.
+
+q, p)Pend(ae|
+
+q, p).
+
+A standard baseline algorithm for reading comprehension is to pass the ques-
+tion and passage to any encoder like BERT (Fig. 14.12), as strings separated with a
+[SEP] token, resulting in an encoding token embedding for every passage token pi.
+
+Figure 14.12 An encoder model (using BERT) for span-based question answering from
+reading-comprehension-based question answering tasks.
+
+For span-based question answering, we represent the question as the ﬁrst se-
+quence and the passage as the second sequence. We’ll also need to add a linear layer
+that will be trained in the ﬁne-tuning phase to predict the start and end position of the
+span. We’ll add two new special vectors: a span-start embedding S and a span-end
+embedding E, which will be learned in ﬁne-tuning. To get a span-start probability
+for each output token p(cid:48)i, we compute the dot product between S and p(cid:48)i and then use
+a softmax to normalize over all tokens p(cid:48)i in the passage:
+
+Pstarti =
+
+p(cid:48)i)
+
+exp(S
+·
+j exp(S
+
+p(cid:48)j)
+
+·
+
+(cid:80)
+
+(14.19)
+
+Encoder (BERT)……QuestionPassageiSEPstarti..…[CLS][SEP]p1…Pendipmq1qn14.3
+
+• USING NEURAL IR FOR QUESTION ANSWERING
+
+309
+
+We do the analogous thing to compute a span-end probability:
+
+Pendi =
+
+p(cid:48)i)
+
+exp(E
+·
+j exp(E
+
+p(cid:48)j)
+
+·
+
+(14.20)
+
+The score of a candidate span from position i to j is S
+scoring span in which j
+
+p(cid:48)i + E
+i is chosen is the model prediction.
+The training loss for ﬁne-tuning is the negative sum of the log-likelihoods of the
+
+p(cid:48)j, and the highest
+
+≥
+
+(cid:80)
+
+·
+
+·
+
+correct start and end positions for each instance:
+
+L =
+
+log Pstarti −
+
+−
+
+log Pendi
+
+(14.21)
+
+Many datasets (like SQuAD 2.0 and Natural Questions) also contain (question,
+passage) pairs in which the answer is not contained in the passage. We thus also
+need a way to estimate the probability that the answer to a question is not in the
+document. This is standardly done by treating questions with no answer as having
+the [CLS] token as the answer, and hence the answer span start and end index will
+point at [CLS] (Devlin et al., 2019).
+
+For many datasets the annotated documents/passages are longer than the maxi-
+mum 512 input tokens BERT allows, such as Natural Questions whose gold passages
+are full Wikipedia pages. In such cases, following Alberti et al. (2019), we can cre-
+ate multiple pseudo-passage observations from the labeled Wikipedia page. Each
+observation is formed by concatenating [CLS], the question, [SEP], and tokens from
+the document. We walk through the document, sliding a window of size 512 (or
+rather, 512 minus the question length n minus special tokens) and packing the win-
+dow of tokens into each next pseudo-passage. The answer span for the observation
+is either labeled [CLS] (= no answer in this particular window) or the gold-labeled
+span is marked. The same process can be used for inference, breaking up each re-
+trieved document into separate observation passages and labeling each observation.
+The answer can be chosen as the span with the highest probability (or nil if no span
+is more probable than [CLS]).
+
+retrieval-
+augmented
+generation
+RAG
+
+14.3.3 Reader algorithms: Retrieval-Augmented Generation
+
+The second standard reader algorithm is to generate from a large language model,
+conditioned on the retrieved passages. This method is known as retrie

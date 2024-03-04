@@ -1,0 +1,400 @@
+s a logistic regression classiﬁer to compute the probability that two words
+are ‘likely to occur nearby in text’. This probability is computed from the dot
+product between the embeddings for the two words.
+
+• Skip-gram uses stochastic gradient descent to train the classiﬁer, by learning
+embeddings that have a high dot product with embeddings of words that occur
+nearby and a low dot product with noise words.
+
+• Other important embedding algorithms include GloVe, a method based on
+
+ratios of word co-occurrence probabilities.
+
+• Whether using sparse or dense vectors, word and document similarities are
+computed by some function of the dot product between vectors. The cosine
+of two vectors—a normalized dot product—is the most popular such metric.
+
+Bibliographical and Historical Notes
+
+The idea of vector semantics arose out of research in the 1950s in three distinct
+ﬁelds: linguistics, psychology, and computer science, each of which contributed a
+fundamental aspect of the model.
+
+The idea that meaning is related to the distribution of words in context was
+widespread in linguistic theory of the 1950s, among distributionalists like Zellig
+Harris, Martin Joos, and J. R. Firth, and semioticians like Thomas Sebeok. As Joos
+(1950) put it,
+
+the linguist’s “meaning” of a morpheme. . . is by deﬁnition the set of conditional
+probabilities of its occurrence in context with all other morphemes.
+
+The idea that the meaning of a word might be modeled as a point in a multi-
+dimensional semantic space came from psychologists like Charles E. Osgood, who
+had been studying how people responded to the meaning of words by assigning val-
+ues along scales like happy/sad or hard/soft. Osgood et al. (1957) proposed that the
+meaning of a word in general could be modeled as a point in a multidimensional
+Euclidean space, and that the similarity of meaning between two words could be
+modeled as the distance between these points in the space.
+
+A ﬁnal intellectual source in the 1950s and early 1960s was the ﬁeld then called
+mechanical indexing, now known as information retrieval. In what became known
+as the vector space model for information retrieval (Salton 1971, Sparck Jones
+1986), researchers demonstrated new ways to deﬁne the meaning of words in terms
+of vectors (Switzer, 1965), and reﬁned methods for word similarity based on mea-
+sures of statistical association between words like mutual information (Giuliano,
+1965) and idf (Sparck Jones, 1972), and showed that the meaning of documents
+could be represented in the same vector spaces used for words. Around the same
+time, (Cordier, 1965) showed that factor analysis of word association probabilities
+could be used to form dense vector representations of words.
+
+mechanical
+indexing
+
+134 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+semantic
+feature
+
+SVD
+
+Some of the philosophical underpinning of the distributional way of thinking
+came from the late writings of the philosopher Wittgenstein, who was skeptical of
+the possibility of building a completely formal theory of meaning deﬁnitions for
+each word, suggesting instead that “the meaning of a word is its use in the language”
+(Wittgenstein, 1953, PI 43). That is, instead of using some logical language to deﬁne
+each word, or drawing on denotations or truth values, Wittgenstein’s idea is that we
+should deﬁne a word by how it is used by people in speaking and understanding in
+their day-to-day interactions, thus preﬁguring the movement toward embodied and
+experiential models in linguistics and NLP (Glenberg and Robertson 2000, Lake and
+Murphy 2021, Bisk et al. 2020, Bender and Koller 2020).
+
+More distantly related is the idea of deﬁning words by a vector of discrete fea-
+tures, which has roots at least as far back as Descartes and Leibniz (Wierzbicka 1992,
+Wierzbicka 1996). By the middle of the 20th century, beginning with the work of
+Hjelmslev (Hjelmslev, 1969) (originally 1943) and ﬂeshed out in early models of
+generative grammar (Katz and Fodor, 1963), the idea arose of representing mean-
+ing with semantic features, symbols that represent some sort of primitive meaning.
+For example words like hen, rooster, or chick, have something in common (they all
+describe chickens) and something different (their age and sex), representable as:
+
++female, +chicken, +adult
+hen
+rooster -female, +chicken, +adult
+chick
+
++chicken, -adult
+
+The dimensions used by vector models of meaning to deﬁne words, however, are
+only abstractly related to this idea of a small ﬁxed number of hand-built dimensions.
+Nonetheless, there has been some attempt to show that certain dimensions of em-
+bedding models do contribute some speciﬁc compositional aspect of meaning like
+these early semantic features.
+
+The use of dense vectors to model word meaning, and indeed the term embed-
+ding, grew out of the latent semantic indexing (LSI) model (Deerwester et al.,
+1988) recast as LSA (latent semantic analysis) (Deerwester et al., 1990). In LSA
+singular value decomposition—SVD— is applied to a term-document matrix (each
+cell weighted by log frequency and normalized by entropy), and then the ﬁrst 300
+dimensions are used as the LSA embedding. Singular Value Decomposition (SVD)
+is a method for ﬁnding the most important dimensions of a data set, those dimen-
+sions along which the data varies the most. LSA was then quickly widely applied:
+as a cognitive model Landauer and Dumais (1997), and for tasks like spell check-
+ing (Jones and Martin, 1997), language modeling (Bellegarda 1997, Coccaro and
+Jurafsky 1998, Bellegarda 2000) morphology induction (Schone and Jurafsky 2000,
+Schone and Jurafsky 2001b), multiword expressions (MWEs) (Schone and Juraf-
+sky, 2001a), and essay grading (Rehder et al., 1998). Related models were simul-
+taneously developed and applied to word sense disambiguation by Sch¨utze (1992b).
+LSA also led to the earliest use of embeddings to represent words in a probabilis-
+tic classiﬁer, in the logistic regression document router of Sch¨utze et al. (1995).
+The idea of SVD on the term-term matrix (rather than the term-document matrix)
+as a model of meaning for NLP was proposed soon after LSA by Sch¨utze (1992b).
+Sch¨utze applied the low-rank (97-dimensional) embeddings produced by SVD to the
+task of word sense disambiguation, analyzed the resulting semantic space, and also
+suggested possible techniques like dropping high-order dimensions. See Sch¨utze
+(1997).
+
+A number of alternative matrix models followed on from the early SVD work,
+including Probabilistic Latent Semantic Indexing (PLSI) (Hofmann, 1999), Latent
+
+EXERCISES
+
+135
+
+Dirichlet Allocation (LDA) (Blei et al., 2003), and Non-negative Matrix Factoriza-
+tion (NMF) (Lee and Seung, 1999).
+
+The LSA community seems to have ﬁrst used the word “embedding” in Landauer
+et al. (1997), in a variant of its mathematical meaning as a mapping from one space
+or mathematical structure to another. In LSA, the word embedding seems to have
+described the mapping from the space of sparse count vectors to the latent space of
+SVD dense vectors. Although the word thus originally meant the mapping from one
+space to another, it has metonymically shifted to mean the resulting dense vector in
+the latent space, and it is in this sense that we currently use the word.
+
+By the next decade, Bengio et al. (2003) and Bengio et al. (2006) showed that
+neural language models could also be used to develop embeddings as part of the task
+of word prediction. Collobert and Weston (2007), Collobert and Weston (2008), and
+Collobert et al. (2011) then demonstrated that embeddings could be used to represent
+word meanings for a number of NLP tasks. Turian et al. (2010) compared the value
+of different kinds of embeddings for different NLP tasks. Mikolov et al. (2011)
+showed that recurrent neural nets could be used as language models. The idea of
+simplifying the hidden layer of these neural net language models to create the skip-
+gram (and also CBOW) algorithms was proposed by Mikolov et al. (2013a). The
+negative sampling training algorithm was proposed in Mikolov et al. (2013b). There
+are numerous surveys of static embeddings and their parameterizations (Bullinaria
+and Levy 2007, Bullinaria and Levy 2012, Lapesa and Evert 2014, Kiela and Clark
+2014, Levy et al. 2015).
+
+See Manning et al. (2008) for a deeper understanding of the role of vectors in in-
+formation retrieval, including how to compare queries with documents, more details
+on tf-idf, and issues of scaling to very large datasets. See Kim (2019) for a clear and
+comprehensive tutorial on word2vec. Cruse (2004) is a useful introductory linguistic
+text on lexical semantics.
+
+Exercises
+
+136 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+CHAPTER
+
+7 Neural Networks and Neural
+
+Language Models
+
+feedforward
+
+deep learning
+
+“[M]achines of this character can behave in a very complicated manner when
+the number of units is large.”
+
+Alan Turing (1948) “Intelligent Machines”, page 6
+
+Neural networks are a fundamental computational tool for language process-
+ing, and a very old one. They are called neural because their origins lie in the
+McCulloch-Pitts neuron (McCulloch and Pitts, 1943), a simpliﬁed model of the
+biological neuron as a kind of computing element that could be described in terms
+of propositional logic. But the modern use in language processing no longer draws
+on these early biological inspirations.
+
+Instead, a modern neural network is a network of small computing units, each
+of which takes a vector of input values and produces a single output value. In this
+chapter we introduce the neural net applied to classiﬁcation. The architecture we
+introduce is called a feedforward network because the computation proceeds iter-
+atively from one layer of units to the next. The use of modern neural nets is often
+called deep learning, because modern networks are often deep (have many layers).
+Neural networks share much of the same mathematics as logistic regression. But
+neural networks are a more powerful classiﬁer than logistic regression, and indeed a
+minimal neural network (technically one with a single ‘hidden layer’) can be shown
+to learn any function.
+
+Neural net classiﬁers are different from logistic regression in another way. With
+logistic regression, we applied the regression classiﬁer to many different tasks by
+developing many rich kinds of feature templates based on domain knowledge. When
+working with neural networks, it is more common to avoid most uses of rich hand-
+derived features, instead building neural networks that take raw words as inputs
+and learn to induce features as part of the process of learning to classify. We saw
+examples of this kind of representation learning for embeddings in Chapter 6. Nets
+that are very deep are particularly good at representation learning. For that reason
+deep neural nets are the right tool for tasks that offer sufﬁcient data to learn features
+automatically.
+
+In this chapter we’ll introduce feedforward networks as classiﬁers, and also ap-
+ply them to the simple task of language modeling: assigning probabilities to word
+sequences and predicting upcoming words. In subsequent chapters we’ll introduce
+many other aspects of neural models, such as recurrent neural networks (Chap-
+ter 9), the Transformer (Chapter 10), and masked language modeling (Chapter 11).
+
+7.1 Units
+
+7.1
+
+• UNITS
+
+137
+
+bias term
+
+vector
+
+activation
+
+The building block of a neural network is a single computational unit. A unit takes
+a set of real valued numbers as input, performs some computation on them, and
+produces an output.
+
+At its heart, a neural unit is taking a weighted sum of its inputs, with one addi-
+tional term in the sum called a bias term. Given a set of inputs x1...xn, a unit has
+a set of corresponding weights w1...wn and a bias b, so the weighted sum z can be
+represented as:
+
+z = b +
+
+wixi
+
+(7.1)
+
+(cid:88)i
+
+Often it’s more convenient to express this weighted sum using vector notation; recall
+from linear algebra that a vector is, at heart, just a list or array of numbers. Thus
+we’ll talk about z in terms of a weight vector w, a scalar bias b, and an input vector
+x, and we’ll replace the sum with the convenient dot product:
+
+z = w
+
+x + b
+
+·
+
+(7.2)
+
+As deﬁned in Eq. 7.2, z is just a real valued number.
+
+Finally, instead of using z, a linear function of x, as the output, neural units
+apply a non-linear function f to z. We will refer to the output of this function as
+the activation value for the unit, a. Since we are just modeling a single unit, the
+activation for the node is in fact the ﬁnal output of the network, which we’ll generally
+call y. So the value y is deﬁned as:
+
+y = a = f (z)
+
+We’ll discuss three popular non-linear functions f () below (the sigmoid, the tanh,
+and the rectiﬁed linear unit or ReLU) but it’s pedagogically convenient to start with
+the sigmoid function since we saw it in Chapter 5:
+
+sigmoid
+
+y = σ (z) =
+
+1
+z
+1 + e−
+
+(7.3)
+
+The sigmoid (shown in Fig. 7.1) has a number of advantages; it maps the output
+into the range (0, 1), which is useful in squashing outliers toward 0 or 1. And it’s
+differentiable, which as we saw in Section 5.10 will be handy for learning.
+
+Figure 7.1 The sigmoid function takes a real value and maps it to the range (0, 1). It is
+nearly linear around 0 but outlier values get squashed toward 0 or 1.
+
+Substituting Eq. 7.2 into Eq. 7.3 gives us the output of a neural unit:
+
+y = σ (w
+
+x + b) =
+
+·
+
+1 + exp(
+
+1
+(w
+
+−
+
+x + b))
+
+·
+
+(7.4)
+
+138 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+Fig. 7.2 shows a ﬁnal schematic of a basic neural unit. In this example the unit
+takes 3 input values x1, x2, and x3, and computes a weighted sum, multiplying each
+value by a weight (w1, w2, and w3, respectively), adds them to a bias term b, and then
+passes the resulting sum through a sigmoid function to result in a number between 0
+and 1.
+
+Figure 7.2 A neural unit, taking 3 inputs x1, x2, and x3 (and a bias b that we represent as a
+weight for an input clamped at +1) and producing an output y. We include some convenient
+intermediate variables: the output of the summation, z, and the output of the sigmoid, a. In
+this case the output of the unit y is the same as a, but in deeper networks we’ll reserve y to
+mean the ﬁnal output of the entire network, leaving a as the activation of an individual node.
+
+Let’s walk through an example just to get an intuition. Let’s suppose we have a
+
+unit with the following weight vector and bias:
+
+w = [0.2, 0.3, 0.9]
+b = 0.5
+
+What would this unit do with the following input vector:
+
+x = [0.5, 0.6, 0.1]
+
+The resulting output y would be:
+
+y = σ (w
+
+x + b) =
+
+·
+
+1
+(w
+1 + e−
+
+x+b)
+·
+
+=
+
+1
+.9+.5)
+.3+.1
+.2+.6
+(.5
+∗
+∗
+∗
+
+1 + e−
+
+=
+
+1
+1 + e−
+
+0.87 = .70
+
+tanh
+
+In practice, the sigmoid is not commonly used as an activation function. A function
+that is very similar but almost always better is the tanh function shown in Fig. 7.3a;
+tanh is a variant of the sigmoid that ranges from -1 to +1:
+
+y = tanh(z) =
+
+z
+ez
+e−
+−
+z
+ez + e−
+
+(7.5)
+
+ReLU
+
+The simplest activation function, and perhaps the most commonly used, is the rec-
+tiﬁed linear unit, also called the ReLU, shown in Fig. 7.3b. It’s just the same as z
+when z is positive, and 0 otherwise:
+
+y = ReLU(z) = max(z, 0)
+
+(7.6)
+
+These activation functions have different properties that make them useful for differ-
+ent language applications or network architectures. For example, the tanh function
+has the nice properties of being smoothly differentiable and mapping outlier values
+toward the mean. The rectiﬁer f

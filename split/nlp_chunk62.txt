@@ -1,0 +1,664 @@
+quence of letters corresponding to each input
+frame an alignment, because it tells us where in the acoustic signal each letter aligns
+to. Fig. 16.9 shows one such alignment, and what happens if we use a collapsing
+function that just removes consecutive duplicate letters.
+
+alignment
+
+Figure 16.9 A naive algorithm for collapsing an alignment between input and letters.
+
+blank
+
+Well, that doesn’t work; our naive algorithm has transcribed the speech as diner,
+not dinner! Collapsing doesn’t handle double letters. There’s also another problem
+with our naive function; it doesn’t tell us what symbol to align with silence in the
+input. We don’t want to be transcribing silence as random letters!
+
+The CTC algorithm solves both problems by adding to the transcription alphabet
+a special symbol for a blank, which we’ll represent as . The blank can be used in
+the alignment whenever we don’t want to transcribe a letter. Blank can also be used
+between letters; since our collapsing function collapses only consecutive duplicate
+y
+letters, it won’t collapse across . More formally, let’s deﬁne the mapping B : a
+between an alignment a and an output y, which collapses all repeated letters and
+then removes all blanks. Fig. 16.10 sketches this collapsing function B.
+
+→
+
+Figure 16.10 The CTC collapsing function B, showing the space blank character
+peated (consecutive) characters in an alignment A are removed to form the output Y .
+
+; re-
+
+The CTC collapsing function is many-to-one; lots of different alignments map
+to the same output string. For example, the alignment shown in Fig. 16.10 is not
+the only alignment that results in the string dinner. Fig. 16.11 shows some other
+alignments that would produce the same output.
+
+It’s useful to think of the set of all alignments that might produce the same output
+1, and represent that set as
+
+Y . We’ll use the inverse of our B function, called B−
+
+X (input)A (alignment)Y (output)dx1ix2ix3nx4nx5nx6nx7ex8rx9rx10rx11rx12rx13rx14dinerwavefileX (input)A (alignment)remove blanksdx1ix2x3nx4nx5x6nx7ex8rx9rx10rx11rx12x13x14dinernmerge duplicatesdinernY (output)dinern␣␣␣␣␣␣␣16.4
+
+• CTC 349
+
+Figure 16.11 Three other legitimate alignments producing the transcript dinner.
+
+B−
+
+1(Y ).
+
+16.4.1 CTC Inference
+
+X) let’s ﬁrst see how CTC assigns a proba-
+Before we see how to compute PCTC(Y
+|
+bility to one particular alignment ˆA =
+ˆa1, . . . , ˆan}
+. CTC makes a strong conditional
+{
+independence assumption: it assumes that, given the input X, the CTC model output
+at at time t is independent of the output labels at any other time ai. Thus:
+
+T
+
+X) =
+PCTC(A
+|
+
+X)
+
+p(at |
+
+(16.14)
+
+(cid:89)t=1
+Thus to ﬁnd the best alignment ˆA =
+ˆa1, . . . , ˆaT }
+{
+ter with the max probability at each time step t:
+
+we can greedily choose the charac-
+
+ˆat = argmax
+c
+
+C
+
+∈
+
+X)
+pt (c
+|
+
+(16.15)
+
+We then pass the resulting sequence A to the CTC collapsing function B to get the
+output sequence Y .
+
+Let’s talk about how this simple inference algorithm for ﬁnding the best align-
+ment A would be implemented. Because we are making a decision at each time
+point, we can treat CTC as a sequence-modeling task, where we output one letter
+ˆyt at time t corresponding to each input token xt , eliminating the need for a full de-
+coder. Fig. 16.12 sketches this architecture, where we take an encoder, produce a
+hidden state ht at each timestep, and decode by taking a softmax over the character
+vocabulary at each time step.
+
+Figure 16.12
+simple softmaxes over the hidden state ht at each output step.
+
+Inference with CTC: using an encoder-only model, with decoding done by
+
+dinnneeerrr␣␣ddinnnerr␣␣␣dddinnnerr␣i␣␣␣␣␣ENCODER…ynFeature ComputationSubsampling…ftf1 log Mel spectrumShorter inputsequence Xy1iy2iy3iy4tx1xnClassiﬁer+softmax…ty5……output lettersequence Y350 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+Alas, there is a potential ﬂaw with the inference algorithm sketched in (Eq. 16.15)
+and Fig. 16.11. The problem is that we chose the most likely alignment A, but the
+most likely alignment may not correspond to the most likely ﬁnal collapsed output
+string Y . That’s because there are many possible alignments that lead to the same
+output string, and hence the most likely output string might not correspond to the
+most probable alignment. For example, imagine the most probable alignment A for
+an input X = [x1x2x3] is the string [a b (cid:15)] but the next two most probable alignments
+are [b (cid:15) b] and [(cid:15) b b]. The output Y =[b b], summing over those two alignments,
+might be more probable than Y =[a b].
+
+For this reason, the most probable output sequence Y is the one that has, not
+the single best CTC alignment, but the highest sum over the probability of all its
+possible alignments:
+
+PCTC(Y
+
+X) =
+|
+
+B−
+(cid:88)A
+∈
+
+1(Y )
+
+X)
+P(A
+|
+
+T
+
+=
+
+p(at |
+
+ht )
+
+1(Y )
+B−
+(cid:88)A
+∈
+ˆY = argmax
+
+(cid:89)t=1
+PCTC(Y
+
+Y
+
+X)
+|
+
+(16.16)
+
+Alas, summing over all alignments is very expensive (there are a lot of alignments),
+so we approximate this sum by using a version of Viterbi beam search that cleverly
+keeps in the beam the high-probability alignments that map to the same output string,
+and sums those as an approximation of (Eq. 16.16). See Hannun (2017) for a clear
+explanation of this extension of beam search for CTC.
+
+Because of the strong conditional independence assumption mentioned earlier
+(that the output at time t is independent of the output at time t
+1, given the input),
+CTC does not implicitly learn a language model over the data (unlike the attention-
+based encoder-decoder architectures). It is therefore essential when using CTC to
+interpolate a language model (and some sort of length factor L(Y )) using interpola-
+tion weights that are trained on a dev set:
+
+−
+
+scoreCTC(Y
+
+X) = log PCTC(Y
+|
+
+X) + λ1 log PLM(Y )λ2L(Y )
+|
+
+(16.17)
+
+16.4.2 CTC Training
+
+To train a CTC-based ASR system, we use negative log-likelihood loss with a special
+CTC loss function. Thus the loss for an entire dataset D is the sum of the negative
+log-likelihoods of the correct output Y for each input X:
+
+LCTC =
+
+(cid:88)(X,Y )
+∈
+
+D
+
+log PCTC(Y
+
+X)
+|
+
+−
+
+(16.18)
+
+To compute CTC loss function for a single input pair (X,Y ), we need the probability
+of the output Y given the input X. As we saw in Eq. 16.16, to compute the probability
+of a given output Y we need to sum over all the possible alignments that would
+collapse to Y . In other words:
+
+T
+
+PCTC(Y
+
+X) =
+|
+
+p(at |
+
+ht )
+
+B−
+(cid:88)A
+∈
+
+1(Y )
+
+(cid:89)t=1
+
+(16.19)
+
+16.4
+
+• CTC 351
+
+Naively summing over all possible alignments is not feasible (there are too many
+alignments). However, we can efﬁciently compute the sum by using dynamic pro-
+gramming to merge alignments, with a version of the forward-backward algo-
+rithm also used to train HMMs (Appendix A) and CRFs. The original dynamic pro-
+gramming algorithms for both training and inference are laid out in (Graves et al.,
+2006); see (Hannun, 2017) for a detailed explanation of both.
+
+16.4.3 Combining CTC and Encoder-Decoder
+
+It’s also possible to combine the two architectures/loss functions we’ve described,
+the cross-entropy loss from the encoder-decoder architecture, and the CTC loss.
+Fig. 16.13 shows a sketch. For training, we can simply weight the two losses with a
+λ tuned on a dev set:
+
+L =
+
+λ log Pencdec(Y
+
+(1
+
+λ ) log Pctc(Y
+
+−
+For inference, we can combine the two with the language model (or the length
+penalty), again with learned weights:
+
+−
+
+−
+
+(16.20)
+
+X)
+|
+
+X)
+|
+
+ˆY = argmax
+
+Y
+
+[λ log Pencdec(Y
+
+X)
+|
+
+−
+
+(1
+
+−
+
+λ ) log PCTC(Y
+
+X) + γ log PLM(Y )] (16.21)
+|
+
+Figure 16.13 Combining the CTC and encoder-decoder loss functions.
+
+16.4.4 Streaming Models: RNN-T for improving CTC
+
+−
+
+Because of the strong independence assumption in CTC (assuming that the output
+at time t is independent of the output at time t
+1), recognizers based on CTC
+don’t achieve as high an accuracy as the attention-based encoder-decoder recog-
+nizers. CTC recognizers have the advantage, however, that they can be used for
+streaming. Streaming means recognizing words on-line rather than waiting until
+the end of the sentence to recognize them. Streaming is crucial for many applica-
+tions, from commands to dictation, where we want to start recognition while the
+user is still talking. Algorithms that use attention need to compute the hidden state
+sequence over the entire input ﬁrst in order to provide the attention distribution con-
+text, before the decoder can start decoding. By contrast, a CTC algorithm can input
+letters from left to right immediately.
+
+If we want to do streaming, we need a way to improve CTC recognition to re-
+move the conditional independent assumption, enabling it to know about output his-
+tory. The RNN-Transducer (RNN-T), shown in Fig. 16.14, is just such a model
+(Graves 2012, Graves et al. 2013). The RNN-T has two main components: a CTC
+
+streaming
+
+RNN-T
+
+ENCODER…DECODER…H<s>it‘s timx1xn……i   t   ’   s      t   i   m   e  …CTC LossEncoder-Decoder Loss352 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+acoustic model, and a separate language model component called the predictor that
+conditions on the output token history. At each time step t, the CTC encoder outputs
+a hidden state henc
+given the input x1...xt . The language model predictor takes as in-
+put the previous output token (not counting blanks), outputting a hidden state hpred
+.
+The two are passed through another network whose output is then passed through a
+softmax to predict the next character.
+
+u
+
+t
+
+PRNN
+
+T (Y
+
+−
+
+X) =
+|
+
+B−
+(cid:88)A
+∈
+
+1(Y )
+
+X)
+P(A
+|
+
+T
+
+=
+
+B−
+(cid:88)A
+∈
+
+1(Y )
+
+(cid:89)t=1
+
+p(at |
+
+ht , y<ut )
+
+Figure 16.14 The RNN-T model computing the output token distribution at time t by inte-
+grating the output of a CTC acoustic encoder and a separate ‘predictor’ language model.
+
+16.5 ASR Evaluation: Word Error Rate
+
+word error
+
+The standard evaluation metric for speech recognition systems is the word error
+rate. The word error rate is based on how much the word string returned by the
+recognizer (the hypothesized word string) differs from a reference transcription.
+The ﬁrst step in computing word error is to compute the minimum edit distance in
+words between the hypothesized and correct strings, giving us the minimum num-
+ber of word substitutions, word insertions, and word deletions necessary to map
+between the correct and hypothesized strings. The word error rate (WER) is then
+deﬁned as follows (note that because the equation includes insertions, the error rate
+can be greater than 100%):
+
+Word Error Rate = 100
+
+Insertions + Substitutions + Deletions
+Total Words in Correct Transcript
+
+×
+
+alignment
+
+Here is a sample alignment between a reference and a hypothesis utterance from
+
+the CallHome corpus, showing the counts used to compute the error rate:
+
+REF:
+HYP:
+Eval:
+
+i *** ** UM the PHONE IS
+i GOT IT TO the *****
+
+I
+
+I S
+
+D
+
+i LEFT THE portable ****
+
+PHONE UPSTAIRS last night
+last night
+
+FULLEST i LOVE TO portable FORM OF
+S
+
+S
+
+S
+
+S
+
+I
+
+STORES
+S
+
+This utterance has six substitutions, three insertions, and one deletion:
+
+Word Error Rate = 100
+
+6 + 3 + 1
+13
+
+= 76.9%
+
+ENCODERP ( yt,u | x[1..t] , y[1..u-1] )xtPREDICTIONNETWORKyu-1JOINT NETWORKhencthpreduSOFTMAXzt,uDECODERSentence error
+rate
+
+16.5
+
+• ASR EVALUATION: WORD ERROR RATE
+
+353
+
+The standard method for computing word error rates is a free script called sclite,
+available from the National Institute of Standards and Technologies (NIST) (NIST,
+2005). Sclite is given a series of reference (hand-transcribed, gold-standard) sen-
+tences and a matching set of hypothesis sentences. Besides performing alignments,
+and computing word error rate, sclite performs a number of other useful tasks. For
+example, for error analysis it gives useful information such as confusion matrices
+showing which words are often misrecognized for others, and summarizes statistics
+of words that are often inserted or deleted. sclite also gives error rates by speaker
+(if sentences are labeled for speaker ID), as well as useful statistics like the sentence
+error rate, the percentage of sentences with at least one word error.
+
+Statistical signiﬁcance for ASR: MAPSSWE or MacNemar
+
+As with other language processing algorithms, we need to know whether a particular
+improvement in word error rate is signiﬁcant or not.
+
+The standard statistical tests for determining if two word error rates are different
+is the Matched-Pair Sentence Segment Word Error (MAPSSWE) test, introduced in
+Gillick and Cox (1989).
+
+The MAPSSWE test is a parametric test that looks at the difference between
+the number of word errors the two systems produce, averaged across a number of
+segments. The segments may be quite short or as long as an entire utterance; in
+general, we want to have the largest number of (short) segments in order to justify
+the normality assumption and to maximize power. The test requires that the errors
+in one segment be statistically independent of the errors in another segment. Since
+ASR systems tend to use trigram LMs, we can approximate this requirement by
+deﬁning a segment as a region bounded on both sides by words that both recognizers
+get correct (or by turn/utterance boundaries). Here’s an example from NIST (2007)
+with four regions:
+
+I
+
+II
+
+III
+
+IV
+
+REF:
+
+|it was|the best|of|times it|was the worst|of times| |it was
+|
+
+|
+|the best|of|times it|IS the worst |of times|OR|it was
+|
+
+|
+|times it|WON the TEST |of times| |it was
+
+|
+SYS B:|it was|the best|
+
+SYS A:|ITS
+
+| |
+
+| |
+
+|
+
+|
+
+|
+
+|
+
+|
+
+|
+
+|
+
+In region I, system A has two errors (a deletion and an insertion) and system B
+has zero; in region III, system A has one error (a substitution) and system B has two.
+Let’s deﬁne a sequence of variables Z representing the difference between the errors
+in the two systems as follows:
+
+Ni
+A
+Ni
+B
+Z
+
+the number of errors made on segment i by system A
+the number of errors made on segment i by system B
+Ni
+
+, n where n is the number of segments
+
+Ni
+
+B, i = 1, 2,
+
+A −
+
+· · ·
+In the example above, the sequence of Z values is
+
+. Intuitively, if
+the two systems are identical, we would expect the average difference, that is, the
+average of the Z values, to be zero. If we call the true average of the differences
+muz, we would thus like to know whether muz = 0. Following closely the original
+proposal and notation of Gillick and Cox (1989), we can estimate the true average
+n
+from our limited sample as ˆµz =
+i=1 Zi/n. The estimate of the variance of the Zi’s
+is
+
+1, 1
+}
+
+2,
+{
+
+1,
+
+−
+
+−
+
+(cid:80)
+
+σ 2
+
+z =
+
+1
+
+−
+
+1
+
+n
+
+n
+
+(cid:88)i=1
+
+µz)2
+
+(Zi −
+
+(16.22)
+
+354 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+Let
+
+W =
+
+ˆµz
+σz/√n
+
+(16.23)
+
+For a large enough n (> 50), W will approximately have a normal distribution with
+unit variance. The null hypothesis is H0 : µz = 0, and it can thus be rejected if
+0.05 (one-tailed), where Z is
+2
+standard normal and w is the realized value W ; these probabilities can be looked up
+in the standard tables of the normal distribution.
+
+0.05 (two-tailed) or P(Z
+
+)
+w
+|
+
+)
+w
+|
+
+P(Z
+
+≥ |
+
+≥ |
+
+≤
+
+≤
+
+∗
+
+McNemar’s test
+
+Earlier work sometimes used McNemar’s test for signiﬁcance, but McNemar’s
+is only applicable when the errors made by the system are independent, which is not
+true in continuous speech recognition, where errors made on a word are extremely
+dependent on errors made on neighboring words.
+
+Could we improve on word error rate as a metric? It would be nice, for exam-
+ple, to have something that didn’t give equal weight to every word, perhaps valuing
+cont

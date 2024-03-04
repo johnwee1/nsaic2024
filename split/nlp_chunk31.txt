@@ -1,0 +1,655 @@
+ot )
+
+the previous Viterbi path probability from the previous time step
+the transition probability from previous state qi to current state q j
+the state observation likelihood of the observation symbol ot given
+the current state j
+
+8.4.6 Working through an example
+
+Let’s tag the sentence Janet will back the bill; the goal is the correct series of tags
+(see also Fig. 8.11):
+
+(8.20) Janet/NNP will/MD back/VB the/DT bill/NN
+
+JJ
+
+RB
+
+DT
+
+NN
+
+NNP
+0.2767
+0.3777
+0.0008
+0.0322
+0.0366
+0.0096
+0.0068
+0.1147
+
+<s >
+NNP
+MD
+VB
+JJ
+NN
+RB
+DT
+Figure 8.12 The A transition probabilities P(ti|
+ti
+MD) is 0.7968.
+out smoothing. Rows are labeled with the conditioning event; thus P(V B
+|
+
+VB
+0.0031 0.0453 0.0449 0.0510 0.2026
+0.0009 0.0084 0.0584 0.0090 0.0025
+0.7968 0.0005 0.0008 0.1698 0.0041
+0.0050 0.0837 0.0615 0.0514 0.2231
+0.0001 0.0733 0.4509 0.0036 0.0036
+0.0014 0.0086 0.1216 0.0177 0.0068
+0.1011 0.1012 0.0120 0.0728 0.0479
+0.0002 0.2157 0.4744 0.0102 0.0017
+
+MD
+0.0006
+0.0110
+0.0002
+0.0005
+0.0004
+0.0176
+0.0102
+0.0021
+
+−
+
+1) computed from the WSJ corpus with-
+
+Let the HMM be deﬁned by the two tables in Fig. 8.12 and Fig. 8.13. Figure 8.12
+lists the ai j probabilities for transitioning between the hidden states (part-of-speech
+tags). Figure 8.13 expresses the bi(ot ) probabilities, the observation likelihoods of
+words given tags. This table is (slightly simpliﬁed) from counts in the WSJ corpus.
+So the word Janet only appears as an NNP, back has 4 possible parts of speech, and
+
+JJNNPNNPNNPMDMDMDMDVBVBJJJJJJNNNNRBRBRBRBDTDTDTDTNNPJanetwillbackthebillNNVBMDNNVBJJRBNNPDTNNVB8.4
+
+• HMM PART-OF-SPEECH TAGGING
+
+175
+
+NNP
+MD
+VB
+JJ
+NN
+RB
+DT
+
+bill
+
+will
+
+Janet
+0.000032 0
+0
+0
+0
+0
+0
+0
+
+the
+back
+0.000048 0
+0
+0
+0.308431 0
+0
+0.000028
+0.000028 0.000672 0
+0
+0
+0.000340 0
+0.002337
+0.000200 0.000223 0
+0.010446 0
+0
+0
+0.506099 0
+0
+0
+
+Figure 8.13 Observation likelihoods B computed from the WSJ corpus without smoothing,
+simpliﬁed slightly.
+
+the word the can appear as a determiner or as an NNP (in titles like “Somewhere
+Over the Rainbow” all words are tagged as NNP).
+
+Figure 8.14 The ﬁrst few entries in the individual state columns for the Viterbi algorithm. Each cell keeps
+the probability of the best path so far and a pointer to the previous cell along that path. We have only ﬁlled out
+columns 1 and 2; to avoid clutter most cells with value 0 are left empty. The rest is left as an exercise for the
+reader. After the cells are ﬁlled in, backtracing from the end state, we should be able to reconstruct the correct
+state sequence NNP MD VB DT NN.
+
+Figure 8.14 shows a ﬂeshed-out version of the sketch we saw in Fig. 8.11, the
+Viterbi lattice for computing the best hidden state sequence for the observation se-
+quence Janet will back the bill.
+
+There are N = 5 state columns. We begin in column 1 (for the word Janet) by
+setting the Viterbi value in each cell to the product of the π transition probability
+(the start probability for that state i, which we get from the <s > entry of Fig. 8.12),
+
+πP(NNP|start) = .28* P(MD|MD)= 0*  P(MD|NNP).000009*.01  = .9e-8 v1(2)=.0006 x 0 = 0v1(1) = .28* .000032 = .000009tMDq2q1o1Janetbillwillo2o3backVBJJv1(3)=.0031 x 0 = 0v1(4)= .045*0=0o4  *  P(MD|VB) = 0 * P(MD|JJ)= 0P(VB|start) = .0031P(JJ |start) =.045backtraceq3q4theNNq5RBq6DTq7v2(2) =max * .308 =2.772e-8v2(5)=max * .0002 = .0000000001v2(3)=max * .000028 =     2.5e-13v3(6)=max * .0104v3(5)=max * .000223v3(4)=max * .00034v3(3)=max * .00067v1(5)v1(6)v1(7)v2(1)v2(4)v2(6)v2(7)backtrace* P(RB|NN)* P(NN|NN)startstartstartstartstarto5NNPP(MD|start) = .0006176 CHAPTER 8
+
+• SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+and the observation likelihood of the word Janet given the tag for that cell. Most of
+the cells in the column are zero since the word Janet cannot be any of those tags.
+The reader should ﬁnd this in Fig. 8.14.
+
+Next, each cell in the will column gets updated. For each state, we compute the
+value viterbi[s,t] by taking the maximum over the extensions of all the paths from
+the previous column that lead to the current cell according to Eq. 8.19. We have
+shown the values for the MD, VB, and NN cells. Each cell gets the max of the 7
+values from the previous column, multiplied by the appropriate transition probabil-
+ity; as it happens in this case, most of them are zero from the previous column. The
+remaining value is multiplied by the relevant observation probability, and the (triv-
+ial) max is taken. In this case the ﬁnal value, 2.772e-8, comes from the NNP state at
+the previous column. The reader should ﬁll in the rest of the lattice in Fig. 8.14 and
+backtrace to see whether or not the Viterbi algorithm returns the gold state sequence
+NNP MD VB DT NN.
+
+8.5 Conditional Random Fields (CRFs)
+
+unknown
+words
+
+CRF
+
+While the HMM is a useful and powerful model, it turns out that HMMs need a
+number of augmentations to achieve high accuracy. For example, in POS tagging
+as in other tasks, we often run into unknown words: proper names and acronyms
+are created very often, and even new common nouns and verbs enter the language
+at a surprising rate.
+It would be great to have ways to add arbitrary features to
+help with this, perhaps based on capitalization or morphology (words starting with
+capital letters are likely to be proper nouns, words ending with -ed tend to be past
+tense (VBD or VBN), etc.) Or knowing the previous or following words might be a
+useful feature (if the previous word is the, the current tag is unlikely to be a verb).
+
+Although we could try to hack the HMM to ﬁnd ways to incorporate some of
+these, in general it’s hard for generative models like HMMs to add arbitrary features
+directly into the model in a clean way. We’ve already seen a model for combining
+arbitrary features in a principled way: log-linear models like the logistic regression
+model of Chapter 5! But logistic regression isn’t a sequence model; it assigns a class
+to a single observation.
+
+Luckily, there is a discriminative sequence model based on log-linear models:
+the conditional random ﬁeld (CRF). We’ll describe here the linear chain CRF,
+the version of the CRF most commonly used for language processing, and the one
+whose conditioning closely matches the HMM.
+
+Assuming we have a sequence of input words X = x1...xn and want to compute
+a sequence of output tags Y = y1...yn. In an HMM to compute the best tag sequence
+that maximizes P(Y
+
+X) we rely on Bayes’ rule and the likelihood P(X
+|
+
+Y ):
+|
+
+ˆY = argmax
+
+p(Y
+
+X)
+|
+
+Y
+
+= argmax
+
+Y
+
+= argmax
+
+Y
+
+p(X
+
+Y )p(Y )
+|
+p(xi|
+
+yi)
+
+(cid:89)i
+
+(cid:89)i
+
+p(yi|
+yi
+
+−
+
+1)
+
+(8.21)
+
+In a CRF, by contrast, we compute the posterior p(Y
+
+X) directly, training the CRF
+|
+
+8.5
+
+• CONDITIONAL RANDOM FIELDS (CRFS)
+
+177
+
+to discriminate among the possible tag sequences:
+
+ˆY = argmax
+
+P(Y
+
+Y
+
+Y
+
+X)
+|
+
+(8.22)
+
+∈
+However, the CRF does not compute a probability for each tag at each time step. In-
+stead, at each time step the CRF computes log-linear functions over a set of relevant
+features, and these local features are aggregated and normalized to produce a global
+probability for the whole sequence.
+
+Let’s introduce the CRF more formally, again using X and Y as the input and
+output sequences. A CRF is a log-linear model that assigns a probability to an
+entire output (tag) sequence Y , out of all possible sequences Y, given the entire input
+(word) sequence X. We can think of a CRF as like a giant sequential version of
+the multinomial logistic regression algorithm we saw for text categorization. Recall
+that we introduced the feature function f in regular multinomial logistic regression
+for text categorization as a function of a tuple: the input text x and a single class y
+(page 91). In a CRF, we’re dealing with a sequence, so the function F maps an entire
+input sequence X and an entire output sequence Y to a feature vector. Let’s assume
+we have K features, with a weight wk for each feature Fk:
+
+K
+
+exp
+
+(cid:32)
+
+p(Y
+
+X) =
+|
+
+(cid:88)k=1
+K
+
+wkFk(X,Y )
+
+(cid:33)
+
+(8.23)
+
+exp
+
+(cid:32)
+
+(cid:88)k=1
+
+Y
+(cid:88)Y (cid:48)∈
+
+wkFk(X,Y (cid:48))
+
+(cid:33)
+
+It’s common to also describe the same equation by pulling out the denominator into
+a function Z(X):
+
+p(Y
+
+X) =
+|
+
+1
+Z(X)
+
+exp
+
+K
+
+(cid:32)
+
+(cid:88)k=1
+K
+
+wkFk(X,Y )
+
+(cid:33)
+
+Z(X) =
+
+exp
+
+Y
+(cid:88)Y (cid:48)∈
+
+wkFk(X,Y (cid:48))
+
+(cid:33)
+
+(cid:32)
+
+(cid:88)k=1
+
+(8.24)
+
+(8.25)
+
+We’ll call these K functions Fk(X,Y ) global features, since each one is a property
+of the entire input sequence X and output sequence Y . We compute them by decom-
+posing into a sum of local features for each position i in Y :
+
+Fk(X,Y ) =
+
+n
+
+(cid:88)i=1
+
+fk(yi
+
+1, yi, X, i)
+
+−
+
+(8.26)
+
+linear chain
+CRF
+
+−
+
+Each of these local features fk in a linear-chain CRF is allowed to make use of the
+current output token yi, the previous output token yi
+1, the entire input string X (or
+any subpart of it), and the current position i. This constraint to only depend on
+the current and previous output tokens yi and yi
+1 are what characterizes a linear
+chain CRF. As we will see, this limitation makes it possible to use versions of the
+efﬁcient Viterbi and Forward-Backwards algorithms from the HMM. A general CRF,
+by contrast, allows a feature to make use of any output token, and are thus necessary
+for tasks in which the decision depend on distant output tokens, like yi
+4. General
+CRFs require more complex inference, and are less commonly used for language
+processing.
+
+−
+
+−
+
+178 CHAPTER 8
+
+• SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+8.5.1 Features in a CRF POS Tagger
+
+Let’s look at some of these features in detail, since the reason to use a discriminative
+sequence model is that it’s easier to incorporate a lot of features.2
+
+Again, in a linear-chain CRF, each local feature fk at position i can depend on
+1, yi, X, i). So some legal features representing common
+
+any information from: (yi
+situations might be the following:
+
+−
+
+1
+1
+1
+
+{
+{
+{
+
+xi = the, yi = DET
+yi = PROPN, xi+1 = Street, yi
+yi = VERB, yi
+
+}
+
+1 = AUX
+}
+
+−
+
+1 = NUM
+
+−
+
+}
+
+For simplicity, we’ll assume all CRF features take on the value 1 or 0. Above, we
+explicitly use the notation 1
+to mean “1 if x is true, and 0 otherwise”. From now
+on, we’ll leave off the 1 when we deﬁne features, but you can assume each feature
+has it there implicitly.
+
+{
+
+}
+
+x
+
+feature
+templates
+
+Although the idea of what features to use is done by the system designer by hand,
+the speciﬁc features are automatically populated by using feature templates as we
+brieﬂy mentioned in Chapter 5. Here are some templates that only use information
+from (yi
+
+1, yi, X, i):
+
+−
+
+,
+yi, xi(cid:105)
+(cid:104)
+
+yi, yi
+(cid:104)
+
+,
+1(cid:105)
+−
+
+yi, xi
+(cid:104)
+
+1, xi+2(cid:105)
+
+−
+
+These templates automatically populate the set of features from every instance in
+the training and test set. Thus for our example Janet/NNP will/MD back/VB the/DT
+bill/NN, when xi is the word back, the following features would be generated and
+have the value 1 (we’ve assigned them arbitrary feature numbers):
+
+f3743: yi = VB and xi = back
+f156: yi = VB and yi
+1 = MD
+−
+f99732: yi = VB and xi
+
+1 = will and xi+2 = bill
+
+−
+
+word shape
+
+It’s also important to have features that help with unknown words. One of the
+most important is word shape features, which represent the abstract letter pattern
+of the word by mapping lower-case letters to ‘x’, upper-case to ‘X’, numbers to
+’d’, and retaining punctuation. Thus for example I.M.F. would map to X.X.X. and
+DC10-30 would map to XXdd-dd. A second class of shorter word shape features is
+also used. In these features consecutive character types are removed, so words in all
+caps map to X, words with initial-caps map to Xx, DC10-30 would be mapped to
+Xd-d but I.M.F would still map to X.X.X. Preﬁx and sufﬁx features are also useful.
+In summary, here are some sample feature templates that help with unknown words:
+
+xi contains a particular preﬁx (perhaps from all preﬁxes of length
+xi contains a particular sufﬁx (perhaps from all sufﬁxes of length
+xi’s word shape
+xi’s short word shape
+
+2)
+2)
+
+≤
+≤
+
+For example the word well-dressed might generate the following non-zero val-
+
+ued feature values:
+
+2 Because in HMMs all computation is based on the two probabilities P(tag
+tag), if
+|
+we want to include some source of knowledge into the tagging process, we must ﬁnd a way to encode
+the knowledge into one of these two probabilities. Each time we add a feature we have to do a lot of
+complicated conditioning which gets harder and harder as we have more and more such features.
+
+tag) and P(word
+|
+
+8.5
+
+• CONDITIONAL RANDOM FIELDS (CRFS)
+
+179
+
+preﬁx(xi) = w
+preﬁx(xi) = we
+sufﬁx(xi) = ed
+sufﬁx(xi) = d
+word-shape(xi) = xxxx-xxxxxxx
+short-word-shape(xi) = x-x
+
+The known-word templates are computed for every word seen in the training
+set; the unknown word features can also be computed for all words in training, or
+only on training words whose frequency is below some threshold. The result of the
+known-word templates and word-signature features is a very large set of features.
+Generally a feature cutoff is used in which features are thrown out if they have count
+< 5 in the training set.
+
+Remember that in a CRF we don’t learn weights for each of these local features
+fk. Instead, we ﬁrst sum the values of each local feature (for example feature f3743)
+over the entire sentence, to create each global feature (for example F3743). It is those
+global features that will then be multiplied by weight w3743. Thus for training and
+inference there is always a ﬁxed set of K features with K weights, even though the
+length of each sentence is different.
+
+8.5.2 Features for CRF Named Entity Recognizers
+
+A CRF for NER makes use of very similar features to a POS tagger, as shown in
+Figure 8.15.
+
+identity of wi, identity of neighboring words
+embeddings for wi, embeddings for neighboring words
+part of speech of wi, part of speech of neighboring words
+presence of wi in a gazetteer
+wi contains a particular preﬁx (from all preﬁxes of length
+wi contains a particular sufﬁx (from all sufﬁxes of length
+word shape of wi, word shape of neighboring words
+short word shape of wi, short word shape of neighboring words
+gazetteer features
+Figure 8.15 Typical features for a feature-based NER system.
+
+4)
+4)
+
+≤
+≤
+
+gazetteer
+
+One feature that is especially useful for locations is a gazetteer, a list of place
+names, often providing millions of entries for locations with detailed geographical
+and political information.3 This can be implemented as a binary feature indicating a
+phrase appears in the list. Other related resources like name-lists, for example from
+the United States Census Bureau4, can be used, as can other entity dictionaries like
+lists of corporations or products, although they may not be as helpful as a gazetteer
+(Mikheev et al., 1999).
+
+The sample named entity token L’Occitane would generate the following non-
+zero valued feature values (assuming that L’Occitane is neither in the gazetteer nor
+the census).
+
+3 www.geonames.org
+4 www.census.gov
+
+180 CHAPTER 8
+
+• SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+preﬁx(xi) = L
+preﬁx(xi) = L’
+preﬁx(xi) = L’O
+preﬁx(xi) = L’Oc
+word-shape(xi) = X’Xxxxxxxx
+
+sufﬁx(xi) = tane
+sufﬁx(xi) = ane
+sufﬁx(xi) = ne
+sufﬁx(xi) = e
+short-word-shape(xi) = X’Xx
+
+Figure 8.16 illustrates the result of adding part-of-speech tags and some shape
+
+information to our earlier example.
+
+x
+
+Short shape
+
+POS
+NNP Xx
+NNP Xx
+IN
+NNP Xx
+NNP Xx
+NNP Xx
+VBD x
+DT
+x
+NNP Xx
+NN
+.
+
+Words
+Jane
+Villanueva
+of
+United
+Airlines
+Holding
+discussed
+the
+Chicago
+route
+.
+F

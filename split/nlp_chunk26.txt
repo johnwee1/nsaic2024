@@ -1,0 +1,593 @@
+ering layers,
+but do count the output layer). So by this terminology logistic regression is a 1-layer
+network.
+
+n1, and the output vector y
+
+Rn1, b
+
+Rn0, h
+
+Rn2×
+
+∈
+
+∈
+
+∈
+
+∈
+
+7.3
+
+• FEEDFORWARD NEURAL NETWORKS
+
+145
+
+7.3.1 More details on feedforward networks
+
+Let’s now set up some notation to make it easier to talk about deeper networks of
+depth more than 2. We’ll use superscripts in square brackets to mean layer num-
+bers, starting at 0 for the input layer. So W[1] will mean the weight matrix for the
+(ﬁrst) hidden layer, and b[1] will mean the bias vector for the (ﬁrst) hidden layer. n j
+) to stand for the activation
+will mean the number of units at layer j. We’ll use g(
+·
+function, which will tend to be ReLU or tanh for intermediate layers and softmax
+for output layers. We’ll use a[i] to mean the output from layer i, and z[i] to mean the
+combination of weights and biases W[i]a[i
+1] + b[i]. The 0th layer is for inputs, so
+−
+we’ll refer to the inputs x more generally as a[0].
+
+Thus we can re-represent our 2-layer net from Eq. 7.12 as follows:
+
+z[1] = W[1]a[0] + b[1]
+a[1] = g[1](z[1])
+z[2] = W[2]a[1] + b[2]
+a[2] = g[2](z[2])
+
+ˆy = a[2]
+
+(7.13)
+
+Note that with this notation, the equations for the computation done at each layer are
+the same. The algorithm for computing the forward step in an n-layer feedforward
+network, given the input vector a[0] is thus simply:
+
+for i in 1,...,n
+
+z[i] = W[i] a[i
+−
+a[i] = g[i](z[i])
+
+1] + b[i]
+
+ˆy = a[n]
+
+) are generally different at the ﬁnal layer. Thus g[2]
+The activation functions g(
+·
+might be softmax for multinomial classiﬁcation or sigmoid for binary classiﬁcation,
+) at the internal layers.
+while ReLU or tanh might be the activation function g(
+·
+
+It’s often useful to have a name for the ﬁnal set of activations right before the ﬁnal
+softmax. So however many layers we have, we’ll generally call the unnormalized
+values in the ﬁnal vector z[n], the vector of scores right before the ﬁnal softmax, the
+logits (see (5.7).
+
+logits
+
+The need for non-linear activation functions One of the reasons we use non-
+linear activation functions for each layer in a neural network is that if we did not, the
+resulting network is exactly equivalent to a single-layer network. Let’s see why this
+is true. Imagine the ﬁrst two layers of such a network of purely linear layers:
+
+z[1] = W[1]x + b[1]
+z[2] = W[2]z[1] + b[2]
+
+We can rewrite the function that the network is computing as:
+
+z[2] = W[2]z[1] + b[2]
+
+= W[2](W[1]x + b[1]) + b[2]
+= W[2]W[1]x + W[2]b[1] + b[2]
+= W(cid:48)x + b(cid:48)
+
+(7.14)
+
+This generalizes to any number of layers. So without non-linear activation functions,
+a multilayer network is just a notational variant of a single layer network with a
+
+146 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+different set of weights, and we lose all the representational power of multilayer
+networks.
+
+In describing networks, we will often use a slightly sim-
+Replacing the bias unit
+pliﬁed notation that represents exactly the same function without referring to an ex-
+plicit bias node b. Instead, we add a dummy node a0 to each layer whose value will
+always be 1. Thus layer 0, the input layer, will have a dummy node a[0]
+0 = 1, layer 1
+will have a[1]
+0 = 1, and so on. This dummy node still has an associated weight, and
+that weight represents the bias value b. For example instead of an equation like
+
+we’ll use:
+
+h = σ (Wx + b)
+
+h = σ (Wx)
+
+(7.15)
+
+(7.16)
+
+But now instead of our vector x having n0 values: x = x1, . . . , xn0, it will have n0 +
+1 values, with a new 0th dummy value x0 = 1: x = x0, . . . , xn0. And instead of
+computing each h j as follows:
+
+h j = σ
+
+n0
+
+(cid:32)
+
+(cid:88)i=1
+
+Wji xi + b j
+
+,
+
+(cid:33)
+
+(7.17)
+
+we’ll instead use:
+
+h j = σ
+
+n0
+
+Wji xi
+
+(cid:32)
+
+(cid:33)
+
+(cid:88)i=0
+where the value Wj0 replaces what had been b j. Fig. 7.9 shows a visualization.
+
+,
+
+(7.18)
+
+(a)
+
+(b)
+
+Figure 7.9 Replacing the bias node (shown in a) with x0 (b).
+
+We’ll continue showing the bias as b when we go over the learning algorithm
+in Section 7.5, but then we’ll switch to this simpliﬁed notation without explicit bias
+terms for the rest of the book.
+
+x1x2xn0……+1b…UWh1y1y2yn2h2h3hn1x1x2xn0……x0=1…UWh1y1y2yn2h2h3hn17.4
+
+• FEEDFORWARD NETWORKS FOR NLP: CLASSIFICATION
+
+147
+
+7.4 Feedforward networks for NLP: Classiﬁcation
+
+Let’s see how to apply feedforward networks to NLP tasks! In this section we’ll
+look at classiﬁcation tasks like sentiment analysis; in the next section we’ll introduce
+neural language modeling.
+
+Let’s begin with a simple 2-layer sentiment classiﬁer. You might imagine taking
+our logistic regression classiﬁer from Chapter 5, which corresponds to a 1-layer net-
+work, and just adding a hidden layer. The input element xi could be scalar features
+like those in Fig. 5.2, e.g., x1 = count(words
+doc), x2 = count(positive lexicon
+doc, and so on. And the output layer ˆy could have
+words
+two nodes (one each for positive and negative), or 3 nodes (positive, negative, neu-
+tral), in which case ˆy1 would be the estimated probability of positive sentiment, ˆy2
+the probability of negative and ˆy3 the probability of neutral. The resulting equations
+would be just what we saw above for a 2-layer network (as always, we’ll continue
+to use the σ to stand for any non-linearity, whether sigmoid, ReLU or other).
+
+doc), x3 = 1 if “no”
+
+∈
+
+∈
+
+∈
+
+(each xi is a hand-designed feature)
+
+x = [x1, x2, ...xN]
+h = σ (Wx + b)
+z = Uh
+ˆy = softmax(z)
+
+(7.19)
+
+Fig. 7.10 shows a sketch of this architecture. As we mentioned earlier, adding this
+hidden layer to our logistic regression classiﬁer allows the network to represent the
+non-linear interactions between features. This alone might give us a better sentiment
+classiﬁer.
+
+Figure 7.10 Feedforward network sentiment analysis using traditional hand-built features
+of the input text.
+
+Most applications of neural networks for NLP do something different, however.
+Instead of using hand-built human-engineered features as the input to our classiﬁer,
+we draw on deep learning’s ability to learn features from the data by representing
+words as embeddings, like the word2vec or GloVe embeddings we saw in Chapter 6.
+There are various ways to represent an input for classiﬁcation. One simple baseline
+is to apply some sort of pooling function to the embeddings of all the words in the
+
+pooling
+
+UW[n⨉1]Hidden layerOutput layersoftmax[dh⨉n][dh⨉1][3⨉dh]Input wordsp(+)h1h2h3hdh…y1^y2^y3^xhyInput layer n=3 features[3⨉1]x1x2x3dessertwasgreatpositive lexiconwords = 1count of “no” = 0wordcount=3p(-)p(neut)148 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+input. For example, for a text with n input words/tokens w1, ..., wn, we can turn the
+n embeddings e(w1), ..., e(wn) (each of dimensionality d) into a single embedding
+also of dimensionality d by just summing the embeddings, or by taking their mean
+(summing and then dividing by n):
+
+xmean =
+
+1
+n
+
+n
+
+e(wi)
+
+(7.20)
+
+(cid:88)i=1
+There are many other options, like taking the element-wise max. The element-wise
+max of a set of n vectors is a new vector whose kth element is the max of the kth
+elements of all the n vectors. Here are the equations for this classiﬁer assuming
+mean pooling; the architecture is sketched in Fig. 7.11:
+
+x = mean(e(w1), e(w2), . . . , e(wn))
+h = σ (Wx + b)
+z = Uh
+ˆy = softmax(z)
+
+(7.21)
+
+Figure 7.11 Feedforward network sentiment analysis using a pooled embedding of the in-
+put words.
+
+While Eq. 7.21 shows how to classify a single example x, in practice we want
+to efﬁciently classify an entire test set of m examples. We do this by vectoring the
+process, just as we saw with logistic regression; instead of using for-loops to go
+through each example, we’ll use matrix multiplication to do the entire computation
+of an entire test set at once. First, we pack all the input feature vectors for each input
+x into a single input matrix X, with each row i a row vector consisting of the pooled
+embedding for input example x(i) (i.e., the vector x(i)). If the dimensionality of our
+pooled input embedding is d, X will be a matrix of shape [m
+
+d].
+We will then need to slightly modify Eq. 7.21. X is of shape [m
+
+d] and W is of
+d], so we’ll have to reorder how we multiply X and W and transpose W
+dh]. The bias vector b
+dh] will now have to be replicated into a matrix of shape
+dh]. We’ll need to similarly reorder the next step and transpose U. Finally, our
+do], where do is
+
+shape [dh ×
+so they correctly multiply to yield a matrix H of shape [m
+from Eq. 7.21 of shape [1
+[m
+output matrix ˆY will be of shape [m
+
+3] (or more generally [m
+
+×
+
+×
+
+×
+
+×
+
+×
+
+×
+
+×
+
+UW[d⨉1]Hidden layerOutput layersoftmax[dh⨉d][dh⨉1][3⨉dh]Input wordsp(+)embedding for“great”embedding for“dessert”h1h2h3hdh…y1^y2^y3^xhyInput layer pooled embedding[3⨉1]pooling+dessertwasgreatembedding for“was”p(-)p(neut)7.5
+
+• TRAINING NEURAL NETS
+
+149
+
+the number of output classes), with each row i of our output matrix ˆY consisting of
+the output vector ˆy(i).‘ Here are the ﬁnal equations for computing the output class
+distribution for an entire test set:
+
++ b)
+
+H = σ (XW(cid:124)
+Z = HU(cid:124)
+ˆY = softmax(Z)
+
+(7.22)
+
+pretraining
+
+The idea of using word2vec or GloVe embeddings as our input representation—
+and more generally the idea of relying on another algorithm to have already learned
+an embedding representation for our input words—is called pretraining. Using
+pretrained embedding representations, whether simple static word embeddings like
+word2vec or the much more powerful contextual embeddings we’ll introduce in
+Chapter 11, is one of the central ideas of deep learning. (It’s also possible, how-
+ever, to train the word embeddings as part of an NLP task; we’ll talk about how to
+do this in Section 7.7 in the context of the neural language modeling task.)
+
+7.5 Training Neural Nets
+
+A feedforward neural net is an instance of supervised machine learning in which we
+know the correct output y for each observation x. What the system produces, via
+Eq. 7.13, is ˆy, the system’s estimate of the true y. The goal of the training procedure
+is to learn parameters W[i] and b[i] for each layer i that make ˆy for each training
+observation as close as possible to the true y.
+
+In general, we do all this by drawing on the methods we introduced in Chapter 5
+for logistic regression, so the reader should be comfortable with that chapter before
+proceeding.
+
+First, we’ll need a loss function that models the distance between the system
+output and the gold output, and it’s common to use the loss function used for logistic
+regression, the cross-entropy loss.
+
+Second, to ﬁnd the parameters that minimize this loss function, we’ll use the
+
+gradient descent optimization algorithm introduced in Chapter 5.
+
+Third, gradient descent requires knowing the gradient of the loss function, the
+vector that contains the partial derivative of the loss function with respect to each
+of the parameters.
+In logistic regression, for each observation we could directly
+compute the derivative of the loss function with respect to an individual w or b. But
+for neural networks, with millions of parameters in many layers, it’s much harder to
+see how to compute the partial derivative of some weight in layer 1 when the loss
+is attached to some much later layer. How do we partial out the loss over all those
+intermediate layers? The answer is the algorithm called error backpropagation or
+backward differentiation.
+
+7.5.1 Loss function
+
+cross-entropy
+loss
+
+The cross-entropy loss that is used in neural networks is the same one we saw for
+logistic regression. If the neural network is being used as a binary classiﬁer, with
+the sigmoid at the ﬁnal layer, the loss function is the same logistic regression loss
+we saw in Eq. 5.23:
+
+LCE ( ˆy, y) =
+
+x) =
+log p(y
+|
+
+−
+
+−
+
+[y log ˆy + (1
+
+y) log(1
+
+ˆy)]
+
+−
+
+−
+
+(7.23)
+
+150 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+If we are using the network to classify into 3 or more classes, the loss function is
+exactly the same as the loss for multinomial regression that we saw in Chapter 5 on
+page 101. Let’s brieﬂy summarize the explanation here for convenience. First, when
+we have more than 2 classes we’ll need to represent both y and ˆy as vectors. Let’s
+assume we’re doing hard classiﬁcation, where only one class is the correct one.
+The true label y is then a vector with K elements, each corresponding to a class,
+with yc = 1 if the correct class is c, with all other elements of y being 0. Recall that
+a vector like this, with one value equal to 1 and the rest 0, is called a one-hot vector.
+And our classiﬁer will produce an estimate vector with K elements ˆy, each element
+x).
+ˆyk of which represents the estimated probability p(yk = 1
+|
+
+The loss function for a single example x is the negative sum of the logs of the K
+
+output classes, each weighted by their probability yk:
+
+LCE (ˆy, y) =
+
+−
+
+K
+
+yk log ˆyk
+
+(7.24)
+
+(cid:88)k=1
+We can simplify this equation further; let’s ﬁrst rewrite the equation using the func-
+tion 1
+which evaluates to 1 if the condition in the brackets is true and to 0 oth-
+erwise. This makes it more obvious that the terms in the sum in Eq. 7.24 will be 0
+except for the term corresponding to the true class for which yk = 1:
+
+{}
+
+negative log
+likelihood loss
+
+LCE (ˆy, y) =
+
+K
+
+1
+
+−
+
+yk = 1
+}
+{
+
+log ˆyk
+
+(cid:88)k=1
+In other words, the cross-entropy loss is simply the negative log of the output proba-
+bility corresponding to the correct class, and we therefore also call this the negative
+log likelihood loss:
+
+LCE (ˆy, y) =
+
+log ˆyc
+
+−
+
+(where c is the correct class)
+
+(7.25)
+
+Plugging in the softmax formula from Eq. 7.9, and with K the number of classes:
+
+LCE (ˆy, y) =
+
+log
+
+−
+
+exp(zc)
+K
+j=1 exp(z j)
+
+7.5.2 Computing the Gradient
+
+(cid:80)
+
+(where c is the correct class)
+
+(7.26)
+
+How do we compute the gradient of this loss function? Computing the gradient
+requires the partial derivative of the loss function with respect to each parameter.
+For a network with one weight layer and sigmoid output (which is what logistic
+regression is), we could simply use the derivative of the loss that we used for logistic
+regression in Eq. 7.27 (and derived in Section 5.10):
+
+∂ LCE (ˆy, y)
+∂ w j
+
+y) x j
+
+= ( ˆy
+
+−
+= (σ (w
+
+x + b)
+
+y) x j
+
+−
+
+·
+
+(7.27)
+
+Or for a network with one weight layer and softmax output (=multinomial logistic
+regression), we could use the derivative of the softmax loss from Eq. 5.48, shown
+
+7.5
+
+• TRAINING NEURAL NETS
+
+151
+
+for a particular weight wk and input xi
+
+∂ LCE(ˆy, y)
+∂ wk,i
+
+=
+
+=
+
+=
+
+ˆyk)xi
+
+(yk −
+−
+(yk −
+−
+yk −
+
+− (cid:32)
+
+x))xi
+p(yk = 1
+|
+exp (wk
+K
+j=1 exp (wj
+
+·
+
+x + bk)
+
+x + b j) (cid:33)
+
+·
+
+xi
+
+(7.28)
+
+error back-
+propagation
+
+(cid:80)
+But these derivatives only give correct updates for one weight layer: the last one!
+For deep networks, computing the gradients for each weight is much more complex,
+since we are computing the derivative with respect to weight parameters that appear
+all the way back in the very early layers of the network, even though the loss is
+computed only at the very end of the network.
+
+The solution to computing this gradient is an algorithm called error backprop-
+agation or backprop (Rumelhart et al., 1986). While backprop was invented spe-
+cially for neural networks, it turns out to be the same as a more general procedure
+called backward differentiation, which depends on the notion of computation
+graphs. Let’s see how that works in the next subsection.
+
+7.5.3 Computation Graphs
+
+A computation graph is a representation of the process of comp

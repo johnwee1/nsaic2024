@@ -1,0 +1,390 @@
+ANGUAGE DIVERGENCES AND TYPOLOGY
+
+269
+
+drinking, for being polite or not. There are also structural linguistic universals; for
+example, every language seems to have nouns and verbs (Chapter 8), has ways to ask
+questions, or issue commands, has linguistic mechanisms for indicating agreement
+or disagreement.
+
+Yet languages also differ in many ways (as has been pointed out since ancient
+times; see Fig. 13.1). Understanding what causes such translation divergences
+(Dorr, 1994) can help us build better MT models. We often distinguish the idiosyn-
+cratic and lexical differences that must be dealt with one by one (the word for “dog”
+differs wildly from language to language), from systematic differences that we can
+model in a general way (many languages put the verb before the grammatical ob-
+ject; others put the verb after the grammatical object). The study of these systematic
+cross-linguistic similarities and differences is called linguistic typology. This sec-
+tion sketches some typological facts that impact machine translation; the interested
+reader should also look into WALS, the World Atlas of Language Structures, which
+gives many typological facts about languages (Dryer and Haspelmath, 2013).
+
+translation
+divergence
+
+typology
+
+Figure 13.1 The Tower of Babel, Pieter Bruegel 1563. Wikimedia Commons, from the
+Kunsthistorisches Museum, Vienna.
+
+13.1.1 Word Order Typology
+
+SVO
+
+SOV
+
+VSO
+
+As we hinted at in our example above comparing English and Japanese, languages
+differ in the basic word order of verbs, subjects, and objects in simple declara-
+tive clauses. German, French, English, and Mandarin, for example, are all SVO
+(Subject-Verb-Object) languages, meaning that the verb tends to come between
+the subject and object. Hindi and Japanese, by contrast, are SOV languages, mean-
+ing that the verb tends to come at the end of basic clauses, and Irish and Arabic are
+VSO languages. Two languages that share their basic word order type often have
+other similarities. For example, VO languages generally have prepositions, whereas
+OV languages generally have postpositions.
+
+270 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+Let’s look in more detail at the example we saw above. In this SVO English
+sentence, the verb wrote is followed by its object a letter and the prepositional phrase
+to a friend, in which the preposition to is followed by its argument a friend. Arabic,
+with a VSO order, also has the verb before the object and prepositions. By contrast,
+in the Japanese example that follows, each of these orderings is reversed; the verb is
+preceded by its arguments, and the postposition follows its argument.
+
+(13.3) English: He wrote a letter to a friend
+kaita
+wrote
+
+Japanese: tomodachi
+
+friend
+
+Arabic: katabt
+wrote
+
+ris¯ala
+letter
+
+ni
+to
+li
+to
+
+tegami-o
+letter
+˙sadq
+friend
+
+Other kinds of ordering preferences vary idiosyncratically from language to lan-
+guage. In some SVO languages (like English and Mandarin) adjectives tend to ap-
+pear before nouns, while in others languages like Spanish and Modern Hebrew, ad-
+jectives appear after the noun:
+
+(13.4) Spanish bruja verde
+
+English green witch
+
+(a)
+
+(b)
+
+Figure 13.2 Examples of other word order differences: (a) In German, adverbs occur in
+initial position that in English are more natural later, and tensed verbs occur in second posi-
+tion. (b) In Mandarin, preposition phrases expressing goals often occur pre-verbally, unlike
+in English.
+
+Fig. 13.2 shows examples of other word order differences. All of these word
+order differences between languages can cause problems for translation, requiring
+the system to do huge structural reorderings as it generates the output.
+
+13.1.2 Lexical Divergences
+
+Of course we also need to translate the individual words from one language to an-
+other. For any translation, the appropriate word can vary depending on the context.
+The English source-language word bass, for example, can appear in Spanish as the
+ﬁsh lubina or the musical instrument bajo. German uses two distinct words for what
+in English would be called a wall: Wand for walls inside a building, and Mauer for
+walls outside a building. Where English uses the word brother for any male sib-
+ling, Chinese and many other languages have distinct words for older brother and
+younger brother (Mandarin gege and didi, respectively). In all these cases, trans-
+lating bass, wall, or brother from English would require a kind of specialization,
+disambiguating the different uses of a word. For this reason the ﬁelds of MT and
+Word Sense Disambiguation (Chapter 23) are closely linked.
+
+Sometimes one language places more grammatical constraints on word choice
+than another. We saw above that English marks nouns for whether they are singular
+or plural. Mandarin doesn’t. Or French and Spanish, for example, mark grammat-
+ical gender on adjectives, so an English translation into French requires specifying
+adjective gender.
+
+13.1
+
+• LANGUAGE DIVERGENCES AND TYPOLOGY
+
+271
+
+The way that languages differ in lexically dividing up conceptual space may be
+more complex than this one-to-many translation problem, leading to many-to-many
+mappings. For example, Fig. 13.3 summarizes some of the complexities discussed
+by Hutchins and Somers (1992) in translating English leg, foot, and paw, to French.
+For example, when leg is used about an animal it’s translated as French jambe; but
+about the leg of a journey, as French etape; if the leg is of a chair, we use French
+pied.
+
+Further, one language may have a lexical gap, where no word or phrase, short
+of an explanatory footnote, can express the exact meaning of a word in the other
+language. For example, English does not have a word that corresponds neatly to
+Mandarin xi`ao or Japanese oyak¯ok¯o (in English one has to make do with awkward
+phrases like ﬁlial piety or loving child, or good son/daughter for both).
+
+lexical gap
+
+Figure 13.3 The complex overlap between English leg, foot, etc., and various French trans-
+lations as discussed by Hutchins and Somers (1992).
+
+Finally, languages differ systematically in how the conceptual properties of an
+event are mapped onto speciﬁc words. Talmy (1985, 1991) noted that languages
+can be characterized by whether direction of motion and manner of motion are
+marked on the verb or on the “satellites”: particles, prepositional phrases, or ad-
+verbial phrases. For example, a bottle ﬂoating out of a cave would be described in
+English with the direction marked on the particle out, while in Spanish the direction
+would be marked on the verb:
+
+(13.5) English: The bottle ﬂoated out.
+
+Spanish: La
+The
+
+botella
+bottle
+
+sali´o
+exited
+
+ﬂotando.
+ﬂoating.
+
+verb-framed
+
+satellite-framed
+
+Verb-framed languages mark the direction of motion on the verb (leaving the
+satellites to mark the manner of motion), like Spanish acercarse ‘approach’, al-
+canzar ‘reach’, entrar ‘enter’, salir ‘exit’. Satellite-framed languages mark the
+direction of motion on the satellite (leaving the verb to mark the manner of motion),
+like English crawl out, ﬂoat off, jump down, run after. Languages like Japanese,
+Tamil, and the many languages in the Romance, Semitic, and Mayan languages fam-
+ilies, are verb-framed; Chinese as well as non-Romance Indo-European languages
+like English, Swedish, Russian, Hindi, and Farsi are satellite framed (Talmy 1991,
+Slobin 1996).
+
+13.1.3 Morphological Typology
+
+isolating
+
+polysynthetic
+
+Morphologically, languages are often characterized along two dimensions of vari-
+ation. The ﬁrst is the number of morphemes per word, ranging from isolating
+languages like Vietnamese and Cantonese, in which each word generally has one
+morpheme, to polysynthetic languages like Siberian Yupik (“Eskimo”), in which a
+single word may have very many morphemes, corresponding to a whole sentence in
+
+etapepattejambepied   paw        footlegJOURNEYANIMALHUMANCHAIRANIMALBIRDHUMAN272 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+agglutinative
+
+fusion
+
+English. The second dimension is the degree to which morphemes are segmentable,
+ranging from agglutinative languages like Turkish, in which morphemes have rel-
+atively clean boundaries, to fusion languages like Russian, in which a single afﬁx
+may conﬂate multiple morphemes, like -om in the word stolom (table-SG-INSTR-
+DECL1), which fuses the distinct morphological categories instrumental, singular,
+and ﬁrst declension.
+
+Translating between languages with rich morphology requires dealing with struc-
+ture below the word level, and for this reason modern systems generally use subword
+models like the wordpiece or BPE models of Section 13.2.1.
+
+13.1.4 Referential density
+
+Finally, languages vary along a typological dimension related to the things they tend
+to omit. Some languages, like English, require that we use an explicit pronoun when
+talking about a referent that is given in the discourse. In other languages, however,
+we can sometimes omit pronouns altogether, as the following example from Spanish
+shows1:
+
+(13.6) [El jefe]i dio con un libro. /0i Mostr´o su hallazgo a un descifrador ambulante.
+[The boss] came upon a book. [He] showed his ﬁnd to a wandering decoder.
+
+Languages that can omit pronouns are called pro-drop languages. Even among
+the pro-drop languages, there are marked differences in frequencies of omission.
+Japanese and Chinese, for example, tend to omit far more than does Spanish. This
+dimension of variation across languages is called the dimension of referential den-
+sity. We say that languages that tend to use more pronouns are more referentially
+dense than those that use more zeros. Referentially sparse languages, like Chinese or
+Japanese, that require the hearer to do more inferential work to recover antecedents
+are also called cold languages. Languages that are more explicit and make it easier
+for the hearer are called hot languages. The terms hot and cold are borrowed from
+Marshall McLuhan’s 1964 distinction between hot media like movies, which ﬁll in
+many details for the viewer, versus cold media like comics, which require the reader
+to do more inferential work to ﬁll out the representation (Bickel, 2003).
+
+Translating from languages with extensive pro-drop, like Chinese or Japanese, to
+non-pro-drop languages like English can be difﬁcult since the model must somehow
+identify each zero and recover who or what is being talked about in order to insert
+the proper pronoun.
+
+pro-drop
+
+referential
+density
+
+cold language
+
+hot language
+
+13.2 Machine Translation using Encoder-Decoder
+
+The standard architecture for MT is the encoder-decoder transformer or sequence-
+to-sequence model, an architecture we saw for RNNs in Chapter 9. We’ll see the
+details of how to apply this architecture to transformers in Section 13.3, but ﬁrst let’s
+talk about the overall task.
+
+Most machine translation tasks make the simpliﬁcation that we can translate each
+sentence independently, so we’ll just consider individual sentences for now. Given
+a sentence in a source language, the MT task is then to generate a corresponding
+sentence in a target language. For example, an MT system is given an English
+sentence like
+
+1 Here we use the /0-notation; we’ll introduce this and discuss this issue further in Chapter 26
+
+13.2
+
+• MACHINE TRANSLATION USING ENCODER-DECODER
+
+273
+
+The green witch arrived
+
+and must translate it into the Spanish sentence:
+
+Lleg´o la bruja verde
+
+MT uses supervised machine learning: at training time the system is given a
+large set of parallel sentences (each sentence in a source language matched with
+a sentence in the target language), and learns to map source sentences into target
+sentences. In practice, rather than using words (as in the example above), we split
+the sentences into a sequence of subword tokens (tokens can be words, or subwords,
+or individual characters). The systems are then trained to maximize the probability
+of the sequence of tokens in the target language y1, ..., ym given the sequence of
+tokens in the source language x1, ..., xn:
+
+P(y1, . . . , ym|
+
+x1, . . . , xn)
+
+(13.7)
+
+Rather than use the input tokens directly, the encoder-decoder architecture con-
+sists of two components, an encoder and a decoder. The encoder takes the input
+words x = [x1, . . . , xn] and produces an intermediate context h. At decoding time, the
+system takes h and, word by word, generates the output y:
+
+h = encoder(x)
+
+yi+1 = decoder(h, y1, . . . , yi))
+
+[1, . . . , m]
+
+i
+∀
+
+∈
+
+(13.8)
+
+(13.9)
+
+In the next two sections we’ll talk about subword tokenization, and then how to get
+parallel corpora for training, and then we’ll introduce the details of the encoder-
+decoder architecture.
+
+13.2.1 Tokenization
+
+Machine translation systems use a vocabulary that is ﬁxed in advance, and rather
+than using space-separated words, this vocabulary is generated with subword to-
+kenization algorithms, like the BPE algorithm sketched in Chapter 2. A shared
+vocabulary is used for the source and target languages, which makes it easy to copy
+tokens (like names) from source to target. Using subword tokenization with tokens
+shared between languages makes it natural to translate between languages like En-
+glish or Hindi that use spaces to separate words, and languages like Chinese or Thai
+that don’t.
+
+We build the vocabulary by running a subword tokenization algorithm on a cor-
+
+pus that contains both source and target language data.
+
+Rather than the simple BPE algorithm from Fig. 2.13, modern systems often use
+more powerful tokenization algorithms. Some systems (like BERT) use a variant of
+BPE called the wordpiece algorithm, which instead of choosing the most frequent
+set of tokens to merge, chooses merges based on which one most increases the lan-
+guage model probability of the tokenization. Wordpieces use a special symbol at the
+beginning of each token; here’s a resulting tokenization from the Google MT system
+(Wu et al., 2016):
+
+words:
+wordpieces:
+
+Jet makers feud over seat width with big orders at stake
+J et makers fe ud over seat width with big orders at stake
+
+The wordpiece algorithm is given a training corpus and a desired vocabulary size
+
+V, and proceeds as follows:
+
+wordpiece
+
+274 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+unigram
+
+SentencePiece
+
+1. Initialize the wordpiece lexicon with characters (for example a subset of Uni-
+code characters, collapsing all the remaining characters to a special unknown
+character token).
+
+2. Repeat until there are V wordpieces:
+
+(a) Train an n-gram language model on the training corpus, using the current
+
+set of wordpieces.
+
+(b) Consider the set of possible new wordpieces made by concatenating two
+wordpieces from the current lexicon. Choose the one new wordpiece that
+most increases the language model probability of the training corpus.
+
+Recall that with BPE we had to specify the number of merges to perform; in
+wordpiece, by contrast, we specify the total vocabulary, which is a more intuitive
+parameter. A vocabulary of 8K to 32K word pieces is commonly used.
+
+An even more commonly used tokenization algorithm is (somewhat ambigu-
+ously) called the unigram algorithm (Kudo, 2018) or sometimes the SentencePiece
+algorithm, and is used in systems like ALBERT (Lan et al., 2020) and T5 (Raf-
+fel et al., 2020). (Because unigram is the default tokenization algorithm used in a
+library called SentencePiece that adds a useful wrapper around tokenization algo-
+rithms (Kudo and Richardson, 2018b), authors often say they are using Sentence-
+Piece tokenization but really mean they are using the unigram algorithm)).
+
+In unigram tokenization, instead of building up a vocab

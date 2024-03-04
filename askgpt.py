@@ -5,7 +5,7 @@ import os
 import time
 
 ### CHANGE THE FILE NAME/PREFIX HERE. DO NOT INCLUDE .TXT
-FILE_PREFIX = "ISLP_website"
+FILE_PREFIX = "nlp"
 
 # Note: The prompt adds to context length so don't make it too long
 with open("prompt.txt", "r") as file:

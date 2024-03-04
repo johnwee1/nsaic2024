@@ -1,0 +1,567 @@
+zines, the company said.
+Irene Morgan Kirkaldy, who was born and reared in Baltimore, lived
+on Long Island and ran a child-care center in Queens with her second
+husband, Stanley Kirkaldy.
+Baldwin declined further comment, and said JetBlue chief executive
+Dave Barger was unavailable.
+Figure 19.3 Example sentences and labels from the TACRED dataset (Zhang et al., 2017).
+
+PERSON/CITY
+Relation: per:city of birth
+
+Types: PERSON/TITLE
+Relation: no relation
+
+Entity Types & Label
+PERSON/TITLE
+Relation: per:title
+
+A standard dataset was also produced for the SemEval 2010 Task 8, detecting
+relations between nominals (Hendrickx et al., 2009). The dataset has 10,717 exam-
+ples, each with a pair of nominals (untyped) hand-labeled with one of 9 directed
+relations like product-producer ( a factory manufactures suits) or component-whole
+(my apartment has a large kitchen).
+
+19.2 Relation Extraction Algorithms
+
+There are ﬁve main classes of algorithms for relation extraction: handwritten pat-
+terns, supervised machine learning, semi-supervised (via bootstrapping or dis-
+tant supervision), and unsupervised. We’ll introduce each of these in the next
+sections.
+
+19.2.1 Using Patterns to Extract Relations
+
+The earliest and still common algorithm for relation extraction is lexico-syntactic
+patterns, ﬁrst developed by Hearst (1992a), and therefore often called Hearst pat-
+terns. Consider the following sentence:
+
+Hearst patterns
+
+Agar is a substance prepared from a mixture of red algae, such as Ge-
+lidium, for laboratory or industrial use.
+
+Hearst points out that most human readers will not know what Gelidium is, but that
+they can readily infer that it is a kind of (a hyponym of) red algae, whatever that is.
+She suggests that the following lexico-syntactic pattern
+
+NP0 such as NP1{
+
+, NP2 . . . , (and
+
+, i
+or)NPi}
+|
+
+≥
+
+1
+
+implies the following semantics
+
+allowing us to infer
+
+NPi, i
+
+∀
+
+≥
+
+1, hyponym(NPi, NP0)
+
+hyponym(Gelidium, red algae)
+
+(19.2)
+
+(19.3)
+
+(19.4)
+
+19.2
+
+• RELATION EXTRACTION ALGORITHMS
+
+419
+
+NP
+,
+*
+, NP
+or) other NPH
+(and
+}
+{
+}
+{
+|
+NP,
+NPH such as
+NP
+and)
+(or
+*
+}
+{
+}
+|
+{
+NP
+and)
+(or
+*
+such NPH as
+NP,
+}
+}
+{
+|
+{
+and)
+(or
+*
+NP,
+including
+,
+NPH {
+}
+|
+{
+}
+{
+and)
+(or
+*
+NP
+especially
+,
+NPH {
+}
+|
+{
+}
+{
+Figure 19.4 Hand-built lexico-syntactic patterns for ﬁnding hypernyms, using
+1992a, Hearst 1998).
+
+temples, treasuries, and other important civic buildings
+red algae such as Gelidium
+such authors as Herrick, Goldsmith, and Shakespeare
+common-law countries, including Canada and England
+European countries, especially France, England, and Spain
+to mark optionality (Hearst
+
+NP
+NP
+
+}
+}
+
+{}
+
+Figure 19.4 shows ﬁve patterns Hearst (1992a, 1998) suggested for inferring
+the hyponym relation; we’ve shown NPH as the parent/hyponym. Modern versions
+of the pattern-based approach extend it by adding named entity constraints. For
+example if our goal is to answer questions about “Who holds what ofﬁce in which
+organization?”, we can use patterns like the following:
+
+PER, POSITION of ORG:
+George Marshall, Secretary of State of the United States
+
+PER (named
+chose
+|
+Truman appointed Marshall Secretary of State
+
+etc.) PER Prep? POSITION
+|
+
+appointed
+|
+
+PER [be]? (named
+etc.) Prep? ORG POSITION
+appointed
+|
+|
+George Marshall was named US Secretary of State
+
+Hand-built patterns have the advantage of high-precision and they can be tailored
+to speciﬁc domains. On the other hand, they are often low-recall, and it’s a lot of
+work to create them for all possible patterns.
+
+19.2.2 Relation Extraction via Supervised Learning
+
+Supervised machine learning approaches to relation extraction follow a scheme that
+should be familiar by now. A ﬁxed set of relations and entities is chosen, a training
+corpus is hand-annotated with the relations and entities, and the annotated texts are
+then used to train classiﬁers to annotate an unseen test set.
+
+The most straightforward approach, illustrated in Fig. 19.5 is: (1) Find pairs of
+named entities (usually in the same sentence). (2): Apply a relation-classiﬁcation
+on each pair. The classiﬁer can use any supervised technique (logistic regression,
+RNN, Transformer, random forest, etc.).
+
+An optional intermediate ﬁltering classiﬁer can be used to speed up the process-
+ing by making a binary decision on whether a given pair of named entities are related
+(by any relation). It’s trained on positive examples extracted directly from all rela-
+tions in the annotated corpus, and negative examples generated from within-sentence
+entity pairs that are not annotated with a relation.
+
+Feature-based supervised relation classiﬁers. Let’s consider sample features for
+a feature-based classiﬁer (like logistic regression or random forests), classifying the
+relationship between American Airlines (Mention 1, or M1) and Tim Wagner (Men-
+tion 2, M2) from this sentence:
+
+(19.5) American Airlines, a unit of AMR, immediately matched the move,
+
+spokesman Tim Wagner said
+
+These include word features (as embeddings, or 1-hot, stemmed or not):
+
+• The headwords of M1 and M2 and their concatenation
+
+Airlines Wagner
+
+Airlines-Wagner
+
+420 CHAPTER 19
+
+•
+
+INFORMATION EXTRACTION: RELATIONS, EVENTS, AND TIME
+
+function FINDRELATIONS(words) returns relations
+
+nil
+
+relations
+entities
+←
+forall entity pairs
+
+←
+
+e1, e2
+(cid:105)
+(cid:104)
+if RELATED?(e1, e2)
+
+FINDENTITIES(words)
+
+in entities do
+
+relations
+
+←
+
+relations+CLASSIFYRELATION(e1, e2)
+
+Figure 19.5 Finding and classifying the relations among entities in a text.
+
+• Bag-of-words and bigrams in M1 and M2
+
+American, Airlines, Tim, Wagner, American Airlines, Tim Wagner
+
+• Words or bigrams in particular positions
+
+M2: -1 spokesman
+M2: +1 said
+
+• Bag of words or bigrams between M1 and M2:
+
+a, AMR, of, immediately, matched, move, spokesman, the, unit
+
+Named entity features:
+
+• Named-entity types and their concatenation
+(M1: ORG, M2: PER, M1M2: ORG-PER)
+
+• Entity Level of M1 and M2 (from the set NAME, NOMINAL, PRONOUN)
+
+M1: NAME [it or he would be PRONOUN]
+M2: NAME [the company would be NOMINAL]
+
+• Number of entities between the arguments (in this case 1, for AMR)
+
+Syntactic structure is a useful signal, often represented as the dependency or
+
+constituency syntactic path traversed through the tree between the entities.
+
+• Constituent paths between M1 and M2
+
+↑
+
+S
+
+S
+
+NP
+
+NP
+
+NP
+↑
+• Dependency-tree paths
+←sub j matched
+
+Airlines
+
+↑
+
+↓
+
+←comp said
+
+→sub j Wagner
+
+Neural supervised relation classiﬁers Neural models for relation extraction sim-
+ilarly treat the task as supervised classiﬁcation. Let’s consider a typical system ap-
+plied to the TACRED relation extraction dataset and task (Zhang et al., 2017). In
+TACRED we are given a sentence and two spans within it: a subject, which is a
+person or organization, and an object, which is any other entity. The task is to assign
+a relation from the 42 TAC relations, or no relation.
+
+A typical Transformer-encoder algorithm, shown in Fig. 19.6, simply takes a
+pretrained encoder like BERT and adds a linear layer on top of the sentence repre-
+sentation (for example the BERT [CLS] token), a linear layer that is ﬁnetuned as a
+1-of-N classiﬁer to assign one of the 43 labels. The input to the BERT encoder is
+partially de-lexiﬁed; the subject and object entities are replaced in the input by their
+NER tags. This helps keep the system from overﬁtting to the individual lexical items
+(Zhang et al., 2017). When using BERT-type Transformers for relation extraction, it
+helps to use versions of BERT like RoBERTa (Liu et al., 2019) or spanBERT (Joshi
+et al., 2020) that don’t have two sequences separated by a [SEP] token, but instead
+form the input from a single long sequence of sentences.
+
+In general, if the test set is similar enough to the training set, and if there is
+enough hand-labeled data, supervised relation extraction systems can get high ac-
+
+19.2
+
+• RELATION EXTRACTION ALGORITHMS
+
+421
+
+Figure 19.6 Relation extraction as a linear layer on top of an encoder (in this case BERT),
+with the subject and object entities replaced in the input by their NER tags (Zhang et al. 2017,
+Joshi et al. 2020).
+
+curacies. But labeling a large training set is extremely expensive and supervised
+models are brittle: they don’t generalize well to different text genres. For this rea-
+son, much research in relation extraction has focused on the semi-supervised and
+unsupervised approaches we turn to next.
+
+19.2.3 Semisupervised Relation Extraction via Bootstrapping
+
+Supervised machine learning assumes that we have lots of labeled data. Unfortu-
+nately, this is expensive. But suppose we just have a few high-precision seed pat-
+terns, like those in Section 19.2.1, or perhaps a few seed tuples. That’s enough
+to bootstrap a classiﬁer! Bootstrapping proceeds by taking the entities in the seed
+pair, and then ﬁnding sentences (on the web, or whatever dataset we are using) that
+contain both entities. From all such sentences, we extract and generalize the context
+around the entities to learn new patterns. Fig. 19.7 sketches a basic algorithm.
+
+seed patterns
+
+seed tuples
+
+bootstrapping
+
+function BOOTSTRAP(Relation R) returns new relation tuples
+
+Gather a set of seed tuples that have relation R
+
+tuples
+iterate
+
+←
+
+←
+
+sentences
+patterns
+newpairs
+newpairs
+tuples
+←
+return tuples
+
+ﬁnd sentences that contain entities in tuples
+
+generalize the context between and around entities in sentences
+use patterns to identify more tuples
+newpairs with high conﬁdence
+
+←
+←
+←
+tuples + newpairs
+
+Figure 19.7 Bootstrapping from seed entity pairs to learn relations.
+
+Suppose, for example, that we need to create a list of airline/hub pairs, and we
+know only that Ryanair has a hub at Charleroi. We can use this seed fact to discover
+new patterns by ﬁnding other mentions of this relation in our corpus. We search
+for the terms Ryanair, Charleroi and hub in some proximity. Perhaps we ﬁnd the
+following set of sentences:
+
+(19.6) Budget airline Ryanair, which uses Charleroi as a hub, scrapped all
+
+weekend ﬂights out of the airport.
+
+(19.7) All ﬂights in and out of Ryanair’s hub at Charleroi airport were grounded on
+
+Friday...
+
+(19.8) A spokesman at Charleroi, a main hub for Ryanair, estimated that 8000
+
+passengers had already been affected.
+
+ENCODER[CLS][SUBJ_PERSON]wasbornin[OBJ_LOC],MichiganLinearClassiﬁerp(relation|SUBJ,OBJ)422 CHAPTER 19
+
+•
+
+INFORMATION EXTRACTION: RELATIONS, EVENTS, AND TIME
+
+From these results, we can use the context of words between the entity mentions,
+the words before mention one, the word after mention two, and the named entity
+types of the two mentions, and perhaps other features, to extract general patterns
+such as the following:
+
+/ [ORG], which uses [LOC] as a hub /
+/ [ORG]’s hub at [LOC] /
+/ [LOC], a main hub for [ORG] /
+
+conﬁdence
+values
+semantic drift
+
+These new patterns can then be used to search for additional tuples.
+
+Bootstrapping systems also assign conﬁdence values to new tuples to avoid se-
+mantic drift. In semantic drift, an erroneous pattern leads to the introduction of
+erroneous tuples, which, in turn, lead to the creation of problematic patterns and the
+meaning of the extracted relations ‘drifts’. Consider the following example:
+
+(19.9) Sydney has a ferry hub at Circular Quay.
+
+If accepted as a positive example, this expression could lead to the incorrect in-
+Sydney,CircularQuay
+troduction of the tuple
+. Patterns based on this tuple could
+(cid:105)
+(cid:104)
+propagate further errors into the database.
+
+Conﬁdence values for patterns are based on balancing two factors: the pattern’s
+performance with respect to the current set of tuples and the pattern’s productivity
+in terms of the number of matches it produces in the document collection. More
+formally, given a document collection D, a current set of tuples T , and a proposed
+pattern p, we need to track two factors:
+
+• hits(p): the set of tuples in T that p matches while looking in D
+• ﬁnds(p): The total set of tuples that p ﬁnds in D
+
+The following equation balances these considerations (Riloff and Jones, 1999).
+
+hits(p)
+Conf RlogF (p) = |
+|
+ﬁnds(p)
+|
+|
+
+)
+ﬁnds(p)
+log(
+|
+|
+
+(19.10)
+
+This metric is generally normalized to produce a probability.
+
+We can assess the conﬁdence in a proposed new tuple by combining the evidence
+supporting it from all the patterns P(cid:48) that match that tuple in D (Agichtein and Gra-
+vano, 2000). One way to combine such evidence is the noisy-or technique. Assume
+that a given tuple is supported by a subset of the patterns in P, each with its own
+conﬁdence assessed as above. In the noisy-or model, we make two basic assump-
+tions. First, that for a proposed tuple to be false, all of its supporting patterns must
+have been in error, and second, that the sources of their individual failures are all
+independent. If we loosely treat our conﬁdence measures as probabilities, then the
+Conf (p); the probability of all
+probability of any individual pattern p failing is 1
+of the supporting patterns for a tuple being wrong is the product of their individual
+failure probabilities, leaving us with the following equation for our conﬁdence in a
+new tuple.
+
+−
+
+Conf (t) = 1
+
+Conf (p))
+
+(1
+
+−
+
+−
+
+P(cid:48)
+(cid:89)p
+∈
+
+(19.11)
+
+Setting conservative conﬁdence thresholds for the acceptance of new patterns
+and tuples during the bootstrapping process helps prevent the system from drifting
+away from the targeted relation.
+
+noisy-or
+
+distant
+supervision
+
+19.2
+
+• RELATION EXTRACTION ALGORITHMS
+
+423
+
+19.2.4 Distant Supervision for Relation Extraction
+
+Although hand-labeling text with relation labels is expensive to produce, there are
+ways to ﬁnd indirect sources of training data. The distant supervision method
+(Mintz et al., 2009) combines the advantages of bootstrapping with supervised learn-
+ing. Instead of just a handful of seeds, distant supervision uses a large database to
+acquire a huge number of seed examples, creates lots of noisy pattern features from
+all these examples and then combines them in a supervised classiﬁer.
+
+For example suppose we are trying to learn the place-of-birth relationship be-
+tween people and their birth cities. In the seed-based approach, we might have only
+5 examples to start with. But Wikipedia-based databases like DBPedia or Freebase
+have tens of thousands of examples of many relations; including over 100,000 ex-
+amples of place-of-birth, (<Edwin Hubble, Marshfield>, <Albert Einstein,
+Ulm>, etc.,). The next step is to run named entity taggers on large amounts of text—
+Mintz et al. (2009) used 800,000 articles from Wikipedia—and extract all sentences
+that have two named entities that match the tuple, like the following:
+
+...Hubble was born in Marshﬁeld...
+...Einstein, born (1879), Ulm...
+...Hubble’s birthplace in Marshﬁeld...
+
+Training instances can now be extracted from this data, one training instance
+for each identical tuple <relation, entity1, entity2>. Thus there will be one
+training instance for each of:
+
+<born-in, Edwin Hubble, Marshfield>
+<born-in, Albert Einstein, Ulm>
+<born-year, Albert Einstein, 1879>
+
+and so on.
+
+We can then apply feature-based or neural classiﬁcation. For feature-based
+classiﬁcation, we can use standard supervised relation extraction features like the
+named entity labels of the two mentions, the words and dependency paths in be-
+tween the mentions, and neighboring words. Each tuple will have features col-
+lected from many training instances; the feature vector for a single training instance
+like (<born-in,Albert Einstein, Ulm> will have lexical and syntactic features
+from many different sentences 

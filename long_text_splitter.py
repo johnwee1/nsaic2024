@@ -28,4 +28,4 @@ def text_spliter(filename):
             file.write(chunk)
 
 
-text_spliter("ISLP_website")
+text_spliter("nlp")

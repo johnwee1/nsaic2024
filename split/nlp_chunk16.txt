@@ -1,0 +1,629 @@
+pulation that only one of these classes is
+the correct one (sometimes called hard classiﬁcation; an observation can not be in
+multiple classes). Let’s use the following representation: the output y for each input
+x will be a vector of length K. If class c is the correct class, we’ll set yc = 1, and
+set all the other elements of y to be 0, i.e., yc = 1 and y j = 0
+= c. A vector like
+
+j
+
+∀
+
+(cid:54)
+5.3
+
+• MULTINOMIAL LOGISTIC REGRESSION
+
+89
+
+this y, with one value=1 and the rest 0, is called a one-hot vector. The job of the
+classiﬁer is to produce an estimate vector ˆy. For each class k, the value ˆyk will be
+x).
+the classiﬁer’s estimate of the probability p(yk = 1
+|
+
+5.3.1 Softmax
+
+softmax
+
+The multinomial logistic classiﬁer uses a generalization of the sigmoid, called the
+x). The softmax function takes a vector
+softmax function, to compute p(yk = 1
+|
+z = [z1, z2, ..., zK] of K arbitrary values and maps them to a probability distribution,
+with each value in the range [0,1], and all the values summing to 1. Like the sigmoid,
+it is an exponential function.
+
+For a vector z of dimensionality K, the softmax is deﬁned as:
+
+softmax(zi) =
+
+exp (zi)
+K
+j=1 exp (z j)
+
+1
+
+i
+
+≤
+
+≤
+
+K
+
+(5.16)
+
+The softmax of an input vector z = [z1, z2, ..., zK] is thus a vector itself:
+
+(cid:80)
+
+softmax(z) =
+
+exp (z1)
+K
+i=1 exp (zi)
+
+,
+
+exp (z2)
+K
+i=1 exp (zi)
+
+, ...,
+
+exp (zK)
+K
+i=1 exp (zi) (cid:35)
+
+(cid:34)
+
+(5.17)
+
+The denominator
+Thus for example given a vector:
+
+(cid:80)
+
+(cid:80)
+
+K
+i=1 exp (zi) is used to normalize all the values into probabilities.
+
+(cid:80)
+
+(cid:80)
+
+z = [0.6, 1.1,
+
+1.5, 1.2, 3.2,
+
+−
+
+1.1]
+
+−
+
+the resulting (rounded) softmax(z) is
+
+[0.055, 0.090, 0.006, 0.099, 0.74, 0.010]
+
+Like the sigmoid, the softmax has the property of squashing values toward 0 or 1.
+Thus if one of the inputs is larger than the others, it will tend to push its probability
+toward 1, and suppress the probabilities of the smaller inputs.
+
+Finally, note that, just as for the sigmoid, we refer to z, the vector of scores that
+
+is the input to the softmax, as logits (see (5.7).
+
+5.3.2 Applying softmax in logistic regression
+
+When we apply softmax for logistic regression, the input will (just as for the sig-
+moid) be the dot product between a weight vector w and an input vector x (plus a
+bias). But now we’ll need separate weight vectors wk and bias bk for each of the K
+classes. The probability of each of our output classes ˆyk can thus be computed as:
+
+x) =
+p(yk = 1
+|
+
+x + bk)
+
+x + b j)
+
+K
+
+exp (wk ·
+exp (w j ·
+
+(cid:88)j=1
+
+(5.18)
+
+The form of Eq. 5.18 makes it seem that we would compute each output sep-
+arately. Instead, it’s more common to set up the equation for more efﬁcient com-
+putation by modern vector processing hardware. We’ll do this by representing the
+set of K weight vectors as a weight matrix W and a bias vector b. Each row k of
+
+90 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+W corresponds to the vector of weights wk. W thus has shape [K
+f ], for K the
+number of output classes and f the number of input features. The bias vector b has
+one value for each of the K output classes. If we represent the weights in this way,
+we can compute ˆy, the vector of output probabilities for each of the K classes, by a
+single elegant equation:
+
+×
+
+ˆy = softmax(Wx + b)
+
+(5.19)
+
+If you work out the matrix arithmetic, you can see that the estimated score of
+the ﬁrst output class ˆy1 (before we take the softmax) will correctly turn out to be
+x + b1.
+w1 ·
+Fig. 5.3 shows an intuition of the role of the weight vector versus weight matrix
+in the computation of the output class probabilities for binary versus multinomial
+logistic regression.
+
+Binary Logistic Regression
+
+Multinomial Logistic Regression
+
+Figure 5.3 Binary versus multinomial logistic regression. Binary logistic regression uses a
+single weight vector w, and has a scalar output ˆy. In multinomial logistic regression we have
+K separate weight vectors corresponding to the K classes, all packed into a single weight
+matrix W, and a vector output ˆy.
+
+w[f ⨉1]Outputsigmoid[1⨉f]Input wordsp(+) = 1- p(-)…y^xyInput featurevector [scalar]positive lexiconwords = 1count of “no” = 0wordcount=3x1x2x3xfdessert   was    greatWeight vectorW[f⨉1]Outputsoftmax[K⨉f]Input wordsp(+)…y1^y2^y3^xyInput featurevector [K⨉1]positive lexiconwords = 1count of “no” = 0wordcount=3x1x2x3xfdessert   was    greatp(-)p(neut)Weight matrixThese f red weightsare a row of W correspondingto weight vector w3,(= weights for class 3)5.4
+
+• LEARNING IN LOGISTIC REGRESSION
+
+91
+
+5.3.3 Features in Multinomial Logistic Regression
+
+Features in multinomial logistic regression act like features in binary logistic regres-
+sion, with the difference mentioned above that we’ll need separate weight vectors
+and biases for each of the K classes. Recall our binary exclamation point feature x5
+from page 85:
+
+x5 =
+
+(cid:26)
+
+1 if “!”
+0 otherwise
+
+∈
+
+doc
+
+In binary classiﬁcation a positive weight w5 on a feature inﬂuences the classiﬁer
+toward y = 1 (positive sentiment) and a negative weight inﬂuences it toward y = 0
+(negative sentiment) with the absolute value indicating how important the feature
+is. For multinomial logistic regression, by contrast, with separate weights for each
+class, a feature can be evidence for or against each individual class.
+
+In 3-way multiclass sentiment classiﬁcation, for example, we must assign each
+document one of the 3 classes +,
+, or 0 (neutral). Now a feature related to excla-
+mation marks might have a negative weight for 0 documents, and a positive weight
+for + or
+
+documents:
+
+−
+
+−
+
+Feature Deﬁnition
+1 if “!”
+0 otherwise
+
+f5(x)
+
+∈
+
+doc
+
+(cid:26)
+
+w5,+ w5,
+
+−
+
+3.5
+
+3.1
+
+w5,0
+
+5.3
+
+−
+
+Because these feature weights are dependent both on the input text and the output
+class, we sometimes make this dependence explicit and represent the features them-
+selves as f (x, y): a function of both the input and the class. Using such a notation
+f5(x) above could be represented as three features f5(x, +), f5(x,
+), and f5(x, 0),
+each of which has a single weight. We’ll use this kind of notation in our description
+of the CRF in Chapter 8.
+
+−
+
+5.4 Learning in Logistic Regression
+
+How are the parameters of the model, the weights w and bias b, learned? Logistic
+regression is an instance of supervised classiﬁcation in which we know the correct
+label y (either 0 or 1) for each observation x. What the system produces via Eq. 5.5
+is ˆy, the system’s estimate of the true y. We want to learn parameters (meaning w
+and b) that make ˆy for each training observation as close as possible to the true y.
+
+This requires two components that we foreshadowed in the introduction to the
+chapter. The ﬁrst is a metric for how close the current label ( ˆy) is to the true gold
+label y. Rather than measure similarity, we usually talk about the opposite of this:
+the distance between the system output and the gold output, and we call this distance
+the loss function or the cost function. In the next section we’ll introduce the loss
+function that is commonly used for logistic regression and also for neural networks,
+the cross-entropy loss.
+
+The second thing we need is an optimization algorithm for iteratively updating
+the weights so as to minimize this loss function. The standard algorithm for this is
+gradient descent; we’ll introduce the stochastic gradient descent algorithm in the
+following section.
+
+loss
+
+92 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+We’ll describe these algorithms for the simpler case of binary logistic regres-
+sion in the next two sections, and then turn to multinomial logistic regression in
+Section 5.8.
+
+5.5 The cross-entropy loss function
+
+We need a loss function that expresses, for an observation x, how close the classiﬁer
+x + b)) is to the correct output (y, which is 0 or 1). We’ll call this:
+output ( ˆy = σ (w
+
+·
+
+L( ˆy, y) = How much ˆy differs from the true y
+
+(5.20)
+
+cross-entropy
+loss
+
+We do this via a loss function that prefers the correct class labels of the train-
+ing examples to be more likely. This is called conditional maximum likelihood
+estimation: we choose the parameters w, b that maximize the log probability of
+the true y labels in the training data given the observations x. The resulting loss
+function is the negative log likelihood loss, generally called the cross-entropy loss.
+Let’s derive this loss function, applied to a single observation x. We’d like to
+learn weights that maximize the probability of the correct label p(y
+x). Since there
+|
+are only two discrete outcomes (1 or 0), this is a Bernoulli distribution, and we can
+express the probability p(y
+x) that our classiﬁer produces for one observation as the
+|
+following (keeping in mind that if y = 1, Eq. 5.21 simpliﬁes to ˆy; if y = 0, Eq. 5.21
+simpliﬁes to 1
+
+ˆy):
+
+−
+
+x) = ˆy y (1
+p(y
+|
+
+−
+
+y
+ˆy)1
+−
+
+(5.21)
+
+Now we take the log of both sides. This will turn out to be handy mathematically,
+and doesn’t hurt us; whatever values maximize a probability will also maximize the
+log of the probability:
+
+log p(y
+
+x) = log
+|
+
+ˆy y (1
+−
+= y log ˆy + (1
+(cid:2)
+
+y
+ˆy)1
+−
+y) log(1
+(cid:3)
+
+−
+
+ˆy)
+
+−
+
+(5.22)
+
+Eq. 5.22 describes a log likelihood that should be maximized. In order to turn this
+into a loss function (something that we need to minimize), we’ll just ﬂip the sign on
+Eq. 5.22. The result is the cross-entropy loss LCE:
+
+LCE( ˆy, y) =
+
+x) =
+log p(y
+|
+
+−
+
+−
+
+[y log ˆy + (1
+
+y) log(1
+
+ˆy)]
+
+−
+
+−
+
+(5.23)
+
+Finally, we can plug in the deﬁnition of ˆy = σ (w
+
+x + b):
+
+·
+
+LCE( ˆy, y) =
+
+[y log σ (w
+
+x + b) + (1
+
+y) log (1
+
+σ (w
+
+·
+
+−
+
+−
+
+·
+
+−
+
+x + b))]
+
+(5.24)
+
+Let’s see if this loss function does the right thing for our example from Fig. 5.2. We
+want the loss to be smaller if the model’s estimate is close to correct, and bigger if
+the model is confused. So ﬁrst let’s suppose the correct gold label for the sentiment
+example in Fig. 5.2 is positive, i.e., y = 1. In this case our model is doing well, since
+from Eq. 5.8 it indeed gave the example a higher probability of being positive (.70)
+than negative (.30). If we plug σ (w
+x + b) = .70 and y = 1 into Eq. 5.24, the right
+side of the equation drops out, leading to the following loss (we’ll use log to mean
+
+·
+
+natural log when the base is not speciﬁed):
+
+5.6
+
+• GRADIENT DESCENT
+
+93
+
+LCE( ˆy, y) =
+=
+
+=
+
+=
+
+[y log σ (w
+[log σ (w
+
+−
+
+−
+
+x + b) + (1
+·
+x + b)]
+·
+log(.70)
+.36
+
+−
+
+y) log (1
+
+σ (w
+
+·
+
+−
+
+x + b))]
+
+−
+
+By contrast, let’s pretend instead that the example in Fig. 5.2 was actually negative,
+i.e., y = 0 (perhaps the reviewer went on to say “But bottom line, the movie is
+terrible! I beg you not to see it!”). In this case our model is confused and we’d want
+x + b) = .31 from Eq. 5.8
+the loss to be higher. Now if we plug y = 0 and 1
+−
+into Eq. 5.24, the left side of the equation drops out:
+
+σ (w
+
+·
+
+LCE( ˆy, y) =
+=
+
+=
+
+=
+
+[y log σ (w
+
+−
+
+x + b)+(1
+
+·
+
+−
+
+y) log (1
+
+σ (w
+
+x + b))]
+
+−
+[log (1
+−
+log (.30)
+
+−
+σ (w
+
+·
+x + b))]
+
+·
+
+−
+1.2
+
+Sure enough, the loss for the ﬁrst classiﬁer (.36) is less than the loss for the second
+classiﬁer (1.2).
+
+Why does minimizing this negative log probability do what we want? A perfect
+classiﬁer would assign probability 1 to the correct outcome (y = 1 or y = 0) and
+probability 0 to the incorrect outcome. That means if y equals 1, the higher ˆy is (the
+closer it is to 1), the better the classiﬁer; the lower ˆy is (the closer it is to 0), the
+ˆy is (closer to 1), the better
+worse the classiﬁer. If y equals 0, instead, the higher 1
+the classiﬁer. The negative log of ˆy (if the true y equals 1) or 1
+ˆy (if the true y
+equals 0) is a convenient loss metric since it goes from 0 (negative log of 1, no loss)
+to inﬁnity (negative log of 0, inﬁnite loss). This loss function also ensures that as
+the probability of the correct answer is maximized, the probability of the incorrect
+answer is minimized; since the two sum to one, any increase in the probability of the
+correct answer is coming at the expense of the incorrect answer. It’s called the cross-
+entropy loss, because Eq. 5.22 is also the formula for the cross-entropy between the
+true probability distribution y and our estimated distribution ˆy.
+
+−
+
+−
+
+Now we know what we want to minimize; in the next section, we’ll see how to
+
+ﬁnd the minimum.
+
+5.6 Gradient Descent
+
+Our goal with gradient descent is to ﬁnd the optimal weights: minimize the loss
+function we’ve deﬁned for the model. In Eq. 5.25 below, we’ll explicitly represent
+the fact that the loss function L is parameterized by the weights, which we’ll refer
+to in machine learning in general as θ (in the case of logistic regression θ = w, b).
+So the goal is to ﬁnd the set of weights which minimizes the loss function, averaged
+over all examples:
+
+ˆθ = argmin
+
+θ
+
+1
+m
+
+m
+
+LCE( f (x(i); θ ), y(i))
+
+(5.25)
+
+(cid:88)i=1
+How shall we ﬁnd the minimum of this (or any) loss function? Gradient descent is a
+method that ﬁnds a minimum of a function by ﬁguring out in which direction (in the
+
+94 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+convex
+
+space of the parameters θ ) the function’s slope is rising the most steeply, and moving
+in the opposite direction. The intuition is that if you are hiking in a canyon and trying
+to descend most quickly down to the river at the bottom, you might look around
+yourself 360 degrees, ﬁnd the direction where the ground is sloping the steepest,
+and walk downhill in that direction.
+
+For logistic regression, this loss function is conveniently convex. A convex func-
+tion has at most one minimum; there are no local minima to get stuck in, so gradient
+descent starting from any point is guaranteed to ﬁnd the minimum. (By contrast,
+the loss for multi-layer neural networks is non-convex, and gradient descent may
+get stuck in local minima for neural network training and never ﬁnd the global opti-
+mum.)
+
+Although the algorithm (and the concept of gradient) are designed for direction
+vectors, let’s ﬁrst consider a visualization of the case where the parameter of our
+system is just a single scalar w, shown in Fig. 5.4.
+
+Given a random initialization of w at some value w1, and assuming the loss
+function L happened to have the shape in Fig. 5.4, we need the algorithm to tell us
+whether at the next iteration we should move left (making w2 smaller than w1) or
+right (making w2 bigger than w1) to reach the minimum.
+
+Figure 5.4 The ﬁrst step in iteratively ﬁnding the minimum of this loss function, by moving
+w in the reverse direction from the slope of the function. Since the slope is negative, we need
+to move w in a positive direction, to the right. Here superscripts are used for learning steps,
+so w1 means the initial value of w (which is 0), w2 the value at the second step, and so on.
+
+gradient
+
+learning rate
+
+The gradient descent algorithm answers this question by ﬁnding the gradient
+of the loss function at the current point and moving in the opposite direction. The
+gradient of a function of many variables is a vector pointing in the direction of the
+greatest increase in a function. The gradient is a multi-variable generalization of the
+slope, so for a function of one variable like the one in Fig. 5.4, we can informally
+think of the gradient as the slope. The dotted line in Fig. 5.4 shows the slope of this
+hypothetical loss function at point w = w1. You can see that the slope of this dotted
+line is negative. Thus to ﬁnd the minimum, gradient descent tells us to go in the
+opposite direction: moving w in a positive direction.
+
+The magnitude of the amount to move in gradient descent is the value of the
+slope d
+dw L( f (x; w), y) weighted by a learn

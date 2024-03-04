@@ -1,0 +1,362 @@
+of words in some test set. Since this sequence will cross many sentence
+boundaries, if our vocabulary includes a between-sentence token <EOS> or separate
+begin- and end-sentence markers <s> and </s> then we can include them in the
+probability computation. If we do, then we also include one token per sentence in
+the total count of word tokens N.3
+
+(3.17)
+
+(cid:89)i=1
+
+1)
+
+−
+
+We mentioned above that perplexity is a function of both the text and the lan-
+guage model: given a text W , different language models will have different perplex-
+ities. Because of this, perplexity can be used to compare different n-gram models.
+Let’s look at an example, in which we trained unigram, bigram, and trigram gram-
+mars on 38 million words (including start-of-sentence tokens) from the Wall Street
+Journal, using a 19,979 word vocabulary. We then computed the perplexity of each
+
+3 For example if we use both begin and end tokens, we would include the end-of-sentence marker </s>
+but not the beginning-of-sentence marker <s> in our count of N; This is because the end-sentence token is
+followed directly by the begin-sentence token with probability almost 1, so we don’t want the probability
+of that fake transition to inﬂuence our perplexity.
+
+3.3
+
+• EVALUATING LANGUAGE MODELS: PERPLEXITY
+
+41
+
+of these models on a test set of 1.5 million words, using Eq. 3.16 for unigrams,
+Eq. 3.17 for bigrams, and the corresponding equation for trigrams. The table below
+shows the perplexity of a 1.5 million word WSJ test set according to each of these
+grammars.
+
+Unigram Bigram Trigram
+
+Perplexity 962
+
+170
+
+109
+
+As we see above, the more information the n-gram gives us about the word
+sequence, the higher the probability the n-gram will assign to the string. A trigram
+model is less surprised than a unigram model because it has a better idea of what
+words might come next, and so it assigns them a higher probability. And the higher
+the probability, the lower the perplexity (since as Eq. 3.15 showed, perplexity is
+related inversely to the likelihood of the test sequence according to the model). So a
+lower perplexity can tell us that a language model is a better predictor of the words
+in the test set.
+
+Note that in computing perplexities, the n-gram model P must be constructed
+without any knowledge of the test set or any prior knowledge of the vocabulary of
+the test set. Any kind of knowledge of the test set can cause the perplexity to be
+artiﬁcially low. The perplexity of two language models is only comparable if they
+use identical vocabularies.
+
+An (intrinsic) improvement in perplexity does not guarantee an (extrinsic) im-
+provement in the performance of a language processing task like speech recognition
+or machine translation. Nonetheless, because perplexity usually correlates with task
+improvements, it is commonly used as a convenient evaluation metric. Still, when
+possible a model’s improvement in perplexity should be conﬁrmed by an end-to-end
+evaluation on a real task.
+
+Advanced: Perplexity as Weighted Average Branching Factor
+
+It turns out that perplexity can also be thought of as the weighted average branch-
+ing factor of a language. The branching factor of a language is the number of
+possible next words that can follow any word. If we have an artiﬁcial deterministic
+language of integer numbers whose vocabulary consists of the 10 digits (zero, one,
+two,..., nine), in which any digit can follow any other digit, then the branching factor
+of that language is 10.
+
+Let’s ﬁrst convince ourselves that if we compute the perplexity of this artiﬁcial
+digit language we indeed get 10. Let’s suppose that (in training and in test) each
+of the 10 digits occurs with exactly equal probability P = 1
+10 . Now imagine a test
+string of digits of length N, and, again, assume that in the training set all the digits
+occurred with equal probability. By Eq. 3.15, the perplexity will be
+
+perplexity(W ) = P(w1w2 . . . wN)−
+
+1
+N
+
+N
+
+1
+N
+
+)−
+
+= (
+
+1
+10
+1
+10
+= 10
+
+=
+
+1
+−
+
+(3.18)
+
+But suppose that the number zero is really frequent and occurs far more often
+than other numbers. Let’s say that 0 occur 91 times in the training set, and each of the
+other digits occurred 1 time each. Now we see the following test set: 0 0 0 0 0 3 0 0 0
+
+42 CHAPTER 3
+
+• N-GRAM LANGUAGE MODELS
+
+0. We should expect the perplexity of this test set to be lower since most of the time
+the next number will be zero, which is very predictable, i.e. has a high probability.
+Thus, although the branching factor is still 10, the perplexity or weighted branching
+factor is smaller. We leave this exact calculation as exercise 3.12.
+
+3.4 Sampling sentences from a language model
+
+sampling
+
+One important way to visualize what kind of knowledge a language model embodies
+is to sample from it. Sampling from a distribution means to choose random points
+according to their likelihood. Thus sampling from a language model—which rep-
+resents a distribution over sentences—means to generate some sentences, choosing
+each sentence according to its likelihood as deﬁned by the model. Thus we are more
+likely to generate sentences that the model thinks have a high probability and less
+likely to generate sentences that the model thinks have a low probability.
+
+This technique of visualizing a language model by sampling was ﬁrst suggested
+very early on by Shannon (1948) and Miller and Selfridge (1950). It’s simplest to
+visualize how this works for the unigram case. Imagine all the words of the English
+language covering the probability space between 0 and 1, each word covering an
+interval proportional to its frequency. Fig. 3.3 shows a visualization, using a unigram
+LM computed from the text of this book. We choose a random value between 0 and
+1, ﬁnd that point on the probability line, and print the word whose interval includes
+this chosen value. We continue choosing random numbers and generating words
+until we randomly generate the sentence-ﬁnal token </s>.
+
+Figure 3.3 A visualization of the sampling distribution for sampling sentences by repeat-
+edly sampling unigrams. The blue bar represents the relative frequency of each word (we’ve
+ordered them from most frequent to least frequent, but the choice of order is arbitrary). The
+number line shows the cumulative probabilities. If we choose a random number between 0
+and 1, it will fall in an interval corresponding to some word. The expectation for the random
+number to fall in the larger intervals of one of the frequent words (the, of, a) is much higher
+than in the smaller interval of one of the rare words (polyphonic).
+
+We can use the same technique to generate bigrams by ﬁrst generating a ran-
+dom bigram that starts with <s> (according to its bigram probability). Let’s say the
+second word of that bigram is w. We next choose a random bigram starting with w
+(again, drawn according to its bigram probability), and so on.
+
+3.5 Generalization and Zeros
+
+The n-gram model, like many statistical models, is dependent on the training corpus.
+One implication of this is that the probabilities often encode speciﬁc facts about a
+
+010.06the.060.03of0.02a0.02toin.09.11.13.15…however(p=.0003)polyphonicp=.0000018…0.02.66.99…3.5
+
+• GENERALIZATION AND ZEROS
+
+43
+
+given training corpus. Another implication is that n-grams do a better and better job
+of modeling the training corpus as we increase the value of N.
+
+We can use the sampling method from the prior section to visualize both of
+these facts! To give an intuition for the increasing power of higher-order n-grams,
+Fig. 3.4 shows random sentences generated from unigram, bigram, trigram, and 4-
+gram models trained on Shakespeare’s works.
+
+1
+
+gram
+
+2
+
+gram
+
+3
+
+gram
+
+4
+
+gram
+
+–To him swallowed confess hear both. Which. Of save on trail for are ay device and
+rote life have
+–Hill he late speaks; or! a more to leg less ﬁrst you enter
+
+–Why dost stand forth thy canopy, forsooth; he is this palpable hit the King Henry. Live
+king. Follow.
+–What means, sir. I confess she? then all sorts, he is trim, captain.
+
+–Fly, and will rid me these news of price. Therefore the sadness of parting, as they say,
+’tis done.
+–This shall forbid it should be branded, if renown made it empty.
+
+–King Henry. What! I will go seek the traitor Gloucester. Exeunt some of the watch. A
+great banquet serv’d in;
+–It cannot be but so.
+
+Figure 3.4 Eight sentences randomly generated from four n-grams computed from Shakespeare’s works. All
+characters were mapped to lower-case and punctuation marks were treated as words. Output is hand-corrected
+for capitalization to improve readability.
+
+The longer the context on which we train the model, the more coherent the sen-
+tences. In the unigram sentences, there is no coherent relation between words or any
+sentence-ﬁnal punctuation. The bigram sentences have some local word-to-word
+coherence (especially if we consider that punctuation counts as a word). The tri-
+gram and 4-gram sentences are beginning to look a lot like Shakespeare. Indeed, a
+careful investigation of the 4-gram sentences shows that they look a little too much
+like Shakespeare. The words It cannot be but so are directly from King John. This is
+because, not to put the knock on Shakespeare, his oeuvre is not very large as corpora
+go (N = 884, 647,V = 29, 066), and our n-gram probability matrices are ridiculously
+sparse. There are V 2 = 844, 000, 000 possible bigrams alone, and the number of pos-
+sible 4-grams is V 4 = 7
+1017. Thus, once the generator has chosen the ﬁrst 3-gram
+(It cannot be), there are only seven possible next words for the 4th element (but, I,
+that, thus, this, and the period).
+
+×
+
+To get an idea of the dependence of a grammar on its training set, let’s look at an
+n-gram grammar trained on a completely different corpus: the Wall Street Journal
+(WSJ) newspaper. Shakespeare and the Wall Street Journal are both English, so
+we might expect some overlap between our n-grams for the two genres. Fig. 3.5
+shows sentences generated by unigram, bigram, and trigram grammars trained on
+40 million words from WSJ.
+
+Compare these examples to the pseudo-Shakespeare in Fig. 3.4. While they both
+model “English-like sentences”, there is clearly no overlap in generated sentences,
+and little overlap even in small phrases. Statistical models are likely to be pretty use-
+less as predictors if the training sets and the test sets are as different as Shakespeare
+and WSJ.
+
+How should we deal with this problem when we build n-gram models? One step
+is to be sure to use a training corpus that has a similar genre to whatever task we are
+trying to accomplish. To build a language model for translating legal documents,
+
+44 CHAPTER 3
+
+• N-GRAM LANGUAGE MODELS
+
+gram
+
+were recession exchange new endorsed a acquire to six executives
+
+1 Months the my and issue of year foreign new exchange’s september
+2
+
+Last December through the way to preserve the Hudson corporation N.
+B. E. C. Taylor would seem to complete the major central planners one
+point ﬁve percent of U. S. E. has already old M. X. corporation of living
+on information such as more frequently ﬁshing to keep her
+They also point to ninety nine point six billion dollars from two hundred
+four oh six three percent of the rates of interest stores as Mexico and
+Brazil on market conditions
+
+3
+
+gram
+
+gram
+
+Figure 3.5 Three sentences randomly generated from three n-gram models computed from
+40 million words of the Wall Street Journal, lower-casing all characters and treating punctua-
+tion as words. Output was then hand-corrected for capitalization to improve readability.
+
+we need a training corpus of legal documents. To build a language model for a
+question-answering system, we need a training corpus of questions.
+
+It is equally important to get training data in the appropriate dialect or variety,
+especially when processing social media posts or spoken transcripts. For exam-
+ple some tweets will use features of African American English (AAE)— the name
+for the many variations of language used in African American communities (King,
+2020). Such features include words like ﬁnna—an auxiliary verb that marks imme-
+diate future tense —that don’t occur in other varieties, or spellings like den for then,
+in tweets like this one (Blodgett and O’Connor, 2017):
+
+(3.19) Bored af den my phone ﬁnna die!!!
+
+while tweets from English-based languages like Nigerian Pidgin have markedly dif-
+ferent vocabulary and n-gram patterns from American English (Jurgens et al., 2017):
+
+(3.20) @username R u a wizard or wat gan sef: in d mornin - u tweet, afternoon - u
+
+tweet, nyt gan u dey tweet. beta get ur IT placement wiv twitter
+
+Matching genres and dialects is still not sufﬁcient. Our models may still be
+subject to the problem of sparsity. For any n-gram that occurred a sufﬁcient number
+of times, we might have a good estimate of its probability. But because any corpus is
+limited, some perfectly acceptable English word sequences are bound to be missing
+from it. That is, we’ll have many cases of putative “zero probability n-grams” that
+should really have some non-zero probability. Consider the words that follow the
+bigram denied the in the WSJ Treebank3 corpus, together with their counts:
+
+denied the allegations: 5
+denied the speculation: 2
+1
+denied the rumors:
+1
+denied the report:
+
+But suppose our test set has phrases like:
+
+denied the offer
+denied the loan
+
+zeros
+
+Our model will incorrectly estimate that the P(offer
+These zeros—things that don’t ever occur in the training set but do occur in
+the test set—are a problem for two reasons. First, their presence means we are
+underestimating the probability of all sorts of words that might occur, which will
+hurt the performance of any application we want to run on this data.
+
+denied the) is 0!
+|
+
+Second, if the probability of any word in the test set is 0, the entire probability
+of the test set is 0. By deﬁnition, perplexity is based on the inverse probability of the
+
+3.6
+
+• SMOOTHING
+
+45
+
+test set. Thus if some words have zero probability, we can’t compute perplexity at
+all, since we can’t divide by 0!
+
+What do we do about zeros? There are two solutions, depending on the kind of
+zero. For words whose n-gram probability is zero because they occur in a novel test
+set context, like the example of denied the offer above, we’ll introduce in Section 3.6
+algorithms called smoothing or discounting. Smoothing algorithms shave off a bit
+of probability mass from some more frequent events and give it to these unseen
+events. But ﬁrst, let’s talk about an even more insidious form of zero: words that the
+model has never seen before at all (in any context): unknown words!
+
+Unknown Words
+
+What do we do about words we have never seen before? Perhaps the word Jurafsky
+simply did not occur in our training set, but pops up in the test set! We usually
+disallow this situation by stipulating that we already know all the words that can
+occur. In such a closed vocabulary system the test set can only contain words from
+this known lexicon, and there will be no unknown words. This is what we do for the
+neural language models of later chapters. For these models we use subword tokens
+rather than words. With subword tokenization (like the BPE algorithm of Chapter 2)
+any unknown word can be modeled as a sequence of smaller subwords, if necessary
+by a sequence of individual letters, so we never have unknown words.
+
+If our language model is using words instead of tokens, however, we have to
+deal with unknown words, or out of vocabulary (OOV) words: words we haven’t
+seen before. The percenta

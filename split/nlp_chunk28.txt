@@ -1,0 +1,490 @@
+ugh the ReLU
+
+(or other) activation function to get the hidden layer h.
+
+embedding
+layer
+
+3. Multiply by U: h is now multiplied by U
+4. Apply softmax: After the softmax, each node i in the output layer estimates
+2, wt
+
+1, wt
+
+3)
+
+the probability P(wt = i
+wt
+|
+
+−
+
+−
+
+−
+
+E|V|d1|V|d1=✕55e5(cid:54)
+158 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+Figure 7.17 Forward inference in a feedforward neural language model. At each timestep
+t the network computes a d-dimensional embedding for each context word (by multiplying a
+one-hot vector by the embedding matrix E), and concatenates the 3 resulting embeddings to
+get the embedding layer e. The embedding vector e is multiplied by a weight matrix W and
+then an activation function is applied element-wise to produce the hidden layer h, which is
+then multiplied by another weight matrix U. Finally, a softmax output layer predicts at each
+node i the probability that the next word wt will be vocabulary word Vi.
+
+In summary, the equations for a neural language model with a window size of 3,
+
+given one-hot input vectors for each input context word, are:
+
+2; Ext
+
+−
+
+e = [Ext
+3; Ext
+−
+h = σ (We + b)
+z = Uh
+ˆy = softmax(z)
+
+1]
+
+−
+
+(7.43)
+
+Note that we formed the embedding layer e by concatenating the 3 embeddings
+for the three context vectors; we’ll often use semicolons to mean concatenation of
+vectors.
+
+7.7 Training the neural language model
+
+self-training
+
+The high-level intuition of training neural language models, whether the simple
+feedforward language models we describe here or the more powerful transformer
+language models of Chapter 10, is the idea of self-training or self-supervision that
+we saw in Chapter 6 for learning word representations. In self-training for language
+modeling, we take a corpus of text as training material and at each time step t ask
+the model to predict the next word. At ﬁrst it will do poorly at this task, but since
+
+UWembedding layer3d⨉1hiddenlayeroutput layersoftmaxdh⨉3ddh⨉1|V|⨉dhinput layerone-hot vectorsE|V|⨉3d⨉|V|p(do|…)p(aardvark|…)p(zebra|…)p(fish|…)|V|⨉1EEh1h2y1h3hdh……y34y|V|…001001|V|35001001|V|451001001|V|99200……y42y35102^^^^^hexyforallthe?thanksand…wt-3wt-2wt-1wt…freeze
+
+7.7
+
+• TRAINING THE NEURAL LANGUAGE MODEL
+
+159
+
+in each case we know the correct answer (it’s the next word in the corpus!) we can
+easily train it to be better at predicting the correct next word. We call such a model
+self-supervised because we don’t have to add any special gold labels to the data;
+the natural sequence of words is its own supervision! We simply train the model to
+minimize the error in predicting the true next word in the training sequence.
+
+In practice, training the model means setting the parameters θ = E, W, U, b. For
+some tasks, it’s ok to freeze the embedding layer E with initial word2vec values.
+Freezing means we use word2vec or some other pretraining algorithm to compute
+the initial embedding matrix E, and then hold it constant while we only modify W,
+U, and b, i.e., we don’t update E during language model training. However, often
+we’d like to learn the embeddings simultaneously with training the network. This is
+useful when the task the network is designed for (like sentiment classiﬁcation, trans-
+lation, or parsing) places strong constraints on what makes a good representation for
+words.
+
+Let’s see how to train the entire model including E, i.e. to set all the parameters
+θ = E, W, U, b. We’ll do this via gradient descent (Fig. 5.6), using error backprop-
+agation on the computation graph to compute the gradient. Training thus not only
+sets the weights W and U of the network, but also as we’re predicting upcoming
+words, we’re learning the embeddings E for each word that best predict upcoming
+words.
+
+Figure 7.18 Learning all the way back to embeddings. Again, the embedding matrix E is
+shared among the 3 context words.
+
+Fig. 7.18 shows the set up for a window size of N=3 context words. The input x
+consists of 3 one-hot vectors, fully connected to the embedding layer via 3 instanti-
+ations of the embedding matrix E. We don’t want to learn separate weight matrices
+for mapping each of the 3 previous words to the projection layer. We want one single
+embedding dictionary E that’s shared among these three. That’s because over time,
+many different words will appear as wt
+1, and we’d like to just represent
+
+2 or wt
+
+−
+
+−
+
+UWembedding layer3d⨉1hiddenlayeroutput layersoftmaxdh⨉3ddh⨉1|V|⨉dhinput layerone-hot vectorsE|V|⨉3d⨉|V|p(do|…)p(aardvark|…)p(zebra|…)p(fish|…)|V|⨉1EEh1h2y1h3hdh……y34y|V|…001001|V|35001001|V|451001001|V|99200……y42y35102^^^^^hexyforallthefishthanksand…wt-3wt-2wt-1wt…L = −log P(fish | for, all, the)wt=fish160 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+each word with one vector, whichever context position it appears in. Recall that the
+embedding weight matrix E has a column for each word, each a column vector of d
+dimensions, and hence has dimensionality d
+
+V
+
+Generally training proceeds by taking as input a very long text, concatenating all
+the sentences, starting with random weights, and then iteratively moving through the
+text predicting each word wt . At each word wt , we use the cross-entropy (negative
+log likelihood) loss. Recall that the general form for this (repeated from Eq. 7.25)
+is:
+
+.
+|
+
+× |
+
+LCE ( ˆy, y) =
+
+log ˆyi,
+
+−
+
+(where i is the correct class)
+
+(7.44)
+
+For language modeling, the classes are the words in the vocabulary, so ˆyi here means
+the probability that the model assigns to the correct next word wt :
+
+LCE =
+
+log p(wt |
+wt
+
+−
+
+1, ..., wt
+
+−
+
+n+1)
+
+−
+
+(7.45)
+
+The parameter update for stochastic gradient descent for this loss from step s to s + 1
+is then:
+
+θ s+1 = θ s
+
+∂ [
+
+−
+
+η
+
+−
+
+log p(wt |
+wt
+−
+∂ θ
+
+1, ..., wt
+
+n+1)]
+
+−
+
+(7.46)
+
+This gradient can be computed in any standard neural network framework which
+will then backpropagate through θ = E, W, U, b.
+
+Training the parameters to minimize loss will result both in an algorithm for
+language modeling (a word predictor) but also a new set of embeddings E that can
+be used as word representations for other tasks.
+
+7.8 Summary
+
+• Neural networks are built out of neural units, originally inspired by biological
+
+neurons but now simply an abstract computational device.
+
+• Each neural unit multiplies input values by a weight vector, adds a bias, and
+then applies a non-linear activation function like sigmoid, tanh, or rectiﬁed
+linear unit.
+
+• In a fully-connected, feedforward network, each unit in layer i is connected
+
+to each unit in layer i + 1, and there are no cycles.
+
+• The power of neural networks comes from the ability of early layers to learn
+
+representations that can be utilized by later layers in the network.
+
+• Neural networks are trained by optimization algorithms like gradient de-
+
+scent.
+
+• Error backpropagation, backward differentiation on a computation graph,
+
+is used to compute the gradients of the loss function for a network.
+
+• Neural language models use a neural network as a probabilistic classiﬁer, to
+
+compute the probability of the next word given the previous n words.
+
+• Neural language models can use pretrained embeddings, or can learn embed-
+
+dings from scratch in the process of language modeling.
+
+BIBLIOGRAPHICAL AND HISTORICAL NOTES
+
+161
+
+Bibliographical and Historical Notes
+
+connectionist
+
+The origins of neural networks lie in the 1940s McCulloch-Pitts neuron (McCul-
+loch and Pitts, 1943), a simpliﬁed model of the biological neuron as a kind of com-
+puting element that could be described in terms of propositional logic. By the late
+1950s and early 1960s, a number of labs (including Frank Rosenblatt at Cornell and
+Bernard Widrow at Stanford) developed research into neural networks; this phase
+saw the development of the perceptron (Rosenblatt, 1958), and the transformation
+of the threshold into a bias, a notation we still use (Widrow and Hoff, 1960).
+
+The ﬁeld of neural networks declined after it was shown that a single perceptron
+unit was unable to model functions as simple as XOR (Minsky and Papert, 1969).
+While some small amount of work continued during the next two decades, a major
+revival for the ﬁeld didn’t come until the 1980s, when practical tools for building
+deeper networks like error backpropagation became widespread (Rumelhart et al.,
+1986). During the 1980s a wide variety of neural network and related architec-
+tures were developed, particularly for applications in psychology and cognitive sci-
+ence (Rumelhart and McClelland 1986b, McClelland and Elman 1986, Rumelhart
+and McClelland 1986a, Elman 1990), for which the term connectionist or paral-
+lel distributed processing was often used (Feldman and Ballard 1982, Smolensky
+1988). Many of the principles and techniques developed in this period are foun-
+dational to modern work, including the ideas of distributed representations (Hinton,
+1986), recurrent networks (Elman, 1990), and the use of tensors for compositionality
+(Smolensky, 1990).
+
+By the 1990s larger neural networks began to be applied to many practical lan-
+guage processing tasks as well, like handwriting recognition (LeCun et al. 1989) and
+speech recognition (Morgan and Bourlard 1990). By the early 2000s, improvements
+in computer hardware and advances in optimization and training techniques made it
+possible to train even larger and deeper networks, leading to the modern term deep
+learning (Hinton et al. 2006, Bengio et al. 2007). We cover more related history in
+Chapter 9 and Chapter 16.
+
+There are a number of excellent books on the subject. Goldberg (2017) has
+superb coverage of neural networks for natural language processing. For neural
+networks in general see Goodfellow et al. (2016) and Nielsen (2015).
+
+162 CHAPTER 8
+
+• SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+CHAPTER
+
+8 Sequence Labeling for Parts of
+
+Speech and Named Entities
+
+parts of speech
+
+named entity
+
+POS
+
+To each word a warbling note
+
+A Midsummer Night’s Dream, V.I
+
+Dionysius Thrax of Alexandria (c. 100 B.C.), or perhaps someone else (it was a long
+time ago), wrote a grammatical sketch of Greek (a “techn¯e”) that summarized the
+linguistic knowledge of his day. This work is the source of an astonishing proportion
+of modern linguistic vocabulary, including the words syntax, diphthong, clitic, and
+analogy. Also included are a description of eight parts of speech: noun, verb,
+pronoun, preposition, adverb, conjunction, participle, and article. Although earlier
+scholars (including Aristotle as well as the Stoics) had their own lists of parts of
+speech, it was Thrax’s set of eight that became the basis for descriptions of European
+languages for the next 2000 years. (All the way to the Schoolhouse Rock educational
+television shows of our childhood, which had songs about 8 parts of speech, like the
+late great Bob Dorough’s Conjunction Junction.) The durability of parts of speech
+through two millennia speaks to their centrality in models of human language.
+
+Proper names are another important and anciently studied linguistic category.
+While parts of speech are generally assigned to individual words or morphemes, a
+proper name is often an entire multiword phrase, like the name “Marie Curie”, the
+location “New York City”, or the organization “Stanford University”. We’ll use the
+term named entity for, roughly speaking, anything that can be referred to with a
+proper name: a person, a location, an organization, although as we’ll see the term is
+commonly extended to include things that aren’t entities per se.
+
+Parts of speech (also known as POS) and named entities are useful clues to
+sentence structure and meaning. Knowing whether a word is a noun or a verb tells us
+about likely neighboring words (nouns in English are preceded by determiners and
+adjectives, verbs by nouns) and syntactic structure (verbs have dependency links to
+nouns), making part-of-speech tagging a key aspect of parsing. Knowing if a named
+entity like Washington is a name of a person, a place, or a university is important to
+many natural language processing tasks like question answering, stance detection,
+or information extraction.
+
+In this chapter we’ll introduce the task of part-of-speech tagging, taking a se-
+quence of words and assigning each word a part of speech like NOUN or VERB, and
+the task of named entity recognition (NER), assigning words or phrases tags like
+PERSON, LOCATION, or ORGANIZATION.
+
+sequence
+labeling
+
+Such tasks in which we assign, to each word xi in an input word sequence, a
+label yi, so that the output sequence Y has the same length as the input sequence X
+are called sequence labeling tasks. We’ll introduce classic sequence labeling algo-
+rithms, one generative— the Hidden Markov Model (HMM)—and one discriminative—
+the Conditional Random Field (CRF). In following chapters we’ll introduce modern
+sequence labelers based on RNNs and Transformers.
+
+8.1
+
+(Mostly) English Word Classes
+
+8.1
+
+•
+
+(MOSTLY) ENGLISH WORD CLASSES
+
+163
+
+Until now we have been using part-of-speech terms like noun and verb rather freely.
+In this section we give more complete deﬁnitions. While word classes do have
+semantic tendencies—adjectives, for example, often describe properties and nouns
+people— parts of speech are deﬁned instead based on their grammatical relationship
+with neighboring words or the morphological properties about their afﬁxes.
+
+s
+s
+a
+l
+C
+n
+e
+p
+O
+
+s
+d
+r
+o
+W
+
+s
+s
+a
+l
+C
+d
+e
+s
+o
+l
+C
+
+Description
+Adjective: noun modiﬁers describing properties
+Adverb: verb modiﬁers of time, place, manner
+
+Tag
+ADJ
+ADV
+NOUN words for persons, places, things, etc.
+VERB words for actions and processes
+PROPN Proper noun: name of a person, organization, place, etc..
+Interjection: exclamation, greeting, yes/no response, etc.
+INTJ
+Adposition (Preposition/Postposition): marks a noun’s
+ADP
+spacial, temporal, or other relation
+Auxiliary: helping verb marking tense, aspect, mood, etc.,
+
+AUX
+CCONJ Coordinating Conjunction: joins two phrases/clauses
+Determiner: marks noun phrase properties
+DET
+NUM Numeral
+PART
+
+Particle: a function word that must be associated with an-
+other word
+
+Example
+red, young, awesome
+very, slowly, home, yesterday
+algorithm, cat, mango, beauty
+draw, provide, go
+Regina, IBM, Colorado
+oh, um, yes, hello
+in, on, by, under
+
+can, may, should, are
+and, or, but
+a, an, the, this
+one, two, 2026, 11:00, hundred
+’s, not, (inﬁnitive) to
+
+PRON Pronoun: a shorthand for referring to an entity or event
+SCONJ Subordinating Conjunction:
+
+joins a main clause with a
+
+she, who, I, others
+whether, because
+
+subordinate clause such as a sentential complement
+
+r PUNCT Punctuation
+
+e
+h
+t
+O
+
+SYM
+X
+
+Symbols like $ or emoji
+Other
+
+˙, , ()
+$, %
+asdf, qwfg
+
+Figure 8.1 The 17 parts of speech in the Universal Dependencies tagset (de Marneffe et al., 2021). Features
+can be added to make ﬁner-grained distinctions (with properties like number, case, deﬁniteness, and so on).
+
+closed class
+
+open class
+
+function word
+
+noun
+
+common noun
+
+count noun
+
+mass noun
+
+proper noun
+
+Parts of speech fall into two broad categories: closed class and open class.
+Closed classes are those with relatively ﬁxed membership, such as prepositions—
+new prepositions are rarely coined. By contrast, nouns and verbs are open classes—
+new nouns and verbs like iPhone or to fax are continually being created or borrowed.
+Closed class words are generally function words like of, it, and, or you, which tend
+to be very short, occur frequently, and often have structuring uses in grammar.
+
+Four major open classes occur in the languages of the world: 

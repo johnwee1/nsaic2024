@@ -1,0 +1,596 @@
+, choose SHIFT.
+
+The restriction on selecting the RIGHTARC operator is needed to ensure that a
+word is not popped from the stack, and thus lost to further processing, before all its
+dependents have been assigned to it.
+
+More formally, during training the oracle has access to the following:
+
+• A current conﬁguration with a stack S and a set of dependency relations Rc
+• A reference parse consisting of a set of vertices V and a set of dependency
+
+relations Rp
+
+Given this information, the oracle chooses transitions as follows:
+
+LEFTARC(r): if (S1 r S2)
+∈
+RIGHTARC(r): if (S2 r S1)
+SHIFT: otherwise
+
+Rp
+
+Rp and
+
+r(cid:48), w s.t.(S1 r(cid:48) w)
+
+∀
+
+∈
+
+Rp then (S1 r(cid:48) w)
+
+Rc
+
+∈
+
+∈
+
+Let’s walk through the processing of the following example as shown in Fig. 18.7.
+
+root
+
+obj
+
+det
+
+nmod
+
+case
+
+Book the ﬂight through Houston
+
+(18.9)
+
+At Step 1, LEFTARC is not applicable in the initial conﬁguration since it asserts
+book), not in the reference answer; RIGHTARC does assert a
+a relation, (root
+book), however book has not been
+relation contained in the ﬁnal answer (root
+attached to any of its dependents yet, so we have to defer, leaving SHIFT as the only
+
+→
+
+←
+
+18.2
+
+• TRANSITION-BASED DEPENDENCY PARSING
+
+401
+
+possible action. The same conditions hold in the next two steps. In step 3, LEFTARC
+is selected to link the to its head.
+
+Now consider the situation in Step 4.
+
+Stack
+[root, book, ﬂight] [through, Houston] (the
+
+Word buffer
+
+Relations
+
+ﬂight)
+
+←
+
+Here, we might be tempted to add a dependency relation between book and ﬂight,
+which is present in the reference parse. But doing so now would prevent the later
+attachment of Houston since ﬂight would have been removed from the stack. For-
+tunately, the precondition on choosing RIGHTARC prevents this choice and we’re
+again left with SHIFT as the only viable option. The remaining choices complete the
+set of operators needed for this example.
+
+To recap, we derive appropriate training instances consisting of conﬁguration-
+transition pairs from a treebank by simulating the operation of a parser in the con-
+text of a reference dependency tree. We can deterministically record correct parser
+actions at each step as we progress through each training example, thereby creating
+the training set we require.
+
+18.2.2 A feature-based classiﬁer
+
+We’ll now introduce two classiﬁers for choosing transitions, here a classic feature-
+based algorithm and in the next section a neural classiﬁer using embedding features.
+Featured-based classiﬁers generally use the same features we’ve seen with part-
+of-speech tagging and partial parsing: Word forms, lemmas, parts of speech, the
+head, and the dependency relation to the head. Other features may be relevant for
+some languages, for example morphosyntactic features like case marking on subjects
+or objects. The features are extracted from the training conﬁgurations, which consist
+of the stack, the buffer and the current set of relations. Most useful are features
+referencing the top levels of the stack, the words near the front of the buffer, and the
+dependency relations already associated with any of those elements.
+
+We’ll use a feature template as we did for sentiment analysis and part-of-speech
+tagging. Feature templates allow us to automatically generate large numbers of spe-
+ciﬁc features from a training set. For example, consider the following feature tem-
+plates that are based on single positions in a conﬁguration.
+
+feature
+template
+
+s1.w, op
+(cid:104)
+
+s2.w, op
+,
+(cid:105)
+(cid:104)
+,
+b1.w, op
+(cid:105)
+(cid:104)
+
+,
+s1.t, op
+s2.t, op
+(cid:105)(cid:104)
+(cid:105)
+(cid:104)
+s1.wt, op
+b1.t, op
+(cid:104)
+
+(cid:105)(cid:104)
+
+(cid:105)
+
+(cid:105)
+
+(18.10)
+
+Here features are denoted as location.property, where s = stack, b = the word
+buffer, w = word forms, t = part-of-speech, and op = operator. Thus the feature for
+the word form at the top of the stack would be s1.w, the part of speech tag at the
+front of the buffer b1.t, and the concatenated feature s1.wt represents the word form
+concatenated with the part of speech of the word at the top of the stack. Consider
+applying these templates to the following intermediate conﬁguration derived from a
+training oracle for (18.2).
+
+Stack
+[root, canceled, ﬂights] [to Houston] (canceled
+
+Word buffer
+
+Relations
+
+(ﬂights
+
+→
+(ﬂights
+
+United)
+→
+morning)
+the)
+
+→
+
+402 CHAPTER 18
+
+• DEPENDENCY PARSING
+
+The correct transition here is SHIFT (you should convince yourself of this before
+proceeding). The application of our set of feature templates to this conﬁguration
+would result in the following set of instantiated features.
+
+(18.11)
+
+s1.w = ﬂights, op = shift
+(cid:105)
+(cid:104)
+s2.w = canceled, op = shift
+(cid:105)
+(cid:104)
+s1.t = NNS, op = shift
+(cid:104)
+(cid:105)
+s2.t = VBD, op = shift
+(cid:105)
+(cid:104)
+b1.w = to, op = shift
+(cid:105)
+(cid:104)
+b1.t = TO, op = shift
+(cid:105)
+(cid:104)
+s1.wt = ﬂightsNNS, op = shift
+(cid:105)
+(cid:104)
+
+Given that the left and right arc transitions operate on the top two elements of the
+stack, features that combine properties from these positions are even more useful.
+For example, a feature like s1.t
+s2.t concatenates the part of speech tag of the word
+at the top of the stack with the tag of the word beneath it.
+
+◦
+
+s1.t
+(cid:104)
+
+s2.t = NNSVBD, op = shift
+(cid:105)
+
+◦
+
+(18.12)
+
+Given the training data and features, any classiﬁer, like multinomial logistic re-
+
+gression or support vector machines, can be used.
+
+18.2.3 A neural classiﬁer
+
+The oracle can also be implemented by a neural classiﬁer. A standard architecture
+is simply to pass the sentence through an encoder, then take the presentation of the
+top 2 words on the stack and the ﬁrst word of the buffer, concatenate them, and
+present to a feedforward network that predicts the transition to take (Kiperwasser
+and Goldberg, 2016; Kulmizev et al., 2019). Fig. 18.8 sketches this model. Learning
+can be done with cross-entropy loss.
+
+Figure 18.8 Neural classiﬁer for the oracle for the transition-based parser. The parser takes
+the top 2 words on the stack and the ﬁrst word of the buffer, represents them by their encodings
+(from running the whole sentence through the encoder), concatenates the embeddings and
+passes through a softmax to choose a parser action (transition).
+
+w…s2...s1Input buﬀerStackLEFTARCRIGHTARCSHIFTActionDependencyRelationsw3w2ENCODERw1w2w3w4w5w6Parser OracleSoftmaxFFNws1s2e(w)e(s1)e(s2)18.2
+
+• TRANSITION-BASED DEPENDENCY PARSING
+
+403
+
+18.2.4 Advanced Methods in Transition-Based Parsing
+
+The basic transition-based approach can be elaborated in a number of ways to im-
+prove performance by addressing some of the most obvious ﬂaws in the approach.
+
+Alternative Transition Systems
+
+arc eager
+
+The arc-standard transition system described above is only one of many possible sys-
+tems. A frequently used alternative is the arc eager transition system. The arc eager
+approach gets its name from its ability to assert rightward relations much sooner
+than in the arc standard approach. To see this, let’s revisit the arc standard trace of
+Example 18.9, repeated here.
+
+root
+
+obj
+
+det
+
+nmod
+
+case
+
+Book the ﬂight through Houston
+
+Consider the dependency relation between book and ﬂight in this analysis. As
+is shown in Fig. 18.7, an arc-standard approach would assert this relation at Step 8,
+despite the fact that book and ﬂight ﬁrst come together on the stack much earlier at
+Step 4. The reason this relation can’t be captured at this point is due to the presence
+of the postnominal modiﬁer through Houston. In an arc-standard approach, depen-
+dents are removed from the stack as soon as they are assigned their heads. If ﬂight
+had been assigned book as its head in Step 4, it would no longer be available to serve
+as the head of Houston.
+
+While this delay doesn’t cause any issues in this example, in general the longer
+a word has to wait to get assigned its head the more opportunities there are for
+something to go awry. The arc-eager system addresses this issue by allowing words
+to be attached to their heads as early as possible, before all the subsequent words
+dependent on them have been seen. This is accomplished through minor changes to
+the LEFTARC and RIGHTARC operators and the addition of a new REDUCE operator.
+
+• LEFTARC: Assert a head-dependent relation between the word at the front of
+
+the input buffer and the word at the top of the stack; pop the stack.
+
+• RIGHTARC: Assert a head-dependent relation between the word on the top of
+the stack and the word at the front of the input buffer; shift the word at the
+front of the input buffer to the stack.
+
+• SHIFT: Remove the word from the front of the input buffer and push it onto
+
+the stack.
+
+• REDUCE: Pop the stack.
+
+The LEFTARC and RIGHTARC operators are applied to the top of the stack and
+the front of the input buffer, instead of the top two elements of the stack as in the
+arc-standard approach. The RIGHTARC operator now moves the dependent to the
+stack from the buffer rather than removing it, thus making it available to serve as the
+head of following words. The new REDUCE operator removes the top element from
+the stack. Together these changes permit a word to be eagerly assigned its head and
+still allow it to serve as the head for later dependents. The trace shown in Fig. 18.9
+illustrates the new decision sequence for this example.
+
+In addition to demonstrating the arc-eager transition system, this example demon-
+strates the power and ﬂexibility of the overall transition-based approach. We were
+able to swap in a new transition system without having to make any changes to the
+
+404 CHAPTER 18
+
+• DEPENDENCY PARSING
+
+Action
+
+Relation Added
+book)
+(root
+
+Stack Word List
+[root]
+[root, book]
+[root, book, the]
+[root, book]
+[root, book, ﬂight]
+[root, book, ﬂight, through]
+[root, book, ﬂight]
+[root, book, ﬂight, houston]
+[root, book, ﬂight]
+[root, book]
+[root]
+
+Step
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+Figure 18.9 A processing trace of Book the ﬂight through Houston using the arc-eager transition operators.
+
+[book, the, ﬂight, through, houston] RIGHTARC
+[the, ﬂight, through, houston]
+[ﬂight, through, houston]
+[ﬂight, through, houston]
+[through, houston]
+[houston]
+[houston]
+[]
+[]
+[]
+[]
+
+SHIFT
+LEFTARC
+RIGHTARC
+SHIFT
+LEFTARC
+RIGHTARC
+REDUCE
+
+(through
+(ﬂight
+
+REDUCE
+Done
+
+ﬂight)
+ﬂight)
+
+(the
+(book
+
+←
+→
+
+←
+→
+
+houston)
+houston)
+
+REDUCE
+
+→
+
+beam search
+
+beam width
+
+underlying parsing algorithm. This ﬂexibility has led to the development of a di-
+verse set of transition systems that address different aspects of syntax and semantics
+including: assigning part of speech tags (Choi and Palmer, 2011a), allowing the
+generation of non-projective dependency structures (Nivre, 2009), assigning seman-
+tic roles (Choi and Palmer, 2011b), and parsing texts containing multiple languages
+(Bhat et al., 2017).
+
+Beam Search
+
+The computational efﬁciency of the transition-based approach discussed earlier de-
+rives from the fact that it makes a single pass through the sentence, greedily making
+decisions without considering alternatives. Of course, this is also a weakness – once
+a decision has been made it can not be undone, even in the face of overwhelming
+evidence arriving later in a sentence. We can use beam search to explore alternative
+decision sequences. Recall from Chapter 10 that beam search uses a breadth-ﬁrst
+search strategy with a heuristic ﬁlter that prunes the search frontier to stay within a
+ﬁxed-size beam width.
+
+In applying beam search to transition-based parsing, we’ll elaborate on the al-
+gorithm given in Fig. 18.5. Instead of choosing the single best transition operator
+at each iteration, we’ll apply all applicable operators to each state on an agenda and
+then score the resulting conﬁgurations. We then add each of these new conﬁgura-
+tions to the frontier, subject to the constraint that there has to be room within the
+beam. As long as the size of the agenda is within the speciﬁed beam width, we can
+add new conﬁgurations to the agenda. Once the agenda reaches the limit, we only
+add new conﬁgurations that are better than the worst conﬁguration on the agenda
+(removing the worst element so that we stay within the limit). Finally, to insure that
+we retrieve the best possible state on the agenda, the while loop continues as long as
+there are non-ﬁnal states on the agenda.
+
+The beam search approach requires a more elaborate notion of scoring than we
+used with the greedy algorithm. There, we assumed that the oracle would be a
+supervised classiﬁer that chose the best transition operator based on features of the
+current conﬁguration. This choice can be viewed as assigning a score to all the
+possible transitions and picking the best one.
+
+ˆT (c) = argmax Score(t, c)
+
+With beam search we are now searching through the space of decision sequences,
+so it makes sense to base the score for a conﬁguration on its entire history. So we
+can deﬁne the score for a new conﬁguration as the score of its predecessor plus the
+
+18.3
+
+• GRAPH-BASED DEPENDENCY PARSING
+
+405
+
+score of the operator used to produce it.
+
+ConﬁgScore(c0) = 0.0
+ConﬁgScore(ci) = ConﬁgScore(ci
+
+1) + Score(ti, ci
+
+1)
+
+−
+
+−
+
+This score is used both in ﬁltering the agenda and in selecting the ﬁnal answer. The
+new beam search version of transition-based parsing is given in Fig. 18.10.
+
+function DEPENDENCYBEAMPARSE(words, width) returns dependency tree
+
+state
+agenda
+
+← {
+
+state
+(cid:105)
+
+← (cid:104)
+
+[root], [words], [], 0.0
+
+;initial conﬁguration
+
+;initial agenda
+
+}
+
+while agenda contains non-ﬁnal states
+
+newagenda
+for each state
+for all
+{
+|
+child
+←
+newagenda
+
+t
+
+← (cid:104)(cid:105)
+∈
+t
+∈
+APPLY(t, state)
+
+agenda do
+VALIDOPERATORS(state)
+
+do
+
+}
+
+ADDTOBEAM(child, newagenda, width)
+
+agenda
+
+newagenda
+←
+return BESTOF(agenda)
+
+←
+
+function ADDTOBEAM(state, agenda, width) returns updated agenda
+
+if LENGTH(agenda) < width then
+
+agenda
+
+INSERT(state, agenda)
+else if SCORE(state) > SCORE(WORSTOF(agenda))
+
+←
+
+agenda
+←
+agenda
+←
+return agenda
+
+REMOVE(WORSTOF(agenda))
+INSERT(state, agenda)
+
+Figure 18.10 Beam search applied to transition-based dependency parsing.
+
+18.3 Graph-Based Dependency Parsing
+
+Graph-based methods are the second important family of dependency parsing algo-
+rithms. Graph-based parsers are more accurate than transition-based parsers, espe-
+cially on long sentences; transition-based methods have trouble when the heads are
+very far from the dependents (McDonald and Nivre, 2011). Graph-based methods
+avoid this difﬁculty by scoring entire trees, rather than relying on greedy local de-
+cisions. Furthermore, unlike transition-based approaches, graph-based parsers can
+produce non-projective trees. Although projectivity is not a signiﬁcant issue for
+English, it is deﬁnitely a problem for many of the world’s languages.
+
+Graph-based dependency parsers search through the space of possible trees for a
+given sentence for a tree (or trees) that maximize some score. These methods encode
+the search space as directed graphs and employ methods drawn from graph theory
+to search the space for optimal solutions. More formally, given a sentence S we’re
+looking for the best dependency tree in Gs, the space of all possible trees for that
+sentence, that maximizes some score.
+
+ˆT (S) = argmax
+
+G
+
+S
+
+t
+
+∈
+
+Score(t, S)
+
+406 CHAPTER 18
+
+• DEPENDENCY PARSING
+
+edge-factored
+
+We’ll make the simplifying assumption that this score can be edge-factored,
+meaning that the overall score for a tree is the sum of the scores of each of the scores
+of the edges that comprise the tree.
+
+Score(t, S) =
+
+Score(e)
+
+t
+e

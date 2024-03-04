@@ -1,0 +1,308 @@
+e parsing, the task of detecting PDTB coherence relations between
+spans, is sometimes called shallow discourse parsing because the task just involves
+ﬂat relationships between text spans, rather than the full trees of RST parsing.
+
+The set of four subtasks for PDTB discourse parsing was laid out by Lin et al.
+(2014) in the ﬁrst complete system, with separate tasks for explicit (tasks 1-3) and
+implicit (task 4) connectives:
+
+1. Find the discourse connectives (disambiguating them from non-discourse uses)
+2. Find the two spans for each connective
+3. Label the relationship between these spans
+4. Assign a relation between every adjacent pair of sentences
+
+Many systems have been proposed for Task 4: taking a pair of adjacent sentences
+as input and assign a coherence relation sense label as output. The setup often fol-
+lows Lin et al. (2009) in assuming gold sentence span boundaries and assigning each
+adjacent span one of the 11 second-level PDTB tags or none (removing the 5 very
+rare tags of the 16 shown in italics in Fig. 23.3).
+
+A simple but very strong algorithm for Task 4 is to represent each of the two
+spans by BERT embeddings and take the last layer hidden state corresponding to
+the position of the [CLS] token, pass this through a single layer tanh feedforward
+network and then a softmax for sense classiﬁcation (Nie et al., 2019).
+
+Each of the other tasks also have been addressed. Task 1 is to disambiguat-
+ing discourse connectives from their non-discourse use. For example as Pitler and
+Nenkova (2009) point out, the word and is a discourse connective linking the two
+clauses by an elaboration/expansion relation in (23.24) while it’s a non-discourse
+NP conjunction in (23.25):
+
+(23.24) Selling picked up as previous buyers bailed out of their positions and
+
+aggressive short sellers—anticipating further declines—moved in.
+
+(23.25) My favorite colors are blue and green.
+
+520 CHAPTER 23
+
+• DISCOURSE COHERENCE
+
+Similarly, once is a discourse connective indicating a temporal relation in (23.26),
+but simply a non-discourse adverb meaning ‘formerly’ and modifying used in (23.27):
+
+(23.26) The asbestos ﬁber, crocidolite, is unusually resilient once it enters the
+lungs, with even brief exposures to it causing symptoms that show up
+decades later, researchers said.
+
+(23.27) A form of asbestos once used to make Kent cigarette ﬁlters has caused a
+high percentage of cancer deaths among a group of workers exposed to it
+more than 30 years ago, researchers reported.
+
+Determining whether a word is a discourse connective is thus a special case
+of word sense disambiguation. Early work on disambiguation showed that the 4
+PDTB high-level sense classes could be disambiguated with high (94%) accuracy
+used syntactic features from gold parse trees (Pitler and Nenkova, 2009). Recent
+work performs the task end-to-end from word inputs using a biLSTM-CRF with
+BIO outputs (B-CONN, I-CONN, O) (Yu et al., 2019).
+
+For task 2, PDTB spans can be identiﬁed with the same sequence models used to
+ﬁnd RST EDUs: a biLSTM sequence model with pretrained contextual embedding
+(BERT) inputs (Muller et al., 2019). Simple heuristics also do pretty well as a base-
+line at ﬁnding spans, since 93% of relations are either completely within a single
+sentence or span two adjacent sentences, with one argument in each sentence (Biran
+and McKeown, 2015).
+
+23.3 Centering and Entity-Based Coherence
+
+entity-based
+
+Centering
+Theory
+
+A second way a discourse can be coherent is by virtue of being “about” some entity.
+This idea that at each point in the discourse some entity is salient, and a discourse
+is coherent by continuing to discuss the same entity, appears early in functional lin-
+guistics and the psychology of discourse (Chafe 1976, Kintsch and Van Dijk 1978),
+and soon made its way to computational models. In this section we introduce two
+models of this kind of entity-based coherence: Centering Theory (Grosz et al.,
+1995), and the entity grid model of Barzilay and Lapata (2008).
+
+23.3.1 Centering
+
+Centering Theory (Grosz et al., 1995) is a theory of both discourse salience and
+discourse coherence. As a model of discourse salience, Centering proposes that at
+any given point in the discourse one of the entities in the discourse model is salient:
+it is being “centered” on. As a model of discourse coherence, Centering proposes
+that discourses in which adjacent sentences CONTINUE to maintain the same salient
+entity are more coherent than those which SHIFT back and forth between multiple
+entities (we will see that CONTINUE and SHIFT are technical terms in the theory).
+
+The following two texts from Grosz et al. (1995) which have exactly the same
+propositional content but different saliences, can help in understanding the main
+Centering intuition.
+
+(23.28)
+
+a. John went to his favorite music store to buy a piano.
+b. He had frequented the store for many years.
+c. He was excited that he could ﬁnally buy a piano.
+d. He arrived just as the store was closing for the day.
+
+backward-
+looking
+center
+
+forward-looking
+center
+
+23.3
+
+• CENTERING AND ENTITY-BASED COHERENCE
+
+521
+
+(23.29)
+
+a. John went to his favorite music store to buy a piano.
+b. It was a store John had frequented for many years.
+c. He was excited that he could ﬁnally buy a piano.
+d. It was closing just as John arrived.
+
+While these two texts differ only in how the two entities (John and the store) are
+realized in the sentences, the discourse in (23.28) is intuitively more coherent than
+the one in (23.29). As Grosz et al. (1995) point out, this is because the discourse
+in (23.28) is clearly about one individual, John, describing his actions and feelings.
+The discourse in (23.29), by contrast, focuses ﬁrst on John, then the store, then back
+to John, then to the store again. It lacks the “aboutness” of the ﬁrst discourse.
+
+Centering Theory realizes this intuition by maintaining two representations for
+each utterance Un. The backward-looking center of Un, denoted as Cb(Un), rep-
+resents the current salient entity, the one being focused on in the discourse after Un
+is interpreted. The forward-looking centers of Un, denoted as C f (Un), are a set
+of potential future salient entities, the discourse entities evoked by Un any of which
+could serve as Cb (the salient entity) of the following utterance, i.e. Cb(Un+1).
+
+The set of forward-looking centers C f (Un) are ranked according to factors like
+discourse salience and grammatical role (for example subjects are higher ranked
+than objects, which are higher ranked than all other grammatical roles). We call the
+highest-ranked forward-looking center Cp (for “preferred center”). Cp is a kind of
+prediction about what entity will be talked about next. Sometimes the next utterance
+indeed talks about this entity, but sometimes another entity becomes salient instead.
+We’ll use here the algorithm for centering presented in Brennan et al. (1987),
+which deﬁnes four intersentential relationships between a pair of utterances Un and
+Un+1 that depend on the relationship between Cb(Un+1), Cb(Un), and Cp(Un+1);
+these are shown in Fig. 23.7.
+
+Cb(Un+1) = Cp(Un+1)
+= Cp(Un+1)
+Cb(Un+1)
+
+Cb(Un+1) = Cb(Un)
+or undeﬁned Cb(Un)
+Continue
+Retain
+
+Cb(Un+1)
+
+= Cb(Un)
+
+Smooth-Shift
+Rough-Shift
+
+Figure 23.7 Centering Transitions for Rule 2 from Brennan et al. (1987).
+
+The following rules are used by the algorithm:
+
+Rule 1: If any element of C f (Un) is realized by a pronoun in utterance
+Un+1, then Cb(Un+1) must be realized as a pronoun also.
+Rule 2: Transition states are ordered. Continue is preferred to Retain is
+preferred to Smooth-Shift is preferred to Rough-Shift.
+
+Rule 1 captures the intuition that pronominalization (including zero-anaphora)
+is a common way to mark discourse salience. If there are multiple pronouns in an
+utterance realizing entities from the previous utterance, one of these pronouns must
+realize the backward center Cb; if there is only one pronoun, it must be Cb.
+
+Rule 2 captures the intuition that discourses that continue to center the same en-
+tity are more coherent than ones that repeatedly shift to other centers. The transition
+table is based on two factors: whether the backward-looking center Cb is the same
+from Un to Un+1 and whether this discourse entity is the one that is preferred (Cp)
+in the new utterance Un+1. If both of these hold, a CONTINUE relation, the speaker
+has been talking about the same entity and is going to continue talking about that
+
+(cid:54)
+(cid:54)
+522 CHAPTER 23
+
+• DISCOURSE COHERENCE
+
+entity. In a RETAIN relation, the speaker intends to SHIFT to a new entity in a future
+utterance and meanwhile places the current entity in a lower rank C f . In a SHIFT
+relation, the speaker is shifting to a new salient entity.
+
+Let’s walk though the start of (23.28) again, repeated as (23.30), showing the
+
+representations after each utterance is processed.
+
+(23.30)
+
+John went to his favorite music store to buy a piano. (U1)
+He was excited that he could ﬁnally buy a piano. (U2)
+He arrived just as the store was closing for the day. (U3)
+It was closing just as John arrived (U4)
+
+Using the grammatical role hierarchy to order the C f , for sentence U1 we get:
+
+John, music store, piano
+}
+
+{
+
+C f (U1):
+Cp(U1): John
+Cb(U1): undeﬁned
+and then for sentence U2:
+
+John, piano
+}
+
+{
+
+C f (U2):
+Cp(U2): John
+Cb(U2): John
+Result: Continue
+
+(Cp(U2)=Cb(U2); Cb(U1) undeﬁned)
+
+entity grid
+
+The transition from U1 to U2 is thus a CONTINUE. Completing this example is left
+as exercise (1) for the reader
+
+23.3.2 Entity Grid model
+
+Centering embodies a particular theory of how entity mentioning leads to coher-
+ence: that salient entities appear in subject position or are pronominalized, and that
+discourses are salient by means of continuing to mention the same entity in such
+ways.
+
+The entity grid model of Barzilay and Lapata (2008) is an alternative way to
+capture entity-based coherence: instead of having a top-down theory, the entity-grid
+model using machine learning to induce the patterns of entity mentioning that make
+a discourse more coherent.
+
+The model is based around an entity grid, a two-dimensional array that repre-
+sents the distribution of entity mentions across sentences. The rows represent sen-
+tences, and the columns represent discourse entities (most versions of the entity grid
+model focus just on nominal mentions). Each cell represents the possible appearance
+of an entity in a sentence, and the values represent whether the entity appears and its
+grammatical role. Grammatical roles are subject (S), object (O), neither (X), or ab-
+sent (–); in the implementation of Barzilay and Lapata (2008), subjects of passives
+are represented with O, leading to a representation with some of the characteristics
+of thematic roles.
+
+Fig. 23.8 from Barzilay and Lapata (2008) shows a grid for the text shown in
+Fig. 23.9. There is one row for each of the six sentences. The second column, for
+the entity ‘trial’, is O – – – X, showing that the trial appears in the ﬁrst sentence as
+direct object, in the last sentence as an oblique, and does not appear in the middle
+sentences. The third column, for the entity Microsoft, shows that it appears as sub-
+ject in sentence 1 (it also appears as the object of the preposition against, but entities
+that appear multiple times are recorded with their highest-ranked grammatical func-
+tion). Computing the entity grids requires extracting entities and doing coreference
+
+23.3
+
+• CENTERING AND ENTITY-BASED COHERENCE
+
+523
+
+Figure 23.8 Part of the entity grid for the text in Fig. 23.9. Entities are listed by their head
+noun; each cell represents whether an entity appears as subject (S), object (O), neither (X), or
+is absent (–). Figure from Barzilay and Lapata (2008).
+
+Figure 23.9 A discourse with the entities marked and annotated with grammatical func-
+tions. Figure from Barzilay and Lapata (2008).
+
+resolution to cluster them into discourse entities (Chapter 26) as well as parsing the
+sentences to get grammatical roles.
+
+In the resulting grid, columns that are dense (like the column for Microsoft) in-
+dicate entities that are mentioned often in the texts; sparse columns (like the column
+for earnings) indicate entities that are mentioned rarely.
+
+S,O X, –
+
+In the entity grid model, coherence is measured by patterns of local entity tran-
+sition. For example, Department is a subject in sentence 1, and then not men-
+tioned in sentence 2; this is the transition [S –]. The transitions are thus sequences
+n which can be extracted as continuous cells from each column. Each
+{
+}
+transition has a probability; the probability of [S –] in the grid from Fig. 23.8 is 0.08
+(it occurs 6 times out of the 75 total transitions of length two). Fig. 23.10 shows the
+distribution over transitions of length 2 for the text of Fig. 23.9 (shown as the ﬁrst
+row d1), and 2 other documents.
+
+Figure 23.10 A feature vector for representing documents using all transitions of length 2.
+Document d1 is the text in Fig. 23.9. Figure from Barzilay and Lapata (2008).
+
+The transitions and their probabilities can then be used as features for a machine
+learning model. This model can be a text classiﬁer trained to produce human-labeled
+coherence scores (for example from humans labeling each text as coherent or inco-
+herent). But such data is expensive to gather. Barzilay and Lapata (2005) introduced
+a simplifying innovation: coherence models can be trained by self-supervision:
+trained to distinguish the natural original order of sentences in a discourse from
+
+ComputationalLinguisticsVolume34,Number1thesepatternscanbeencodedasfeaturevectorsappropriateforperformingcoherence-relatedrankingandclassiﬁcationtasks.3.1TheEntity-GridDiscourseRepresentationEachtextisrepresentedbyanentitygrid,atwo-dimensionalarraythatcapturesthedistributionofdiscourseentitiesacrosstextsentences.WefollowMiltsakakiandKukich(2000)inassumingthatourunitofanalysisisthetraditionalsentence(i.e.,amainclausewithaccompanyingsubordinateandadjunctclauses).Therowsofthegridcorrespondtosentences,andthecolumnscorrespondtodiscourseentities.Bydiscourseentitywemeanaclassofcoreferentnounphrases(weexplaininSection3.3howcoreferententitiesareidentiﬁed).Foreachoccurrenceofadiscourseentityinthetext,thecorrespondinggridcellcontainsinformationaboutitspresenceorabsenceinasequenceofsentences.Inaddition,forentitiespresentinagivensentence,gridcellscontaininformationabouttheirsyntacticrole.Suchinformationcanbeexpressedinmanyways(e.g.,usingconstituentlabelsorthematicroleinformation).Becausegrammaticalrelationsﬁgureprominentlyinentity-basedtheoriesoflocalcoherence(seeSection2),theyserveasalogicalpointofdeparture.Eachgridcellthuscorrespondstoastringfromasetofcategoriesreﬂectingwhethertheentityinquestionisasubject(S),object(O),orneither(X).Entitiesabsentfromasentencearesignaledbygaps(–).Grammaticalroleinformationcanbeextractedfromtheoutputofabroad-coveragedependencyparser(Lin2001;BriscoeandCarroll2002)oranystate-of-theartstatisticalparser(Collins1997;Charniak2000).WediscusshowthisinformationwascomputedforourexperimentsinSection3.3.Table1illustratesafragmentofanentitygridconstructedforthetextinTable2.Becausethetextcontainssixsentences,thegridcolumnsareoflengthsix.Considerforinstancethegridcolumnfortheentitytrial,[O––––X].Itrecordsthattrialispresentinsentences1and6(asOandX,respectively)butisabsentfromtherestofthesentences.AlsonotethatthegridinTable1takescoreferenceresolutionintoaccount.Eventhoughthesameentityappearsindifferentlinguisticforms,forexample,MicrosoftCorp.,Microsoft,andthecompany,it

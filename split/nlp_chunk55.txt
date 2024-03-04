@@ -1,0 +1,376 @@
+val-augmented
+generation, or RAG.
+
+Recall that in simple conditional generation, we can cast the task of question
+answering as word prediction by giving a language model a question and a token
+like A: suggesting that an answer should come next:
+
+Q: Who wrote the book ‘‘The Origin of Species"? A:
+
+Then we generate autoregressively conditioned on this text.
+
+More formally, recall that simple autoregressive language modeling computes
+
+the probability of a string from the previous tokens:
+
+p(x1, . . . , xn) =
+
+n
+
+p(xi|
+
+x<i)
+
+(cid:89)i=1
+
+And simple conditional generation for question answering adds a prompt like Q: ,
+followed by a query q , and A:, all concatenated:
+
+p(x1, . . . , xn) =
+
+n
+
+(cid:89)i=1
+
+p([Q:] ; q ; [A:] ; x<i)
+
+310 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+The advantage of using a large language model is the enormous amount of
+knowledge encoded in its parameters from the text it was pretrained on. But as
+we mentioned at the start of the chapter, while this kind of simple prompted gener-
+ation can work ﬁne for many simple factoid questions, it is not a general solution
+for QA, because it leads to hallucination, is unable to show users textual evidence to
+support the answer, and is unable to answer questions from proprietary data.
+
+The idea of retrieval-augmented generation is to address these problems by con-
+ditioning on the retrieved passages as part of the preﬁx, perhaps with some prompt
+text like “Based on these texts, answer this question:”. Let’s suppose we have a
+query q, and call the set of retrieved passages based on it R(q). For example, we
+could have a prompt like:
+
+retrieved passage 1
+
+retrieved passage 2
+
+...
+
+retrieved passage n
+
+Based on these texts, answer this question:
+the book ‘‘The Origin of Species"?
+
+A:
+
+Q: Who wrote
+
+Or more formally,
+
+p(x1, . . . , xn) =
+
+n
+
+(cid:89)i=1
+
+R(q) ; prompt ; [Q:] ; q ; [A:] ; x<i)
+
+p(xi|
+
+multi-hop
+
+As with the span-based extraction reader, successfully applying the retrieval-
+augmented generation algorithm for QA requires a successful retriever, and often
+a two-stage retrieval algorithm is used in which the retrieval is reranked. Some
+complex questions may require multi-hop architectures, in which a query is used to
+retrieve documents, which are then appended to the original query for a second stage
+of retrieval. Details of prompt engineering also have to be worked out, like deciding
+whether to demarcate passages, for example with [SEP] tokens, and so on. Finally,
+combinations of private data and public data involving an externally hosted large
+language model may lead to privacy concerns that need to be worked out (Arora
+et al., 2023).
+
+14.4 Evaluating Retrieval-based Question Answering
+
+mean
+reciprocal rank
+MRR
+
+Question answering is commonly evaluated using mean reciprocal rank, or MRR
+(Voorhees, 1999). MRR is designed for systems that return a short ranked list of
+answers or passages for each test set question, which we can compare against the
+(human-labeled) correct answer. First, each test set question is scored with the re-
+ciprocal of the rank of the ﬁrst correct answer. For example if the system returned
+ﬁve answers to a question but the ﬁrst three are wrong (so the highest-ranked correct
+answer is ranked fourth), the reciprocal rank for that question is 1
+4 . The score for
+questions that return no correct answer is 0. The MRR of a system is the average of
+the scores for each question in the test set. In some versions of MRR, questions with
+
+14.5
+
+• SUMMARY
+
+311
+
+a score of zero are ignored in this calculation. More formally, for a system returning
+ranked answers to each question in a test set Q, (or in the alternate version, let Q be
+the subset of test set questions that have non-zero scores). MRR is then deﬁned as
+
+MRR =
+
+1
+Q
+|
+
+Q
+|
+
+|
+
+|
+
+(cid:88)i=1
+
+1
+ranki
+
+(14.22)
+
+Alternatively, question answering systems can be evaluated with exact match, or
+with F1 score. This is common for datasets like SQuAD which are evaluated (ﬁrst
+ignoring punctuation and articles like a, an, the) via both (Rajpurkar et al., 2016):
+
+• Exact match: The % of predicted answers that match the gold answer exactly.
+• F1 score: The average word/token overlap between predicted and gold an-
+swers. Treat the prediction and gold as a bag of tokens, and compute F1 for
+each question, then return the average F1 over all questions.
+
+Other recent datasets include the AI2 Reasoning Challenge (ARC) (Clark et al.,
+2018) of multiple choice questions designed to be hard to answer from simple lexical
+methods, like this question
+
+Which property of a mineral can be determined just by looking at it?
+(A) luster [correct] (B) mass (C) weight (D) hardness
+
+in which the correct answer luster is unlikely to co-occur frequently with phrases
+like looking at it, while the word mineral is highly associated with the incorrect
+answer hardness.
+
+14.5 Summary
+
+This chapter introduced the tasks of question answering and information retrieval.
+
+• Question answering (QA) is the task of answering a user’s questions.
+• We focus in this chapter on the task of retrieval-based question answering,
+in which the user’s questions are intended to be answered by the material in
+some set of documents.
+
+• Information Retrieval (IR) is the task of returning documents to a user based
+on their information need as expressed in a query. In ranked retrieval, the
+documents are returned in ranked order.
+
+• The match between a query and a document can be done by ﬁrst representing
+each of them with a sparse vector that represents the frequencies of words,
+weighted by tf-idf or BM25. Then the similarity can be measured by cosine.
+• Documents or queries can instead be represented by dense vectors, by encod-
+ing the question and document with an encoder-only model like BERT, and in
+that case computing similarity in embedding space.
+
+• The inverted index is an storage mechanism that makes it very efﬁcient to
+
+ﬁnd documents that have a particular word.
+
+• Ranked retrieval is generally evaluated by mean average precision or inter-
+
+polated precision.
+
+• Question answering systems generally use the retriever/reader architecture.
+In the retriever stage, an IR system is given a query and returns a set of
+documents.
+
+312 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+• The reader stage can either be a span-based extractor, that predicts a span
+of text in the retrieved documents to return as the answer, or a retrieval-
+augmented generator, in which a large language model is used to generate a
+novel answer after reading the documents and the query.
+
+• QA can be evaluated by exact match with a known answer if only a single
+answer is given, or with mean reciprocal rank if a ranked set of answers is
+given.
+
+Bibliographical and Historical Notes
+
+Question answering was one of the earliest NLP tasks, and early versions of the text-
+based and knowledge-based paradigms were developed by the very early 1960s. The
+text-based algorithms generally relied on simple parsing of the question and of the
+sentences in the document, and then looking for matches. This approach was used
+very early on (Phillips, 1960) but perhaps the most complete early system, and one
+that strikingly preﬁgures modern relation-based systems, was the Protosynthex sys-
+tem of Simmons et al. (1964). Given a question, Protosynthex ﬁrst formed a query
+from the content words in the question, and then retrieved candidate answer sen-
+tences in the document, ranked by their frequency-weighted term overlap with the
+question. The query and each retrieved sentence were then parsed with dependency
+parsers, and the sentence whose structure best matches the question structure se-
+lected. Thus the question What do worms eat? would match worms eat grass: both
+have the subject worms as a dependent of eat, in the version of dependency grammar
+used at the time, while birds eat worms has birds as the subject:
+
+What do worms eat
+
+Worms eat grass
+
+Birds eat worms
+
+The alternative knowledge-based paradigm was implemented in the BASEBALL
+system (Green et al., 1961). This system answered questions about baseball games
+like “Where did the Red Sox play on July 7” by querying a structured database of
+game information. The database was stored as a kind of attribute-value matrix with
+values for attributes of each game:
+
+Month = July
+
+Place = Boston
+
+Day = 7
+Game Serial No.
+(Team = Red Sox, Score = 5)
+(Team = Yankees, Score = 3)
+
+= 96
+
+Each question was constituency-parsed using the algorithm of Zellig Harris’s
+TDAP project at the University of Pennsylvania, essentially a cascade of ﬁnite-state
+transducers (see the historical discussion in Joshi and Hopely 1999 and Karttunen
+1999). Then in a content analysis phase each word or phrase was associated with a
+program that computed parts of its meaning. Thus the phrase ‘Where’ had code to
+assign the semantics Place = ?, with the result that the question “Where did the
+Red Sox play on July 7” was assigned the meaning
+
+LUNAR
+
+BIBLIOGRAPHICAL AND HISTORICAL NOTES
+
+313
+
+Place = ?
+Team = Red Sox
+Month = July
+Day = 7
+
+The question is then matched against the database to return the answer. Simmons
+
+(1965) summarizes other early QA systems.
+
+Another important progenitor of the knowledge-based paradigm for question-
+answering is work that used predicate calculus as the meaning representation lan-
+guage. The LUNAR system (Woods et al. 1972, Woods 1978) was designed to be
+a natural language interface to a database of chemical facts about lunar geology. It
+could answer questions like Do any samples have greater than 13 percent aluminum
+by parsing them into a logical form
+
+(TEST (FOR SOME X16 / (SEQ SAMPLES) : T ; (CONTAIN’ X16
+(NPR* X17 / (QUOTE AL203)) (GREATERTHAN 13 PCT))))
+
+By a couple decades later, drawing on new machine learning approaches in NLP,
+Zelle and Mooney (1996) proposed to treat knowledge-based QA as a semantic pars-
+ing task, by creating the Prolog-based GEOQUERY dataset of questions about US
+geography. This model was extended by Zettlemoyer and Collins (2005) and 2007.
+By a decade later, neural models were applied to semantic parsing (Dong and Lap-
+ata 2016, Jia and Liang 2016), and then to knowledge-based question answering by
+mapping text to SQL (Iyer et al., 2017).
+
+Meanwhile, the information-retrieval paradigm for question answering was in-
+ﬂuenced by the rise of the web in the 1990s. The U.S. government-sponsored TREC
+(Text REtrieval Conference) evaluations, run annually since 1992, provide a testbed
+for evaluating information-retrieval tasks and techniques (Voorhees and Harman,
+2005). TREC added an inﬂuential QA track in 1999, which led to a wide variety of
+factoid and non-factoid systems competing in annual evaluations.
+
+At that same time, Hirschman et al. (1999) introduced the idea of using chil-
+dren’s reading comprehension tests to evaluate machine text comprehension algo-
+rithms. They acquired a corpus of 120 passages with 5 questions each designed for
+3rd-6th grade children, built an answer extraction system, and measured how well
+the answers given by their system corresponded to the answer key from the test’s
+publisher. Their algorithm focused on word overlap as a feature; later algorithms
+added named entity features and more complex similarity between the question and
+the answer span (Riloff and Thelen 2000, Ng et al. 2000).
+
+The DeepQA component of the Watson Jeopardy! system was a large and so-
+phisticated feature-based system developed just before neural systems became com-
+mon. It is described in a series of papers in volume 56 of the IBM Journal of Re-
+search and Development, e.g., Ferrucci (2012).
+
+Neural reading comprehension systems drew on the insight common to early
+systems that answer ﬁnding should focus on question-passage similarity. Many of
+the architectural outlines of these modern neural systems were laid out in Hermann
+et al. (2015a), Chen et al. (2017a), and Seo et al. (2017). These systems focused
+on datasets like Rajpurkar et al. (2016) and Rajpurkar et al. (2018) and their succes-
+sors, usually using separate IR algorithms as input to neural reading comprehension
+systems. The paradigm of using dense retrieval with a span-based reader, often with
+a single end-to-end architecture, is exempliﬁed by systems like Lee et al. (2019)
+or Karpukhin et al. (2020). An important research area with dense retrieval for
+open-domain QA is training data: using self-supervised methods to avoid having
+to label positive and negative passages (Sachan et al., 2023). Retrieval-augmented
+
+314 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+generation algorithms were ﬁrst introduced as a way to improve language modeling
+(Khandelwal et al., 2019), but were quickly applied to question answering (Izacard
+et al., 2022; Ram et al., 2023; Shi et al., 2023).
+
+Exercises
+
+CHAPTER
+
+15 Chatbots & Dialogue Systems
+
+Les lois de la conversation sont en g´en´eral de ne s’y appesantir sur aucun ob-
+jet, mais de passer l´eg`erement, sans effort et sans affectation, d’un sujet `a un
+autre ; de savoir y parler de choses frivoles comme de choses s´erieuses
+
+[The rules of conversation are, in general, not to dwell on any one subject,
+but to pass lightly from one to another without effort and without affectation;
+to know how to speak about trivial topics as well as serious ones;]
+
+The 18th C. Encyclopedia of Diderot, start of the entry on conversation
+
+The literature of the fantastic abounds in inanimate objects magically endowed with
+the gift of speech. From Ovid’s statue of Pygmalion to Mary Shelley’s story about
+Frankenstein, we continually reinvent stories about creat-
+ing something and then having a chat with it. Legend has
+it that after ﬁnishing his sculpture Moses, Michelangelo
+thought it so lifelike that he tapped it on the knee and
+commanded it to speak. Perhaps this shouldn’t be sur-
+prising. Language is the mark of humanity and sentience,
+and conversation or dialogue is the most fundamental
+arena of language.
+It is the ﬁrst kind of language we
+learn as children, and the kind we engage in constantly,
+whether we are ordering lunch, buying train tickets, or
+talking with our families, friends, or coworkers.
+
+This chapter introduces the fundamental algorithms of programs that use con-
+versation to interact with users. We often distinguish between two kinds of archi-
+tectures. Task-oriented dialogue systems converse with users to accomplish ﬁxed
+tasks like controlling appliances or ﬁnding restaurants, relying on a data structure
+called the frame, which represents the knowledge a system needs to acquire from
+the user (like the time to set an alarm clock). Chatbots, by contrast, are designed
+to mimic the longer and more unstructured conversations or ‘chats’ characteristic of
+human-human interaction. Modern systems incorporate aspects of both; industrial
+chatbots like ChatGPT can carry on longer unstructured conversations; industrial
+digital assistants like Siri or Alexa are generally frame-based dialogue systems.
+
+The fact that chatbots and dialogue systems are designed for human-computer
+interaction has strong implications for their design and use. Many of these impli-
+cations already became clear in one of the earliest chatbots, ELIZA (Weizenbaum,
+1966). ELIZA was designed to simulate a Rogerian psychologist, based on a branch
+of clinical psychology whose methods involve drawing the patient out by reﬂecting
+patient’s statements back at them. Rogerian interactions are the rare type of conver-
+sation in whic

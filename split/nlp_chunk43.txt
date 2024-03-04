@@ -1,0 +1,409 @@
+ ..., yn), where the output vectors have been contextualized using information
+from the entire input sequence. These output embeddings are contextualized repre-
+sentations of each input token that are generally useful across a range of downstream
+applications. The models of Chapter 10 are sometimes called decoder-only; the
+models of this chapter are sometimes called encoder-only, because they produce an
+encoding for each input token but generally aren’t used to produce running text by
+decoding/sampling.
+
+11.1.1 The architecture for bidirectional models
+
+Bidirectional models use the same self-attention mechanism as causal models. The
+ﬁrst step is to generate a set of key, query and value embeddings for each element
+of the input vector x through the use of learned weight matrices WQ, WK, and WV.
+These weights project each input vector xi into its speciﬁc role as a key, query, or
+value.
+
+qi = WQxi; ki = WKxi; vi = WVxi
+
+(11.1)
+
+The output vector yi corresponding to each input element xi is a weighted sum of all
+
+x1a1x2a2a3a4a5x3x4x5a) A causal self-attention layerx1a1x2a2a3a4a5x3x4x5b) A bidirectional self-attention layer244 CHAPTER 11
+
+• FINE-TUNING AND MASKED LANGUAGE MODELS
+
+the input value vectors v, as follows:
+
+n
+
+yi =
+
+αi jv j
+
+(11.2)
+
+(cid:88)j=1
+The α weights are computed via a softmax over the comparison scores between
+every element of an input sequence considered as a query and every other element
+as a key, where the comparison scores are computed using dot products.
+
+αi j =
+
+scorei j = qi ·
+(cid:80)
+
+exp(scorei j)
+n
+k=1 exp(scoreik)
+k j
+
+(11.3)
+
+(11.4)
+
+As with the models of Chapter 10, since each output vector, yi, is computed
+independently, the processing of an entire sequence can be parallelized via matrix
+dh.
+operations. The ﬁrst step is to pack the input embeddings xi into a matrix X
+×
+That is, each row of X is the embedding of one token of the input. We then multiply
+X by the key, query, and value weight matrices (all of dimensionality d
+d) to
+d, containing all the key,
+d, and V
+RN
+produce matrices Q
+×
+×
+query, and value vectors in a single step.
+
+d, K
+×
+
+RN
+
+RN
+
+RN
+
+×
+
+∈
+
+∈
+
+∈
+
+∈
+
+Q = XWQ; K = XWK; V = XWV
+
+(11.5)
+
+Given these matrices we can compute all the requisite query-key comparisons si-
+multaneously by multiplying Q and K(cid:124)
+in a single operation. Fig. 11.2 illustrates
+the result of this operation for an input with length 5.
+
+Figure 11.2 The N
+
+N QK(cid:124)
+
+×
+
+matrix showing the complete set of qi ·
+
+k j comparisons.
+
+Finally, we can scale these scores, take the softmax, and then multiply the result
+d where each row contains a contextualized
+
+by V resulting in a matrix of shape N
+output embedding corresponding to each token in the input.
+
+×
+
+SelfAttention(Q, K, V) = softmax
+
+QK(cid:124)
+√dk (cid:19)
+
+V
+
+(cid:18)
+
+(11.6)
+
+The key architecture difference is in bidirectional models we don’t mask the fu-
+ture. As shown in Fig. 11.2, the full set of self-attention scores represented by QKT
+constitute an all-pairs comparison between the keys and queries for each element
+of the input. In the case of causal language models in Chapter 10, we masked the
+
+q1•k1q2•k1q2•k2q5•k1q5•k2q5•k3q5•k4q5•k5q4•k1q4•k2q4•k3q4•k4q3•k1q3•k2q3•k3NNq1•k2q1•k3q1•k4q1•k5q2•k3q2•k4q2•k5q3•k4q3•k5q4•k511.1
+
+• BIDIRECTIONAL TRANSFORMER ENCODERS
+
+245
+
+upper triangular portion of this matrix (in Fig. 10.4) to eliminate information about
+future words since this would make the language modeling training task trivial. With
+bidirectional encoders we simply skip the mask, allowing the model to contextualize
+each token using information from the entire input.
+
+Beyond this simple change, all of the other elements of the transformer archi-
+tecture remain the same for bidirectional encoder models. Inputs to the model are
+segmented using subword tokenization and are combined with positional embed-
+dings before being passed through a series of standard transformer blocks consisting
+of self-attention and feedforward layers augmented with residual connections and
+layer normalization, as shown in Fig. 11.3.
+
+Figure 11.3 A transformer block showing all the layers.
+
+To make this more concrete, the original English-only bidirectional transformer
+
+encoder model, BERT (Devlin et al., 2019), consisted of the following:
+
+• An English-only subword vocabulary consisting of 30,000 tokens generated
+
+using the WordPiece algorithm (Schuster and Nakajima, 2012).
+
+• Hidden layers of size of 768,
+• 12 layers of transformer blocks, with 12 multihead attention layers each.
+• The resulting model has about 100M parameters.
+
+The larger multilingual XLM-RoBERTa model, trained on 100 languages, has
+
+• A multilingual subword vocabulary with 250,000 tokens generated using the
+
+SentencePiece Unigram LM algorithm (Kudo and Richardson, 2018b).
+• 24 layers of transformer blocks, with 16 multihead attention layers each
+• Hidden layers of size 1024
+• The resulting model has about 550M parameters.
+
+The use of WordPiece or SentencePiece Unigram LM tokenization (two of the
+large family of subword tokenization algorithms that includes the BPE algorithm
+we saw in Chapter 2) means that—like the large language models of Chapter 10—
+BERT and its descendants are based on subword tokens rather than words. Every
+input sentence ﬁrst has to be tokenized, and then all further processing takes place
+on subword tokens rather than words. This will require, as we’ll see, that for some
+
+MultiHead Attentionz   z                                    zz   z                                    zTransformerBlockx1x2x3xn…ResidualconnectionResidualconnection++h1h2h3hn……FeedforwardLayer NormalizeLayer Normalize246 CHAPTER 11
+
+• FINE-TUNING AND MASKED LANGUAGE MODELS
+
+NLP tasks that require notions of words (like named entity tagging, or parsing) we
+will occasionally need to map subwords back to words.
+
+As with causal transformers, the size of the input layer dictates the complexity of
+the model. Both the time and memory requirements in a transformer grow quadrati-
+cally with the length of the input. It’s necessary, therefore, to set a ﬁxed input length
+that is long enough to provide sufﬁcient context for the model to function and yet
+still be computationally tractable. For BERT and XLR-RoBERTa, a ﬁxed input size
+of 512 subword tokens was used.
+
+11.2 Training Bidirectional Encoders
+
+We trained causal transformer language models in Chapter 10 by making them iter-
+atively predict the next word in a text. But eliminating the causal mask makes the
+guess-the-next-word language modeling task trivial since the answer is now directly
+available from the context, so we’re in need of a new training scheme. Fortunately,
+the traditional learning objective suggests an approach that can be used to train bidi-
+rectional encoders. Instead of trying to predict the next word, the model learns to
+perform a ﬁll-in-the-blank task, technically called the cloze task (Taylor, 1953). To
+see this, let’s return to the motivating example from Chapter 3. Instead of predicting
+which words are likely to come next in this example:
+
+cloze task
+
+Please turn your homework
+
+.
+
+we’re asked to predict a missing item given the rest of the sentence.
+
+Please turn
+
+homework in.
+
+That is, given an input sequence with one or more elements missing, the learning
+task is to predict the missing elements. More precisely, during training the model is
+deprived of one or more elements of an input sequence and must generate a proba-
+bility distribution over the vocabulary for each of the missing items. We then use the
+cross-entropy loss from each of the model’s predictions to drive the learning process.
+This approach can be generalized to any of a variety of methods that corrupt the
+training input and then asks the model to recover the original input. Examples of the
+kinds of manipulations that have been used include masks, substitutions, reorder-
+ings, deletions, and extraneous insertions into the training text.
+
+11.2.1 Masking Words
+
+Masked
+Language
+Modeling
+MLM
+
+The original approach to training bidirectional encoders is called Masked Language
+Modeling (MLM) (Devlin et al., 2019). As with the language model training meth-
+ods we’ve already seen, MLM uses unannotated text from a large corpus. Here, the
+model is presented with a series of sentences from the training corpus where a ran-
+dom sample of tokens from each training sequence is selected for use in the learning
+task. Once chosen, a token is used in one of three ways:
+
+• It is replaced with the unique vocabulary token [MASK].
+• It is replaced with another token from the vocabulary, randomly sampled
+
+based on token unigram probabilities.
+
+• It is left unchanged.
+
+11.2
+
+• TRAINING BIDIRECTIONAL ENCODERS
+
+247
+
+In BERT, 15% of the input tokens in a training sequence are sampled for learning.
+Of these, 80% are replaced with [MASK], 10% are replaced with randomly selected
+tokens, and the remaining 10% are left unchanged.
+
+The MLM training objective is to predict the original inputs for each of the
+masked tokens using a bidirectional encoder of the kind described in the last section.
+The cross-entropy loss from these predictions drives the training process for all the
+parameters in the model. Note that all of the input tokens play a role in the self-
+attention process, but only the sampled tokens are used for learning.
+
+More speciﬁcally, the original input sequence is ﬁrst tokenized using a subword
+model. The sampled items which drive the learning process are chosen from among
+the set of tokenized inputs. Word embeddings for all of the tokens in the input
+are retrieved from the word embedding matrix and then combined with positional
+embeddings to form the input to the transformer.
+
+Figure 11.4 Masked language model training. In this example, three of the input tokens are selected, two of
+which are masked and the third is replaced with an unrelated word. The probabilities assigned by the model to
+these three items are used as the training loss. The other 5 words don’t play a role in training loss. (In this and
+subsequent ﬁgures we display the input as words rather than subword tokens; the reader should keep in mind
+that BERT and similar models actually use subword tokens instead.)
+
+Fig. 11.4 illustrates this approach with a simple example. Here, long, thanks and
+the have been sampled from the training sequence, with the ﬁrst two masked and the
+replaced with the randomly sampled token apricot. The resulting embeddings are
+passed through a stack of bidirectional transformer blocks. To produce a probability
+distribution over the vocabulary for each of the masked tokens, the output vector zi
+from the ﬁnal transformer layer for each masked token i is multiplied by a learned
+dh and then through a softmax to yield the
+set of classiﬁcation weights WV ∈
+|×
+required predictions over the vocabulary.
+
+V
+R|
+
+yi = softmax(WV zi)
+
+With a predicted probability distribution for each masked item, we can use cross-
+entropy to compute the loss for each masked item—the negative log probability
+assigned to the actual masked word, as shown in Fig. 11.4. More formally, for a
+given vector of input tokens in a sentence or batch be x, let the set of tokens that are
+
+Softmax overVocabularySo[mask]and[mask]for longthanksCE Lossall apricot ﬁshtheToken +Positional EmbeddingsSolongandthanksfor all ﬁshtheBidirectional Transformer Encoder+p1+++++++p2p3p4p5p6p7p8z1z2z3z4z5z6z7z8248 CHAPTER 11
+
+• FINE-TUNING AND MASKED LANGUAGE MODELS
+
+masked be M, the version of that sentence with some tokens replaced by masks be
+xmask, and the sequence of output vectors be z. For a given input token xi, such as
+the word long in Fig. 11.4, the loss is the probability of the correct word long, given
+xmask (as summarized in the single output vector zi):
+
+LMLM(xi) =
+
+log P(xi|
+
+zi)
+
+−
+
+The gradients that form the basis for the weight updates are based on the average
+loss over the sampled learning items from a single training sequence (or batch of
+sequences).
+
+LMLM =
+
+1
+M
+|
+
+−
+
+log P(xi|
+
+zi)
+
+| (cid:88)i
+M
+∈
+Note that only the tokens in M play a role in learning; the other words play no role
+in the loss function, so in that sense BERT and its descendents are inefﬁcient; only
+15% of the input samples in the training data are actually used for training weights.
+1
+
+Next Sentence
+Prediction
+
+11.2.2 Next Sentence Prediction
+
+The focus of mask-based learning is on predicting words from surrounding contexts
+with the goal of producing effective word-level representations. However, an im-
+portant class of applications involves determining the relationship between pairs of
+sentences. These include tasks like paraphrase detection (detecting if two sentences
+have similar meanings), entailment (detecting if the meanings of two sentences en-
+tail or contradict each other) or discourse coherence (deciding if two neighboring
+sentences form a coherent discourse).
+
+To capture the kind of knowledge required for applications such as these, some
+models in the BERT family include a second learning objective called Next Sen-
+tence Prediction (NSP). In this task, the model is presented with pairs of sentences
+and is asked to predict whether each pair consists of an actual pair of adjacent sen-
+tences from the training corpus or a pair of unrelated sentences. In BERT, 50% of
+the training pairs consisted of positive pairs, and in the other 50% the second sen-
+tence of a pair was randomly selected from elsewhere in the corpus. The NSP loss
+is based on how well the model can distinguish true pairs from random pairs.
+
+To facilitate NSP training, BERT introduces two new tokens to the input repre-
+sentation (tokens that will prove useful for ﬁne-tuning as well). After tokenizing the
+input with the subword model, the token [CLS] is prepended to the input sentence
+pair, and the token [SEP] is placed between the sentences and after the ﬁnal token of
+the second sentence. Finally, embeddings representing the ﬁrst and second segments
+of the input are added to the word and positional embeddings to allow the model to
+more easily distinguish the input sentences.
+
+During training, the output vector from the ﬁnal layer associated with the [CLS]
+token represents the next sentence prediction. As with the MLM objective, a learned
+dh is used to produce a two-class prediction
+set of classiﬁcation weights WNSP
+×
+from the raw [CLS] vector.
+
+R2
+
+∈
+
+yi = softmax(WNSPhi)
+
+1 There are members of the BERT family like ELECTRA that do use all examples for training (Clark
+et al., 2020b).
+
+11.2
+
+• TRAINING BIDIRECTIONAL ENCODERS
+
+249
+
+Cross entropy is used to compute the NSP loss for each sentence pair presented
+to the model. Fig. 11.5 illustrates the overall NSP training setup. In BERT, the NSP
+loss was used in conjunction with the MLM training objective to form ﬁnal loss.
+
+Figure 11.5 An example of the NSP loss calculation.
+
+11.2.3 Training Regimes
+
+BERT and other early transformer-based language models were trained on about 3.3
+billion words (a combination of English Wikipedia and a corpus of book texts called
+BooksCorpus (Zhu et al., 2015) that is no longer used for intellectual property rea-
+sons). Modern masked language models are now trained on much larger datasets
+of web text, ﬁltered a bit, and augmented by higher-quality data like Wikipedia, the
+same as those we discussed for the causal large language models of Chapter 10.
+Multilingual models similarity use webtext and multilingual Wikipedia. For exam-
+ple the XLM-R model was trained on about 300 billion tokens in 100 languages,
+taken f

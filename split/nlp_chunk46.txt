@@ -1,0 +1,364 @@
+ z2, the
+right external boundary z6, and the embedding for relative position 2 in the span.
+
+11.5.2 Fine-tuning for Span-Based Applications
+
+Span-oriented applications operate in a middle ground between sequence level and
+token level tasks. That is, in span-oriented applications the focus is on generating
+and operating with representations of contiguous sequences of tokens. Typical op-
+erations include identifying spans of interest, classifying spans according to some
+labeling scheme, and determining relations among discovered spans. Applications
+include named entity recognition, question answering, syntactic parsing, semantic
+role labeling and coreference resolution.
+
+Formally, given an input sequence x consisting of T tokens, (x1, x2, ..., xT ), a
+span is a contiguous sequence of tokens with start i and end j such that 1 <= i <=
+j <= T . This formulation results in a total set of spans equal to T (T +1)
+. For practical
+
+2
+
+260 CHAPTER 11
+
+• FINE-TUNING AND MASKED LANGUAGE MODELS
+
+Figure 11.12 Span-based language model training. In this example, a span of length 3 is selected for training
+and all of the words in the span are masked. The ﬁgure illustrates the loss computed for word thanks; the loss
+for the entire span is the sum of the loss for the three words in the span.
+
+purposes, span-based models often impose an application-speciﬁc length limit L, so
+i < L. In the following, we’ll refer to
+the legal spans are limited to those where j
+−
+the enumerated set of legal spans in x as S(x).
+
+The ﬁrst step in ﬁne-tuning a pretrained language model for a span-based ap-
+plication is using the contextualized input embeddings from the model to generate
+representations for all the spans in the input. Most schemes for representing spans
+make use of two primary components: representations of the span boundaries and
+summary representations of the contents of each span. To compute a uniﬁed span
+representation, we concatenate the boundary representations with the summary rep-
+resentation.
+
+In the simplest possible approach, we can use the contextual embeddings of
+the start and end tokens of a span as the boundaries, and the average of the output
+embeddings within the span as the summary representation.
+
+gi j =
+
+1
+i) + 1
+
+( j
+
+−
+
+spanRepi j = [zi; z j; gi, j]
+
+j
+
+zk
+
+(cid:88)k=i
+
+(11.21)
+
+(11.22)
+
+A weakness of this approach is that it doesn’t distinguish the use of a word’s em-
+bedding as the beginning of a span from its use as the end of one. Therefore, more
+elaborate schemes for representing the span boundaries involve learned representa-
+tions for start and end points through the use of two distinct feedforward networks:
+
+si = FFNstart (zi)
+e j = FFNend(z j)
+spanRepi j = [si; e j; gi, j]
+
+(11.23)
+
+(11.24)
+
+(11.25)
+
+Solong[mask][mask][mask] allﬁshEmbeddingLayerSolongandthanksfor all ﬁshtheBidirectional Transformer EncoderFFN<latexit sha1_base64="TLLYS42oN5DcSo8OZKsu5vvui9Q=">AAAB6nicbVDLSsNAFL2pr1pfVZduBovgqiSlqMuiG5cV7APaUCbTSTt0kokzN0IN/Qk3Im4U/Bh/wb8xabNp64GBwzlnuPdcL5LCoG3/WoWNza3tneJuaW//4PCofHzSNirWjLeYkkp3PWq4FCFvoUDJu5HmNPAk73iTu8zvPHNthAofcRpxN6CjUPiCUUwltx9QHHt+8jIb1EqDcsWu2nOQdeLkpAI5moPyT3+oWBzwEJmkxvQcO0I3oRoFk3xW6seGR5RN6Ign81Vn5CKVhsRXOn0hkrm6lKOBMdPAS5PZambVy8T/vF6M/o2biDCKkYdsMciPJUFFst5kKDRnKKcpoUyLdEPCxlRThul1surOatF10q5Vnatq/aFeadzmRyjCGZzDJThwDQ24hya0gMETvMEnfFnSerXerY9FtGDlf05hCdb3HzOIjYs=</latexit>z2<latexit sha1_base64="gEjGR4IWPa5ooEJ4YmtAT6IDm9Q=">AAAB7nicbVDLSsNAFL2pr1ofjbp0M1gEVyWRUl0W3bisYB/QljCZTtqhkwczN0IN+Q03Im4U/BR/wb8xabNp64GBwzlnuPdcN5JCo2X9GqWt7Z3dvfJ+5eDw6Lhqnpx2dRgrxjsslKHqu1RzKQLeQYGS9yPFqe9K3nNn97nfe+ZKizB4wnnERz6dBMITjGImOWZ16FOcul7y4iTNNK04Zs2qWwuQTWIXpAYF2o75MxyHLPZ5gExSrQe2FeEooQoFkzytDGPNI8pmdMKTxbopucykMfFClb0AyUJdyVFf67nvZsl8Ob3u5eJ/3iBG73aUiCCKkQdsOciLJcGQ5N3JWCjOUM4zQpkS2YaETamiDLML5dXt9aKbpHtdt5v1xmOj1rorjlCGc7iAK7DhBlrwAG3oAIMY3uATvozIeDXejY9ltGQUf85gBcb3H3Mijsw=</latexit>z6+Span-based loss<latexit sha1_base64="0o0Mg1m8L/B4YdJ0Zefw5M+RdYc=">AAAB6nicbVDLSsNAFL2pr1pfVZduBovgqiSlqMuiG5cV7APaUCbTSTt0MklnboQS+hNuRNwo+DH+gn9j0mbT1gMDh3POcO+5XiSFQdv+tQpb2zu7e8X90sHh0fFJ+fSsbcJYM95ioQx116OGS6F4CwVK3o00p4EnecebPGR+54VrI0L1jLOIuwEdKeELRjGV3H5Acez5STQf1EqDcsWu2guQTeLkpAI5moPyT38YsjjgCpmkxvQcO0I3oRoFk3xe6seGR5RN6Igni1Xn5CqVhsQPdfoUkoW6kqOBMbPAS5PZambdy8T/vF6M/p2bCBXFyBVbDvJjSTAkWW8yFJozlLOUUKZFuiFhY6opw/Q6WXVnvegmadeqzk21/lSvNO7zIxThAi7hGhy4hQY8QhNawGAKb/AJX5a0Xq1362MZLVj5n3NYgfX9ByScjYE=</latexit>p2z1z2z3z4z5z6z7z8andfor p1p3p2thankstheMLM lossSBO loss11.5
+
+• ADVANCED: SPAN-BASED MASKING
+
+261
+
+Similarly, a simple average of the vectors in a span is unlikely to be an optimal
+representation of a span since it treats all of a span’s embeddings as equally impor-
+tant. For many applications, a more useful representation would be centered around
+the head of the phrase corresponding to the span. One method for getting at such in-
+formation in the absence of a syntactic parse is to use a standard self-attention layer
+to generate a span representation.
+
+gi j = SelfAttention(zi: j)
+
+(11.26)
+
+Now, given span representations g for each span in S(x), classiﬁers can be ﬁne-
+tuned to generate application-speciﬁc scores for various span-oriented tasks: binary
+span identiﬁcation (is this a legitimate span of interest or not?), span classiﬁcation
+(what kind of span is this?), and span relation classiﬁcation (how are these two spans
+related?).
+
+To ground this discussion, let’s return to named entity recognition (NER). Given
+a scheme for representing spans and a set of named entity types, a span-based ap-
+proach to NER is a straightforward classiﬁcation problem where each span in an
+input is assigned a class label. More formally, given an input sequence x1, . . . , xn,
+we want to assign a label y, from the set of valid NER labels, to each of the spans in
+S(x). Since most of the spans in a given input will not be named entities we’ll add
+the label NULL to the set of types in Y .
+
+yi j = softmax(FFN(spanRepi j)
+
+(11.27)
+
+Figure 11.13 A span-oriented approach to named entity classiﬁcation. The ﬁgure only illustrates the compu-
+tation for 2 spans corresponding to ground truth named entities. In reality, the network scores all of the T (T +1)
+spans in the text. That is, all the unigrams, bigrams, trigrams, etc. up to the length limit.
+
+2
+
+With this approach, ﬁne-tuning entails using supervised training data to learn
+the parameters of the ﬁnal classiﬁer, as well as the weights used to generate the
+boundary representations, and the weights in the self-attention layer that generates
+the span content representation. During training, the model’s predictions for all
+spans are compared to their gold-standard labels and cross-entropy loss is used to
+drive the training.
+
+During decoding, each span is scored using a softmax over the ﬁnal classiﬁer
+output to generate a distribution over the possible labels, with the argmax score for
+each span taken as the correct answer. Fig. 11.13 illustrates this approach with an
+
+ContextualizedEmbeddings (h)Bidirectional Transformer Encoder JaneVillanuevaofUnitedAirlinesHoldingdiscussed…Span summary Span representation ClassiﬁcationScoresFFNNFFNN…PERORGSoftmaxSelfAttnSelfAttn262 CHAPTER 11
+
+• FINE-TUNING AND MASKED LANGUAGE MODELS
+
+example. A variation on this scheme designed to improve precision adds a calibrated
+threshold to the labeling of a span as anything other than NULL.
+
+There are two signiﬁcant advantages to a span-based approach to NER over a
+BIO-based per-word labeling approach. The ﬁrst advantage is that BIO-based ap-
+proaches are prone to a labeling mis-match problem. That is, every label in a longer
+named entity must be correct for an output to be judged correct. Returning to the
+example in Fig. 11.13, the following labeling would be judged entirely wrong due to
+the incorrect label on the ﬁrst item. Span-based approaches only have to make one
+classiﬁcation for each span.
+
+(11.28) Jane
+
+B-PER
+
+Villanueva
+I-PER
+
+of
+O
+
+United
+I-ORG
+
+Airlines
+I-ORG
+
+Holding
+I-ORG
+
+discussed
+O
+
+...
+
+The second advantage to span-based approaches is that they naturally accommo-
+date embedded named entities. For example, in this example both United Airlines
+and United Airlines Holding are legitimate named entities. The BIO approach has
+no way of encoding this embedded structure. But the span-based approach can nat-
+urally label both since the spans are labeled separately.
+
+11.6 Summary
+
+This chapter has introduced the topic of transfer learning from pretrained language
+models. Here’s a summary of the main points that we covered:
+
+• Bidirectional encoders can be used to generate contextualized representations
+
+of input embeddings using the entire input context.
+
+• Pretrained language models based on bidirectional encoders can be learned
+using a masked language model objective where a model is trained to guess
+the missing information from an input.
+
+• Pretrained language models can be ﬁne-tuned for speciﬁc applications by
+adding lightweight classiﬁer layers on top of the outputs of the pretrained
+model.
+
+Bibliographical and Historical Notes
+
+CHAPTER
+
+12 Prompting, In-Context Learn-
+
+ing, and Instruct Tuning
+
+Placeholder
+
+263
+
+Part II
+
+NLP APPLICATIONS
+
+In this second part of the book we introduce fundamental NLP applications:
+machine translation, information retrieval, question answering, dialogue systems,
+and speech recognition.
+
+CHAPTER
+
+13 Machine Translation
+
+“I want to talk the dialect of your people. It’s no use of talking unless
+people understand what you say.”
+
+Zora Neale Hurston, Moses, Man of the Mountain 1939, p. 121
+
+machine
+translation
+MT
+
+This chapter introduces machine translation (MT), the use of computers to trans-
+late from one language to another.
+
+Of course translation, in its full generality, such as the translation of literature, or
+poetry, is a difﬁcult, fascinating, and intensely human endeavor, as rich as any other
+area of human creativity.
+
+Machine translation in its present form therefore focuses on a number of very
+practical tasks. Perhaps the most common current use of machine translation is
+for information access. We might want to translate some instructions on the web,
+perhaps the recipe for a favorite dish, or the steps for putting together some furniture.
+Or we might want to read an article in a newspaper, or get information from an
+online resource like Wikipedia or a government webpage in some other language.
+MT for information
+access
+is probably
+one of the most com-
+mon uses of NLP
+technology, and Google
+Translate alone (shown above) translates hundreds of billions of words a day be-
+tween over 100 languages. Improvements in machine translation can thus help re-
+duce what is often called the digital divide in information access: the fact that much
+more information is available in English and other languages spoken in wealthy
+countries. Web searches in English return much more information than searches in
+other languages, and online resources like Wikipedia are much larger in English and
+other higher-resourced languages. High-quality translation can help provide infor-
+mation to speakers of lower-resourced languages.
+
+Another common use of machine translation is to aid human translators. MT sys-
+tems are routinely used to produce a draft translation that is ﬁxed up in a post-editing
+phase by a human translator. This task is often called computer-aided translation
+or CAT. CAT is commonly used as part of localization: the task of adapting content
+or a product to a particular language community.
+
+Finally, a more recent application of MT is to in-the-moment human commu-
+nication needs. This includes incremental translation, translating speech on-the-ﬂy
+before the entire sentence is complete, as is commonly used in simultaneous inter-
+pretation. Image-centric translation can be used for example to use OCR of the text
+on a phone camera image as input to an MT system to translate menus or street signs.
+The standard algorithm for MT is the encoder-decoder network, an architecture
+that we introduced in Chapter 9 for RNNs. Recall that encoder-decoder or sequence-
+to-sequence models are used for tasks in which we need to map an input sequence to
+an output sequence that is a complex function of the entire input sequence. Indeed,
+
+information
+access
+
+digital divide
+
+post-editing
+
+CAT
+
+localization
+
+encoder-
+decoder
+
+268 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+in machine translation, the words of the target language don’t necessarily agree with
+the words of the source language in number or order. Consider translating the fol-
+lowing made-up English sentence into Japanese.
+
+(13.1) English: He wrote a letter to a friend
+
+Japanese:
+
+tomodachi
+friend
+
+ni
+to
+
+tegami-o
+letter
+
+kaita
+wrote
+
+Note that the elements of the sentences are in very different places in the different
+languages. In English, the verb is in the middle of the sentence, while in Japanese,
+the verb kaita comes at the end. The Japanese sentence doesn’t require the pronoun
+he, while English does.
+
+Such differences between languages can be quite complex. In the following ac-
+tual sentence from the United Nations, notice the many changes between the Chinese
+sentence (we’ve given in red a word-by-word gloss of the Chinese characters) and
+its English equivalent produced by human translators.
+(13.2) 大会/General Assembly 在/on 1982年/1982 12月/December 10日/10 通过
+了/adopted 第37号/37th 决议/resolution ，核准了/approved 第二
+次/second 探索/exploration 及/and 和平peaceful
+colorblue利用/using 外
+}
+层空间/outer space 会议/conference 的/of 各项/various 建议/suggestions
+。
+
+On 10 December 1982 , the General Assembly adopted resolution 37 in
+which it endorsed the recommendations of the Second United Nations
+Conference on the Exploration and Peaceful Uses of Outer Space .
+
+Note the many ways the English and Chinese differ. For example the order-
+ing differs in major ways; the Chinese order of the noun phrase is “peaceful using
+outer space conference of suggestions” while the English has “suggestions of the ...
+conference on peaceful use of outer space”). And the order differs in minor ways
+(the date is ordered differently). English requires the in many places that Chinese
+doesn’t, and adds some details (like “in which” and “it”) that aren’t necessary in
+Chinese. Chinese doesn’t grammatically mark plurality on nouns (unlike English,
+which has the “-s” in “recommendations”), and so the Chinese must use the modi-
+ﬁer 各项/various to make it clear that there is not just one recommendation. English
+capitalizes some words but not others. Encoder-decoder networks are very success-
+ful at handling these sorts of complicated cases of sequence mappings.
+
+We’ll begin in the next section by considering the linguistic background about
+how languages vary, and the implications this variance has for the task of MT. Then
+we’ll sketch out the standard algorithm, give details about things like input tokeniza-
+tion and creating training corpora of parallel sentences, give some more low-level
+details about the encoder-decoder network, and ﬁnally discuss how MT is evaluated,
+introducing the simple chrF metric.
+
+13.1 Language Divergences and Typology
+
+universal
+
+There are about 7,000 languages in the world. Some aspects of human language
+seem to be universal, holding true for every one of these languages, or are statistical
+universals, holding true for most of these languages. Many universals arise from the
+functional role of language as a communicative system by humans. Every language,
+for example, seems to have words for referring to people, for talking about eating and
+
+13.1
+
+• L

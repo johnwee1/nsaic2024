@@ -1,0 +1,368 @@
+ously sued other companies.
+
+22.1.2
+
+Information Status
+
+The way referring expressions are used to evoke new referents into the discourse
+(introducing new information), or access old entities from the model (old informa-
+tion), is called their information status or information structure. Entities can be
+discourse-new or discourse-old, and indeed it is common to distinguish at least
+three kinds of entities informationally (Prince, 1981):
+
+information
+status
+discourse-new
+
+discourse-old
+
+new NPs:
+
+brand new NPs: these introduce entities that are discourse-new and hearer-
+
+new like a fruit or some walnuts.
+
+unused NPs: these introduce entities that are discourse-new but hearer-old
+
+(like Hong Kong, Marie Curie, or the New York Times.
+
+old NPs: also called evoked NPs, these introduce entities that already in the dis-
+course model, hence are both discourse-old and hearer-old, like it in “I went
+to a new restaurant. It was...”.
+
+486 CHAPTER 22
+
+• COREFERENCE RESOLUTION AND ENTITY LINKING
+
+bridging
+inference
+
+given-new
+
+accessible
+
+salience
+
+inferrables: these introduce entities that are neither hearer-old nor discourse-old,
+but the hearer can infer their existence by reasoning based on other entities
+that are in the discourse. Consider the following examples:
+
+(22.18) I went to a superb restaurant yesterday. The chef had just opened it.
+(22.19) Mix ﬂour, butter and water. Knead the dough until shiny.
+
+Neither the chef nor the dough were in the discourse model based on the ﬁrst
+sentence of either example, but the reader can make a bridging inference
+that these entities should be added to the discourse model and associated with
+the restaurant and the ingredients, based on world knowledge that restaurants
+have chefs and dough is the result of mixing ﬂour and liquid (Haviland and
+Clark 1974, Webber and Baldwin 1992, Nissim et al. 2004, Hou et al. 2018).
+
+The form of an NP gives strong clues to its information status. We often talk
+about an entity’s position on the given-new dimension, the extent to which the refer-
+ent is given (salient in the discourse, easier for the hearer to call to mind, predictable
+by the hearer), versus new (non-salient in the discourse, unpredictable) (Chafe 1976,
+Prince 1981, Gundel et al. 1993). A referent that is very accessible (Ariel, 2001)
+i.e., very salient in the hearer’s mind or easy to call to mind, can be referred to with
+less linguistic material. For example pronouns are used only when the referent has
+a high degree of activation or salience in the discourse model.4 By contrast, less
+salient entities, like a new referent being introduced to the discourse, will need to be
+introduced with a longer and more explicit referring expression to help the hearer
+recover the referent.
+
+Thus when an entity is ﬁrst introduced into a discourse its mentions are likely
+to have full names, titles or roles, or appositive or restrictive relative clauses, as in
+the introduction of our protagonist in (22.1): Victoria Chen, CFO of Megabucks
+Banking. As an entity is discussed over a discourse, it becomes more salient to the
+hearer and its mentions on average typically becomes shorter and less informative,
+for example with a shortened name (for example Ms. Chen), a deﬁnite description
+(the 38-year-old), or a pronoun (she or her) (Hawkins 1978). However, this change
+in length is not monotonic, and is sensitive to discourse structure (Grosz 1977b,
+Reichman 1985, Fox 1993).
+
+22.1.3 Complications: Non-Referring Expressions
+
+Many noun phrases or other nominals are not referring expressions, although they
+may bear a confusing superﬁcial resemblance. For example in some of the earliest
+computational work on reference resolution, Karttunen (1969) pointed out that the
+NP a car in the following example does not create a discourse referent:
+
+(22.20) Janet doesn’t have a car.
+
+and cannot be referred back to by anaphoric it or the car:
+
+(22.21) *It is a Toyota.
+
+(22.22) *The car is red.
+
+We summarize here four common types of structures that are not counted as men-
+tions in coreference tasks and hence complicate the task of mention-detection:
+
+4 Pronouns also usually (but not always) refer to entities that were introduced no further than one or two
+sentences back in the ongoing discourse, whereas deﬁnite noun phrases can often refer further back.
+
+22.1
+
+• COREFERENCE PHENOMENA: LINGUISTIC BACKGROUND
+
+487
+
+Appositives: An appositional structure is a noun phrase that appears next to a
+head noun phrase, describing the head. In English they often appear in commas, like
+“a unit of UAL” appearing in apposition to the NP United, or CFO of Megabucks
+Banking in apposition to Victoria Chen.
+
+(22.23) Victoria Chen, CFO of Megabucks Banking, saw ...
+(22.24) United, a unit of UAL, matched the fares.
+
+Appositional NPs are not referring expressions, instead functioning as a kind of
+supplementary parenthetical description of the head NP. Nonetheless, sometimes it
+is useful to link these phrases to an entity they describe, and so some datasets like
+OntoNotes mark appositional relationships.
+
+Predicative and Prenominal NPs: Predicative or attributive NPs describe prop-
+erties of the head noun. In United is a unit of UAL, the NP a unit of UAL describes
+a property of United, rather than referring to a distinct entity. Thus they are not
+marked as mentions in coreference tasks; in our example the NPs $2.3 million and
+the company’s president, are attributive, describing properties of her pay and the
+38-year-old; Example (22.27) shows a Chinese example in which the predicate NP
+(中国最大的城市; China’s biggest city) is not a mention.
+(22.25) her pay jumped to $2.3 million
+(22.26) the 38-year-old became the company’s president
+(22.27) 上海是[中国最大的城市]
+
+[Shanghai is China’s biggest city]
+
+expletive
+
+clefts
+
+Expletives: Many uses of pronouns like it in English and corresponding pronouns
+in other languages are not referential. Such expletive or pleonastic cases include
+it is raining, in idioms like hit it off, or in particular syntactic situations like clefts
+(22.28a) or extraposition (22.28b):
+(22.28)
+
+a. It was Emma Goldman who founded Mother Earth
+b. It surprised me that there was a herring hanging on her wall.
+
+Generics: Another kind of expression that does not refer back to an entity explic-
+itly evoked in the text is generic reference. Consider (22.29).
+
+(22.29) I love mangos. They are very tasty.
+
+Here, they refers, not to a particular mango or set of mangos, but instead to the class
+of mangos in general. The pronoun you can also be used generically:
+
+(22.30) In July in San Francisco you have to wear a jacket.
+
+22.1.4 Linguistic Properties of the Coreference Relation
+
+Now that we have seen the linguistic properties of individual referring expressions
+we turn to properties of the antecedent/anaphor pair. Understanding these properties
+is helpful both in designing novel features and performing error analyses.
+
+Number Agreement: Referring expressions and their referents must generally
+agree in number; English she/her/he/him/his/it are singular, we/us/they/them are plu-
+ral, and you is unspeciﬁed for number. So a plural antecedent like the chefs cannot
+generally corefer with a singular anaphor like she. However, algorithms cannot
+enforce number agreement too strictly. First, semantically plural entities can be re-
+ferred to by either it or they:
+
+(22.31) IBM announced a new machine translation product yesterday. They have
+
+been working on it for 20 years.
+
+488 CHAPTER 22
+
+• COREFERENCE RESOLUTION AND ENTITY LINKING
+
+singular they
+
+Second, singular they has become much more common, in which they is used to
+describe singular individuals, often useful because they is gender neutral. Although
+recently increasing, singular they is quite old, part of English for many centuries.5
+
+Person Agreement: English distinguishes between ﬁrst, second, and third person,
+and a pronoun’s antecedent must agree with the pronoun in person. Thus a third
+person pronoun (he, she, they, him, her, them, his, her, their) must have a third person
+antecedent (one of the above or any other noun phrase). However, phenomena like
+quotation can cause exceptions; in this example I, my, and she are coreferent:
+
+(22.32) “I voted for Nader because he was most aligned with my values,” she said.
+
+In many languages, all nouns have grammat-
+Gender or Noun Class Agreement:
+ical gender or noun class6 and pronouns generally agree with the grammatical gender
+of their antecedent. In English this occurs only with third-person singular pronouns,
+which distinguish between male (he, him, his), female (she, her), and nonpersonal
+(it) grammatical genders. Non-binary pronouns like ze or hir may also occur in more
+recent texts. Knowing which gender to associate with a name in text can be complex,
+and may require world knowledge about the individual. Some examples:
+
+(22.33) Maryam has a theorem. She is exciting. (she=Maryam, not the theorem)
+(22.34) Maryam has a theorem. It is exciting. (it=the theorem, not Maryam)
+
+reﬂexive
+
+Binding Theory Constraints: The binding theory is a name for syntactic con-
+straints on the relations between a mention and an antecedent in the same sentence
+(Chomsky, 1981). Oversimplifying a bit, reﬂexive pronouns like himself and her-
+self corefer with the subject of the most immediate clause that contains them (22.35),
+whereas nonreﬂexives cannot corefer with this subject (22.36).
+
+(22.35) Janet bought herself a bottle of ﬁsh sauce. [herself=Janet]
+(22.36) Janet bought her a bottle of ﬁsh sauce. [her
+
+=Janet]
+
+Recency: Entities introduced in recent utterances tend to be more salient than
+those introduced from utterances further back. Thus, in (22.37), the pronoun it is
+more likely to refer to Jim’s map than the doctor’s map.
+
+(22.37) The doctor found an old map in the captain’s chest. Jim found an even
+
+older map hidden on the shelf. It described an island.
+
+Grammatical Role: Entities mentioned in subject position are more salient than
+those in object position, which are in turn more salient than those mentioned in
+oblique positions. Thus although the ﬁrst sentence in (22.38) and (22.39) expresses
+roughly the same propositional content, the preferred referent for the pronoun he
+varies with the subject—John in (22.38) and Bill in (22.39).
+
+(22.38) Billy Bones went to the bar with Jim Hawkins. He called for a glass of
+
+rum. [ he = Billy ]
+
+(22.39) Jim Hawkins went to the bar with Billy Bones. He called for a glass of
+
+rum. [ he = Jim ]
+
+5 Here’s a bound pronoun example from Shakespeare’s Comedy of Errors: There’s not a man I meet but
+doth salute me As if I were their well-acquainted friend
+6 The word “gender” is generally only used for languages with 2 or 3 noun classes, like most Indo-
+European languages; many languages, like the Bantu languages or Chinese, have a much larger number
+of noun classes.
+
+(cid:54)
+22.2
+
+• COREFERENCE TASKS AND DATASETS
+
+489
+
+Verb Semantics: Some verbs semantically emphasize one of their arguments, bi-
+asing the interpretation of subsequent pronouns. Compare (22.40) and (22.41).
+
+(22.40) John telephoned Bill. He lost the laptop.
+(22.41) John criticized Bill. He lost the laptop.
+
+These examples differ only in the verb used in the ﬁrst sentence, yet “he” in (22.40)
+is typically resolved to John, whereas “he” in (22.41) is resolved to Bill. This may
+be partly due to the link between implicit causality and saliency: the implicit cause
+of a “criticizing” event is its object, whereas the implicit cause of a “telephoning”
+event is its subject. In such verbs, the entity which is the implicit cause may be more
+salient.
+
+Selectional Restrictions: Many other kinds of semantic knowledge can play a role
+in referent preference. For example, the selectional restrictions that a verb places on
+its arguments (Chapter 24) can help eliminate referents, as in (22.42).
+
+(22.42) I ate the soup in my new bowl after cooking it for hours
+
+There are two possible referents for it, the soup and the bowl. The verb eat, however,
+requires that its direct object denote something edible, and this constraint can rule
+out bowl as a possible referent.
+
+22.2 Coreference Tasks and Datasets
+
+We can formulate the task of coreference resolution as follows: Given a text T , ﬁnd
+all entities and the coreference links between them. We evaluate our task by com-
+paring the links our system creates with those in human-created gold coreference
+annotations on T .
+
+Let’s return to our coreference example, now using superscript numbers for each
+coreference chain (cluster), and subscript letters for individual mentions in the clus-
+ter:
+(22.43) [Victoria Chen]1
+
+a, CFO of [Megabucks Banking]2
+
+a, saw [[her]1
+
+a jump
+
+c also became [[the company]2
+d came to [Megabucks]2
+
+b pay]3
+b’s
+c from rival
+
+to $2.3 million, as [the 38-year-old]1
+president. It is widely known that [she]1
+[Lotsabucks]4
+a.
+
+Assuming example (22.43) was the entirety of the article, the chains for her pay and
+Lotsabucks are singleton mentions:
+
+1.
+2.
+3.
+4.
+
+Victoria Chen, her, the 38-year-old, She
+{
+Megabucks Banking, the company, Megabucks
+{
+her pay
+{
+Lotsabucks
+}
+{
+
+}
+
+}
+
+}
+
+For most coreference evaluation campaigns, the input to the system is the raw
+text of articles, and systems must detect mentions and then link them into clusters.
+Solving this task requires dealing with pronominal anaphora (ﬁguring out that her
+refers to Victoria Chen), ﬁltering out non-referential pronouns like the pleonastic It
+in It has been ten years), dealing with deﬁnite noun phrases to ﬁgure out that the
+38-year-old is coreferent with Victoria Chen, and that the company is the same as
+Megabucks. And we need to deal with names, to realize that Megabucks is the same
+as Megabucks Banking.
+
+490 CHAPTER 22
+
+• COREFERENCE RESOLUTION AND ENTITY LINKING
+
+Exactly what counts as a mention and what links are annotated differs from task
+to task and dataset to dataset. For example some coreference datasets do not label
+singletons, making the task much simpler. Resolvers can achieve much higher scores
+on corpora without singletons, since singletons constitute the majority of mentions in
+running text, and they are often hard to distinguish from non-referential NPs. Some
+tasks use gold mention-detection (i.e. the system is given human-labeled mention
+boundaries and the task is just to cluster these gold mentions), which eliminates the
+need to detect and segment mentions from running text.
+
+Coreference is usually evaluated by the CoNLL F1 score, which combines three
+
+metrics: MUC, B3, and CEAFe; Section 22.8 gives the details.
+
+Let’s mention a few characteristics of one popular coreference dataset, OntoNotes
+(Pradhan et al. 2007c, Pradhan et al. 2007a), and the CoNLL 2012 Shared Task
+based on it (Pradhan et al., 2012a). OntoNotes contains hand-annotated Chinese
+and English coreference datasets of roughly one million words each, consisting of
+newswire, magazine articles, broadcast news, broadcast conversations, web data and
+conversational speech data, as well as about 300,000 words of annotated Arabic
+newswire. The most important distinguishing characteristic of OntoNotes is that
+it does not label singletons, simplifying the coreference task, since singletons rep-
+In other ways, it is similar to other coreference
+resent 60%-70% of all entities.
+datasets. Referring expression NPs that are coreferent are marked as mentions, but
+generics and pleonastic pronouns are not marked. Appositive clauses are not marked
+as separate mentions, but they are included in the mention. Thus in th

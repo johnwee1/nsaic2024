@@ -1,0 +1,1122 @@
+l that we use an asterisk (*) to mark fragments that
+are not grammatical English sentences):
+
+*from arrive. . . *as attracts. . .
+*the is. . .
+
+*spot sat. . .
+
+Thus, to correctly describe facts about the ordering of these words in English, we
+must be able to say things like “Noun Phrases can occur before verbs”. Let’s now
+see how to do this in a more formal way!
+
+17.2 Context-Free Grammars
+
+CFG
+
+rules
+
+lexicon
+
+NP
+
+A widely used formal system for modeling constituent structure in natural lan-
+guage is the context-free grammar, or CFG. Context-free grammars are also called
+phrase-structure grammars, and the formalism is equivalent to Backus-Naur form,
+or BNF. The idea of basing a grammar on constituent structure dates back to the psy-
+chologist Wilhelm Wundt (1900) but was not formalized until Chomsky (1956) and,
+independently, Backus (1959).
+
+A context-free grammar consists of a set of rules or productions, each of which
+expresses the ways that symbols of the language can be grouped and ordered to-
+gether, and a lexicon of words and symbols. For example, the following productions
+express that an NP (or noun phrase) can be composed of either a ProperNoun or
+a determiner (Det) followed by a Nominal; a Nominal in turn can consist of one or
+
+17.2
+
+• CONTEXT-FREE GRAMMARS
+
+369
+
+more Nouns.1
+
+NP
+NP
+Nominal
+
+→
+→
+→
+
+Det Nominal
+ProperNoun
+Noun
+
+|
+
+Nominal Noun
+
+Context-free rules can be hierarchically embedded, so we can combine the previous
+rules with others, like the following, that express facts about the lexicon:
+
+Det
+Det
+Noun
+
+a
+the
+ﬂight
+
+→
+→
+→
+The symbols that are used in a CFG are divided into two classes. The symbols
+that correspond to words in the language (“the”, “nightclub”) are called terminal
+symbols; the lexicon is the set of rules that introduce these terminal symbols. The
+symbols that express abstractions over these terminals are called non-terminals. In
+each context-free rule, the item to the right of the arrow (
+) is an ordered list of one
+or more terminals and non-terminals; to the left of the arrow is a single non-terminal
+symbol expressing some cluster or generalization. The non-terminal associated with
+each word in the lexicon is its lexical category, or part of speech.
+
+→
+
+terminal
+
+non-terminal
+
+A CFG can be thought of in two ways: as a device for generating sentences
+and as a device for assigning a structure to a given sentence. Viewing a CFG as a
+generator, we can read the
+arrow as “rewrite the symbol on the left with the string
+of symbols on the right”.
+
+→
+
+So starting from the symbol:
+we can use our ﬁrst rule to rewrite NP as:
+and then rewrite Nominal as:
+and ﬁnally rewrite these parts-of-speech as:
+
+NP
+Det Nominal
+Noun
+a ﬂight
+
+derivation
+
+parse tree
+
+We say the string a ﬂight can be derived from the non-terminal NP. Thus, a CFG
+can be used to generate a set of strings. This sequence of rule expansions is called a
+derivation of the string of words. It is common to represent a derivation by a parse
+tree (commonly shown inverted with the root at the top). Figure 17.1 shows the tree
+representation of this derivation.
+
+NP
+
+Det
+
+Nom
+
+a
+
+Noun
+
+ﬂight
+
+Figure 17.1 A parse tree for “a ﬂight”.
+
+dominates
+
+start symbol
+
+In the parse tree shown in Fig. 17.1, we can say that the node NP dominates
+all the nodes in the tree (Det, Nom, Noun, a, ﬂight). We can say further that it
+immediately dominates the nodes Det and Nom.
+
+The formal language deﬁned by a CFG is the set of strings that are derivable
+from the designated start symbol. Each grammar must have one designated start
+
+1 When talking about these rules we can pronounce the rightarrow
+read the ﬁrst rule above as “NP goes to Det Nominal”.
+
+→
+
+as “goes to”, and so we might
+
+370 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+symbol, which is often called S. Since context-free grammars are often used to deﬁne
+sentences, S is usually interpreted as the “sentence” node, and the set of strings that
+are derivable from S is the set of sentences in some simpliﬁed version of English.
+
+Let’s add a few additional rules to our inventory. The following rule expresses
+
+verb phrase
+
+the fact that a sentence can consist of a noun phrase followed by a verb phrase:
+
+S
+
+→
+
+NP VP I prefer a morning ﬂight
+
+A verb phrase in English consists of a verb followed by assorted other things;
+for example, one kind of verb phrase consists of a verb followed by a noun phrase:
+
+VP
+
+→
+
+Verb NP prefer a morning ﬂight
+
+Or the verb may be followed by a noun phrase and a prepositional phrase:
+
+VP
+
+→
+
+Verb NP PP leave Boston in the morning
+
+Or the verb phrase may have a verb followed by a prepositional phrase alone:
+
+VP
+
+→
+
+Verb PP leaving on Thursday
+
+A prepositional phrase generally has a preposition followed by a noun phrase.
+For example, a common type of prepositional phrase in the ATIS corpus is used to
+indicate location or direction:
+
+PP
+
+→
+
+Preposition NP from Los Angeles
+
+The NP inside a PP need not be a location; PPs are often used with times and
+dates, and with other nouns as well; they can be arbitrarily complex. Here are ten
+examples from the ATIS corpus:
+
+to Seattle
+in Minneapolis
+on Wednesday
+in the evening
+on the ninth of July
+
+on these ﬂights
+about the ground transportation in Chicago
+of the round trip ﬂight on United Airlines
+of the AP ﬁfty seven ﬂight
+with a stopover in Nashville
+
+Figure 17.2 gives a sample lexicon, and Fig. 17.3 summarizes the grammar rules
+to
+
+we’ve seen so far, which we’ll call L0. Note that we can use the or-symbol
+indicate that a non-terminal has alternate possible expansions.
+
+|
+
+ﬂight
+
+breeze
+|
+need
+
+|
+like
+non-stop
+
+|
+
+|
+
+|
+ﬁrst
+
+trip
+|
+want
+
+morning
+do
+ﬂy
+
+|
+latest
+
+|
+
+|
+
+|
+
+Noun
+Verb
+Adjective
+
+Pronoun
+Proper-Noun
+
+→
+→
+→
+
+→
+→
+
+Determiner
+Preposition
+Conjunction
+
+→
+→
+→
+Figure 17.2 The lexicon for L
+
+|
+
+ﬂights
+|
+is
+prefer
+cheapest
+other
+|
+me
+I
+|
+|
+Alaska
+|
+
+|
+
+Chicago
+a
+
+|
+the
+|
+from
+and
+0.
+
+|
+
+|
+
+|
+direct
+you
+it
+|
+Baltimore
+United
+this
+
+|
+an
+
+|
+on
+but
+
+|
+
+|
+to
+or
+
+|
+|
+
+|
+near
+
+|
+
+Los Angeles
+American
+that
+
+|
+|
+these
+in
+
+|
+
+We can use this grammar to generate sentences of this “ATIS-language”. We
+start with S, expand it to NP VP, then choose a random expansion of NP (let’s say, to
+
+17.2
+
+• CONTEXT-FREE GRAMMARS
+
+371
+
+Examples
+
+I + want a morning ﬂight
+
+Grammar Rules
+NP VP
+
+S
+
+→
+
+NP
+
+Nominal
+
+VP
+
+→
+|
+|
+→
+|
+
+→
+|
+|
+|
+
+Pronoun
+Proper-Noun
+Det Nominal
+Nominal Noun morning + ﬂight
+Noun
+
+I
+Los Angeles
+a + ﬂight
+
+ﬂights
+
+Verb
+Verb NP
+Verb NP PP
+Verb PP
+
+do
+want + a ﬂight
+leave + Boston + in the morning
+leaving + on Thursday
+
+PP
+Figure 17.3 The grammar for L
+
+→
+
+Preposition NP from + Los Angeles
+
+0, with example phrases for each rule.
+
+S
+
+NP
+
+VP
+
+Pro
+
+Verb
+
+NP
+
+I
+
+prefer
+
+Det
+
+Nom
+
+a
+
+Nom
+
+Noun
+
+Noun
+
+ﬂight
+
+morning
+
+Figure 17.4 The parse tree for “I prefer a morning ﬂight” according to grammar L
+
+0.
+
+I), and a random expansion of VP (let’s say, to Verb NP), and so on until we generate
+the string I prefer a morning ﬂight. Figure 17.4 shows a parse tree that represents a
+complete derivation of I prefer a morning ﬂight.
+
+We can also represent a parse tree in a more compact format called bracketed
+
+notation; here is the bracketed representation of the parse tree of Fig. 17.4:
+
+(17.1)
+
+[S [NP [Pro I]] [VP [V prefer] [NP [Det a] [Nom [N morning] [Nom [N ﬂight]]]]]]
+A CFG like that of L0 deﬁnes a formal language. Sentences (strings of words)
+that can be derived by a grammar are in the formal language deﬁned by that gram-
+mar, and are called grammatical sentences. Sentences that cannot be derived by a
+given formal grammar are not in the language deﬁned by that grammar and are re-
+ferred to as ungrammatical. This hard line between “in” and “out” characterizes all
+formal languages but is only a very simpliﬁed model of how natural languages really
+work. This is because determining whether a given sentence is part of a given nat-
+ural language (say, English) often depends on the context. In linguistics, the use of
+formal languages to model natural languages is called generative grammar since
+the language is deﬁned by the set of possible sentences “generated” by the gram-
+mar. (Note that this is a different sense of the word ‘generate’ than we in the use of
+
+bracketed
+notation
+
+grammatical
+
+ungrammatical
+
+generative
+grammar
+
+372 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+language models to generate text.)
+
+17.2.1 Formal Deﬁnition of Context-Free Grammar
+
+We conclude this section with a quick, formal description of a context-free gram-
+mar and the language it generates. A context-free grammar G is deﬁned by four
+parameters: N, Σ, R, S (technically it is a “4-tuple”).
+
+N a set of non-terminal symbols (or variables)
+Σ a set of terminal symbols (disjoint from N)
+R a set of rules or productions, each of the form A
+
+where A is a non-terminal,
+β is a string of symbols from the inﬁnite set of strings (Σ
+
+S a designated start symbol and a member of N
+
+β ,
+
+→
+
+N)∗
+
+∪
+
+For the remainder of the book we adhere to the following conventions when dis-
+cussing the formal properties of context-free grammars (as opposed to explaining
+particular facts about English or other languages).
+
+Capital letters like A, B, and S
+S
+Lower-case Greek letters like α, β , and γ
+Lower-case Roman letters like u, v, and w
+
+Non-terminals
+
+The start symbol
+Strings drawn from (Σ
+Strings of terminals
+
+N)∗
+
+∪
+
+A language is deﬁned through the concept of derivation. One string derives an-
+other one if it can be rewritten as the second one by some series of rule applications.
+More formally, following Hopcroft and Ullman (1979),
+
+directly derives
+
+∪
+
+if A
+(Σ
+
+β is a production of R and α and γ are any strings in the set
+
+→
+N)∗, then we say that αAγ directly derives αβ γ, or αAγ
+
+αβ γ.
+
+⇒
+
+Derivation is then a generalization of direct derivation:
+
+Let α1, α2, . . . , αm be strings in (Σ
+
+N)∗, m
+
+∪
+
+≥
+
+1, such that
+
+α1 ⇒
+
+α2, α2 ⇒
+
+α3, . . . , αm
+
+αm
+
+1 ⇒
+−
+
+derives
+
+We say that α1 derives αm, or α1 ∗
+⇒
+
+αm.
+We can then formally deﬁne the language LG generated by a grammar G as the
+set of strings composed of terminal symbols that can be derived from the designated
+start symbol S.
+
+LG =
+
+w is in Σ∗ and S ∗
+w
+⇒
+|
+{
+
+w
+}
+
+syntactic
+parsing
+
+The problem of mapping from a string of words to its parse tree is called syn-
+
+tactic parsing, as we’ll see in Section 17.6.
+
+17.3 Treebanks
+
+treebank
+
+A corpus in which every sentence is annotated with a parse tree is called a treebank.
+
+17.3
+
+• TREEBANKS
+
+373
+
+Penn Treebank
+
+Treebanks play an important role in parsing as well as in linguistic investigations of
+syntactic phenomena.
+
+Treebanks are generally made by running a parser over each sentence and then
+having the resulting parse hand-corrected by human linguists. Figure 17.5 shows
+sentences from the Penn Treebank project, which includes various treebanks in
+English, Arabic, and Chinese. The Penn Treebank part-of-speech tagset was deﬁned
+in Chapter 8, but we’ll see minor formatting differences across treebanks. The use
+of LISP-style parenthesized notation for trees is extremely common and resembles
+the bracketed notation we saw earlier in (17.1). For those who are not familiar with
+it we show a standard node-and-line tree representation in Fig. 17.6.
+
+((S
+
+(NP-SBJ (DT That)
+(JJ cold) (, ,)
+(JJ empty) (NN sky) )
+
+(VP (VBD was)
+
+(ADJP-PRD (JJ full)
+
+(PP (IN of)
+
+(NP (NN fire)
+(CC and)
+(NN light) ))))
+
+(. .) ))
+
+(a)
+
+((S
+
+(NP-SBJ The/DT flight/NN )
+(VP should/MD
+
+(VP arrive/VB
+
+(PP-TMP at/IN
+
+(NP eleven/CD a.m/RB ))
+(NP-TMP tomorrow/NN )))))
+
+(b)
+
+Figure 17.5 Parses from the LDC Treebank3 for (a) Brown and (b) ATIS sentences.
+
+NP-SBJ
+
+S
+
+VP
+
+DT
+
+JJ
+
+That
+
+cold
+
+,
+
+,
+
+JJ
+
+NN
+
+VBD
+
+ADJP-PRD
+
+empty
+
+sky
+
+was
+
+JJ
+
+PP
+
+.
+
+.
+
+full
+
+IN
+
+NP
+
+of
+
+NN
+
+CC
+
+NN
+
+ﬁre
+
+and
+
+light
+
+Figure 17.6 The tree corresponding to the Brown corpus sentence in the previous ﬁgure.
+
+The sentences in a treebank implicitly constitute a grammar of the language. For
+example, from the parsed sentences in Fig. 17.5 we can extract the CFG rules shown
+in Fig. 17.7 (with rule sufﬁxes (-SBJ) stripped for simplicity). The grammar used
+to parse the Penn Treebank is very ﬂat, resulting in very many rules. For example,
+
+374 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+NP VP .
+NP VP
+
+Grammar
+S
+→
+S
+→
+NP
+→
+NP
+→
+NP
+→
+NP
+→
+VP
+→
+VP
+→
+VP
+→
+VP
+→
+ADJP
+PP
+PP
+
+→
+→
+
+DT NN
+NN CC NN
+DT JJ , JJ NN
+NN
+MD VP
+VBD ADJP
+MD VP
+VB PP NP
+JJ PP
+
+→
+IN NP
+IN NP RB
+
+Lexicon
+
+that
+empty
+ﬁre
+
+|
+
+full
+
+|
+light
+
+ﬂight
+
+|
+
+|
+
+tomorrow
+
+→
+→
+→
+→
+→
+→
+→
+→
+
+DT
+JJ
+NN
+CC
+IN
+CD
+RB
+VB
+VBD
+MD
+
+the
+|
+cold
+|
+sky
+|
+and
+of
+at
+eleven
+a.m.
+arrive
+was
+|
+should
+
+|
+
+→
+→
+
+said
+
+would
+
+|
+
+Figure 17.7 CFG grammar rules and lexicon from the treebank sentences in Fig. 17.5.
+
+among the approximately 4,500 different rules for expanding VPs are separate rules
+for PP sequences of any length and every possible arrangement of verb arguments:
+
+VP
+VP
+VP
+VP
+VP
+VP
+VP
+
+→
+→
+→
+→
+→
+→
+→
+
+VBD PP
+VBD PP PP
+VBD PP PP PP
+VBD PP PP PP PP
+VB ADVP PP
+VB PP ADVP
+ADVP VB PP
+
+17.4 Grammar Equivalence and Normal Form
+
+strongly
+equivalent
+
+weakly
+equivalent
+
+normal form
+
+Chomsky
+normal form
+
+binary
+branching
+
+A formal language is deﬁned as a (possibly inﬁnite) set of strings of words. This sug-
+gests that we could ask if two grammars are equivalent by asking if they generate the
+same set of strings. In fact, it is possible to have two distinct context-free grammars
+generate the same language. We say that two grammars are strongly equivalent if
+they generate the same set of strings and if they assign the same phrase structure
+to each sentence (allowing merely for renaming of the non-terminal symbols). Two
+grammars are weakly equivalent if they generate the same set of strings but do not
+assign the same phrase structure to each sentence.
+
+It is sometimes useful to have a normal form for grammars, in which each of
+the productions takes a particular form. For example, a context-free grammar is in
+Chomsky normal form (CNF) (Chomsky, 1963) if it is (cid:15)-free and if in addition
+each production is either of the form A
+a. That is, the right-hand side
+of each rule either has two non-terminal symbols or one terminal symbol. Chomsky
+normal form grammars are binary branching, that is they have binary trees (down
+to the prelexical nodes). We make use of this binary branching property in the CKY
+parsing algorithm in Chapter 17.
+
+B C or A
+
+→
+
+→
+
+Any context-free grammar can be converted into a weakly equivalent Chomsky
+
+normal form grammar. For example, a rule of the form
+
+can be converted into the following two CNF rules (Exercise 17.1 asks the reader to
+
+A
+
+→
+
+B C D
+
+17.5
+
+• AMBIGUITY
+
+375
+
+|
+
+Lexicon
+a
+the
+|
+ﬂight
+meal
+|
+include
+she
+
+|
+me
+Houston
+
+|
+
+|
+
+prefer
+
+NWA
+
+|
+
+money
+
+this
+
+→
+
+that
+
+|
+book
+book
+I
+
+Det
+Noun
+→
+Verb
+→
+Pronoun
+→
+Proper-Noun
+Aux
+does
+→
+Preposition
+
+|
+
+|
+|
+→
+
+from
+
+to
+
+|
+
+|
+
+on
+
+|
+
+near
+
+|
+
+through
+
+→
+
+Grammar
+
+→
+→
+→
+
+NP VP
+Aux NP VP
+VP
+
+Pronoun
+Proper-Noun
+Det Nominal
+
+S
+S
+S
+NP
+→
+NP
+→
+NP
+→
+Nominal
+Nominal
+Nominal
+VP
+VP
+VP
+VP
+VP
+PP
+Figure 17.8 The L
+
+→
+→
+→
+Verb
+Verb NP
+Verb NP PP
+Verb PP
+VP PP
+Preposition NP
+
+→
+→
+→
+→
+→
+→
+
+Noun
+Nominal Noun
+Nominal PP
+
+1 miniature English grammar and lexicon.
+
+formulate the complete algorithm):
+
+A
+
+X
+
+→
+
+→
+
+B X
+
+C D
+
+Sometimes using binary branching can actually produce smaller grammars. For
+
+example, the sentences that might be characterized as
+
+VP -> VBD NP PP*
+
+are represented in the Penn Treebank by this series of rules:
+
+VBD NP PP
+VBD NP PP PP
+VBD NP PP PP PP
+VBD NP PP PP PP PP
+
+VP
+VP
+VP
+VP
+...
+
+→
+→
+→
+→
+
+but could also be generated by the followin

@@ -1,0 +1,403 @@
+eparate words.
+
+The Switchboard corpus of American English telephone conversations between
+strangers was collected in the early 1990s; it contains 2430 conversations averaging
+6 minutes each, totaling 240 hours of speech and about 3 million words (Godfrey
+et al., 1992). Such corpora of spoken language introduce other complications with
+regard to deﬁning words. Let’s look at one utterance from Switchboard; an utter-
+ance is the spoken correlate of a sentence:
+
+I do uh main- mainly business data processing
+
+This utterance has two kinds of disﬂuencies. The broken-off word main- is
+called a fragment. Words like uh and um are called ﬁllers or ﬁlled pauses. Should
+we consider these to be words? Again, it depends on the application. If we are
+building a speech transcription system, we might want to eventually strip out the
+disﬂuencies.
+
+But we also sometimes keep disﬂuencies around. Disﬂuencies like uh or um
+are actually helpful in speech recognition in predicting the upcoming word, because
+they may signal that the speaker is restarting the clause or idea, and so for speech
+recognition they are treated as regular words. Because people use different disﬂu-
+encies they can also be a cue to speaker identiﬁcation. In fact Clark and Fox Tree
+(2002) showed that uh and um have different meanings. What do you think they are?
+Perhaps most important, in thinking about what is a word, we need to distinguish
+two ways of talking about words that will be useful throughout the book. Word types
+are the number of distinct words in a corpus; if the set of words in the vocabulary
+is V , the number of types is the vocabulary size
+. Word instances are the total
+|
+number N of running words.1
+
+V
+|
+
+If we ignore punctuation, the following Brown sentence has 16 instances and 14
+
+types:
+
+They picnicked by the pool, then lay back on the grass and looked at the stars.
+
+We still have decisions to make! For example, should we consider a capitalized
+string (like They) and one that is uncapitalized (like they) to be the same word type?
+The answer is that it depends on the task! They and they might be lumped together
+as the same type in some tasks, like speech recognition, where we might just care
+about getting the words in order and don’t care about the formatting, while for other
+tasks, such as deciding whether a particular word is a noun or verb (part-of-speech
+tagging) or whether a word is a name of a person or location (named-entity tag-
+ging), capitalization is a useful feature and is retained. Sometimes we keep around
+two versions of a particular NLP model, one with capitalization and one without
+capitalization.
+
+How many words are there in English? When we speak about the number of
+words in the language, we are generally referring to word types. Fig. 2.11 shows
+the rough numbers of types and instances computed from some English corpora.
+
+In earlier tradition, and occasionally still, you might see word instances referred to as word tokens, but
+
+1
+we now try to reserve the word token instead to mean the output of word tokenization algorithms.
+
+Herdan’s Law
+
+Heaps’ Law
+
+lemma
+
+wordform
+
+Corpus
+Shakespeare
+Brown corpus
+Switchboard telephone conversations
+COCA
+Google n-grams
+
+2.3
+
+• CORPORA
+
+15
+
+Instances = N Types =
+V
+|
+|
+884 thousand 31 thousand
+1 million 38 thousand
+2.4 million 20 thousand
+2 million
+440 million
+13 million
+1 trillion
+
+Figure 2.11 Rough numbers of wordform types and instances for some English language
+corpora. The largest, the Google n-grams corpus, contains 13 million types, but this count
+only includes types appearing 40 or more times, so the true number would be much larger.
+
+The larger the corpora we look at, the more word types we ﬁnd, and in fact this
+and number of instances N is called
+relationship between the number of types
+Herdan’s Law (Herdan, 1960) or Heaps’ Law (Heaps, 1978) after its discoverers
+(in linguistics and information retrieval respectively). It is shown in Eq. 2.1, where
+k and β are positive constants, and 0 < β < 1.
+
+V
+|
+
+|
+
+= kNβ
+
+V
+|
+
+|
+
+(2.1)
+
+The value of β depends on the corpus size and the genre, but at least for the large
+corpora in Fig. 2.11, β ranges from .67 to .75. Roughly then we can say that the
+vocabulary size for a text goes up signiﬁcantly faster than the square root of its
+length in words.
+
+It’s sometimes useful to make a further distinction. Consider inﬂected forms
+like cats versus cat. We say these two words are different wordforms but have the
+same lemma. A lemma is a set of lexical forms having the same stem, the same
+major part-of-speech, and the same word sense. The wordform is the full inﬂected
+or derived form of the word. The two wordforms cat and cats thus have the same
+lemma, which we can represent as cat.
+
+For morphologically complex languages like Arabic, we often need to deal with
+lemmatization. For most tasks in English, however, wordforms are sufﬁcient, and
+when we talk about words in this book we almost always mean wordsforms (al-
+though we will discuss basic algorithms for lemmatization and the related task of
+stemming below in Section 2.6). One of the situations even in English where we
+talk about lemmas is when we measure the number of words in a dictionary. Dictio-
+nary entries or boldface forms are a very rough approximation to (an upper bound
+on) the number of lemmas (since some lemmas have multiple boldface forms). The
+1989 edition of the Oxford English Dictionary had 615,000 entries.
+
+Finally, we should note that in practice, for many NLP applications (for example
+for neural language modeling) we don’t actually use words as our internal unit of
+representation at all! We instead tokenize the input strings into tokens, which can
+be words but can also be only parts of words. We’ll return to this tokenization
+question when we introduce the BPE algorithm in Section 2.5.2.
+
+2.3 Corpora
+
+Words don’t appear out of nowhere. Any particular piece of text that we study
+is produced by one or more speciﬁc speakers or writers, in a speciﬁc dialect of a
+speciﬁc language, at a speciﬁc time, in a speciﬁc place, for a speciﬁc function.
+
+Perhaps the most important dimension of variation is the language. NLP algo-
+rithms are most useful when they apply across many languages. The world has 7097
+
+16 CHAPTER 2
+
+• REGULAR EXPRESSIONS, TEXT NORMALIZATION, EDIT DISTANCE
+
+AAE
+
+MAE
+
+code switching
+
+datasheet
+
+languages at the time of this writing, according to the online Ethnologue catalog
+(Simons and Fennig, 2018). It is important to test algorithms on more than one lan-
+guage, and particularly on languages with different properties; by contrast there is
+an unfortunate current tendency for NLP algorithms to be developed or tested just
+on English (Bender, 2019). Even when algorithms are developed beyond English,
+they tend to be developed for the ofﬁcial languages of large industrialized nations
+(Chinese, Spanish, Japanese, German etc.), but we don’t want to limit tools to just
+these few languages. Furthermore, most languages also have multiple varieties, of-
+ten spoken in different regions or by different social groups. Thus, for example,
+if we’re processing text that uses features of African American English (AAE) or
+African American Vernacular English (AAVE)—the variations of English used by
+millions of people in African American communities (King 2020)—we must use
+NLP tools that function with features of those varieties. Twitter posts might use fea-
+tures often used by speakers of African American English, such as constructions like
+iont (I don’t in Mainstream American English (MAE)), or talmbout corresponding
+to MAE talking about, both examples that inﬂuence word segmentation (Blodgett
+et al. 2016, Jones 2015).
+
+It’s also quite common for speakers or writers to use multiple languages in a
+single communicative act, a phenomenon called code switching. Code switching
+is enormously common across the world; here are examples showing Spanish and
+(transliterated) Hindi code switching with English (Solorio et al. 2014, Jurgens et al.
+2017):
+
+(2.2)
+
+(2.3)
+
+Por primera vez veo a @username actually being hateful! it was beautiful:)
+[For the ﬁrst time I get to see @username actually being hateful! it was
+beautiful:) ]
+dost tha or ra- hega ... dont wory ... but dherya rakhe
+[“he was and will remain a friend ... don’t worry ... but have faith”]
+
+Another dimension of variation is the genre. The text that our algorithms must
+process might come from newswire, ﬁction or non-ﬁction books, scientiﬁc articles,
+It might come from spoken genres like telephone
+Wikipedia, or religious texts.
+conversations, business meetings, police body-worn cameras, medical interviews,
+or transcripts of television shows or movies. It might come from work situations
+like doctors’ notes, legal text, or parliamentary or congressional proceedings.
+
+Text also reﬂects the demographic characteristics of the writer (or speaker): their
+age, gender, race, socioeconomic class can all inﬂuence the linguistic properties of
+the text we are processing.
+
+And ﬁnally, time matters too. Language changes over time, and for some lan-
+
+guages we have good corpora of texts from different historical periods.
+
+Because language is so situated, when developing computational models for lan-
+guage processing from a corpus, it’s important to consider who produced the lan-
+guage, in what context, for what purpose. How can a user of a dataset know all these
+details? The best way is for the corpus creator to build a datasheet (Gebru et al.,
+2020) or data statement (Bender et al., 2021) for each corpus. A datasheet speciﬁes
+properties of a dataset like:
+
+Motivation: Why was the corpus collected, by whom, and who funded it?
+Situation: When and in what situation was the text written/spoken? For example,
+was there a task? Was the language originally spoken conversation, edited
+text, social media communication, monologue vs. dialogue?
+
+Language variety: What language (including dialect/region) was the corpus in?
+
+2.4
+
+• SIMPLE UNIX TOOLS FOR WORD TOKENIZATION
+
+17
+
+Speaker demographics: What was, e.g., the age or gender of the text’s authors?
+Collection process: How big is the data? If it is a subsample how was it sampled?
+Was the data collected with consent? How was the data pre-processed, and
+what metadata is available?
+
+Annotation process: What are the annotations, what are the demographics of the
+
+annotators, how were they trained, how was the data annotated?
+Distribution: Are there copyright or other intellectual property restrictions?
+
+2.4 Simple Unix Tools for Word Tokenization
+
+text
+normalization
+
+Before almost any natural language processing of a text, the text has to be normal-
+ized, a task called text normalization. At least three tasks are commonly applied as
+part of any normalization process:
+
+1. Tokenizing (segmenting) words
+2. Normalizing word formats
+3. Segmenting sentences
+
+In the next sections we walk through each of these tasks, but we’ll ﬁrst start with
+an easy, if somewhat naive version of word tokenization and normalization (and fre-
+quency computation) that can be accomplished for English solely in a single UNIX
+command-line, inspired by Church (1994). We’ll make use of some Unix com-
+mands: tr, used to systematically change particular characters in the input; sort,
+which sorts input lines in alphabetical order; and uniq, which collapses and counts
+adjacent identical lines.
+
+For example let’s begin with the ‘complete words’ of Shakespeare in one ﬁle,
+sh.txt. We can use tr to tokenize the words by changing every sequence of non-
+alphabetic characters to a newline (’A-Za-z’ means alphabetic and the -c option
+complements to non-alphabet, so together they mean to change every non-alphabetic
+character into a newline. The -s (‘squeeze’) option is used to replace the result
+of multiple consecutive changes into a single output, so a series of non-alphabetic
+characters in a row would all be ‘squeezed’ into a single newline):
+
+tr -sc ’A-Za-z’ ’\n’ < sh.txt
+
+The output of this command will be:
+
+THE
+SONNETS
+by
+William
+Shakespeare
+From
+fairest
+creatures
+We
+...
+
+Now that there is one word per line, we can sort the lines, and pass them to uniq
+
+-c which will collapse and count them:
+
+tr -sc ’A-Za-z’ ’\n’ < sh.txt | sort | uniq -c
+
+18 CHAPTER 2
+
+• REGULAR EXPRESSIONS, TEXT NORMALIZATION, EDIT DISTANCE
+
+with the following output:
+
+1945 A
+72 AARON
+19 ABBESS
+25 Aaron
+6 Abate
+1 Abates
+5 Abbess
+6 Abbey
+3 Abbot
+...
+
+Alternatively, we can collapse all the upper case to lower case:
+
+tr -sc ’A-Za-z’ ’\n’ < sh.txt | tr A-Z a-z | sort | uniq -c
+
+whose output is
+
+14725 a
+
+97 aaron
+
+1 abaissiez
+
+10 abandon
+
+2 abandoned
+2 abase
+1 abash
+14 abate
+
+3 abated
+3 abatement
+...
+
+Now we can sort again to ﬁnd the frequent words. The -n option to sort means
+to sort numerically rather than alphabetically, and the -r option means to sort in
+reverse order (highest-to-lowest):
+
+tr -sc ’A-Za-z’ ’\n’ < sh.txt | tr A-Z a-z | sort | uniq -c | sort -n -r
+
+The results show that the most frequent words in Shakespeare, as in any other
+
+corpus, are the short function words like articles, pronouns, prepositions:
+27378 the
+26084 and
+22538 i
+19771 to
+17481 of
+14725 a
+13826 you
+12489 my
+11318 that
+11112 in
+...
+
+Unix tools of this sort can be very handy in building quick word count statistics
+for any corpus in English. While in some versions of Unix these command-line tools
+also correctly handle Unicode characters and so can be used for many languages,
+in general for handling most languages outside English we use more sophisticated
+tokenization algorithms.
+
+2.5 Word Tokenization
+
+2.5
+
+• WORD TOKENIZATION
+
+19
+
+tokenization
+
+The simple UNIX tools above were ﬁne for getting rough word statistics but more
+sophisticated algorithms are generally necessary for tokenization, the task of seg-
+menting running text into words. There are roughly two classes of tokenization
+algorithms. In top-down tokenization, we deﬁne a standard and implement rules
+to implement that kind of tokenization. In bottom-up tokenization, we use simple
+statistics of letter sequences to break up words into subword tokens.
+
+2.5.1 Top-down (rule-based) tokenization
+
+While the Unix command sequence just removed all the numbers and punctuation,
+for most NLP applications we’ll need to keep these in our tokenization. We often
+want to break off punctuation as a separate token; commas are a useful piece of infor-
+mation for parsers, periods help indicate sentence boundaries. But we’ll often want
+to keep the punctuation that occurs word internally, in examples like m.p.h., Ph.D.,
+AT&T, and cap’n. Special characters and numbers will need to be kept in prices
+($45.55) and dates (01/02/06); we don’t want to segment that price into separate
+tokens of “45” and “55”. And there are URLs (https://www.stanford.edu),
+Twitter hashtags (#nlproc), or email addresses (someone@cs.colorado.edu).
+
+Number expressions introduce other complications as well; while commas nor-
+mally appear at word boundaries, commas are used inside numbers in English, every
+three digits: 555,500.50. Languages, and hence tokenization requirements, differ
+on this; many continental European languages like Spanish, French, and German, by
+contrast, use a comma to mark the decimal point, and spaces (or sometimes periods)
+where English puts commas, for example, 555 500,50.
+
+A tokenizer can also be used to expand clitic contractions that are marked by
+apostrophes, for example, converting what’re to the two tokens what are, and
+we’re to we are. A clitic is a part of a word that can’t stan

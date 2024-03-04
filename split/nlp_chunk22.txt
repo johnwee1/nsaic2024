@@ -1,0 +1,705 @@
+ that c is a real context word (true
+for jam, false for aardvark):
+
+The probability that word c is not a real context word for w is just 1 minus
+
+w, c)
+P(+
+|
+
+(6.24)
+
+Eq. 6.24:
+
+−
+How does the classiﬁer compute the probability P? The intuition of the skip-
+gram model is to base this probability on embedding similarity: a word is likely to
+
+−|
+
+P(
+
+w, c) = 1
+
+w, c)
+P(+
+|
+
+(6.25)
+
+6.8
+
+• WORD2VEC
+
+123
+
+occur near the target if its embedding vector is similar to the target embedding. To
+compute similarity between these dense embeddings, we rely on the intuition that
+two vectors are similar if they have a high dot product (after all, cosine is just a
+normalized dot product). In other words:
+
+Similarity(w, c)
+
+c
+
+w
+
+(6.26)
+
+≈
+w is not a probability, it’s just a number ranging from
+
+The dot product c
+∞ to ∞
+(since the elements in word2vec embeddings can be negative, the dot product can be
+negative). To turn the dot product into a probability, we’ll use the logistic or sigmoid
+function σ (x), the fundamental core of logistic regression:
+
+−
+
+·
+
+·
+
+σ (x) =
+
+1
+
+1 + exp (
+
+x)
+
+−
+
+(6.27)
+
+We model the probability that word c is a real context word for target word w as:
+
+w, c) = σ (c
+P(+
+|
+
+·
+
+w) =
+
+1
+1 + exp (
+
+c
+−
+
+w)
+
+·
+
+(6.28)
+
+The sigmoid function returns a number between 0 and 1, but to make it a probability
+we’ll also need the total probability of the two possible events (c is a context word,
+and c isn’t a context word) to sum to 1. We thus estimate the probability that word c
+is not a real context word for w as:
+
+P(
+
+w, c) = 1
+
+−|
+
+−
+= σ (
+
+w, c)
+P(+
+|
+w) =
+
+c
+−
+
+·
+
+1
+
+1 + exp (c
+
+w)
+
+·
+
+(6.29)
+
+Equation 6.28 gives us the probability for one word, but there are many context
+words in the window. Skip-gram makes the simplifying assumption that all context
+words are independent, allowing us to just multiply their probabilities:
+
+w, c1:L) =
+P(+
+|
+
+w, c1:L) =
+log P(+
+|
+
+σ (ci
+
+w)
+
+·
+
+L
+
+(cid:89)i=1
+L
+
+log σ (ci
+
+w)
+
+·
+
+(cid:88)i=1
+
+(6.30)
+
+(6.31)
+
+In summary, skip-gram trains a probabilistic classiﬁer that, given a test target word
+w and its context window of L words c1:L, assigns a probability based on how similar
+this context window is to the target word. The probability is based on applying the
+logistic (sigmoid) function to the dot product of the embeddings of the target word
+with each context word. To compute this probability, we just need embeddings for
+each target word and context word in the vocabulary.
+
+Fig. 6.13 shows the intuition of the parameters we’ll need. Skip-gram actually
+stores two embeddings for each word, one for the word as a target, and one for the
+word considered as context. Thus the parameters we need to learn are two matrices
+W and C, each containing an embedding for every one of the
+words in the
+vocabulary V .6 Let’s now turn to learning these embeddings (which is the real goal
+of training this classiﬁer in the ﬁrst place).
+
+V
+|
+
+|
+
+In principle the target matrix and the context matrix could use different vocabularies, but we’ll simplify
+
+6
+by assuming one shared vocabulary V .
+
+124 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+Figure 6.13 The embeddings learned by the skipgram model. The algorithm stores two
+embeddings for each word, the target embedding (sometimes called the input embedding)
+and the context embedding (sometimes called the output embedding). The parameter θ that
+vectors, each of dimension d, formed by concate-
+V
+the algorithm learns is thus a matrix of 2
+|
+|
+nating two matrices, the target embeddings W and the context+noise embeddings C.
+
+6.8.2 Learning skip-gram embeddings
+
+The learning algorithm for skip-gram embeddings takes as input a corpus of text,
+and a chosen vocabulary size N. It begins by assigning a random embedding vector
+for each of the N vocabulary words, and then proceeds to iteratively shift the em-
+bedding of each word w to be more like the embeddings of words that occur nearby
+in texts, and less like the embeddings of words that don’t occur nearby. Let’s start
+by considering a single piece of training data:
+
+... lemon,
+
+a [tablespoon of apricot jam,
+c2
+
+c1
+
+c3
+
+w
+
+a] pinch ...
+c4
+
+This example has a target word w (apricot), and 4 context words in the L =
+
+window, resulting in 4 positive training instances (on the left below):
+
+2
+±
+
+positive examples +
+cpos
+w
+tablespoon
+
+apricot
+apricot of
+apricot
+apricot a
+
+jam
+
+negative examples -
+
+w
+
+cneg
+
+cneg
+
+w
+apricot aardvark apricot seven
+apricot my
+apricot where
+apricot coaxial
+
+apricot forever
+apricot dear
+apricot
+
+if
+
+For training a binary classiﬁer we also need negative examples. In fact skip-
+gram with negative sampling (SGNS) uses more negative examples than positive
+examples (with the ratio between them set by a parameter k). So for each of these
+(w, cpos) training instances we’ll create k negative samples, each consisting of the
+target w plus a ‘noise word’ cneg. A noise word is a random word from the lexicon,
+constrained not to be the target word w. The right above shows the setting where
+k = 2, so we’ll have 2 negative examples in the negative training set
+for each
+positive example w, cpos.
+
+−
+
+The noise words are chosen according to their weighted unigram frequency
+pα (w), where α is a weight. If we were sampling according to unweighted fre-
+quency p(w), it would mean that with unigram probability p(“the”) we would choose
+the word the as a noise word, with unigram probability p(“aardvark”) we would
+choose aardvark, and so on. But in practice it is common to set α = .75, i.e. use the
+
+1WCaardvarkzebrazebraaardvarkapricotapricot|V||V|+12V& =target wordscontext & noisewords……1..d……6.8
+
+• WORD2VEC
+
+125
+
+weighting p
+
+3
+4 (w):
+
+Pα (w) =
+
+count(w)α
+
+count(w(cid:48))α
+
+w(cid:48)
+
+(6.32)
+
+(cid:80)
+
+Setting α = .75 gives better performance because it gives rare noise words slightly
+higher probability: for rare words, Pα (w) > P(w). To illustrate this intuition, it
+might help to work out the probabilities for an example with two events, P(a) = .99
+and P(b) = .01:
+
+Pα (a) =
+
+Pα (b) =
+
+.99.75
+
+.99.75 + .01.75 = .97
+
+.01.75
+
+.99.75 + .01.75 = .03
+
+(6.33)
+
+Given the set of positive and negative training instances, and an initial set of embed-
+dings, the goal of the learning algorithm is to adjust those embeddings to
+
+• Maximize the similarity of the target word, context word pairs (w, cpos) drawn
+
+from the positive examples
+
+• Minimize the similarity of the (w, cneg) pairs from the negative examples.
+
+If we consider one word/context pair (w, cpos) with its k noise words cneg1...cnegk ,
+we can express these two goals as the following loss function L to be minimized
+); here the ﬁrst term expresses that we want the classiﬁer to assign the
+(hence the
+real context word cpos a high probability of being a neighbor, and the second term
+expresses that we want to assign each of the noise words cnegi a high probability of
+being a non-neighbor, all multiplied because we assume independence:
+
+−
+
+k
+
+LCE =
+
+log
+
+−
+
+w, cpos)
+P(+
+|
+
+(cid:34)
+
+P(
+
+w, cnegi)
+(cid:35)
+
+−|
+
+(cid:89)i=1
+
+k
+
+=
+
+=
+
+=
+
+w, cpos) +
+log P(+
+|
+
+− (cid:34)
+
+(cid:88)i=1
+k
+
+log P(
+
+w, cnegi)
+(cid:35)
+
+−|
+
+w, cpos) +
+log P(+
+|
+
+− (cid:34)
+
+(cid:88)i=1
+k
+
+log
+
+1
+
+w, cnegi)
+P(+
+|
+
+−
+
+(cid:0)
+
+(cid:1)
+
+(cid:35)
+
+log σ (cpos ·
+
+− (cid:34)
+
+w) +
+
+log σ (
+
+cnegi ·
+−
+
+w)
+
+(cid:35)
+
+(cid:88)i=1
+
+(6.34)
+
+That is, we want to maximize the dot product of the word with the actual context
+words, and minimize the dot products of the word with the k negative sampled non-
+neighbor words.
+
+We minimize this loss function using stochastic gradient descent. Fig. 6.14
+
+shows the intuition of one step of learning.
+
+To get the gradient, we need to take the derivative of Eq. 6.34 with respect to
+the different embeddings. It turns out the derivatives are the following (we leave the
+
+126 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+Intuition of one step of gradient descent. The skip-gram model tries to shift
+Figure 6.14
+embeddings so the target embeddings (here for apricot) are closer to (have a higher dot prod-
+uct with) context embeddings for nearby words (here jam) and further from (lower dot product
+with) context embeddings for noise words that don’t occur nearby (here Tolstoy and matrix).
+
+proof as an exercise at the end of the chapter):
+
+∂ LCE
+∂ cpos
+∂ LCE
+∂ cneg
+
+∂ LCE
+∂ w
+
+= [σ (cpos ·
+
+w)
+
+−
+
+1]w
+
+= [σ (cneg ·
+
+w)]w
+
+= [σ (cpos ·
+
+w)
+
+−
+
+1]cpos +
+
+k
+
+[σ (cnegi ·
+
+(cid:88)i=1
+
+w)]cnegi
+
+(6.35)
+
+(6.36)
+
+(6.37)
+
+The update equations going from time step t to t + 1 in stochastic gradient descent
+are thus:
+
+ct+1
+pos = ct
+ct+1
+neg = ct
+
+pos −
+neg −
+
+η[σ (ct
+η[σ (ct
+
+pos ·
+neg ·
+
+1]wt
+
+wt )
+−
+wt )]wt
+
+wt+1 = wt
+
+η
+
+−
+
+(cid:34)
+
+[σ (ct
+
+pos ·
+
+wt )
+
+−
+
+1]ct
+
+pos +
+
+(6.38)
+
+(6.39)
+
+(6.40)
+
+wt )]ct
+
+negi(cid:35)
+
+k
+
+[σ (ct
+
+negi ·
+
+(cid:88)i=1
+
+target
+embedding
+context
+embedding
+
+Just as in logistic regression, then, the learning algorithm starts with randomly ini-
+tialized W and C matrices, and then walks through the training corpus using gradient
+descent to move W and C so as to minimize the loss in Eq. 6.34 by making the up-
+dates in (Eq. 6.38)-(Eq. 6.40).
+
+Recall that the skip-gram model learns two separate embeddings for each word i:
+the target embedding wi and the context embedding ci, stored in two matrices, the
+target matrix W and the context matrix C. It’s common to just add them together,
+representing word i with the vector wi + ci. Alternatively we can throw away the C
+matrix and just represent each word i by the vector wi.
+
+As with the simple count-based methods like tf-idf, the context window size L
+affects the performance of skip-gram embeddings, and experiments often tune the
+parameter L on a devset.
+
+WCmove apricot and jam closer,increasing cpos (cid:122) waardvarkmove apricot and matrix apartdecreasing cneg1 (cid:122) w“…apricot jam…”wzebrazebraaardvarkjamapricotcposmatrixTolstoymove apricot and Tolstoy apartdecreasing cneg2 (cid:122) w!cneg1cneg2k=2fasttext
+
+6.9
+
+• VISUALIZING EMBEDDINGS
+
+127
+
+6.8.3 Other kinds of static embeddings
+
+There are many kinds of static embeddings. An extension of word2vec, fasttext
+(Bojanowski et al., 2017), addresses a problem with word2vec as we have presented
+it so far: it has no good way to deal with unknown words—words that appear in
+a test corpus but were unseen in the training corpus. A related problem is word
+sparsity, such as in languages with rich morphology, where some of the many forms
+for each noun and verb may only occur rarely. Fasttext deals with these problems
+by using subword models, representing each word as itself plus a bag of constituent
+n-grams, with special boundary symbols < and > added to each word. For example,
+with n = 3 the word where would be represented by the sequence <where> plus the
+character n-grams:
+
+<wh, whe, her, ere, re>
+
+Then a skipgram embedding is learned for each constituent n-gram, and the word
+where is represented by the sum of all of the embeddings of its constituent n-grams.
+Unknown words can then be presented only by the sum of the constituent n-grams.
+A fasttext open-source library, including pretrained embeddings for 157 languages,
+is available at https://fasttext.cc.
+
+Another very widely used static embedding model is GloVe (Pennington et al.,
+2014), short for Global Vectors, because the model is based on capturing global
+corpus statistics. GloVe is based on ratios of probabilities from the word-word co-
+occurrence matrix, combining the intuitions of count-based models like PPMI while
+also capturing the linear structures used by methods like word2vec.
+
+It turns out that dense embeddings like word2vec actually have an elegant math-
+ematical relationship with sparse embeddings like PPMI, in which word2vec can be
+seen as implicitly optimizing a shifted version of a PPMI matrix (Levy and Gold-
+berg, 2014c).
+
+6.9 Visualizing Embeddings
+
+“I see well in many dimensions as long as the dimensions are around two.”
+
+The late economist Martin Shubik
+
+Visualizing embeddings is an important goal in helping understand, apply, and
+improve these models of word meaning. But how can we visualize a (for example)
+100-dimensional vector?
+
+The simplest way to visualize the meaning of a word
+w embedded in a space is to list the most similar words to
+w by sorting the vectors for all words in the vocabulary by
+their cosine with the vector for w. For example the 7 closest
+words to frog using a particular embeddings computed with
+the GloVe algorithm are: frogs, toad, litoria, leptodactyli-
+dae, rana, lizard, and eleutherodactylus (Pennington et al.,
+2014).
+
+Yet another visualization method is to use a clustering
+algorithm to show a hierarchical representation of which
+words are similar to others in the embedding space. The
+uncaptioned ﬁgure on the left uses hierarchical clustering
+of some embedding vectors for nouns as a visualization
+
+Rohde,Gonnerman,PlautModelingWordMeaningUsingLexicalCo-OccurrenceHEADHANDFACEDOGAMERICACATEYEEUROPEFOOTCHINAFRANCECHICAGOARMFINGERNOSELEGRUSSIAMOUSEAFRICAATLANTAEARSHOULDERASIACOWBULLPUPPYLIONHAWAIIMONTREALTOKYOTOEMOSCOWTOOTHNASHVILLEBRAZILWRISTKITTENANKLETURTLEOYSTERFigure8:Multidimensionalscalingforthreenounclasses.WRISTANKLESHOULDERARMLEGHANDFOOTHEADNOSEFINGERTOEFACEEAREYETOOTHDOGCATPUPPYKITTENCOWMOUSETURTLEOYSTERLIONBULLCHICAGOATLANTAMONTREALNASHVILLETOKYOCHINARUSSIAAFRICAASIAEUROPEAMERICABRAZILMOSCOWFRANCEHAWAIIFigure9:Hierarchicalclusteringforthreenounclassesusingdistancesbasedonvectorcorrelations.20128 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+method (Rohde et al., 2006).
+
+Probably the most common visualization method, how-
+ever, is to project the 100 dimensions of a word down into 2
+dimensions. Fig. 6.1 showed one such visualization, as does
+Fig. 6.16, using a projection method called t-SNE (van der
+
+Maaten and Hinton, 2008).
+
+6.10 Semantic properties of embeddings
+
+In this section we brieﬂy summarize some of the semantic properties of embeddings
+that have been studied.
+
+Different types of similarity or association: One parameter of vector semantic
+models that is relevant to both sparse tf-idf vectors and dense word2vec vectors is
+the size of the context window used to collect counts. This is generally between 1
+and 10 words on each side of the target word (for a total context of 2-20 words).
+
+The choice depends on the goals of the representation. Shorter context windows
+tend to lead to representations that are a bit more syntactic, since the information is
+coming from immediately nearby words. When the vectors are computed from short
+context windows, the most similar words to a target word w tend to be semantically
+similar words with the same parts of speech. When vectors are computed from long
+context windows, the highest cosine words to a target word w tend to be words that
+are topically related but not similar.
+
+±
+
+For example Levy and Goldberg (2014a) showed that using skip-gram with a
+2, the most similar words to the word Hogwarts (from the Harry Potter
+window of
+series) were names of other ﬁctional schools: Sunnydale (from Buffy the Vampire
+Slayer) or Evernight (from a vampire series). With a window of
+5, the most similar
+words to Hogwarts were other words topically related to the Harry Potter series:
+Dumbledore, Malfoy, and half-blood.
+
+±
+
+ﬁrst-order
+co-occurrence
+
+second-order
+co-occurrence
+
+parallelogram
+model
+
+It’s also often useful to distinguish two kinds of similarity or association between
+words (Sch¨utze and Pedersen, 1993). Two words have ﬁrst-order co-occurrence
+(sometimes called syntagmatic association) if they are typically nearby each other.
+Thus wrote is a 
