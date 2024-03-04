@@ -1,0 +1,510 @@
+oposition
+Arg2: Other entity agreeing
+
+Ex1:
+Ex2:
+
+[Arg0 The group] agreed [Arg1 it wouldn’t make an offer].
+[ArgM-TMP Usually] [Arg0 John] agrees [Arg2 with Mary]
+[Arg1 on everything].
+
+(20.12) fall.01
+
+Arg1: Logical subject, patient, thing falling
+Arg2: Extent, amount fallen
+Arg3: start point
+Arg4: end point, end state of arg1
+Ex1:
+Ex2:
+
+[Arg1 Sales] fell [Arg4 to $25 million] [Arg3 from $27 million].
+[Arg1 The average junk bond] fell [Arg2 by 4.2%].
+
+Note that there is no Arg0 role for fall, because the normal subject of fall is a
+
+PROTO-PATIENT.
+
+The PropBank semantic roles can be useful in recovering shallow semantic in-
+
+formation about verbal arguments. Consider the verb increase:
+
+(20.13) increase.01 “go up incrementally”
+
+thing increasing
+
+Arg0: causer of increase
+Arg1:
+Arg2: amount increased by, EXT, or MNR
+Arg3: start point
+Arg4: end point
+
+A PropBank semantic role labeling would allow us to infer the commonality in
+the event structures of the following three examples, that is, that in each case Big
+Fruit Co. is the AGENT and the price of bananas is the THEME, despite the differing
+surface forms.
+
+446 CHAPTER 20
+
+• SEMANTIC ROLE LABELING
+
+(20.14)
+(20.15)
+(20.16)
+
+[Arg0 Big Fruit Co. ] increased [Arg1 the price of bananas].
+[Arg1 The price of bananas] was increased again [Arg0 by Big Fruit Co. ]
+[Arg1 The price of bananas] increased [Arg2 5%].
+
+PropBank also has a number of non-numbered arguments called ArgMs, (ArgM-
+TMP, ArgM-LOC, etc.) which represent modiﬁcation or adjunct meanings. These
+are relatively stable across predicates, so aren’t listed with each frame ﬁle. Data
+labeled with these modiﬁers can be helpful in training systems to detect temporal,
+location, or directional modiﬁcation across predicates. Some of the ArgM’s include:
+
+when?
+TMP
+where?
+LOC
+where to/from?
+DIR
+how?
+MNR
+PRP/CAU why?
+REC
+ADV
+PRD
+
+miscellaneous
+secondary predication
+
+yesterday evening, now
+at the museum, in San Francisco
+down, to Bangkok
+clearly, with much enthusiasm
+because ... , in response to the ruling
+themselves, each other
+
+...ate the meat raw
+
+NomBank
+
+While PropBank focuses on verbs, a related project, NomBank (Meyers et al.,
+2004) adds annotations to noun predicates. For example the noun agreement in
+Apple’s agreement with IBM would be labeled with Apple as the Arg0 and IBM as
+the Arg2. This allows semantic role labelers to assign labels to arguments of both
+verbal and nominal predicates.
+
+20.5 FrameNet
+
+While making inferences about the semantic commonalities across different sen-
+tences with increase is useful, it would be even more useful if we could make such
+inferences in many more situations, across different verbs, and also between verbs
+and nouns. For example, we’d like to extract the similarity among these three sen-
+tences:
+
+[Arg1 The price of bananas] increased [Arg2 5%].
+[Arg1 The price of bananas] rose [Arg2 5%].
+
+(20.17)
+(20.18)
+(20.19) There has been a [Arg2 5%] rise [Arg1 in the price of bananas].
+
+Note that the second example uses the different verb rise, and the third example
+uses the noun rather than the verb rise. We’d like a system to recognize that the
+price of bananas is what went up, and that 5% is the amount it went up, no matter
+whether the 5% appears as the object of the verb increased or as a nominal modiﬁer
+of the noun rise.
+
+The FrameNet project is another semantic-role-labeling project that attempts
+to address just these kinds of problems (Baker et al. 1998, Fillmore et al. 2003,
+Fillmore and Baker 2009, Ruppenhofer et al. 2016). Whereas roles in the PropBank
+project are speciﬁc to an individual verb, roles in the FrameNet project are speciﬁc
+to a frame.
+
+What is a frame? Consider the following set of words:
+
+reservation, ﬂight, travel, buy, price, cost, fare, rates, meal, plane
+
+There are many individual lexical relations of hyponymy, synonymy, and so on
+between many of the words in this list. The resulting set of relations does not,
+
+FrameNet
+
+frame
+
+model
+
+script
+
+frame elements
+
+20.5
+
+• FRAMENET
+
+447
+
+however, add up to a complete account of how these words are related. They are
+clearly all deﬁned with respect to a coherent chunk of common-sense background
+information concerning air travel.
+
+We call the holistic background knowledge that unites these words a frame (Fill-
+more, 1985). The idea that groups of words are deﬁned with respect to some back-
+ground information is widespread in artiﬁcial intelligence and cognitive science,
+where besides frame we see related works like a model (Johnson-Laird, 1983), or
+even script (Schank and Abelson, 1977).
+
+A frame in FrameNet is a background knowledge structure that deﬁnes a set of
+frame-speciﬁc semantic roles, called frame elements, and includes a set of predi-
+cates that use these roles. Each word evokes a frame and proﬁles some aspect of the
+frame and its elements. The FrameNet dataset includes a set of frames and frame
+elements, the lexical units associated with each frame, and a set of labeled exam-
+ple sentences. For example, the change position on a scale frame is deﬁned as
+follows:
+
+This frame consists of words that indicate the change of an Item’s posi-
+tion on a scale (the Attribute) from a starting point (Initial value) to an
+end point (Final value).
+
+core roles
+
+non-core roles
+
+Some of the semantic roles (frame elements) in the frame are deﬁned as in
+Fig. 20.3. Note that these are separated into core roles, which are frame speciﬁc, and
+non-core roles, which are more like the Arg-M arguments in PropBank, expressing
+more general properties of time, location, and so on.
+
+ATTRIBUTE
+DIFFERENCE
+FINAL STATE
+
+Core Roles
+The ATTRIBUTE is a scalar property that the ITEM possesses.
+The distance by which an ITEM changes its position on the scale.
+A description that presents the ITEM’s state after the change in the ATTRIBUTE’s
+value as an independent predication.
+The position on the scale where the ITEM ends up.
+
+FINAL VALUE
+INITIAL STATE A description that presents the ITEM’s state before the change in the AT-
+
+TRIBUTE’s value as an independent predication.
+INITIAL VALUE The initial position on the scale from which the ITEM moves away.
+ITEM
+VALUE RANGE A portion of the scale, typically identiﬁed by its end points, along which the
+
+The entity that has a position on the scale.
+
+DURATION
+SPEED
+GROUP
+
+values of the ATTRIBUTE ﬂuctuate.
+
+Some Non-Core Roles
+
+The length of time over which the change takes place.
+The rate of change of the VALUE.
+The GROUP in which an ITEM changes the value of an
+ATTRIBUTE in a speciﬁed way.
+
+Figure 20.3 The frame elements in the change position on a scale frame from the FrameNet Labelers
+Guide (Ruppenhofer et al., 2016).
+
+Here are some example sentences:
+
+(20.20)
+(20.21)
+(20.22)
+(20.23)
+
+[ITEM Oil] rose [ATTRIBUTE in price] [DIFFERENCE by 2%].
+[ITEM It] has increased [FINAL STATE to having them 1 day a month].
+[ITEM Microsoft shares] fell [FINAL VALUE to 7 5/8].
+[ITEM Colon cancer incidence] fell [DIFFERENCE by 50%] [GROUP among
+
+men].
+
+448 CHAPTER 20
+
+• SEMANTIC ROLE LABELING
+
+(20.24) a steady increase [INITIAL VALUE from 9.5] [FINAL VALUE to 14.3] [ITEM
+
+in dividends]
+
+(20.25) a [DIFFERENCE 5%] [ITEM dividend] increase...
+
+Note from these example sentences that the frame includes target words like rise,
+
+fall, and increase. In fact, the complete frame consists of the following words:
+
+soar
+mushroom swell
+swing
+triple
+tumble
+
+VERBS: dwindle move
+edge
+advance
+explode plummet
+climb
+decline
+fall
+decrease ﬂuctuate rise
+diminish gain
+grow
+dip
+increase skyrocket
+double
+jump
+drop
+
+rocket
+shift
+
+reach
+
+slide
+
+NOUNS: hike
+decline
+decrease
+
+increase
+rise
+
+tumble
+
+escalation shift
+explosion
+fall
+ﬂuctuation ADVERBS:
+gain
+increasingly
+growth
+
+FrameNet also codes relationships between frames, allowing frames to inherit
+from each other, or representing relations between frames like causation (and gen-
+eralizations among frame elements in different frames can be represented by inheri-
+tance as well). Thus, there is a Cause change of position on a scale frame that is
+linked to the Change of position on a scale frame by the cause relation, but that
+adds an AGENT role and is used for causative examples such as the following:
+(20.26)
+
+[AGENT They] raised [ITEM the price of their soda] [DIFFERENCE by 2%].
+Together, these two frames would allow an understanding system to extract the
+common event semantics of all the verbal and nominal causative and non-causative
+usages.
+
+FrameNets have also been developed for many other languages including Span-
+
+ish, German, Japanese, Portuguese, Italian, and Chinese.
+
+20.6 Semantic Role Labeling
+
+semantic role
+labeling
+
+Semantic role labeling (sometimes shortened as SRL) is the task of automatically
+ﬁnding the semantic roles of each argument of each predicate in a sentence. Cur-
+rent approaches to semantic role labeling are based on supervised machine learning,
+often using the FrameNet and PropBank resources to specify what counts as a pred-
+icate, deﬁne the set of roles used in the task, and provide training and test sets.
+
+Recall that the difference between these two models of semantic roles is that
+FrameNet (20.27) employs many frame-speciﬁc frame elements as roles, while Prop-
+Bank (20.28) uses a smaller number of numbered argument labels that can be inter-
+preted as verb-speciﬁc labels, along with the more general ARGM labels. Some
+examples:
+
+(20.27)
+
+(20.28)
+
+[You]
+COGNIZER
+
+can’t
+
+[blame]
+TARGET EVALUEE
+
+REASON
+
+[the program] [for being unable to identify it]
+
+[The San Francisco Examiner]
+ARG0
+
+issued
+TARGET ARG1
+
+[a special edition]
+
+[yesterday]
+ARGM-TMP
+
+20.6.1 A Feature-based Algorithm for Semantic Role Labeling
+
+A simpliﬁed feature-based semantic role labeling algorithm is sketched in Fig. 20.4.
+Feature-based algorithms—from the very earliest systems like (Simmons, 1973)—
+begin by parsing, using broad-coverage parsers to assign a parse to the input string.
+
+20.6
+
+• SEMANTIC ROLE LABELING
+
+449
+
+Figure 20.5 shows a parse of (20.28) above. The parse is then traversed to ﬁnd all
+words that are predicates.
+
+For each of these predicates, the algorithm examines each node in the parse
+tree and uses supervised classiﬁcation to decide the semantic role (if any) it plays
+for this predicate. Given a labeled training set such as PropBank or FrameNet, a
+feature vector is extracted for each node, using feature templates described in the
+next subsection. A 1-of-N classiﬁer is then trained to predict a semantic role for
+each constituent given these features, where N is the number of potential semantic
+roles plus an extra NONE role for non-role constituents. Any standard classiﬁcation
+algorithms can be used. Finally, for each test sentence to be labeled, the classiﬁer is
+run on each relevant constituent.
+
+function SEMANTICROLELABEL(words) returns labeled tree
+
+←
+
+PARSE(words)
+parse
+for each predicate in parse do
+for each node in parse do
+
+featurevector
+CLASSIFYNODE(node, featurevector, parse)
+
+EXTRACTFEATURES(node, predicate, parse)
+
+←
+
+Figure 20.4 A generic semantic-role-labeling algorithm. CLASSIFYNODE is a 1-of-N clas-
+siﬁer that assigns a semantic role (or NONE for non-role constituents), trained on labeled data
+such as FrameNet or PropBank.
+
+Figure 20.5 Parse tree for a PropBank sentence, showing the PropBank argument labels. The dotted line
+S
+shows the path feature NP
+↑
+
+VBD for ARG0, the NP-SBJ constituent The San Francisco Examiner.
+VP
+↓
+↓
+
+Instead of training a single-stage classiﬁer as in Fig. 20.5, the node-level classi-
+
+ﬁcation task can be broken down into multiple steps:
+
+1. Pruning: Since only a small number of the constituents in a sentence are
+arguments of any given predicate, many systems use simple heuristics to prune
+unlikely constituents.
+
+2. Identiﬁcation: a binary classiﬁcation of each node as an argument to be la-
+
+beled or a NONE.
+
+3. Classiﬁcation: a 1-of-N classiﬁcation of all the constituents that were labeled
+
+as arguments by the previous stage
+
+SNP-SBJ=ARG0VPDTNNPNNPNNPTheSanFranciscoExaminerVBD=TARGETNP=ARG1PP-TMP=ARGM-TMPissuedDTJJNNINNPaspecialeditionaroundNNNP-TMPnoonyesterday450 CHAPTER 20
+
+• SEMANTIC ROLE LABELING
+
+The separation of identiﬁcation and classiﬁcation may lead to better use of fea-
+tures (different features may be useful for the two tasks) or to computational efﬁ-
+ciency.
+
+Global Optimization
+
+The classiﬁcation algorithm of Fig. 20.5 classiﬁes each argument separately (‘lo-
+cally’), making the simplifying assumption that each argument of a predicate can be
+labeled independently. This assumption is false; there are interactions between argu-
+ments that require a more ‘global’ assignment of labels to constituents. For example,
+constituents in FrameNet and PropBank are required to be non-overlapping. More
+signiﬁcantly, the semantic roles of constituents are not independent. For example
+PropBank does not allow multiple identical arguments; two constituents of the same
+verb cannot both be labeled ARG0 .
+
+Role labeling systems thus often add a fourth step to deal with global consistency
+across the labels in a sentence. For example, the local classiﬁers can return a list of
+possible labels associated with probabilities for each constituent, and a second-pass
+Viterbi decoding or re-ranking approach can be used to choose the best consensus
+label. Integer linear programming (ILP) is another common way to choose a solution
+that conforms best to multiple constraints.
+
+Features for Semantic Role Labeling
+
+Most systems use some generalization of the core set of features introduced by
+Gildea and Jurafsky (2000). Common basic features templates (demonstrated on
+the NP-SBJ constituent The San Francisco Examiner in Fig. 20.5) include:
+
+• The governing predicate, in this case the verb issued. The predicate is a cru-
+cial feature since labels are deﬁned only with respect to a particular predicate.
+• The phrase type of the constituent, in this case, NP (or NP-SBJ). Some se-
+
+mantic roles tend to appear as NPs, others as S or PP, and so on.
+
+• The headword of the constituent, Examiner. The headword of a constituent
+can be computed with standard head rules, such as those given in Appendix D
+in Fig. 17.17. Certain headwords (e.g., pronouns) place strong constraints on
+the possible semantic roles they are likely to ﬁll.
+
+• The headword part of speech of the constituent, NNP.
+• The path in the parse tree from the constituent to the predicate. This path is
+marked by the dotted line in Fig. 20.5. Following Gildea and Jurafsky (2000),
+and
+we can use a simple linear representation of the path, NP
+represent upward and downward movement in the tree, respectively. The
+↓
+path is very useful as a compact representation of many kinds of grammatical
+function relationships between the constituent and the predicate.
+
+VBD.
+VP
+↓
+
+S
+↓
+↑
+
+↑
+
+• The voice of the clause in which the constituent appears, in this case, active
+(as contrasted with passive). Passive sentences tend to have strongly different
+linkings of semantic roles to surface form than do active ones.
+
+• The binary linear position of the constituent with respect to the predicate,
+
+either before or after.
+
+• The subcategorization of the predicate, the set of expected arguments that
+appear in the verb phrase. We can extract this information by using the phrase-
+structure rule that expands the immediate parent of the predicate; VP
+VBD
+NP PP for the predicate in Fig. 20.5.
+
+→
+
+• The named entity type of the constituent.
+
+20.6
+
+• SEMANTIC ROLE LABELING
+
+451
+
+• The ﬁrst words and the last word of the constituent.
+
+The following feat

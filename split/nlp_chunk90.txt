@@ -1,0 +1,615 @@
+gina and Scaiella, 2011)
+for Wikipedia, which itself draws on earlier algorithms (Mihalcea and Csomai 2007,
+Cucerzan 2007, Milne and Witten 2008). Wikiﬁcation algorithms deﬁne the set of
+entities as the set of Wikipedia pages, so we’ll refer to each Wikipedia page as a
+unique entity e. TAGME ﬁrst creates a catalog of all entities (i.e. all Wikipedia
+pages, removing some disambiguation and other meta-pages) and indexes them in a
+standard IR engine like Lucene. For each page e, the algorithm computes an in-link
+count in(e): the total number of in-links from other Wikipedia pages that point to e.
+These counts can be derived from Wikipedia dumps.
+
+Finally, the algorithm requires an anchor dictionary. An anchor dictionary
+lists for each Wikipedia page, its anchor texts: the hyperlinked spans of text on
+other pages that point to it. For example, the web page for Stanford University,
+http://www.stanford.edu, might be pointed to from another page using anchor
+texts like Stanford or Stanford University:
+
+22.7
+
+• ENTITY LINKING
+
+501
+
+<a href="http://www.stanford.edu">Stanford University</a>
+
+We compute a Wikipedia anchor dictionary by including, for each Wikipedia
+page e, e’s title as well as all the anchor texts from all Wikipedia pages that point to e.
+For each anchor string a we’ll also compute its total frequency freq(a) in Wikipedia
+(including non-anchor uses), the number of times a occurs as a link (which we’ll call
+link(a)), and its link probability linkprob(a) = link(a)/freq(a). Some cleanup of the
+ﬁnal anchor dictionary is required, for example removing anchor strings composed
+only of numbers or single characters, that are very rare, or that are very unlikely to
+be useful entities because they have a very low linkprob.
+
+Mention Detection Given a question (or other text we are trying to link), TAGME
+detects mentions by querying the anchor dictionary for each token sequence up to
+6 words. This large set of sequences is pruned with some simple heuristics (for
+example pruning substrings if they have small linkprobs). The question:
+
+When was Ada Lovelace born?
+
+might give rise to the anchor Ada Lovelace and possibly Ada, but substrings spans
+like Lovelace might be pruned as having too low a linkprob, and but spans like born
+have such a low linkprob that they would not be in the anchor dictionary at all.
+
+Mention Disambiguation If a mention span is unambiguous (points to only one
+entity/Wikipedia page), we are done with entity linking! However, many spans are
+ambiguous, matching anchors for multiple Wikipedia entities/pages. The TAGME
+algorithm uses two factors for disambiguating ambiguous spans, which have been
+referred to as prior probability and relatedness/coherence. The ﬁrst factor is p(e
+a),
+|
+the probability with which the span refers to a particular entity. For each page e
+∈
+E(a), the probability p(e
+a) that anchor a points to e, is the ratio of the number of
+|
+links into e with anchor text a to the total number of occurrences of a as an anchor:
+
+prior(a
+
+a) =
+e) = p(e
+|
+
+→
+
+count(a
+
+→
+link(a)
+
+e)
+
+(22.58)
+
+Let’s see how that factor works in linking entities in the following question:
+
+What Chinese Dynasty came before the Yuan?
+
+The most common association for the span Yuan in the anchor dictionary is the name
+of the Chinese currency, i.e., the probability p(Yuan currency
+yuan) is very high.
+Rarer Wikipedia associations for Yuan include the common Chinese last name, a
+language spoken in Thailand, and the correct entity in this case, the name of the
+Chinese dynasty. So if we chose based only on p(e
+a) , we would make the wrong
+|
+disambiguation and miss the correct link, Yuan dynasty.
+
+|
+
+To help in just this sort of case, TAGME uses a second factor, the relatedness of
+this entity to other entities in the input question. In our example, the fact that the
+question also contains the span Chinese Dynasty, which has a high probability link to
+the page Dynasties in Chinese history, ought to help match Yuan dynasty.
+Let’s see how this works. Given a question q, for each candidate anchors span
+E(a) of a.
+a detected in q, we assign a relatedness score to each possible entity e
+The relatedness score of the link a
+e is the weighted average relatedness between
+e and all other entities in q. Two entities are considered related to the extent their
+Wikipedia pages share many in-links. More formally, the relatedness between two
+entities A and B is computed as
+
+→
+
+∈
+
+rel(A, B) =
+
+in(A)
+log(max(
+,
+|
+|
+)
+log(
+W
+−
+|
+|
+
+in(B)
+in(A)
+))
+in(B)
+log(
+)
+∩
+|
+−
+|
+|
+|
+))
+in(B)
+,
+in(A)
+log(min(
+|
+|
+|
+|
+
+(22.59)
+
+502 CHAPTER 22
+
+• COREFERENCE RESOLUTION AND ENTITY LINKING
+
+where in(x) is the set of Wikipedia pages pointing to x and W is the set of all Wiki-
+pedia pages in the collection.
+
+The vote given by anchor b to the candidate annotation a
+
+X is the average,
+over all the possible entities of b, of their relatedness to X, weighted by their prior
+probability:
+
+→
+
+vote(b, X) =
+
+1
+E(b)
+|
+
+E(b)
+| (cid:88)Y
+∈
+
+rel(X,Y )p(Y
+
+b)
+|
+
+(22.60)
+
+The total relatedness score for a
+detected in q:
+
+→
+
+X is the sum of the votes of all the other anchors
+
+relatedness(a
+
+X) =
+
+→
+
+Xq\
+a
+(cid:88)b
+∈
+
+vote(b, X)
+
+(22.61)
+
+To score a
+
+→
+that has the highest relatedness(a
+this value, and from this set, choosing the entity with the highest prior P(X
+result of this step is a single entity assigned to each span in q.
+
+X, we combine relatedness and prior by choosing the entity X
+X), ﬁnding other entities within a small (cid:15) of
+a). The
+|
+
+→
+
+The TAGME algorithm has one further step of pruning spurious anchor/entity
+
+pairs, assigning a score averaging link probability with the coherence.
+
+coherence(a
+
+X) =
+
+→
+
+S
+|
+coherence(a
+
+score(a
+
+X) =
+
+→
+
+1
+
+1
+
+| −
+
+→
+
+rel(B, X)
+
+S
+X
+(cid:88)B
+\
+∈
+X) + linkprob(a)
+2
+
+(22.62)
+
+Finally, pairs are pruned if score(a
+held-out set.
+
+→
+
+X) < λ , where the threshold λ is set on a
+
+22.7.2 Neural Graph-based linking
+
+More recent entity linking models are based on bi-encoders, encoding a candidate
+mention span, encoding an entity, and computing the dot product between the en-
+codings. This allows embeddings for all the entities in the knowledge base to be
+precomputed and cached (Wu et al., 2020). Let’s sketch the ELQ linking algorithm
+of Li et al. (2020), which is given a question q and a set of candidate entities from
+Wikipedia with associated Wikipedia text, and outputs tuples (e, ms, me) of entity id,
+mention start, and mention end. As Fig. 22.8 shows, it does this by encoding each
+Wikipedia entity using text from Wikipedia, encoding each mention span using text
+from the question, and computing their similarity, as we describe below.
+
+Entity Mention Detection To get an h-dimensional embedding for each question
+token, the algorithm runs the question through BERT in the normal way:
+
+[q1 · · ·
+
+qn] = BERT([CLS]q1 · · ·
+
+qn[SEP])
+
+(22.63)
+
+It then computes the likelihood of each span [i, j] in q being an entity mention, in
+a way similar to the span-based algorithm we saw for the reader above. First we
+compute the score for i/ j being the start/end of a mention:
+
+sstart(i) = wstart ·
+
+qi,
+
+send( j) = wend ·
+
+q j,
+
+(22.64)
+
+22.7
+
+• ENTITY LINKING
+
+503
+
+Figure 22.8 A sketch of the inference process in the ELQ algorithm for entity linking in
+questions (Li et al., 2020). Each candidate question mention span and candidate entity are
+separately encoded, and then scored by the entity/span dot product.
+
+where wstart and wend are vectors learned during training. Next, another trainable
+embedding, wmention is used to compute a score for each token being part of a men-
+tion:
+
+smention(t) = wmention ·
+Mention probabilities are then computed by combining these three scores:
+
+qt
+
+(22.65)
+
+p([i, j]) = σ
+
+sstart(i) + send( j) +
+
+(cid:32)
+
+j
+
+(cid:88)t=i
+
+smention(t)
+
+(cid:33)
+
+(22.66)
+
+Entity Linking To link mentions to entities, we next compute embeddings for
+each entity in the set E = e1,
+, ew of all Wikipedia entities. For each en-
+tity ei we’ll get text from the entity’s Wikipedia page, the title t(ei) and the ﬁrst
+128 tokens of the Wikipedia page which we’ll call the description d(ei). This is
+again run through BERT, taking the output of the CLS token BERT[CLS] as the entity
+representation:
+
+, ei,
+
+· · ·
+
+· · ·
+
+xei = BERT[CLS]([CLS]t(ei)[ENT]d(ei)[SEP])
+
+(22.67)
+
+Mention spans can be linked to entities by computing, for each entity e and span
+[i, j], the dot product similarity between the span encoding (the average of the token
+embeddings) and the entity encoding.
+
+yi, j =
+
+1
+i + 1)
+
+( j
+
+−
+
+j
+
+qt
+
+(cid:88)t=i
+
+s(e, [i, j]) = x·eyi, j
+
+Finally, we take a softmax to get a distribution over entities for each span:
+
+[i, j]) =
+p(e
+|
+
+exp(s(e, [i, j]))
+E exp(s(e(cid:48), [i, j]))
+
+e(cid:48)∈
+
+(22.68)
+
+(22.69)
+
+Training The ELQ mention detection and entity linking algorithm is fully super-
+vised. This means, unlike the anchor dictionary algorithms from Section 22.7.1,
+
+(cid:80)
+
+504 CHAPTER 22
+
+• COREFERENCE RESOLUTION AND ENTITY LINKING
+
+it requires datasets with entity boundaries marked and linked. Two such labeled
+datasets are WebQuestionsSP (Yih et al., 2016), an extension of the WebQuestions
+(Berant et al., 2013) dataset derived from Google search questions, and GraphQues-
+tions (Su et al., 2016). Both have had entity spans in the questions marked and
+linked (Sorokin and Gurevych 2018, Li et al. 2020) resulting in entity-labeled ver-
+sions WebQSPEL and GraphQEL (Li et al., 2020).
+
+Given a training set, the ELQ mention detection and entity linking phases are
+trained jointly, optimizing the sum of their losses. The mention detection loss is
+a binary cross-entropy loss, with L the length of the passage and N the number of
+candidates:
+1
+N
+
+y[i, j] log p([i, j]) + (1
+
+y[i, j]) log(1
+
+p([i, j]))
+
+(22.70)
+
+−
+
+−
+
+−
+
+j
+i
+(cid:88)1
+≤
+≤
+
+min(i+L
+
+≤
+
+−
+
+1,n)
+
+(cid:0)
+
+(cid:1)
+
+LMD =
+
+with y[i, j] = 1 if [i, j] is a gold mention span, else 0. The entity linking loss is:
+
+LED =
+
+logp(eg|
+−
+
+[i, j])
+
+(22.71)
+
+where eg is the gold entity for mention [i, j].
+
+22.8 Evaluation of Coreference Resolution
+
+MUC
+F-measure
+
+3
+
+B
+
+We evaluate coreference algorithms model-theoretically, comparing a set of hypoth-
+esis chains or clusters H produced by the system against a set of gold or reference
+chains or clusters R from a human labeling, and reporting precision and recall.
+
+However, there are a wide variety of methods for doing this comparison. In fact,
+there are 5 common metrics used to evaluate coreference algorithms: the link based
+MUC (Vilain et al., 1995) and BLANC (Recasens and Hovy 2011, Luo et al. 2014)
+metrics, the mention based B3 metric (Bagga and Baldwin, 1998), the entity based
+CEAF metric (Luo, 2005), and the link based entity aware LEA metric (Moosavi and
+Strube, 2016).
+
+Let’s just explore two of the metrics. The MUC F-measure (Vilain et al., 1995)
+is based on the number of coreference links (pairs of mentions) common to H and
+R. Precision is the number of common links divided by the number of links in H.
+Recall is the number of common links divided by the number of links in R; This
+makes MUC biased toward systems that produce large chains (and fewer entities),
+and it ignores singletons, since they don’t involve links.
+
+B3 is mention-based rather than link-based. For each mention in the reference
+chain, we compute a precision and recall, and then we take a weighted sum over all
+N mentions in the document to compute a precision and recall for the entire task. For
+a given mention i, let R be the reference chain that includes i, and H the hypothesis
+chain that has i. The set of correct mentions in H is H
+R. Precision for mention i
+, and recall for mention i thus |
+is thus |
+. The total precision is the weighted
+sum of the precision for mention i, weighted by a weight wi. The total recall is the
+weighted sum of the recall for mention i, weighted by a weight wi. Equivalently:
+
+∩
+H
+|
+|
+
+∩
+R
+|
+|
+
+R
+|
+
+∩
+
+H
+
+H
+
+R
+
+|
+
+Precision =
+
+Recall =
+
+N
+
+(cid:88)i=1
+N
+
+(cid:88)i=1
+
+wi
+
+# of correct mentions in hypothesis chain containing entityi
+# of mentions in hypothesis chain containing entityi
+
+wi
+
+# of correct mentions in hypothesis chain containing entityi
+# of mentions in reference chain containing entityi
+
+22.9
+
+• WINOGRAD SCHEMA PROBLEMS
+
+505
+
+The weight wi for each entity can be set to different values to produce different
+versions of the algorithm.
+
+Following a proposal from Denis and Baldridge (2009), the CoNLL coreference
+competitions were scored based on the average of MUC, CEAF-e, and B3 (Pradhan
+et al. 2011, Pradhan et al. 2012b), and so it is common in many evaluation campaigns
+to report an average of these 3 metrics. See Luo and Pradhan (2016) for a detailed
+description of the entire set of metrics; reference implementations of these should
+be used rather than attempting to reimplement from scratch (Pradhan et al., 2014).
+
+Alternative metrics have been proposed that deal with particular coreference do-
+mains or tasks. For example, consider the task of resolving mentions to named
+entities (persons, organizations, geopolitical entities), which might be useful for in-
+formation extraction or knowledge base completion. A hypothesis chain that cor-
+rectly contains all the pronouns referring to an entity, but has no version of the name
+itself, or is linked with a wrong name, is not useful for this task. We might instead
+want a metric that weights each mention by how informative it is (with names being
+most informative) (Chen and Ng, 2013) or a metric that considers a hypothesis to
+match a gold chain only if it contains at least one variant of a name (the NEC F1
+metric of Agarwal et al. (2019)).
+
+22.9 Winograd Schema problems
+
+From early on in the ﬁeld, researchers have noted that some cases of coreference
+are quite difﬁcult, seeming to require world knowledge or sophisticated reasoning
+to solve. The problem was most famously pointed out by Winograd (1972) with the
+following example:
+
+(22.72) The city council denied the demonstrators a permit because
+
+a. they feared violence.
+b. they advocated violence.
+
+Winograd noticed that the antecedent that most readers preferred for the pro-
+noun they in continuation (a) was the city council, but in (b) was the demonstrators.
+He suggested that this requires understanding that the second clause is intended
+as an explanation of the ﬁrst clause, and also that our cultural frames suggest that
+city councils are perhaps more likely than demonstrators to fear violence and that
+demonstrators might be more likely to advocate violence.
+
+In an attempt to get the ﬁeld of NLP to focus more on methods involving world
+knowledge and common-sense reasoning, Levesque (2011) proposed a challenge
+task called the Winograd Schema Challenge.8 The problems in the challenge task
+are coreference problems designed to be easily disambiguated by the human reader,
+but hopefully not solvable by simple techniques such as selectional restrictions, or
+other basic word association methods.
+
+The problems are framed as a pair of statements that differ in a single word or
+
+phrase, and a coreference question:
+
+(22.73) The trophy didn’t ﬁt into the suitcase because it was too large.
+
+Question: What was too large? Answer: The trophy
+
+8 Levesque’s call was quickly followed up by Levesque et al. (2012) and Rahman and Ng (2012), a
+competition at the IJCAI conference (Davis et al., 2017), and a natural language inference version of the
+problem called WNLI (Wang et al., 2018a).
+
+Winograd
+schema
+
+506 CHAPTER 22
+
+• COREFERENCE RESOLUTION AND ENTITY LINKING
+
+(22.74) The

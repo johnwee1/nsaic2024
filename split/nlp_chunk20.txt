@@ -1,0 +1,632 @@
+omedies have low numbers and the others have high numbers, and we
+can see it visually in Fig. 6.4; we’ll see very shortly how to quantify this intuition
+more formally.
+
+A real term-document matrix, of course, wouldn’t just have 4 rows and columns,
+let alone 2. More generally, the term-document matrix has
+rows (one for each
+word type in the vocabulary) and D columns (one for each document in the collec-
+
+V
+|
+
+|
+
+112 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+Figure 6.4 A spatial visualization of the document vectors for the four Shakespeare play
+documents, showing just two of the dimensions, corresponding to the words battle and fool.
+The comedies have high values for the fool dimension and low values for the battle dimension.
+
+information
+retrieval
+
+tion); as we’ll see, vocabulary sizes are generally in the tens of thousands, and the
+number of documents can be enormous (think about all the pages on the web).
+
+Information retrieval (IR) is the task of ﬁnding the document d from the D
+documents in some collection that best matches a query q. For IR we’ll therefore also
+represent a query by a vector, also of length
+, and we’ll need a way to compare
+|
+two vectors to ﬁnd how similar they are. (Doing IR will also require efﬁcient ways
+to store and manipulate these vectors by making use of the convenient fact that these
+vectors are sparse, i.e., mostly zeros).
+
+V
+|
+
+Later in the chapter we’ll introduce some of the components of this vector com-
+
+parison process: the tf-idf term weighting, and the cosine similarity metric.
+
+6.3.2 Words as vectors: document dimensions
+
+row vector
+
+We’ve seen that documents can be represented as vectors in a vector space. But
+vector semantics can also be used to represent the meaning of words. We do this
+by associating each word with a word vector— a row vector rather than a column
+vector, hence with different dimensions, as shown in Fig. 6.5. The four dimensions
+of the vector for fool, [36,58,1,4], correspond to the four Shakespeare plays. Word
+counts in the same four dimensions are used to form the vectors for the other 3
+words: wit, [20,15,2,3]; battle, [1,0,7,13]; and good [114,80,62,89].
+
+battle
+good
+fool
+wit
+
+As You Like It
+1
+114
+36
+20
+
+Twelfth Night
+0
+80
+58
+15
+
+Julius Caesar
+7
+62
+1
+2
+
+Henry V
+13
+89
+4
+3
+
+Figure 6.5 The term-document matrix for four words in four Shakespeare plays. The red
+boxes show that each word is represented as a row vector of length four.
+
+For documents, we saw that similar documents had similar vectors, because sim-
+ilar documents tend to have similar words. This same principle applies to words:
+similar words have similar vectors because they tend to occur in similar documents.
+The term-document matrix thus lets us represent the meaning of a word by the doc-
+uments it tends to occur in.
+
+51015202530510Henry V [4,13]As You Like It [36,1]Julius Caesar [1,7]battle foolTwelfth Night [58,0]1540354045505560word-word
+matrix
+
+6.3.3 Words as vectors: word dimensions
+
+6.3
+
+• WORDS AND VECTORS
+
+113
+
+An alternative to using the term-document matrix to represent words as vectors of
+document counts, is to use the term-term matrix, also called the word-word ma-
+trix or the term-context matrix, in which the columns are labeled by words rather
+than documents. This matrix is thus of dimensionality
+and each cell records
+the number of times the row (target) word and the column (context) word co-occur
+in some context in some training corpus. The context could be the document, in
+which case the cell represents the number of times the two words appear in the same
+document. It is most common, however, to use smaller contexts, generally a win-
+dow around the word, for example of 4 words to the left and 4 words to the right,
+in which case the cell represents the number of times (in some training corpus) the
+column word occurs in such a
+4 word window around the row word. Here are four
+examples of words in their windows:
+
+|×|
+
+V
+|
+
+±
+
+V
+
+|
+
+is traditionally followed by cherry
+
+pie, a traditional dessert
+often mixed, such as strawberry rhubarb pie. Apple pie
+
+computer peripherals and personal digital
+
+assistants. These devices usually
+
+a computer. This includes information available on the internet
+
+If we then take every occurrence of each word (say strawberry) and count the
+context words around it, we get a word-word co-occurrence matrix. Fig. 6.6 shows a
+simpliﬁed subset of the word-word co-occurrence matrix for these four words com-
+puted from the Wikipedia corpus (Davies, 2015).
+
+aardvark
+0
+0
+0
+0
+
+...
+...
+...
+...
+...
+
+computer
+2
+0
+1670
+3325
+
+cherry
+strawberry
+digital
+information
+Figure 6.6 Co-occurrence vectors for four words in the Wikipedia corpus, showing six of
+the dimensions (hand-picked for pedagogical purposes). The vector for digital is outlined in
+red. Note that a real vector would have vastly more dimensions and thus be much sparser.
+
+sugar
+25
+19
+4
+13
+
+...
+...
+...
+...
+...
+
+result
+9
+1
+85
+378
+
+data
+8
+0
+1683
+3982
+
+pie
+442
+60
+5
+5
+
+Note in Fig. 6.6 that the two words cherry and strawberry are more similar to
+each other (both pie and sugar tend to occur in their window) than they are to other
+words like digital; conversely, digital and information are more similar to each other
+than, say, to strawberry. Fig. 6.7 shows a spatial visualization.
+
+Figure 6.7 A spatial visualization of word vectors for digital and information, showing just
+two of the dimensions, corresponding to the words data and computer.
+
+Note that
+
+, the dimensionality of the vector, is generally the size of the vo-
+|
+cabulary, often between 10,000 and 50,000 words (using the most frequent words
+
+V
+|
+
+100020003000400010002000digital [1683,1670]computer datainformation [3982,3325] 30004000114 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+in the training corpus; keeping words after about the most frequent 50,000 or so is
+generally not helpful). Since most of these numbers are zero these are sparse vector
+representations; there are efﬁcient algorithms for storing and computing with sparse
+matrices.
+
+Now that we have some intuitions, let’s move on to examine the details of com-
+
+puting word similarity. Afterwards we’ll discuss methods for weighting cells.
+
+6.4 Cosine for measuring similarity
+
+To measure similarity between two target words v and w, we need a metric that
+takes two vectors (of the same dimensionality, either both with words as dimensions,
+) and gives
+hence of length
+|
+a measure of their similarity. By far the most common similarity metric is the cosine
+of the angle between the vectors.
+
+, or both with documents as dimensions, of length
+|
+
+D
+|
+
+V
+|
+
+The cosine—like most measures for vector similarity used in NLP—is based on
+
+the dot product operator from linear algebra, also called the inner product:
+
+dot product
+
+inner product
+
+dot product(v, w) = v
+
+w =
+
+·
+
+N
+
+(cid:88)i=1
+
+viwi = v1w1 + v2w2 + ... + vNwN
+
+(6.7)
+
+The dot product acts as a similarity metric because it will tend to be high just when
+the two vectors have large values in the same dimensions. Alternatively, vectors that
+have zeros in different dimensions—orthogonal vectors—will have a dot product of
+0, representing their strong dissimilarity.
+
+This raw dot product, however, has a problem as a similarity metric: it favors
+
+vector length
+
+long vectors. The vector length is deﬁned as
+
+N
+
+=
+
+v
+|
+
+v2
+i
+
+|
+
+(cid:88)i=1
+
+(cid:118)
+(cid:117)
+(cid:117)
+(cid:116)
+The dot product is higher if a vector is longer, with higher values in each dimension.
+More frequent words have longer vectors, since they tend to co-occur with more
+words and have higher co-occurrence values with each of them. The raw dot product
+thus will be higher for frequent words. But this is a problem; we’d like a similarity
+metric that tells us how similar two words are regardless of their frequency.
+
+(6.8)
+
+We modify the dot product to normalize for the vector length by dividing the
+dot product by the lengths of each of the two vectors. This normalized dot product
+turns out to be the same as the cosine of the angle between the two vectors, following
+from the deﬁnition of the dot product between two vectors a and b:
+
+b
+a
+|
+|
+= cos θ
+
+||
+
+a
+a
+a
+|
+
+·
+||
+
+b =
+·
+b
+b
+|
+
+cos θ
+
+(6.9)
+
+cosine
+
+The cosine similarity metric between two vectors v and w thus can be computed as:
+
+6.5
+
+• TF-IDF: WEIGHING TERMS IN THE VECTOR
+
+115
+
+cosine(v, w) =
+
+v
+v
+|
+
+w
+w
+
+·
+||
+
+|
+
+=
+
+N
+
+viwi
+
+(cid:88)i=1
+N
+
+(cid:118)
+(cid:117)
+(cid:117)
+(cid:116)
+
+(cid:88)i=1
+
+v2
+i (cid:118)
+(cid:117)
+(cid:117)
+(cid:116)
+
+(6.10)
+
+N
+
+w2
+i
+
+(cid:88)i=1
+
+unit vector
+
+For some applications we pre-normalize each vector, by dividing it by its length,
+creating a unit vector of length 1. Thus we could compute a unit vector from a by
+dividing it by
+
+a
+. For unit vectors, the dot product is the same as the cosine.
+|
+|
+
+The cosine value ranges from 1 for vectors pointing in the same direction, through
+0 for orthogonal vectors, to -1 for vectors pointing in opposite directions. But since
+raw frequency values are non-negative, the cosine for these vectors ranges from 0–1.
+Let’s see how the cosine computes which of the words cherry or digital is closer
+in meaning to information, just using raw counts from the following shortened table:
+
+cherry
+digital
+information
+
+pie data computer
+442
+5
+5
+
+8
+1683
+3982
+
+2
+1670
+3325
+
+cos(cherry, information) =
+
+cos(digital, information) =
+
+442
+
+5 + 8
+
+3982 + 2
+
+3325
+
+∗
+
+∗
+
+∗
+
+√4422 + 82 + 22√52 + 39822 + 33252
+3325
+
+3982 + 1670
+
+5 + 1683
+
+5
+
+∗
+
+∗
+
+√52 + 16832 + 16702√52 + 39822 + 33252
+
+= .018
+
+∗
+
+= .996
+
+The model decides that information is way closer to digital than it is to cherry, a
+
+result that seems sensible. Fig. 6.8 shows a visualization.
+
+Figure 6.8 A (rough) graphical demonstration of cosine similarity, showing vectors for
+three words (cherry, digital, and information) in the two dimensional space deﬁned by counts
+of the words computer and pie nearby. The ﬁgure doesn’t show the cosine, but it highlights the
+angles; note that the angle between digital and information is smaller than the angle between
+cherry and information. When two vectors are more similar, the cosine is larger but the angle
+is smaller; the cosine has its maximum (1) when the angle between two vectors is smallest
+(0◦); the cosine of all other angles is less than 1.
+
+6.5 TF-IDF: Weighing terms in the vector
+
+The co-occurrence matrices above represent each cell by frequencies, either of words
+with documents (Fig. 6.5), or words with other words (Fig. 6.6). But raw frequency
+
+50010001500200025003000500digitalcherryinformationDimension 1: ‘pie’Dimension 2: ‘computer’116 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+is not the best measure of association between words. Raw frequency is very skewed
+and not very discriminative. If we want to know what kinds of contexts are shared
+by cherry and strawberry but not by digital and information, we’re not going to get
+good discrimination from words like the, it, or they, which occur frequently with
+all sorts of words and aren’t informative about any particular word. We saw this
+also in Fig. 6.3 for the Shakespeare corpus; the dimension for the word good is not
+very discriminative between plays; good is simply a frequent word and has roughly
+equivalent high frequencies in each of the plays.
+
+It’s a bit of a paradox. Words that occur nearby frequently (maybe pie nearby
+cherry) are more important than words that only appear once or twice. Yet words
+that are too frequent—ubiquitous, like the or good— are unimportant. How can we
+balance these two conﬂicting constraints?
+
+There are two common solutions to this problem: in this section we’ll describe
+the tf-idf weighting, usually used when the dimensions are documents. In the next
+we introduce the PPMI algorithm (usually used when the dimensions are words).
+
+The tf-idf weighting (the ‘-’ here is a hyphen, not a minus sign) is the product
+
+of two terms, each term capturing one of these two intuitions:
+
+term frequency
+
+The ﬁrst is the term frequency (Luhn, 1957): the frequency of the word t in the
+
+document d. We can just use the raw count as the term frequency:
+
+tft, d = count(t, d)
+
+(6.11)
+
+More commonly we squash the raw frequency a bit, by using the log10 of the fre-
+quency instead. The intuition is that a word appearing 100 times in a document
+doesn’t make that word 100 times more likely to be relevant to the meaning of the
+document. We also need to do something special with counts of 0, since we can’t
+take the log of 0.2
+
+tft, d =
+
+1 + log10 count(t, d)
+0
+
+(cid:40)
+
+if count(t, d) > 0
+otherwise
+
+(6.12)
+
+If we use log weighting, terms which occur 0 times in a document would have tf = 0,
+1 times in a document tf = 1 + log10(1) = 1 + 0 = 1, 10 times in a document tf =
+1 + log10(10) = 2, 100 times tf = 1 + log10(100) = 3, 1000 times tf = 4, and so on.
+The second factor in tf-idf is used to give a higher weight to words that occur
+only in a few documents. Terms that are limited to a few documents are useful
+for discriminating those documents from the rest of the collection; terms that occur
+frequently across the entire collection aren’t as helpful. The document frequency
+dft of a term t is the number of documents it occurs in. Document frequency is
+not the same as the collection frequency of a term, which is the total number of
+times the word appears in the whole collection in any document. Consider in the
+collection of Shakespeare’s 37 plays the two words Romeo and action. The words
+have identical collection frequencies (they both occur 113 times in all the plays) but
+very different document frequencies, since Romeo only occurs in a single play. If
+our goal is to ﬁnd documents about the romantic tribulations of Romeo, the word
+Romeo should be highly weighted, but not action:
+
+Collection Frequency Document Frequency
+
+Romeo 113
+113
+action
+
+1
+31
+
+2 We can also use this alternative formulation, which we have used in earlier editions:
+log10(count(t, d) + 1)
+
+tft, d =
+
+document
+frequency
+
+6.5
+
+• TF-IDF: WEIGHING TERMS IN THE VECTOR
+
+117
+
+idf
+
+We emphasize discriminative words like Romeo via the inverse document fre-
+quency or idf term weight (Sparck Jones, 1972). The idf is deﬁned using the frac-
+tion N/dft , where N is the total number of documents in the collection, and dft is
+the number of documents in which term t occurs. The fewer documents in which a
+term occurs, the higher this weight. The lowest weight of 1 is assigned to terms that
+occur in all the documents. It’s usually clear what counts as a document: in Shake-
+speare we would use a play; when processing a collection of encyclopedia articles
+like Wikipedia, the document is a Wikipedia page; in processing newspaper articles,
+the document is a single article. Occasionally your corpus might not have appropri-
+ate document divisions and you might need to break up the corpus into documents
+yourself for the purposes of computing idf.
+
+Because of the large number of documents in many collections, this measure
+too is usually squashed with a log function. The resulting deﬁnition for inverse
+document frequency (idf) is thus
+
+idft = log10
+
+N
+dft (cid:19)
+
+(cid:18)
+
+(6.13)
+
+Here are some idf values for some words in the Shakespeare corpus, ranging from
+extremely informative words which occur in only one play like Romeo, to those that
+occur in a few like salad or Falstaff, to those which are very common like fool or so
+common as to be completely non-discriminative since they occur in all 37 plays like
+good or sweet.3
+
+Word
+Romeo
+salad
+Falstaff
+forest
+battle
+wit
+fool
+good
+sweet
+
+df
+1
+2
+4
+12
+21
+34
+36

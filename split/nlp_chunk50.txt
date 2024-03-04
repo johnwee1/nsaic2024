@@ -1,0 +1,287 @@
+s of machine translation output, running a
+human evaluation can be time consuming and expensive. For this reason automatic
+metrics are often used as temporary proxies. Automatic metrics are less accurate
+than human evaluation, but can help test potential system improvements, and even
+be used as an automatic loss function for training. In this section we introduce two
+families of such metrics, those based on character- or word-overlap and those based
+on embedding similarity.
+
+Automatic Evaluation by Character Overlap: chrF
+
+The simplest and most robust metric for MT evaluation is called chrF, which stands
+for character F-score (Popovi´c, 2015). chrF (along with many other earlier related
+metrics like BLEU, METEOR, TER, and others) is based on a simple intuition de-
+rived from the pioneering work of Miller and Beebe-Center (1956): a good machine
+translation will tend to contain characters and words that occur in a human trans-
+lation of the same sentence. Consider a test set from a parallel corpus, in which
+each source sentence has both a gold human target translation and a candidate MT
+translation we’d like to evaluate. The chrF metric ranks each MT target sentence by
+a function of the number of character n-gram overlaps with the human translation.
+
+Given the hypothesis and the reference, chrF is given a parameter k indicating
+the length of character n-grams to be considered, and computes the average of the
+k precisions (unigram precision, bigram, and so on) and the average of the k recalls
+(unigram recall, bigram recall, etc.):
+
+chrP percentage of character 1-grams, 2-grams, ..., k-grams in the hypothesis that
+
+occur in the reference, averaged.
+
+chrR percentage of character 1-grams, 2-grams,..., k-grams in the reference that
+
+occur in the hypothesis, averaged.
+
+The metric then computes an F-score by combining chrP and chrR using a weighting
+parameter β . It is common to set β = 2, thus weighing recall twice as much as
+
+286 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+precision:
+
+chrFβ = (1 + β 2)
+
+For β = 2, that would be:
+
+chrP
+
+chrR
+chrP + chrR
+
+·
+
+β 2
+
+·
+
+(13.20)
+
+chrF2 =
+
+5
+4
+
+chrR
+chrP
+·
+·
+chrP + chrR
+·
+
+For example, consider two hypotheses that we’d like to score against the refer-
+ence translation witness for the past. Here are the hypotheses along with chrF values
+computed using parameters k = β = 2 (in real examples, k would be a higher number
+like 6):
+
+REF: witness for the past,
+HYP1: witness of the past, chrF2,2 = .86
+HYP2: past witness
+chrF2,2 = .62
+
+Let’s see how we computed that chrF value for HYP1 (we’ll leave the compu-
+tation of the chrF value for HYP2 as an exercise for the reader). First, chrF ignores
+spaces, so we’ll remove them from both the reference and hypothesis:
+REF: witnessforthepast, (18 unigrams, 17 bigrams)
+HYP1: witnessofthepast, (17 unigrams, 16 bigrams)
+
+Next let’s see how many unigrams and bigrams match between the reference and
+hypothesis:
+
+unigrams that match: w i t n e s s f o t h e p a s t , (17 unigrams)
+bigrams that match: wi it tn ne es ss th he ep pa as st t, (13 bigrams)
+
+We use that to compute the unigram and bigram precisions and recalls:
+
+unigram P: 17/17 = 1
+bigram P:
+
+13/16 = .813 bigram R:
+
+unigram R: 17/18 = .944
+13/17 = .765
+
+Finally we average to get chrP and chrR, and compute the F-score:
+
+chrP = (17/17 + 13/16)/2 = .906
+chrR = (17/18 + 13/17)/2 = .855
+
+chrF2,2 = 5
+
+chrP
+chrR
+∗
+4chrP + chrR
+
+= .86
+
+chrF is simple, robust, and correlates very well with human judgments in many
+
+languages (Kocmi et al., 2021).
+
+Alternative overlap metric: BLEU
+
+There are various alternative overlap metrics. For example, before the development
+of chrF, it was common to use a word-based overlap metric called BLEU (for BiLin-
+gual Evaluation Understudy), that is purely precision-based rather than combining
+precision and recall (Papineni et al., 2002). The BLEU score for a corpus of candi-
+date translation sentences is a function of the n-gram word precision over all the
+sentences combined with a brevity penalty computed over the corpus as a whole.
+
+What do we mean by n-gram precision? Consider a corpus composed of a single
+sentence. The unigram precision for this corpus is the percentage of unigram tokens
+
+13.6
+
+• MT EVALUATION
+
+287
+
+in the candidate translation that also occur in the reference translation, and ditto for
+bigrams and so on, up to 4-grams. BLEU extends this unigram metric to the whole
+corpus by computing the numerator as the sum over all sentences of the counts of all
+the unigram types that also occur in the reference translation, and the denominator
+is the total of the counts of all unigrams in all candidate sentences. We compute
+this n-gram precision for unigrams, bigrams, trigrams, and 4-grams and take the
+geometric mean. BLEU has many further complications, including a brevity penalty
+for penalizing candidate translations that are too short, and it also requires the n-
+gram counts be clipped in a particular way.
+
+Because BLEU is a word-based metric, it is very sensitive to word tokenization,
+making it impossible to compare different systems if they rely on different tokeniza-
+tion standards, and doesn’t work as well in languages with complex morphology.
+Nonetheless, you will sometimes still see systems evaluated by BLEU, particularly
+for translation into English. In such cases it’s important to use packages that enforce
+standardization for tokenization like SACREBLEU (Post, 2018).
+
+Statistical Signiﬁcance Testing for MT evals
+
+Character or word overlap-based metrics like chrF (or BLEU, or etc.) are mainly
+used to compare two systems, with the goal of answering questions like: did the
+new algorithm we just invented improve our MT system? To know if the difference
+between the chrF scores of two MT systems is a signiﬁcant difference, we use the
+paired bootstrap test, or the similar randomization test.
+
+To get a conﬁdence interval on a single chrF score using the bootstrap test, recall
+from Section 4.9 that we take our test set (or devset) and create thousands of pseudo-
+testsets by repeatedly sampling with replacement from the original test set. We now
+compute the chrF score of each of the pseudo-testsets. If we drop the top 2.5% and
+bottom 2.5% of the scores, the remaining scores will give us the 95% conﬁdence
+interval for the chrF score of our system.
+
+To compare two MT systems A and B, we draw the same set of pseudo-testsets,
+and compute the chrF scores for each of them. We then compute the percentage of
+pseudo-test-sets in which A has a higher chrF score than B.
+
+chrF: Limitations
+
+While automatic character and word-overlap metrics like chrF or BLEU are useful,
+they have important limitations. chrF is very local: a large phrase that is moved
+around might barely change the chrF score at all, and chrF can’t evaluate cross-
+sentence properties of a document like its discourse coherence (Chapter 27). chrF
+and similar automatic metrics also do poorly at comparing very different kinds of
+systems, such as comparing human-aided translation against machine translation, or
+different machine translation architectures against each other (Callison-Burch et al.,
+2006). Instead, automatic overlap metrics like chrF are most appropriate when eval-
+uating changes to a single system.
+
+13.6.3 Automatic Evaluation: Embedding-Based Methods
+
+The chrF metric is based on measuring the exact character n-grams a human refer-
+ence and candidate machine translation have in common. However, this criterion
+is overly strict, since a good translation may use alternate words or paraphrases. A
+solution ﬁrst pioneered in early metrics like METEOR (Banerjee and Lavie, 2005)
+was to allow synonyms to match between the reference x and candidate ˜x. More
+
+288 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+recent metrics use BERT or other embeddings to implement this intuition.
+
+For example, in some situations we might have datasets that have human as-
+sessments of translation quality. Such datasets consists of tuples (x, ˜x, r), where
+x = (x1, . . . , xn) is a reference translation, ˜x = ( ˜x1, . . . , ˜xm) is a candidate machine
+translation, and r
+R is a human rating that expresses the quality of ˜x with respect
+to x. Given such data, algorithms like COMET (Rei et al., 2020) BLEURT (Sellam
+et al., 2020) train a predictor on the human-labeled datasets, for example by passing
+x and ˜x through a version of BERT (trained with extra pretraining, and then ﬁne-
+tuned on the human-labeled sentences), followed by a linear layer that is trained to
+predict r. The output of such models correlates highly with human labels.
+
+∈
+
+In other cases, however, we don’t have such human-labeled datasets.
+
+In that
+case we can measure the similarity of x and ˜x by the similarity of their embeddings.
+The BERTSCORE algorithm (Zhang et al., 2020) shown in Fig. 13.11, for example,
+passes the reference x and the candidate ˜x through BERT, computing a BERT em-
+bedding for each token xi and ˜x j. Each pair of tokens (xi, ˜x j) is scored by its cosine
+˜x j
+xi·
+. Each token in x is matched to a token in ˜x to compute recall, and each token in
+˜x j|
+xi||
+|
+˜x is matched to a token in x to compute precision (with each token greedily matched
+to the most similar token in the corresponding sentence). BERTSCORE provides
+precision and recall (and hence F1):
+
+RBERT =
+
+1
+x
+|
+
+x
+xi∈
+| (cid:88)
+
+max
+˜x
+˜x j∈
+
+xi ·
+
+˜x j
+
+PBERT =
+
+1
+˜x
+˜x
+| (cid:88)˜x j∈
+|
+
+max
+x
+xi∈
+
+xi ·
+
+˜x j
+
+(13.21)
+
+Figure 13.11 The computation of BERTSCORE recall from reference x and candidate ˆx, from Figure 1 in
+Zhang et al. (2020). This version shows an extended version of the metric in which tokens are also weighted by
+their idf values.
+
+13.7 Bias and Ethical Issues
+
+Machine translation raises many of the same ethical issues that we’ve discussed in
+earlier chapters. For example, consider MT systems translating from Hungarian
+(which has the gender neutral pronoun ˝o) or Spanish (which often drops pronouns)
+into English (in which pronouns are obligatory, and they have grammatical gender).
+When translating a reference to a person described without speciﬁed gender, MT
+systems often default to male gender (Schiebinger 2014, Prates et al. 2019). And
+MT systems often assign gender according to culture stereotypes of the sort we saw
+in Section 6.11. Fig. 13.12 shows examples from Prates et al. (2019), in which Hun-
+garian gender-neutral ˝o is a nurse is translated with she, but gender-neutral ˝o is a
+CEO is translated with he. Prates et al. (2019) ﬁnd that these stereotypes can’t com-
+pletely be accounted for by gender bias in US labor statistics, because the biases are
+
+PublishedasaconferencepaperatICLR2020Referencethe weather is cold todayCandidateit is freezing todayCandidateContextualEmbeddingPairwise CosineSimilarityRBERT=(0.713 1.27)+(0.515 7.94)+...1.27+7.94+1.82+7.90+8.88<latexit sha1_base64="OJyoKlmBAgUA0KDtUcsH/di5BlI=">AAACSHicbZDLattAFIaPnLRJ3JvTLrsZYgoJAqFxGqwsCqal0FVJQ5wELCNG41EyZHRh5ijECL1EnqAv002X2eUZsumipXRR6Mj2Ipf+MPDznXM4Z/64UNKg7187raXlR49XVtfaT54+e/6is/7y0OSl5mLIc5Xr45gZoWQmhihRieNCC5bGShzFZx+a+tG50Ebm2QFOCzFO2UkmE8kZWhR1ov2oClFcYPX+4/5BXZN3JEw049Wm7/XpdogyFYZQr9ffci3aoTsL1Pd23265oZrkaOqqaXAb5FIv6DXOdwMvCOqo0/U9fyby0NCF6Q52/15+BYC9qHMVTnJepiJDrpgxI+oXOK6YRsmVqNthaUTB+Bk7ESNrM2aPGVezIGryxpIJSXJtX4ZkRm9PVCw1ZprGtjNleGru1xr4v9qoxCQYVzIrShQZny9KSkUwJ02qZCK14Kim1jCupb2V8FNmc0SbfduGQO9/+aE57HnU9+gX2h18hrlW4TVswCZQ6MMAPsEeDIHDN7iBn/DL+e78cH47f+atLWcx8wruqNX6B8dUrVw=</latexit><latexit sha1_base64="RInTcZkWiVBnf/ncBstCvatCtG4=">AAACSHicbZDPShxBEMZ7Nproxugaj14al4AyMEyvyoyHwGIQPImKq8LOMvT09mhjzx+6a0KWYV4iL5EnySXH3HwGLx4U8SDYs7sHo/mg4eNXVVT1F+VSaHDda6vxbmb2/Ye5+ebHhU+LS63lz6c6KxTjPZbJTJ1HVHMpUt4DAZKf54rTJJL8LLr6VtfPvnOlRZaewCjng4RepCIWjIJBYSs8DssA+A8od/eOT6oKf8VBrCgr113HI5sBiIRrTJyOt2EbtE22p8hzdrY27EAOM9BVWTfYNbKJ43dq59q+4/tV2Gq7jjsWfmvI1LS7O08/f3nLi4dh628wzFiR8BSYpFr3iZvDoKQKBJO8agaF5jllV/SC941NqTlmUI6DqPAXQ4Y4zpR5KeAxfTlR0kTrURKZzoTCpX5dq+H/av0CYn9QijQvgKdssiguJIYM16nioVCcgRwZQ5kS5lbMLqnJEUz2TRMCef3lt+a04xDXIUek3T1AE82hVbSG1hFBHuqifXSIeoih3+gG3aF76491az1Yj5PWhjWdWUH/qNF4BkPYrbk=</latexit><latexit sha1_base64="RInTcZkWiVBnf/ncBstCvatCtG4=">AAACSHicbZDPShxBEMZ7Nproxugaj14al4AyMEyvyoyHwGIQPImKq8LOMvT09mhjzx+6a0KWYV4iL5EnySXH3HwGLx4U8SDYs7sHo/mg4eNXVVT1F+VSaHDda6vxbmb2/Ye5+ebHhU+LS63lz6c6KxTjPZbJTJ1HVHMpUt4DAZKf54rTJJL8LLr6VtfPvnOlRZaewCjng4RepCIWjIJBYSs8DssA+A8od/eOT6oKf8VBrCgr113HI5sBiIRrTJyOt2EbtE22p8hzdrY27EAOM9BVWTfYNbKJ43dq59q+4/tV2Gq7jjsWfmvI1LS7O08/f3nLi4dh628wzFiR8BSYpFr3iZvDoKQKBJO8agaF5jllV/SC941NqTlmUI6DqPAXQ4Y4zpR5KeAxfTlR0kTrURKZzoTCpX5dq+H/av0CYn9QijQvgKdssiguJIYM16nioVCcgRwZQ5kS5lbMLqnJEUz2TRMCef3lt+a04xDXIUek3T1AE82hVbSG1hFBHuqifXSIeoih3+gG3aF76491az1Yj5PWhjWdWUH/qNF4BkPYrbk=</latexit><latexit sha1_base64="fGWl4NCvlvtMu17rjLtk25oWpdc=">AAACSHicbZBLS+RAFIUrPT7bVzsu3RQ2ghIIqVbpuBgQRZiVqNgqdJpQqa5oYeVB1Y1ME/Lz3Lic3fwGNy6UwZ2VNgtfBwoO372Xe+uEmRQaXPef1fgxMTk1PTPbnJtfWFxqLf8812muGO+xVKbqMqSaS5HwHgiQ/DJTnMah5BfhzUFVv7jlSos0OYNRxgcxvUpEJBgFg4JWcBoUPvA/UOwfnp6VJf6F/UhRVmy4Tpds+SBirjFxOt1N26AdslOjrrO7vWn7cpiCLouqwa6QTRyvUznX9hzPK4NW23XcsfBXQ2rTRrWOg9Zff5iyPOYJMEm17hM3g0FBFQgmedn0c80zym7oFe8bm1BzzKAYB1HidUOGOEqVeQngMX0/UdBY61Ecms6YwrX+XKvgd7V+DpE3KESS5cAT9rYoyiWGFFep4qFQnIEcGUOZEuZWzK6pyRFM9k0TAvn85a/mvOMQ1yEnpL13VMcxg1bRGtpABHXRHvqNjlEPMXSHHtATerburUfrv/Xy1tqw6pkV9EGNxisxMKq0</latexit>1.277.941.827.908.88idf
+weightsImportance Weighting(Optional)Maximum Similarityx<latexit sha1_base64="f2yzimwbR/Dgjzp6tZ360fHRqNI=">AAAB6HicbVBNS8NAEJ3Ur1q/qh69LBbBU0lE0GPRi8cW7Ae0oWy2k3btZhN2N2IJ/QVePCji1Z/kzX/jts1BWx8MPN6bYWZekAiujet+O4W19Y3NreJ2aWd3b/+gfHjU0nGqGDZZLGLVCahGwSU2DTcCO4lCGgUC28H4dua3H1FpHst7M0nQj+hQ8pAzaqzUeOqXK27VnYOsEi8nFchR75e/eoOYpRFKwwTVuuu5ifEzqgxnAqelXqoxoWxMh9i1VNIItZ/ND52SM6sMSBgrW9KQufp7IqOR1pMosJ0RNSO97M3E/7xuasJrP+MySQ1KtlgUpoKYmMy+JgOukBkxsYQyxe2thI2ooszYbEo2BG/55VXSuqh6btVrXFZqN3kcRTiBUzgHD66gBndQhyYwQHiGV3hzHpwX5935WLQWnHzmGP7A+fwB5jmM/A==</latexit><latexit sha1_base64="f2yzimwbR/Dgjzp6tZ360fHRqNI=">AAAB6HicbVBNS8NAEJ3Ur1q/qh69LBbBU0lE0GPRi8cW7Ae0oWy2k3btZhN2N2IJ/QVePCji1Z/kzX/jts1BWx8MPN6bYWZekAiujet+O4W19Y3NreJ2aWd3b/+gfHjU0nGqGDZZLGLVCahGwSU2DTcCO4lCGgUC28H4dua3H1FpHst7M0nQj+hQ8pAzaqzUeOqXK27VnYOsEi8nFchR75e/eoOYpRFKwwTVuuu5ifEzqgxnAqelXqoxoWxMh9i1VNIItZ/ND52SM6sMSBgrW9KQufp7IqOR1pMosJ0RNSO97M3E/7xuasJrP+MySQ1KtlgUpoKYmMy+JgOukBkxsYQyxe2thI2ooszYbEo2BG/55VXSuqh6btVrXFZqN3kcRTiBUzgHD66gBndQhyYwQHiGV3hzHpwX5935WLQWnHzmGP7A+fwB5jmM/A==</latexit><latexit sha1_base64="f2yzimwbR/Dgjzp6tZ360fHRqNI=">AAAB6HicbVBNS8NAEJ3Ur1q/qh69LBbBU0lE0GPRi8cW7Ae0oWy2k3btZhN2N2IJ/QVePCji1Z/kzX/jts1BWx8MPN6bYWZekAiujet+O4W19Y3NreJ2aWd3b/+gfHjU0nGqGDZZLGLVCahGwSU2DTcCO4lCGgUC28H4dua3H1FpHst7M0nQj+hQ8pAzaqzUeOqXK27VnYOsEi8nFchR75e/eoOYpRFKwwTVuuu5ifEzqgxnAqelXqoxoWxMh9i1VNIItZ/ND52SM6sMSBgrW9KQufp7IqOR1pMosJ0RNSO97M3E/7xuasJrP+MySQ1KtlgUpoKYmMy+JgOukBkxsYQyxe2thI2ooszYbEo2BG/55VXSuqh6btVrXFZqN3kcRTiBUzgHD66gBndQhyYwQHiGV3hzHpwX5935WLQWnHzmGP7A+fwB5jmM/A==</latexit><latexit sha1_base64="f2yzimwbR/Dgjzp6tZ360fHRqNI=">AAAB6HicbVBNS8NAEJ3Ur1q/qh69LBbBU0lE0GPRi8cW7Ae0oWy2k3btZhN2N2IJ/QVePCji1Z/kzX/jts1BWx8MPN6bYWZekAiujet+O4W19Y3NreJ2aWd3b/+gfHjU0nGqGDZZLGLVCahGwSU2DTcCO4lCGgUC28H4dua3H1FpHst7M0nQj+hQ8pAzaqzUeOqXK27VnYOsEi8nFchR75e/eoOYpRFKwwTVuuu5ifEzqgxnAqelXqoxoWxMh9i1VNIItZ/ND52SM6sMSBgrW9KQufp7IqOR1pMosJ0RNSO97M3E/7xuasJrP+MySQ1KtlgUpoKYmMy+JgOukBkxsYQyxe2thI2ooszYbEo2BG/55VXSuqh6btVrXFZqN3kcRTiBUzgHD66gBndQhyYwQHiGV3hzHpwX5935WLQWnHzmGP7A+fwB5jmM/A==</latexit>ˆx<latexit sha1_base64="5QTnVRVSrnyzznVU7d5bF5u03Iw=">AAAB7nicbVBNS8NAEJ3Ur1q/qh69LBbBU0lE0GPRi8cK9gPaUDbbTbt0swm7E7GE/ggvHhTx6u/x5r9x0

@@ -1,0 +1,369 @@
+rs and Jurafsky, 2010).
+
+Another evaluation metric is to get human preferences for a test set of verb-
+argument pairs, and have them rate their degree of plausibility. This is usually done
+by using magnitude estimation, a technique from psychophysics, in which subjects
+rate the plausibility of an argument proportional to a modulus item. A selectional
+preference model can then be evaluated by its correlation with the human prefer-
+ences (Keller and Lapata, 2003).
+
+20.8 Primitive Decomposition of Predicates
+
+One way of thinking about the semantic roles we have discussed through the chapter
+is that they help us deﬁne the roles that arguments play in a decompositional way,
+based on ﬁnite lists of thematic roles (agent, patient, instrument, proto-agent, proto-
+patient, etc.). This idea of decomposing meaning into sets of primitive semantic
+elements or features, called primitive decomposition or componential analysis,
+has been taken even further, and focused particularly on predicates.
+
+componential
+analysis
+
+Consider these examples of the verb kill:
+
+(20.41) Jim killed his philodendron.
+
+(20.42) Jim did something to cause his philodendron to become not alive.
+
+There is a truth-conditional (‘propositional semantics’) perspective from which these
+two sentences have the same meaning. Assuming this equivalence, we could repre-
+sent the meaning of kill as:
+
+(20.43) KILL(x,y)
+
+⇔
+
+CAUSE(x, BECOME(NOT(ALIVE(y))))
+
+thus using semantic primitives like do, cause, become not, and alive.
+
+Indeed, one such set of potential semantic primitives has been used to account
+for some of the verbal alternations discussed in Section 20.2 (Lakoff 1965, Dowty
+1979). Consider the following examples.
+
+(20.44) John opened the door.
+(20.45) The door opened.
+
+⇒
+BECOME(OPEN(door))
+
+CAUSE(John, BECOME(OPEN(door)))
+
+⇒
+
+conceptual
+dependency
+
+20.9
+
+• SUMMARY
+
+457
+
+(20.46) The door is open.
+
+OPEN(door)
+
+⇒
+
+The decompositional approach asserts that a single state-like predicate associ-
+ated with open underlies all of these examples. The differences among the meanings
+of these examples arises from the combination of this single predicate with the prim-
+itives CAUSE and BECOME.
+
+While this approach to primitive decomposition can explain the similarity be-
+tween states and actions or causative and non-causative predicates, it still relies on
+having a large number of predicates like open. More radical approaches choose to
+break down these predicates as well. One such approach to verbal predicate decom-
+position that played a role in early natural language systems is conceptual depen-
+dency (CD), a set of ten primitive predicates, shown in Fig. 20.8.
+
+Primitive
+ATRANS
+
+PTRANS
+MTRANS
+
+MBUILD
+PROPEL
+MOVE
+INGEST
+EXPEL
+SPEAK
+ATTEND
+
+Deﬁnition
+The abstract transfer of possession or control from one entity to
+another
+The physical transfer of an object from one location to another
+The transfer of mental concepts between entities or within an
+entity
+The creation of new information within an entity
+The application of physical force to move an object
+The integral movement of a body part by an animal
+The taking in of a substance by an animal
+The expulsion of something from an animal
+The action of producing a sound
+The action of focusing a sense organ
+
+Figure 20.8 A set of conceptual dependency primitives.
+
+Below is an example sentence along with its CD representation. The verb brought
+is translated into the two primitives ATRANS and PTRANS to indicate that the waiter
+both physically conveyed the check to Mary and passed control of it to her. Note
+that CD also associates a ﬁxed set of thematic roles with each primitive to represent
+the various participants in the action.
+
+(20.47) The waiter brought Mary the check.
+
+x, y Atrans(x)
+
+∧
+Ptrans(y)
+
+Actor(x,Waiter)
+
+∧
+Actor(y,Waiter)
+
+∃
+
+∧
+
+∧
+
+Ob ject(x,Check)
+∧
+Ob ject(y,Check)
+∧
+
+∧
+
+To(x, Mary)
+To(y, Mary)
+
+20.9 Summary
+
+• Semantic roles are abstract models of the role an argument plays in the event
+
+described by the predicate.
+
+• Thematic roles are a model of semantic roles based on a single ﬁnite list of
+roles. Other semantic role models include per-verb semantic role lists and
+proto-agent/proto-patient, both of which are implemented in PropBank,
+and per-frame role lists, implemented in FrameNet.
+
+458 CHAPTER 20
+
+• SEMANTIC ROLE LABELING
+
+• Semantic role labeling is the task of assigning semantic role labels to the
+constituents of a sentence. The task is generally treated as a supervised ma-
+chine learning task, with models trained on PropBank or FrameNet. Algo-
+rithms generally start by parsing a sentence and then automatically tag each
+parse tree node with a semantic role. Neural models map straight from words
+end-to-end.
+
+• Semantic selectional restrictions allow words (particularly predicates) to post
+constraints on the semantic properties of their argument words. Selectional
+preference models (like selectional association or simple conditional proba-
+bility) allow a weight or probability to be assigned to the association between
+a predicate and an argument word or class.
+
+Bibliographical and Historical Notes
+
+Although the idea of semantic roles dates back to P¯an. ini, they were re-introduced
+into modern linguistics by Gruber (1965), Fillmore (1966) and Fillmore (1968). Fill-
+more had become interested in argument structure by studying Lucien Tesni`ere’s
+groundbreaking ´El´ements de Syntaxe Structurale (Tesni`ere, 1959) in which the term
+‘dependency’ was introduced and the foundations were laid for dependency gram-
+mar. Following Tesni`ere’s terminology, Fillmore ﬁrst referred to argument roles as
+actants (Fillmore, 1966) but quickly switched to the term case, (see Fillmore (2003))
+and proposed a universal list of semantic roles or cases (Agent, Patient, Instrument,
+etc.), that could be taken on by the arguments of predicates. Verbs would be listed in
+the lexicon with their case frame, the list of obligatory (or optional) case arguments.
+The idea that semantic roles could provide an intermediate level of semantic
+representation that could help map from syntactic parse structures to deeper, more
+fully-speciﬁed representations of meaning was quickly adopted in natural language
+processing, and systems for extracting case frames were created for machine transla-
+tion (Wilks, 1973), question-answering (Hendrix et al., 1973), spoken-language pro-
+cessing (Nash-Webber, 1975), and dialogue systems (Bobrow et al., 1977). General-
+purpose semantic role labelers were developed. The earliest ones (Simmons, 1973)
+ﬁrst parsed a sentence by means of an ATN (Augmented Transition Network) parser.
+Each verb then had a set of rules specifying how the parse should be mapped to se-
+mantic roles. These rules mainly made reference to grammatical functions (subject,
+object, complement of speciﬁc prepositions) but also checked constituent internal
+features such as the animacy of head nouns. Later systems assigned roles from pre-
+built parse trees, again by using dictionaries with verb-speciﬁc case frames (Levin
+1977, Marcus 1980).
+
+By 1977 case representation was widely used and taught in AI and NLP courses,
+and was described as a standard of natural language processing in the ﬁrst edition of
+Winston’s 1977 textbook Artiﬁcial Intelligence.
+
+In the 1980s Fillmore proposed his model of frame semantics, later describing
+
+the intuition as follows:
+
+“The idea behind frame semantics is that speakers are aware of possi-
+bly quite complex situation types, packages of connected expectations,
+that go by various names—frames, schemas, scenarios, scripts, cultural
+narratives, memes—and the words in our language are understood with
+such frames as their presupposed background.” (Fillmore, 2012, p. 712)
+
+BIBLIOGRAPHICAL AND HISTORICAL NOTES
+
+459
+
+The word frame seemed to be in the air for a suite of related notions proposed at
+about the same time by Minsky (1974), Hymes (1974), and Goffman (1974), as
+well as related notions with other names like scripts (Schank and Abelson, 1975)
+and schemata (Bobrow and Norman, 1975) (see Tannen (1979) for a comparison).
+Fillmore was also inﬂuenced by the semantic ﬁeld theorists and by a visit to the Yale
+AI lab where he took notice of the lists of slots and ﬁllers used by early information
+extraction systems like DeJong (1982) and Schank and Abelson (1977). In the 1990s
+Fillmore drew on these insights to begin the FrameNet corpus annotation project.
+
+At the same time, Beth Levin drew on her early case frame dictionaries (Levin,
+1977) to develop her book which summarized sets of verb classes deﬁned by shared
+argument realizations (Levin, 1993). The VerbNet project built on this work (Kipper
+et al., 2000), leading soon afterwards to the PropBank semantic-role-labeled corpus
+created by Martha Palmer and colleagues (Palmer et al., 2005).
+
+The combination of rich linguistic annotation and corpus-based approach in-
+stantiated in FrameNet and PropBank led to a revival of automatic approaches to
+semantic role labeling, ﬁrst on FrameNet (Gildea and Jurafsky, 2000) and then on
+PropBank data (Gildea and Palmer, 2002, inter alia). The problem ﬁrst addressed in
+the 1970s by handwritten rules was thus now generally recast as one of supervised
+machine learning enabled by large and consistent databases. Many popular features
+used for role labeling are deﬁned in Gildea and Jurafsky (2002), Surdeanu et al.
+(2003), Xue and Palmer (2004), Pradhan et al. (2005), Che et al. (2009), and Zhao
+et al. (2009). The use of dependency rather than constituency parses was introduced
+in the CoNLL-2008 shared task (Surdeanu et al., 2008). For surveys see Palmer
+et al. (2010) and M`arquez et al. (2008).
+
+The use of neural approaches to semantic role labeling was pioneered by Col-
+lobert et al. (2011), who applied a CRF on top of a convolutional net. Early work
+like Foland, Jr. and Martin (2015) focused on using dependency features. Later work
+eschewed syntactic features altogether; Zhou and Xu (2015b) introduced the use of
+a stacked (6-8 layer) biLSTM architecture, and (He et al., 2017) showed how to
+augment the biLSTM architecture with highway networks and also replace the CRF
+with A* decoding that make it possible to apply a wide variety of global constraints
+in SRL decoding.
+
+Most semantic role labeling schemes only work within a single sentence, fo-
+cusing on the object of the verbal (or nominal, in the case of NomBank) predicate.
+However, in many cases, a verbal or nominal predicate may have an implicit argu-
+ment: one that appears only in a contextual sentence, or perhaps not at all and must
+be inferred. In the two sentences This house has a new owner. The sale was ﬁnalized
+10 days ago. the sale in the second sentence has no ARG1, but a reasonable reader
+would infer that the Arg1 should be the house mentioned in the prior sentence. Find-
+ing these arguments, implicit argument detection (sometimes shortened as iSRL)
+was introduced by Gerber and Chai (2010) and Ruppenhofer et al. (2010). See Do
+et al. (2017) for more recent neural models.
+
+To avoid the need for huge labeled training sets, unsupervised approaches for
+semantic role labeling attempt to induce the set of semantic roles by clustering over
+arguments. The task was pioneered by Riloff and Schmelzenbach (1998) and Swier
+and Stevenson (2004); see Grenager and Manning (2006), Titov and Klementiev
+(2012), Lang and Lapata (2014), Woodsend and Lapata (2015), and Titov and Khod-
+dam (2014).
+
+Recent innovations in frame labeling include connotation frames, which mark
+richer information about the argument of predicates. Connotation frames mark the
+
+implicit
+argument
+
+iSRL
+
+460 CHAPTER 20
+
+• SEMANTIC ROLE LABELING
+
+sentiment of the writer or reader toward the arguments (for example using the verb
+survive in he survived a bombing expresses the writer’s sympathy toward the subject
+he and negative sentiment toward the bombing. See Chapter 25 for more details.
+
+Selectional preference has been widely studied beyond the selectional associa-
+tion models of Resnik (1993) and Resnik (1996). Methods have included clustering
+(Rooth et al., 1999), discriminative learning (Bergsma et al., 2008a), and topic mod-
+els (S´eaghdha 2010, Ritter et al. 2010b), and constraints can be expressed at the level
+of words or classes (Agirre and Martinez, 2001). Selectional preferences have also
+been successfully integrated into semantic role labeling (Erk 2007, Zapirain et al.
+2013, Do et al. 2017).
+
+Exercises
+
+CHAPTER
+
+21 Lexicons for Sentiment, Affect,
+
+and Connotation
+
+Some day we’ll be able to measure the power of words
+
+Maya Angelou
+
+affective
+
+subjectivity
+
+In this chapter we turn to tools for interpreting affective meaning, extending our
+study of sentiment analysis in Chapter 4. We use the word ‘affective’, following the
+tradition in affective computing (Picard, 1995) to mean emotion, sentiment, per-
+sonality, mood, and attitudes. Affective meaning is closely related to subjectivity,
+the study of a speaker or writer’s evaluations, opinions, emotions, and speculations
+(Wiebe et al., 1999).
+
+How should affective meaning be deﬁned? One inﬂuential typology of affec-
+tive states comes from Scherer (2000), who deﬁnes each class of affective states by
+factors like its cognitive realization and time course (Fig. 21.1).
+
+Emotion: Relatively brief episode of response to the evaluation of an external
+
+or internal event as being of major signiﬁcance.
+(angry, sad, joyful, fearful, ashamed, proud, elated, desperate)
+
+Mood: Diffuse affect state, most pronounced as change in subjective feeling, of
+
+low intensity but relatively long duration, often without apparent cause.
+(cheerful, gloomy, irritable, listless, depressed, buoyant)
+
+Interpersonal stance: Affective stance taken toward another person in a spe-
+ciﬁc interaction, coloring the interpersonal exchange in that situation.
+(distant, cold, warm, supportive, contemptuous, friendly)
+
+Attitude: Relatively enduring, affectively colored beliefs, preferences, and pre-
+
+dispositions towards objects or persons.
+(liking, loving, hating, valuing, desiring)
+
+Personality traits: Emotionally laden, stable personality dispositions and be-
+
+havior tendencies, typical for a person.
+(nervous, anxious, reckless, morose, hostile, jealous)
+
+Figure 21.1 The Scherer typology of affective states (Scherer, 2000).
+
+We can design extractors for each of these kinds of affective states. Chapter 4
+already introduced sentiment analysis, the task of extracting the positive or negative
+orientation that a writer expresses in a text. This corresponds in Scherer’s typology
+to the extraction of attitudes: ﬁguring out what people like or dislike, from affect-
+rich texts like consumer reviews of books or movies, newspaper editorials, or public
+sentiment in blogs or tweets.
+
+Detecting emotion and moods is useful for detecting whether a student is con-
+fused, engaged, or certain when interacting with a tutorial system, whether a caller
+to a help line is frustrated, whether someone’s blog posts or tweets indicated depres-
+sion. Detecting emotions like fear in novels, for example, could help us trace what
+groups or situations are feared and how that changes over time.
+
+462 CHAPTER 21
+
+• LEXICONS FOR SENTIMENT, AFFECT, AND CONNOTATION
+
+Detecting different interpersonal stances can be useful when extracting infor-
+mation from human-human conversations. The goal here is to detect stances like
+friendliness or awkwardness in interviews or friendly conversations, for example for
+summarizing meetings or ﬁnding parts of a co

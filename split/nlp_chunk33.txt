@@ -1,0 +1,359 @@
+ and Hovy 2016, Lample et al.
+2016) followed by the more recent use of Transformers and BERT.
+
+The idea of using letter sufﬁxes for unknown words is quite old; the early Klein
+and Simmons (1963) system checked all ﬁnal letter sufﬁxes of lengths 1-5. The un-
+known word features described on page 178 come mainly from Ratnaparkhi (1996),
+with augmentations from Toutanova et al. (2003) and Manning (2011).
+
+State of the art POS taggers use neural algorithms, either bidirectional RNNs or
+Transformers like BERT; see Chapter 9 and Chapter 11. HMM (Brants 2000; Thede
+and Harper 1999) and CRF tagger accuracies are likely just a tad lower.
+
+Manning (2011) investigates the remaining 2.7% of errors in a high-performing
+tagger (Toutanova et al., 2003). He suggests that a third or half of these remaining
+errors are due to errors or inconsistencies in the training data, a third might be solv-
+able with richer linguistic models, and for the remainder the task is underspeciﬁed
+or unclear.
+
+Supervised tagging relies heavily on in-domain training data hand-labeled by
+experts. Ways to relax this assumption include unsupervised algorithms for cluster-
+ing words into part-of-speech-like classes, summarized in Christodoulopoulos et al.
+(2010), and ways to combine labeled and unlabeled data, for example by co-training
+(Clark et al. 2003; Søgaard 2010).
+
+See Householder (1995) for historical notes on parts of speech, and Sampson
+(1987) and Garside et al. (1997) on the provenance of the Brown and other tagsets.
+
+Exercises
+
+8.1
+
+Find one tagging error in each of the following sentences that are tagged with
+the Penn Treebank tagset:
+
+1. I/PRP need/VBP a/DT ﬂight/NN from/IN Atlanta/NN
+2. Does/VBZ this/DT ﬂight/NN serve/VB dinner/NNS
+3. I/PRP have/VB a/DT friend/NN living/VBG in/IN Denver/NNP
+4. Can/VBP you/PRP list/VB the/DT nonstop/JJ afternoon/NN ﬂights/NNS
+
+8.2 Use the Penn Treebank tagset to tag each word in the following sentences
+from Damon Runyon’s short stories. You may ignore punctuation. Some of
+these are quite difﬁcult; do your best.
+
+1. It is a nice night.
+2. This crap game is over a garage in Fifty-second Street. . .
+3.
+4. He is a tall, skinny guy with a long, sad, mean-looking kisser, and a
+
+. . . Nobody ever takes the newspapers she sells . . .
+
+mournful voice.
+
+186 CHAPTER 8
+
+• SEQUENCE LABELING FOR PARTS OF SPEECH AND NAMED ENTITIES
+
+5.
+
+. . . I am sitting in Mindy’s restaurant putting on the geﬁllte ﬁsh, which is
+a dish I am very fond of, . . .
+
+6. When a guy and a doll get to taking peeks back and forth at each other,
+
+why there you are indeed.
+
+8.3 Now compare your tags from the previous exercise with one or two friend’s
+
+answers. On which words did you disagree the most? Why?
+
+8.4
+
+Implement the “most likely tag” baseline. Find a POS-tagged training set,
+and use it to compute for each word the tag that maximizes p(t
+w). You will
+|
+need to implement a simple tokenizer to deal with sentence boundaries. Start
+by assuming that all unknown words are NN and compute your error rate on
+known and unknown words. Now write at least ﬁve rules to do a better job of
+tagging unknown words, and show the difference in error rates.
+
+8.5 Build a bigram HMM tagger. You will need a part-of-speech-tagged corpus.
+First split the corpus into a training set and test set. From the labeled training
+set, train the transition and observation probabilities of the HMM tagger di-
+rectly on the hand-tagged data. Then implement the Viterbi algorithm so you
+can decode a test sentence. Now run your algorithm on the test set. Report its
+error rate and compare its performance to the most frequent tag baseline.
+
+8.6 Do an error analysis of your tagger. Build a confusion matrix and investigate
+the most frequent errors. Propose some features for improving the perfor-
+mance of your tagger on these errors.
+
+8.7 Develop a set of regular expressions to recognize the character shape features
+
+described on page 178.
+
+8.8
+
+The BIO and other labeling schemes given in this chapter aren’t the only
+possible one. For example, the B tag can be reserved only for those situations
+where an ambiguity exists between adjacent entities. Propose a new set of
+BIO tags for use with your NER system. Experiment with it and compare its
+performance with the schemes presented in this chapter.
+
+8.9 Names of works of art (books, movies, video games, etc.) are quite different
+from the kinds of named entities we’ve discussed in this chapter. Collect a
+list of names of works of art from a particular category from a Web-based
+source (e.g., gutenberg.org, amazon.com, imdb.com, etc.). Analyze your list
+and give examples of ways that the names in it are likely to be problematic for
+the techniques described in this chapter.
+
+8.10 Develop an NER system speciﬁc to the category of names that you collected in
+the last exercise. Evaluate your system on a collection of text likely to contain
+instances of these named entities.
+
+CHAPTER
+
+9 RNNs and LSTMs
+
+Time will explain.
+Jane Austen, Persuasion
+
+Language is an inherently temporal phenomenon. Spoken language is a sequence of
+acoustic events over time, and we comprehend and produce both spoken and written
+language as a continuous input stream. The temporal nature of language is reﬂected
+in the metaphors we use; we talk of the ﬂow of conversations, news feeds, and twitter
+streams, all of which emphasize that language is a sequence that unfolds in time.
+
+This temporal nature is reﬂected in some language processing algorithms. For
+example, the Viterbi algorithm we introduced for HMM part-of-speech tagging pro-
+ceeds through the input a word at a time, carrying forward information gleaned along
+the way. Yet other machine learning approaches, like those we’ve studied for senti-
+ment analysis or other text classiﬁcation tasks don’t have this temporal nature – they
+assume simultaneous access to all aspects of their input.
+
+The feedforward networks of Chapter 7 also assumed simultaneous access, al-
+though they also had a simple model for time. Recall that we applied feedforward
+networks to language modeling by having them look only at a ﬁxed-size window
+of words, and then sliding this window over the input, making independent predic-
+tions along the way. This sliding-window approach is also used in the transformer
+architecture we will introduce in Chapter 10.
+
+This chapter introduces a deep learning architecture that offers an alternative
+way of representing time: recurrent neural networks (RNNs), and their variants like
+LSTMs. RNNs have a mechanism that deals directly with the sequential nature of
+language, allowing them to handle the temporal nature of language without the use of
+arbitrary ﬁxed-sized windows. The recurrent network offers a new way to represent
+the prior context, in its recurrent connections, allowing the model’s decision to
+depend on information from hundreds of words in the past. We’ll see how to apply
+the model to the task of language modeling, to sequence modeling tasks like part-
+of-speech tagging, and to text classiﬁcation tasks like sentiment analysis.
+
+9.1 Recurrent Neural Networks
+
+A recurrent neural network (RNN) is any network that contains a cycle within its
+network connections, meaning that the value of some unit is directly, or indirectly,
+dependent on its own earlier outputs as an input. While powerful, such networks
+are difﬁcult to reason about and to train. However, within the general class of recur-
+rent networks there are constrained architectures that have proven to be extremely
+effective when applied to language. In this section, we consider a class of recurrent
+networks referred to as Elman Networks (Elman, 1990) or simple recurrent net-
+
+Elman
+Networks
+
+188 CHAPTER 9
+
+• RNNS AND LSTMS
+
+works. These networks are useful in their own right and serve as the basis for more
+complex approaches like the Long Short-Term Memory (LSTM) networks discussed
+later in this chapter. In this chapter when we use the term RNN we’ll be referring to
+these simpler more constrained networks (although you will often see the term RNN
+to mean any net with recurrent properties including LSTMs).
+
+Figure 9.1 Simple recurrent neural network after Elman (1990). The hidden layer includes
+a recurrent connection as part of its input. That is, the activation value of the hidden layer
+depends on the current input as well as the activation value of the hidden layer from the
+previous time step.
+
+Fig. 9.1 illustrates the structure of an RNN. As with ordinary feedforward net-
+works, an input vector representing the current input, xt , is multiplied by a weight
+matrix and then passed through a non-linear activation function to compute the val-
+ues for a layer of hidden units. This hidden layer is then used to calculate a cor-
+responding output, yt . In a departure from our earlier window-based approach, se-
+quences are processed by presenting one item at a time to the network. We’ll use
+subscripts to represent time, thus xt will mean the input vector x at time t. The key
+difference from a feedforward network lies in the recurrent link shown in the ﬁgure
+with the dashed line. This link augments the input to the computation at the hidden
+layer with the value of the hidden layer from the preceding point in time.
+
+The hidden layer from the previous time step provides a form of memory, or
+context, that encodes earlier processing and informs the decisions to be made at
+later points in time. Critically, this approach does not impose a ﬁxed-length limit
+on this prior context; the context embodied in the previous hidden layer can include
+information extending back to the beginning of the sequence.
+
+Adding this temporal dimension makes RNNs appear to be more complex than
+non-recurrent architectures. But in reality, they’re not all that different. Given an
+input vector and the values for the hidden layer from the previous time step, we’re
+still performing the standard feedforward calculation introduced in Chapter 7. To
+see this, consider Fig. 9.2 which clariﬁes the nature of the recurrence and how it
+factors into the computation at the hidden layer. The most signiﬁcant change lies in
+the new set of weights, U, that connect the hidden layer from the previous time step
+to the current hidden layer. These weights determine how the network makes use of
+past context in calculating the output for the current input. As with the other weights
+in the network, these connections are trained via backpropagation.
+
+9.1.1
+
+Inference in RNNs
+
+Forward inference (mapping a sequence of inputs to a sequence of outputs) in an
+RNN is nearly identical to what we’ve already seen with feedforward networks. To
+compute an output yt for an input xt , we need the activation value for the hidden
+layer ht . To calculate this, we multiply the input xt with the weight matrix W, and
+the hidden layer from the previous time step ht
+1 with the weight matrix U. We
+−
+add these values together and pass them through a suitable activation function, g,
+to arrive at the activation value for the current hidden layer, ht . Once we have the
+
+xthtyt9.1
+
+• RECURRENT NEURAL NETWORKS
+
+189
+
+Figure 9.2 Simple recurrent neural network illustrated as a feedforward network.
+
+values for the hidden layer, we proceed with the usual computation to generate the
+output vector.
+
+ht = g(Uht
+1 + Wxt )
+−
+yt = f (Vht )
+
+(9.1)
+
+(9.2)
+
+It’s worthwhile here to be careful about specifying the dimensions of the input, hid-
+den and output layers, as well as the weight matrices to make sure these calculations
+are correct. Let’s refer to the input, hidden and output layer dimensions as din, dh,
+din ,
+and dout respectively. Given this, our three parameter matrices are: W
+U
+
+Rdh×
+∈
+In the commonly encountered case of soft classiﬁcation, computing yt consists
+of a softmax computation that provides a probability distribution over the possible
+output classes.
+
+dh, and V
+
+Rdout ×
+
+Rdh×
+
+dh.
+
+∈
+
+∈
+
+yt = softmax(Vht )
+
+(9.3)
+
+−
+
+The fact that the computation at time t requires the value of the hidden layer from
+time t
+1 mandates an incremental inference algorithm that proceeds from the start
+of the sequence to the end as illustrated in Fig. 9.3. The sequential nature of simple
+recurrent networks can also be seen by unrolling the network in time as is shown in
+Fig. 9.4. In this ﬁgure, the various layers of units are copied for each time step to
+illustrate that they will have differing values over time. However, the various weight
+matrices are shared across time.
+
+function FORWARDRNN(x, network) returns output sequence y
+
+0
+
+h0 ←
+for i
+←
+hi ←
+yi ←
+return y
+
+1 to LENGTH(x) do
+1 + Wxi)
+
+g(Uhi
+−
+f (Vhi)
+
+Figure 9.3 Forward inference in a simple recurrent network. The matrices U, V and W are
+shared across time, while new values for h and y are calculated with each time step.
+
+UVWytxththt-1190 CHAPTER 9
+
+• RNNS AND LSTMS
+
+Figure 9.4 A simple recurrent neural network shown unrolled in time. Network layers are recalculated for
+each time step, while the weights U, V and W are shared across all time steps.
+
+9.1.2 Training
+
+As with feedforward networks, we’ll use a training set, a loss function, and back-
+propagation to obtain the gradients needed to adjust the weights in these recurrent
+networks. As shown in Fig. 9.2, we now have 3 sets of weights to update: W, the
+weights from the input layer to the hidden layer, U, the weights from the previous
+hidden layer to the current hidden layer, and ﬁnally V, the weights from the hidden
+layer to the output layer.
+
+Fig. 9.4 highlights two considerations that we didn’t have to worry about with
+backpropagation in feedforward networks. First, to compute the loss function for
+the output at time t we need the hidden layer from time t
+1. Second, the hidden
+layer at time t inﬂuences both the output at time t and the hidden layer at time t + 1
+(and hence the output and loss at t + 1). It follows from this that to assess the error
+accruing to ht , we’ll need to know its inﬂuence on both the current output as well as
+the ones that follow.
+
+−
+
+Tailoring the backpropagation algorithm to this situation leads to a two-pass al-
+gorithm for training the weights in RNNs. In the ﬁrst pass, we perform forward
+inference, computing ht , yt , accumulating the loss at each step in time, saving the
+value of the hidden layer at each step for use at the next time step. In the second
+phase, we process the sequence in reverse, computing the required gradients as we
+go, computing and saving the error term for use in the hidden layer for each step
+backward in time. This general approach is commonly referred to as backpropaga-
+tion through time (Werbos 1974, Rumelhart et al. 1986, Werbos 1990).
+
+Fortunately, with modern computational frameworks and adequate computing
+resources, there is no need for a specialized approach to training RNNs. As illus-
+trated in Fig. 9.4, explicitly unrolling a recurrent network into a feedforward com-
+putational graph eliminates any explicit recurrences, allowing the network weights
+to be trained directly. In such an approach, we provide a template that speciﬁes the
+basic structure of the network, including all the necessary parameters for the input,
+
+backpropaga-
+tion through
+time
+
+UVWUVWUVWx1x2x3y1y2y3h1h3h2h09.2
+
+• RNNS AS LANGUAGE MODELS
+
+191
+
+output, and hidden layers, the weight matrices, as well as the activation and output
+functions to be used. Then, when presented with a speciﬁc input sequence, we can
+generate an unrolled feedforward network speciﬁc to that input, and use that graph
+to perform forward inferen

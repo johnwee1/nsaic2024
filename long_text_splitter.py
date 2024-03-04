@@ -28,4 +28,8 @@ def text_spliter(filename):
             file.write(chunk)
 
 
-text_spliter("reinforcement_learning")
+<<<<<<< HEAD
+text_spliter("nlp")
+=======
+text_spliter("nlp")
+>>>>>>> 8a5606603468172b6566e3558c80ea04159807b9

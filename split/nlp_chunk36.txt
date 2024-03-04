@@ -1,0 +1,443 @@
+ostly local information. Thus deciding whether a word is a verb or a noun,
+we look mostly at the word and the neighboring words.
+
+By contrast, encoder-decoder models are used especially for tasks like machine
+translation, where the input sequence and output sequence can have different lengths
+and the mapping between a token in the input and a token in the output can be very
+indirect (in some languages the verb appears at the beginning of the sentence; in
+other languages at the end). We’ll introduce machine translation in detail in Chap-
+ter 13, but for now we’ll just point out that the mapping for a sentence in English to
+a sentence in Tagalog or Yoruba can have very different numbers of words, and the
+words can be in a very different order.
+
+Encoder-decoder networks, sometimes called sequence-to-sequence networks,
+are models capable of generating contextually appropriate, arbitrary length, output
+sequences given an input sequence. Encoder-decoder networks have been applied
+to a very wide range of applications including summarization, question answering,
+and dialogue, but they are particularly popular for machine translation.
+
+The key idea underlying these networks is the use of an encoder network that
+takes an input sequence and creates a contextualized representation of it, often called
+the context. This representation is then passed to a decoder which generates a task-
+speciﬁc output sequence. Fig. 9.16 illustrates the architecture.
+
+encoder-
+decoder
+
+Figure 9.16 The encoder-decoder architecture. The context is a function of the hidden
+representations of the input, and may be used by the decoder in a variety of ways.
+
+Encoder-decoder networks consist of three conceptual components:
+
+1. An encoder that accepts an input sequence, x1:n, and generates a correspond-
+ing sequence of contextualized representations, h1:n. LSTMs, convolutional
+networks, and transformers can all be employed as encoders.
+
+2. A context vector, c, which is a function of h1:n, and conveys the essence of
+
+the input to the decoder.
+
+3. A decoder, which accepts c as input and generates an arbitrary length se-
+quence of hidden states h1:m, from which a corresponding sequence of output
+states y1:m, can be obtained. Just as with encoders, decoders can be realized
+by any kind of sequence architecture.
+
+In this section we’ll describe an encoder-decoder network based on a pair of
+RNNs, but we’ll see in Chapter 13 how to apply them to transformers as well. We’ll
+build up the equations for encoder-decoder models by starting with the conditional
+RNN language model p(y), the probability of a sequence y.
+
+Recall that in any language model, we can break down the probability as follows:
+
+p(y) = p(y1)p(y2|
+
+y1)p(y3|
+
+y1, y2) . . . p(ym|
+
+y1, ..., ym
+
+1)
+
+−
+
+(9.28)
+
+…EncoderDecoderContext…x1x2xny1y2ym9.7
+
+• THE ENCODER-DECODER MODEL WITH RNNS
+
+205
+
+In RNN language modeling, at a particular time t, we pass the preﬁx of t
+1
+tokens through the language model, using forward inference to produce a sequence
+of hidden states, ending with the hidden state corresponding to the last word of
+the preﬁx. We then use the ﬁnal hidden state of the preﬁx as our starting point to
+generate the next token.
+
+−
+
+More formally, if g is an activation function like tanh or ReLU, a function of
+the input at time t and the hidden state at time t
+1, and f is a softmax over the
+set of possible vocabulary items, then at time t the output yt and hidden state ht are
+computed as:
+
+−
+
+ht = g(ht
+1, xt )
+−
+yt = f (ht )
+
+(9.29)
+
+(9.30)
+
+sentence
+separation
+
+We only have to make one slight change to turn this language model with au-
+toregressive generation into an encoder-decoder model that is a translation model
+that can translate from a source text in one language to a target text in a second:
+add a sentence separation marker at the end of the source text, and then simply
+concatenate the target text.
+
+Let’s use <s> for our sentence separator token, and let’s think about translating
+an English source text (“the green witch arrived”), to a Spanish sentence (“lleg´o
+la bruja verde” (which can be glossed word-by-word as ‘arrived the witch green’).
+We could also illustrate encoder-decoder models with a question-answer pair, or a
+text-summarization pair.
+
+Let’s use x to refer to the source text (in this case in English) plus the separator
+token <s>, and y to refer to the target text y (in this case in Spanish). Then an
+encoder-decoder model computes the probability p(y
+
+p(y
+
+x) = p(y1|
+|
+
+x)p(y2|
+
+y1, x)p(y3|
+
+x) as follows:
+|
+y1, y2, x) . . . p(ym|
+
+y1, ..., ym
+
+1, x)
+
+−
+
+(9.31)
+
+Fig. 9.17 shows the setup for a simpliﬁed version of the encoder-decoder model
+(we’ll see the full model, which requires the new concept of attention, in the next
+section).
+
+Figure 9.17 Translating a single sentence (inference time) in the basic RNN version of encoder-decoder ap-
+proach to machine translation. Source and target sentences are concatenated with a separator token in between,
+and the decoder uses context information from the encoder’s last hidden state.
+
+Fig. 9.17 shows an English source text (“the green witch arrived”), a sentence
+separator token (<s>, and a Spanish target text (“lleg´o la bruja verde”). To trans-
+
+Source TextTarget Texthnembeddinglayerhiddenlayer(s)softmaxthegreenllegówitcharrived<s>llególalabrujabrujaverdeverde</s>(output of source is ignored)Separator206 CHAPTER 9
+
+• RNNS AND LSTMS
+
+late a source text, we run it through the network performing forward inference to
+generate hidden states until we get to the end of the source. Then we begin autore-
+gressive generation, asking for a word in the context of the hidden layer from the
+end of the source input as well as the end-of-sentence marker. Subsequent words
+are conditioned on the previous hidden state and the embedding for the last word
+generated.
+
+Let’s formalize and generalize this model a bit in Fig. 9.18. (To help keep things
+straight, we’ll use the superscripts e and d where needed to distinguish the hidden
+states of the encoder and the decoder.) The elements of the network on the left
+process the input sequence x and comprise the encoder. While our simpliﬁed ﬁgure
+shows only a single network layer for the encoder, stacked architectures are the
+norm, where the output states from the top layer of the stack are taken as the ﬁnal
+representation, and the encoder consists of stacked biLSTMs where the hidden states
+from top layers from the forward and backward passes are concatenated to provide
+the contextualized representations for each time step.
+
+Figure 9.18 A more formal version of translating a sentence at inference time in the basic RNN-based
+encoder-decoder architecture. The ﬁnal hidden state of the encoder RNN, he
+n, serves as the context for the
+decoder in its role as hd
+
+0 in the decoder RNN, and is also made available to each decoder hidden state.
+
+The entire purpose of the encoder is to generate a contextualized representation
+of the input. This representation is embodied in the ﬁnal hidden state of the encoder,
+he
+n. This representation, also called c for context, is then passed to the decoder.
+
+The simplest version of the decoder network would takes this state and use it
+just to initialize the ﬁrst hidden state of the decoder; the ﬁrst decoder RNN cell
+would use c as its prior hidden state hd
+0. The decoder would then autoregressively
+generates a sequence of outputs, an element at a time, until an end-of-sequence
+marker is generated. Each hidden state is conditioned on the previous hidden state
+and the output generated in the previous state.
+
+As Fig. 9.18 shows, we do something more complex: we make the context vector
+c available to more than just the ﬁrst decoder hidden state, to ensure that the inﬂuence
+of the context vector, c, doesn’t wane as the output sequence is generated. We do
+this by adding c as a parameter to the computation of the current hidden state. using
+the following equation:
+
+hd
+t = g( ˆyt
+
+1, hd
+1, c)
+t
+−
+−
+
+(9.32)
+
+Now we’re ready to see the full equations for this version of the decoder in the basic
+encoder-decoder model, with context available at each decoding timestep. Recall
+
+EncoderDecoderhn hd1he3he2he1hd2hd3hd4embeddinglayerhiddenlayer(s)softmaxx1x2y1hdmx3xn<s>y1y2y2y3y3y4ym</s>hen = c = hd0(output is ignored during encoding)9.7
+
+• THE ENCODER-DECODER MODEL WITH RNNS
+
+207
+
+that g is a stand-in for some ﬂavor of RNN and ˆyt
+sampled from the softmax at the previous step:
+
+1 is the embedding for the output
+
+−
+
+c = he
+n
+hd
+0 = c
+hd
+1, hd
+1, c)
+t = g( ˆyt
+t
+−
+−
+zt = f (hd
+t )
+yt = softmax(zt )
+
+(9.33)
+
+Finally, as shown earlier, the output y at each time step consists of a softmax com-
+putation over the set of possible outputs (the vocabulary, in the case of language
+modeling or MT). We compute the most likely output at each time step by taking the
+argmax over the softmax output:
+
+ˆyt = argmaxw
+
+y1...yt
+VP(w
+|
+∈
+
+1, x)
+
+−
+
+(9.34)
+
+9.7.1 Training the Encoder-Decoder Model
+
+Encoder-decoder architectures are trained end-to-end. Each training example is a
+tuple of paired strings, a source and a target. Concatenated with a separator token,
+these source-target pairs can now serve as training data.
+
+For MT, the training data typically consists of sets of sentences and their transla-
+tions. These can be drawn from standard datasets of aligned sentence pairs, as we’ll
+discuss in Section 13.2.2. Once we have a training set, the training itself proceeds
+as with any RNN-based language model. The network is given the source text and
+then starting with the separator token is trained autoregressively to predict the next
+word, as shown in Fig. 9.19.
+
+Figure 9.19 Training the basic RNN encoder-decoder approach to machine translation. Note that in the
+decoder we usually don’t propagate the model’s softmax outputs ˆyt , but use teacher forcing to force each input
+to the correct gold value for training. We compute the softmax output distribution over ˆy in the decoder in order
+to compute the loss at each token, which can then be averaged to compute a loss for the sentence.
+
+EncoderDecoderembeddinglayerhiddenlayer(s)softmaxthegreenllegówitcharrived<s>llególalabrujabrujaverdeverde</s>goldanswersL1 =-log P(y1)x1x2x3x4L2 =-log P(y2)L3 =-log P(y3)L4 =-log P(y4)L5 =-log P(y5)per-wordlossy1y2y3y4y5Total loss is the average cross-entropy loss per target word:208 CHAPTER 9
+
+• RNNS AND LSTMS
+
+teacher forcing
+
+Note the differences between training (Fig. 9.19) and inference (Fig. 9.17) with
+respect to the outputs at each time step. The decoder during inference uses its own
+estimated output ˆyt as the input for the next time step xt+1. Thus the decoder will
+tend to deviate more and more from the gold target sentence as it keeps generating
+more tokens. In training, therefore, it is more common to use teacher forcing in the
+decoder. Teacher forcing means that we force the system to use the gold target token
+from training as the next input xt+1, rather than allowing it to rely on the (possibly
+erroneous) decoder output ˆyt . This speeds up training.
+
+9.8 Attention
+
+The simplicity of the encoder-decoder model is its clean separation of the encoder—
+which builds a representation of the source text—from the decoder, which uses this
+context to generate a target text.
+In the model as we’ve described it so far, this
+context vector is hn, the hidden state of the last (nth) time step of the source text.
+This ﬁnal hidden state is thus acting as a bottleneck: it must represent absolutely
+everything about the meaning of the source text, since the only thing the decoder
+knows about the source text is what’s in this context vector (Fig. 9.20). Information
+at the beginning of the sentence, especially for long sentences, may not be equally
+well represented in the context vector.
+
+attention
+mechanism
+
+Figure 9.20 Requiring the context c to be only the encoder’s ﬁnal hidden state forces all the
+information from the entire source sentence to pass through this representational bottleneck.
+
+The attention mechanism is a solution to the bottleneck problem, a way of
+allowing the decoder to get information from all the hidden states of the encoder,
+not just the last hidden state.
+
+In the attention mechanism, as in the vanilla encoder-decoder model, the context
+vector c is a single vector that is a function of the hidden states of the encoder, that
+is, c = f (he
+n). Because the number of hidden states varies with the size of
+the input, we can’t use the entire set of encoder hidden state vectors directly as the
+context for the decoder.
+
+1 . . . he
+
+The idea of attention is instead to create the single ﬁxed-length vector c by taking
+a weighted sum of all the encoder hidden states. The weights focus on (‘attend
+to’) a particular part of the source text that is relevant for the token the decoder is
+currently producing. Attention thus replaces the static context vector with one that
+is dynamically derived from the encoder hidden states, different for each token in
+decoding.
+
+This context vector, ci, is generated anew with each decoding step i and takes
+all of the encoder hidden states into account in its derivation. We then make this
+context available during decoding by conditioning the computation of the current
+decoder hidden state on it (along with the prior hidden state and the previous output
+generated by the decoder), as we see in this equation (and Fig. 9.21):
+
+hd
+1, hd
+1, ci)
+i = g( ˆyi
+i
+−
+−
+
+(9.35)
+
+EncoderDecoderbottleneckbottleneck9.8
+
+• ATTENTION
+
+209
+
+Figure 9.21 The attention mechanism allows each hidden state of the decoder to see a
+different, dynamic, context, which is a function of all the encoder hidden states.
+
+The ﬁrst step in computing ci is to compute how much to focus on each encoder
+state, how relevant each encoder state is to the decoder state captured in hd
+1. We
+i
+−
+capture relevance by computing— at each state i during decoding—a score(hd
+1, he
+j)
+i
+−
+for each encoder state j.
+
+The simplest such score, called dot-product attention, implements relevance as
+similarity: measuring how similar the decoder hidden state is to an encoder hidden
+state, by computing the dot product between them:
+
+dot-product
+attention
+
+score(hd
+1, he
+i
+−
+
+j) = hd
+i
+1 ·
+−
+
+he
+j
+
+(9.36)
+
+The score that results from this dot product is a scalar that reﬂects the degree of
+similarity between the two vectors. The vector of these scores across all the encoder
+hidden states gives us the relevance of each encoder state to the current step of the
+decoder.
+
+To make use of these scores, we’ll normalize them with a softmax to create a
+vector of weights, αi j, that tells us the proportional relevance of each encoder hidden
+state j to the prior hidden decoder state, hd
+1.
+i
+−
+
+1, he
+αi j = softmax(score(hd
+i
+−
+exp(score(hd
+1, he
+j)
+i
+−
+k exp(score(hd
+1, he
+k))
+i
+−
+
+=
+
+j))
+
+(9.37)
+
+Finally, given the distribution in α, we can compute a ﬁxed-length context vector for
+the current decoder state by taking a weighted average over all the encoder hidden
+states.
+
+(cid:80)
+
+ci =
+
+αi j he
+j
+
+(9.38)
+
+(cid:88)j
+With this, we ﬁnally have a ﬁxed-length context vector that takes into account
+information from the entire encoder state that is dynamically updated to reﬂect the
+needs of the decoder at each step of decoding. Fig. 9.22 illustrates an encoder-
+decoder network with attention, focusing on the computation of one context vector
+ci.
+
+It’s also possible to create more sophisticated scoring functions for attention
+models. Instead of simple dot product attention, we can get a more powerfu

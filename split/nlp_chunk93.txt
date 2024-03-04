@@ -1,0 +1,379 @@
+imposed a gradual ban on
+virtually all uses of asbestos. (implicit=as a result) By 1997, almost all
+remaining uses of cancer-causing asbestos will be outlawed.
+
+Not all coherence relations are marked by an explicit discourse connective, and
+so the PDTB also annotates pairs of neighboring sentences with no explicit signal,
+like (23.14). The annotator ﬁrst chooses the word or phrase that could have been its
+signal (in this case as a result), and then labels its sense. For example for the am-
+biguous discourse connective since annotators marked whether it is using a CAUSAL
+or a TEMPORAL sense.
+
+The ﬁnal dataset contains roughly 18,000 explicit relations and 16,000 implicit
+relations. Fig. 23.2 shows examples from each of the 4 major semantic classes, while
+Fig. 23.3 shows the full tagset.
+
+Unlike the RST Discourse Treebank, which integrates these pairwise coherence
+relations into a global tree structure spanning an entire discourse, the PDTB does not
+annotate anything above the span-pair level, making no commitment with respect to
+higher-level discourse structure.
+
+There are also treebanks using similar methods for other languages; (23.15)
+shows an example from the Chinese Discourse TreeBank (Zhou and Xue, 2015).
+Because Chinese has a smaller percentage of explicit discourse connectives than
+English (only 22% of all discourse relations are marked with explicit connectives,
+
+516 CHAPTER 23
+
+• DISCOURSE COHERENCE
+
+CONTINGENCY REASON
+
+Class
+TEMPORAL
+
+COMPARISON
+
+EXPANSION
+
+Example
+
+Type
+SYNCHRONOUS The parishioners of St. Michael and All Angels stop to chat at
+the church door, as members here always have. (Implicit while)
+In the tower, ﬁve men and women pull rhythmically on ropes
+attached to the same ﬁve bells that ﬁrst sounded here in 1614.
+Also unlike Mr. Ruder, Mr. Breeden appears to be in a position
+to get somewhere with his agenda. (implicit=because) As a for-
+mer White House aide who worked closely with Congress,
+he is savvy in the ways of Washington.
+The U.S. wants the removal of what it perceives as barriers to
+investment; Japan denies there are real barriers.
+CONJUNCTION Not only do the actors stand outside their characters and make
+it clear they are at odds with them, but they often literally stand
+on their heads.
+
+CONTRAST
+
+Figure 23.2 The four high-level semantic distinctions in the PDTB sense hierarchy
+
+Temporal
+
+Comparison
+
+Asynchronous
+Synchronous (Precedence, Succession)
+
+•
+•
+
+Contrast (Juxtaposition, Opposition)
+•
+Pragmatic Contrast (Juxtaposition, Opposition)
+•
+Concession (Expectation, Contra-expectation)
+•
+Pragmatic Concession
+•
+
+Contingency
+
+Expansion
+
+Cause (Reason, Result)
+Pragmatic Cause (Justiﬁcation)
+
+Condition (Hypothetical, General, Unreal
+
+Present/Past, Factual Present/Past)
+
+•
+•
+•
+
+Exception
+Instantiation
+Restatement (Speciﬁcation, Equivalence, Generalization)
+
+•
+•
+•
+
+Pragmatic Condition (Relevance, Implicit As-
+
+•
+sertion)
+
+Alternative (Conjunction, Disjunction, Chosen Alterna-
+
+•
+tive)
+
+Figure 23.3 The PDTB sense hierarchy. There are four top-level c
+lasses, 16 types, and 23 subtypes (not all
+¯
+types have subtypes). 11 of the 16 types are commonly used for implicit argument classiﬁcation; the 5 types in
+italics are too rare in implicit labeling to be used.
+
+List
+
+•
+
+compared to 47% in English), annotators labeled this corpus by directly mapping
+pairs of sentences to 11 sense tags, without starting with a lexical discourse connec-
+tor.
+(23.15) [Conn 为] [Arg2 推动图们江地区开发] ，[Arg1 韩国捐款一百万美元
+
+设立了图们江发展基金]
+“[In order to] [Arg2 promote the development of the Tumen River region],
+[Arg1 South Korea donated one million dollars to establish the Tumen
+River Development Fund].”
+
+These discourse treebanks have been used for shared tasks on multilingual dis-
+
+course parsing (Xue et al., 2016).
+
+23.2 Discourse Structure Parsing
+
+discourse
+parsing
+
+Given a sequence of sentences, how can we automatically determine the coherence
+relations between them? This task is often called discourse parsing (even though
+for PDTB we are only assigning labels to leaf spans and not building a full parse
+
+23.2
+
+• DISCOURSE STRUCTURE PARSING
+
+517
+
+tree as we do for RST).
+
+23.2.1 EDU segmentation for RST parsing
+
+RST parsing is generally done in two stages. The ﬁrst stage, EDU segmentation,
+extracts the start and end of each EDU. The output of this stage would be a labeling
+like the following:
+
+(23.16) [Mr. Rambo says]e1 [that a 3.2-acre property]e2 [overlooking the San
+
+Fernando Valley]e3 [is priced at $4 million]e4 [because the late actor Erroll
+Flynn once lived there.]e5
+
+Since EDUs roughly correspond to clauses, early models of EDU segmentation
+ﬁrst ran a syntactic parser, and then post-processed the output. Modern systems
+generally use neural sequence models supervised by the gold EDU segmentation in
+datasets like the RST Discourse Treebank. Fig. 23.4 shows an example architecture
+simpliﬁed from the algorithm of Lukasik et al. (2020) that predicts for each token
+whether or not it is a break. Here the input sentence is passed through an encoder
+and then passed through a linear layer and a softmax to produce a sequence of 0s
+and 1, where 1 indicates the start of an EDU.
+
+Figure 23.4 Predicting EDU segment beginnings from encoded text.
+
+23.2.2 RST parsing
+
+Tools for building RST coherence structure for a discourse have long been based on
+syntactic parsing algorithms like shift-reduce parsing (Marcu, 1999). Many modern
+RST parsers since Ji and Eisenstein (2014) draw on the neural syntactic parsers we
+saw in Chapter 18, using representation learning to build representations for each
+span, and training a parser to choose the correct shift and reduce actions based on
+the gold parses in the training set.
+
+We’ll describe the shift-reduce parser of Yu et al. (2018). The parser state con-
+sists of a stack and a queue, and produces this structure by taking a series of actions
+on the states. Actions include:
+
+• shift: pushes the ﬁrst EDU in the queue onto the stack creating a single-node
+
+subtree.
+
+• reduce(l,d): merges the top two subtrees on the stack, where l is the coherence
+
+relation label, and d is the nuclearity direction, d
+
+NN, NS, SN
+
+∈ {
+
+.
+}
+
+As well as the pop root operation, to remove the ﬁnal tree from the stack.
+
+Fig. 23.6 shows the actions the parser takes to build the structure in Fig. 23.5.
+
+Mr.RambosaysthatENCODER…0001linear layersoftmaxEDU break518 CHAPTER 23
+
+• DISCOURSE COHERENCE
+
+Figure 23.5 Example RST discourse tree, showing four EDUs. Figure from Yu et al. (2018).
+
+Figure 23.6 Parsing the example of Fig. 23.5 using a shift-reduce parser. Figure from Yu
+et al. (2018).
+
+The Yu et al. (2018) uses an encoder-decoder architecture, where the encoder
+represents the input span of words and EDUs using a hierarchical biLSTM. The
+ﬁrst biLSTM layer represents the words inside an EDU, and the second represents
+the EDU sequence. Given an input sentence w1, w2, ..., wm, the words can be repre-
+sented as usual (by static embeddings, combinations with character embeddings or
+tags, or contextual embeddings) resulting in an input word representation sequence
+m. The result of the word-level biLSTM is then a sequence of hw values:
+1 , xw
+xw
+
+2 , ..., xw
+
+hw
+1 , hw
+
+2 , ..., hw
+
+m = biLSTM(xw
+
+1 , xw
+
+2 , ..., xw
+m)
+
+(23.17)
+
+An EDU of span ws, ws+1, ..., wt then has biLSTM output representation hw
+and is represented by average pooling:
+
+s , hw
+
+s+1, ..., hw
+t ,
+
+xe =
+
+1
+s + 1
+
+t
+
+−
+
+t
+
+hw
+k
+
+(cid:88)k=s
+
+(23.18)
+
+The second layer uses this input to compute a ﬁnal representation of the sequence of
+EDU representations he:
+
+1, he
+he
+
+2, ..., he
+
+n = biLSTM(xe
+The decoder is then a feedforward network W that outputs an action o based on a
+concatenation of the top three subtrees on the stack (so, s1, s2) plus the ﬁrst EDU in
+the queue (q0):
+
+2, ..., xe
+n)
+
+(23.19)
+
+1, xe
+
+o = W(ht
+
+s0, ht
+
+s1, ht
+
+s2, he
+
+q0)
+where the representation of the EDU on the queue he
+q0 comes directly from the
+encoder, and the three hidden vectors representing partial trees are computed by
+average pooling over the encoder output for the EDUs in those trees:
+
+(23.20)
+
+ht
+s =
+
+1
+i + 1
+
+j
+
+−
+
+j
+
+he
+k
+
+(cid:88)k=i
+
+(23.21)
+
+560e1e2e3e4attrelabelabe1:AmericanTelephone&TelegraphCo.saidite2:willlayoff75to85technicianshere,effectiveNov.1.e3:Theworkersinstall,maintainandrepairitsprivatebranchexchanges,e4:whicharelargeintracompanytelephonenetworks.Figure1:AnexampleofRSTdiscoursetree,where{e1,e2,e3,e4}areEDUs,attrandelabarediscourserelationlabels,andarrowsindicatethenuclearitiesofdiscourserelations.RSTdiscourseparsing.Otherstudiesstilladoptdiscretesyntaxfeaturesproposedbystatisticalmodels,feedingthemintoneuralnetworkmodels(Braudetal.,2016;Braudetal.,2017).Theaboveapproachesmodelsyntaxtreesinanexplicitway,requiringdiscretesyntaxparsingoutputsasinputsforRSTparsing.Theseapproachesmaysufferfromtheerrorpropagationproblem.Syntaxtreesproducedbyasupervisedsyntaxparsingmodelcouldhaveerrors,whichmaypropagateintodiscourseparsingmodels.Theproblemcouldbeextremelyseriouswheninputsofdiscourseparsinghavedifferentdistributionswiththetrainingdataofthesupervisedsyntaxparser.Recently,Zhangetal.(2017)suggestanalternativemethod,whichextractssyntaxfeaturesfromaBi-Afﬁnedependencyparser(DozatandManning,2016),andthemethodgivescompetitiveperformancesonrelationextraction.Itactuallyrepresentssyntaxtreesimplicitly,thusitcanreducetheerrorpropagationproblem.Inthiswork,weinvestigatetheimplicitsyntaxfeatureextractionapproachforRSTparsing.Inad-dition,weproposeatransition-basedneuralmodelforthistask,whichisabletoincorporatevariousfeaturesﬂexibly.Weexploithierarchicalbi-directionalLSTMs(Bi-LSTMs)toencodetexts,andfurtherenhancethetransition-basedmodelwithdynamicoracle.Basedontheproposedmodel,westudytheeffectivenessofourproposedimplicitsyntaxfeatures.WeconductexperimentsonastandardRSTdis-courseTreeBank(Carlsonetal.,2003).First,weevaluatetheperformanceofourproposedtransition-basedbaseline,ﬁndingthatthemodelisabletoachievestrongperformancesafterapplyingdynamicoracle.ThenweevaluatetheeffectivenessofimplicitsyntaxfeaturesextractedfromaBi-Afﬁnedepen-dencyparser.Resultsshowthattheimplicitsyntaxfeaturesareeffective,givingbetterperformancesthanexplicitTree-LSTM(Lietal.,2015b).OurcodeswillbereleasedforpublicundertheApacheLicense2.0athttps://github.com/yunan4nlp/NNDisParser.Insummary,wemainlymakethefollowingtwocontributionsinthiswork:(1)weproposeatransition-basedneuralRSTdiscourseparsingmodelwithdynamicoracle,(2)wecomparethreedifferentsyntacticintegrationapproachesproposedbyus.Therestofthepaperisorganizedasfollows.Section2describesourproposedmodelsincludingthetransition-basedneuralmodel,thedynamicoraclestrategyandtheimplicitsyntaxfeatureextractionapproach.Section3presentstheexperimentstoevaluateourmodels.Section4showstherelatedwork.Finally,section5drawsconclusions.2Transition-basedDiscourseParsingWefollowJiandEisenstein(2014),exploitingatransition-basedframeworkforRSTdiscourseparsing.Theframeworkisconceptuallysimpleandﬂexibletosupportarbitraryfeatures,whichhasbeenwidelyusedinanumberofNLPtasks(Zhuetal.,2013;Dyeretal.,2015;Zhangetal.,2016).Inaddition,atransition-basedmodelformalizesacertaintaskintopredictingasequenceofactions,whichisessentialsimilartosequence-to-sequencemodelsproposedrecently(Bahdanauetal.,2014).Inthefollowing,weﬁrstdescribethetransitionsystemforRSTdiscourseparsing,andthenintroduceourneuralnetworkmodelbyitsencoderanddecoderparts,respectively.Thirdly,wepresentourproposeddynamicoraclestrategyaimingtoenhancethetransition-basedmodel.Thenweintroducetheintegrationmethodofimplicitsyntaxfeatures.Finallywedescribethetrainingmethodofourneuralnetworkmodels.2.1TheTransition-basedSystemThetransition-basedframeworkconvertsastructurallearningproblemintoasequenceofactionpredic-tions,whosekeypointisatransitionsystem.Atransitionsystemconsistsoftwoparts:statesandactions.Thestatesareusedtostorepartially-parsedresultsandtheactionsareusedtocontrolstatetransitions.561StepStackQueueActionRelation1?e1,e2,e3,e4SH?2e1e2,e3,e4SH?3e1,e2e3,e4RD(attr,SN)?4e1:2e3,e4SHde1e25e1:2,e3e4SHde1e26e1:2,e3,e4?RD(elab,NS)de1e27e1:2,e3:4?RD(elab,SN)de1e2,de3e48e1:4?PRde1e2,de3e4,\e1:2e3:4Table1:Anexampleofthetransition-basedsystemforRSTdiscourseparsing.Theinitialstateisanemptystate,andtheﬁnalstaterepresentsafullresult.Therearethreekindsofactionsinourtransitionsystem:•Shift(SH),whichremovestheﬁrstEDUinthequeueontothestack,formingasingle-nodesubtree.•Reduce(RD)(l,d),whichmergesthetoptwosubtreesonthestack,wherelisadiscourserelationlabel,andd2{NN,NS,SN}indicatestherelationnuclearity(nuclear(N)orsatellite(S)).•PopRoot(PR),whichpopsoutthetoptreeonthestack,markingthedecodingbeingcompleted,whenthestackholdsonlyonesubtreeandthequeueisempty.GiventheRSTtreeasshowninFigure1,itcanbegeneratedbythefollowingactionsequence:{SH,SH,RD(attr,SN),SH,SH,RD(elab,NS),RD(elab,SN),PR}.Table1showsthedecodingprocessindetail.Bythisway,wenaturallyconvertRSTdiscourseparsingintopredictingasequenceoftransitionactions,whereeachlineincludesastateandnextstepactionreferringtothetree.2.2Encoder-DecoderPrevioustransition-basedRSTdiscourseparsingstudiesexploitstatisticalmodels,usingmanually-designeddiscretefeatures(Sagae,2009;HeilmanandSagae,2015;Wangetal.,2017).Inthiswork,weproposeatransition-basedneuralmodelforRSTdiscourseparsing,whichfollowsanencoder-decoderframework.GivenaninputsequenceofEDUs{e1,e2,...,en},theencodercomputestheinputrepresen-tations{he1,he2,...,hen},andthedecoderpredictsnextstepactionsconditionedontheencoderoutputs.2.2.1EncoderWefollowLietal.(2016),usinghierarchicalBi-LSTMstoencodethesourceEDUinputs,wheretheﬁrst-layerisusedtorepresentsequencialwordsinsideofEDUs,andthesecondlayerisusedtorepresentsequencialEDUs.Givenaninputsentence{w1,w2,...,wm},ﬁrstwerepresenteachwordbyitsform(e.g.,wi)andPOStag(e.g.ti),concatenatingtheirneuralembeddings.Bythisway,theinputvectorsoftheﬁrst-layerBi-LSTMare{xw1,xw2,...,xwm},wherexwi=emb(wi) emb(ti),andthenweapplyBi-LSTMdirectly,obtaining:{hw1,hw2,...,hwm}=Bi-LSTM({xw1,xw2,...,xwm})(1)Thesecond-layerBi-LSTMisbuiltoversequentialEDUs.Weshouldﬁrstobtainasuitablerepresenta-tionforeachEDU,whichiscomposedbyaspanofwordsinsideacertainsentence.AssuminganEDUwithitswordsby{ws,ws+1,...,wt},afterapplyingtheﬁrst-layerBi-LSTM,weobtaintheirrepresenta-tionsby{hws,hws+1...,hwt},thenwecalculatetheEDUrepresentationbyaveragepooling:xe=1t s+1tXshwk(2)WhentheEDUrepresentationsareready,weapplythesecond-layerBi-LSTMdirectly,resulting:{he1,he2,...,hen}=Bi-LSTM({xe1,xe2,...,xen})(3)23.2
+
+• DISCOURSE STRUCTURE PARSING
+
+519
+
+Training ﬁrst maps each RST gold parse tree into a sequence of oracle actions, and
+then uses the standard cross-entropy loss (with l2 regularization) to train the system
+to take such actions. Give a state S and oracle action a, we ﬁrst compute the decoder
+output using Eq. 23.20, apply a softmax to get probabilities:
+
+a(cid:48)∈
+and then computing the cross-entropy loss:
+
+(cid:80)
+
+pa =
+
+exp(oa)
+A exp(oa(cid:48)
+
+)
+
+LCE () =
+
+log(pa) +
+
+−
+
+λ
+2 ||
+
+Θ
+
+2
+||
+
+(23.22)
+
+(23.23)
+
+RST discourse parsers are evaluated on the test section of the RST Discourse Tree-
+bank, either with gold EDUs or end-to-end, using the RST-Pareval metrics (Marcu,
+2000b). It is standard to ﬁrst transform the gold RST trees into right-branching bi-
+nary trees, and to report four metrics:
+trees with no labels (S for Span), labeled
+with nuclei (N), with relations (R), or both (F for Full), for each metric computing
+micro-averaged F1 over all spans from all documents (Marcu 2000b, Morey et al.
+2017).
+
+23.2.3 PDTB discourse parsing
+
+shallow
+discourse
+parsing
+
+PDTB discours

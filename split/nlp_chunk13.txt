@@ -1,0 +1,430 @@
+ass (in
+this case spam), since the counts are pooled. The macroaverage better reﬂects the
+statistics of the smaller classes, and so is more appropriate when performance on all
+the classes is equally important.
+
+macroaveraging
+microaveraging
+
+4.8 Test sets and Cross-validation
+
+The training and testing procedure for text classiﬁcation follows what we saw with
+language modeling (Section 3.2): we use the training set to train the model, then use
+the development test set (also called a devset) to perhaps tune some parameters,
+
+development
+test set
+devset
+
+851060urgentnormalgold labelssystemoutputrecallu = 88+5+3precisionu= 88+10+115030200spamurgentnormalspam3recalln = recalls = precisionn= 605+60+50precisions= 2003+30+2006010+60+302001+50+2004.9
+
+• STATISTICAL SIGNIFICANCE TESTING
+
+73
+
+Figure 4.6 Separate confusion matrices for the 3 classes from the previous ﬁgure, showing the pooled confu-
+sion matrix and the microaveraged and macroaveraged precision.
+
+cross-validation
+
+folds
+
+10-fold
+cross-validation
+
+and in general decide what the best model is. Once we come up with what we think
+is the best model, we run it on the (hitherto unseen) test set to report its performance.
+While the use of a devset avoids overﬁtting the test set, having a ﬁxed train-
+ing set, devset, and test set creates another problem: in order to save lots of data
+for training, the test set (or devset) might not be large enough to be representative.
+Wouldn’t it be better if we could somehow use all our data for training and still use
+all our data for test? We can do this by cross-validation.
+
+In cross-validation, we choose a number k, and partition our data into k disjoint
+subsets called folds. Now we choose one of those k folds as a test set, train our
+classiﬁer on the remaining k
+1 folds, and then compute the error rate on the test
+set. Then we repeat with another fold as the test set, again training on the other k
+1
+folds. We do this sampling process k times and average the test set error rate from
+these k runs to get an average error rate. If we choose k = 10, we would train 10
+different models (each on 90% of our data), test the model 10 times, and average
+these 10 values. This is called 10-fold cross-validation.
+
+−
+
+−
+
+The only problem with cross-validation is that because all the data is used for
+testing, we need the whole corpus to be blind; we can’t examine any of the data
+to suggest possible features and in general see what’s going on, because we’d be
+peeking at the test set, and such cheating would cause us to overestimate the perfor-
+mance of our system. However, looking at the corpus to understand what’s going
+on is important in designing NLP systems! What to do? For this reason, it is com-
+mon to create a ﬁxed training set and test set, then do 10-fold cross-validation inside
+the training set, but compute error rate the normal way in the test set, as shown in
+Fig. 4.7.
+
+4.9 Statistical Signiﬁcance Testing
+
+In building systems we often need to compare the performance of two systems. How
+can we know if the new system we just built is better than our old one? Or better
+than some other system described in the literature? This is the domain of statistical
+hypothesis testing, and in this section we introduce tests for statistical signiﬁcance
+for NLP classiﬁers, drawing especially on the work of Dror et al. (2020) and Berg-
+Kirkpatrick et al. (2012).
+
+Suppose we’re comparing the performance of classiﬁers A and B on a metric M
+
+8811340trueurgenttruenotsystemurgentsystemnot604055212truenormaltruenotsystemnormalsystemnot200513383truespamtruenotsystemspamsystemnot2689999635trueyestruenosystemyessystemnoprecision =8+118= .42precision =200+33200= .86precision =60+5560= .52microaverageprecision268+99268= .73=macroaverageprecision3.42+.52+.86= .60=PooledClass 3: SpamClass 2: NormalClass 1: Urgent74 CHAPTER 4
+
+• NAIVE BAYES, TEXT CLASSIFICATION, AND SENTIMENT
+
+effect size
+
+Figure 4.7
+
+10-fold cross-validation
+
+such as F1, or accuracy. Perhaps we want to know if our logistic regression senti-
+ment classiﬁer A (Chapter 5) gets a higher F1 score than our naive Bayes sentiment
+classiﬁer B on a particular test set x. Let’s call M(A, x) the score that system A gets
+on test set x, and δ (x) the performance difference between A and B on x:
+
+δ (x) = M(A, x)
+
+M(B, x)
+
+−
+
+(4.19)
+
+We would like to know if δ (x) > 0, meaning that our logistic regression classiﬁer
+has a higher F1 than our naive Bayes classiﬁer on X. δ (x) is called the effect size;
+a bigger δ means that A seems to be way better than B; a small δ means A seems to
+be only a little better.
+
+Why don’t we just check if δ (x) is positive? Suppose we do, and we ﬁnd that
+the F1 score of A is higher than B’s by .04. Can we be certain that A is better? We
+cannot! That’s because A might just be accidentally better than B on this particular x.
+We need something more: we want to know if A’s superiority over B is likely to hold
+again if we checked another test set x(cid:48), or under some other set of circumstances.
+
+In the paradigm of statistical hypothesis testing, we test this by formalizing two
+
+hypotheses.
+
+H0 : δ (x)
+0
+H1 : δ (x) > 0
+
+≤
+
+(4.20)
+
+null hypothesis
+
+p-value
+
+The hypothesis H0, called the null hypothesis, supposes that δ (x) is actually nega-
+tive or zero, meaning that A is not better than B. We would like to know if we can
+conﬁdently rule out this hypothesis, and instead support H1, that A is better.
+
+We do this by creating a random variable X ranging over all test sets. Now we
+ask how likely is it, if the null hypothesis H0 was correct, that among these test sets
+we would encounter the value of δ (x) that we found, if we repeated the experiment
+a great many times. We formalize this likelihood as the p-value: the probability,
+assuming the null hypothesis H0 is true, of seeing the δ (x) that we saw or one even
+greater
+
+P(δ (X)
+
+δ (x)
+H0 is true)
+|
+So in our example, this p-value is the probability that we would see δ (x) assuming
+A is not better than B. If δ (x) is huge (let’s say A has a very respectable F1 of .9
+and B has a terrible F1 of only .2 on x), we might be surprised, since that would be
+
+(4.21)
+
+≥
+
+Training Iterations13452678910DevDevDevDevDevDevDevDevDevDevTrainingTrainingTrainingTrainingTrainingTrainingTrainingTrainingTrainingTrainingTrainingTest SetTestingstatistically
+signiﬁcant
+
+approximate
+randomization
+
+paired
+
+bootstrap test
+
+bootstrapping
+
+4.9
+
+• STATISTICAL SIGNIFICANCE TESTING
+
+75
+
+extremely unlikely to occur if H0 were in fact true, and so the p-value would be low
+(unlikely to have such a large δ if A is in fact not better than B). But if δ (x) is very
+small, it might be less surprising to us even if H0 were true and A is not really better
+than B, and so the p-value would be higher.
+
+A very small p-value means that the difference we observed is very unlikely
+under the null hypothesis, and we can reject the null hypothesis. What counts as very
+small? It is common to use values like .05 or .01 as the thresholds. A value of .01
+means that if the p-value (the probability of observing the δ we saw assuming H0 is
+true) is less than .01, we reject the null hypothesis and assume that A is indeed better
+than B. We say that a result (e.g., “A is better than B”) is statistically signiﬁcant if
+the δ we saw has a probability that is below the threshold and we therefore reject
+this null hypothesis.
+
+How do we compute this probability we need for the p-value? In NLP we gen-
+erally don’t use simple parametric tests like t-tests or ANOVAs that you might be
+familiar with. Parametric tests make assumptions about the distributions of the test
+statistic (such as normality) that don’t generally hold in our cases. So in NLP we
+usually use non-parametric tests based on sampling: we artiﬁcially create many ver-
+sions of the experimental setup. For example, if we had lots of different test sets x(cid:48)
+we could just measure all the δ (x(cid:48)) for all the x(cid:48). That gives us a distribution. Now
+we set a threshold (like .01) and if we see in this distribution that 99% or more of
+those deltas are smaller than the delta we observed, i.e., that p-value(x)—the proba-
+bility of seeing a δ (x) as big as the one we saw—is less than .01, then we can reject
+the null hypothesis and agree that δ (x) was a sufﬁciently surprising difference and
+A is really a better algorithm than B.
+
+There are two common non-parametric tests used in NLP: approximate ran-
+domization (Noreen, 1989) and the bootstrap test. We will describe bootstrap
+below, showing the paired version of the test, which again is most common in NLP.
+Paired tests are those in which we compare two sets of observations that are aligned:
+each observation in one set can be paired with an observation in another. This hap-
+pens naturally when we are comparing the performance of two systems on the same
+test set; we can pair the performance of system A on an individual observation xi
+with the performance of system B on the same xi.
+
+4.9.1 The Paired Bootstrap Test
+
+The bootstrap test (Efron and Tibshirani, 1993) can apply to any metric; from pre-
+cision, recall, or F1 to the BLEU metric used in machine translation. The word
+bootstrapping refers to repeatedly drawing large numbers of samples with replace-
+ment (called bootstrap samples) from an original set. The intuition of the bootstrap
+test is that we can create many virtual test sets from an observed test set by repeat-
+edly sampling from it. The method only makes the assumption that the sample is
+representative of the population.
+
+Consider a tiny text classiﬁcation example with a test set x of 10 documents. The
+ﬁrst row of Fig. 4.8 shows the results of two classiﬁers (A and B) on this test set,
+with each document labeled by one of the four possibilities: (A and B both right,
+both wrong, A right and B wrong, A wrong and B right); a slash through a letter
+((cid:19)B) means that that classiﬁer got the answer wrong. On the ﬁrst document both A
+and B get the correct class (AB), while on the second document A got it right but B
+got it wrong (A(cid:19)B). If we assume for simplicity that our metric is accuracy, A has an
+accuracy of .70 and B of .50, so δ (x) is .20.
+
+Now we create a large number b (perhaps 105) of virtual test sets x(i), each of size
+
+76 CHAPTER 4
+
+• NAIVE BAYES, TEXT CLASSIFICATION, AND SENTIMENT
+
+n = 10. Fig. 4.8 shows a couple of examples. To create each virtual test set x(i), we
+repeatedly (n = 10 times) select a cell from row x with replacement. For example, to
+create the ﬁrst cell of the ﬁrst virtual test set x(1), if we happened to randomly select
+the second cell of the x row; we would copy the value A(cid:19)B into our new cell, and
+move on to create the second cell of x(1), each time sampling (randomly choosing)
+from the original x with replacement.
+
+2
+
+8
+
+3
+
+6
+
+5
+
+9
+
+4
+
+10 A% B% δ ()
+1
+7
+AB A(cid:19)(cid:19)B AB (cid:0)(cid:0)AB A(cid:19)(cid:19)B (cid:0)(cid:0)AB A(cid:19)(cid:19)B AB (cid:0)(cid:0)A(cid:19)(cid:19)B A(cid:19)(cid:19)B .70 .50 .20
+x
+x(1) A(cid:19)(cid:19)B AB A(cid:19)(cid:19)B (cid:0)(cid:0)AB (cid:0)(cid:0)AB A(cid:19)(cid:19)B (cid:0)(cid:0)AB AB (cid:0)(cid:0)A(cid:19)(cid:19)B AB .60 .60 .00
+x(2) A(cid:19)(cid:19)B AB (cid:0)(cid:0)A(cid:19)(cid:19)B (cid:0)(cid:0)AB (cid:0)(cid:0)AB AB (cid:0)(cid:0)AB A(cid:19)(cid:19)B AB AB .60 .70 -.10
+...
+x(b)
+Figure 4.8 The paired bootstrap test: Examples of b pseudo test sets x(i) being created
+from an initial true test set x. Each pseudo test set is created by sampling n = 10 times with
+replacement; thus an individual sample is a single cell, a document with its gold label and
+the correct or incorrect performance of classiﬁers A and B. Of course real test sets don’t have
+only 10 examples, and b needs to be large as well.
+
+Now that we have the b test sets, providing a sampling distribution, we can do
+statistics on how often A has an accidental advantage. There are various ways to
+compute this advantage; here we follow the version laid out in Berg-Kirkpatrick
+et al. (2012). Assuming H0 (A isn’t better than B), we would expect that δ (X), esti-
+mated over many test sets, would be zero; a much higher value would be surprising,
+since H0 speciﬁcally assumes A isn’t better than B. To measure exactly how surpris-
+ing our observed δ (x) is, we would in other circumstances compute the p-value by
+counting over many test sets how often δ (x(i)) exceeds the expected zero value by
+δ (x) or more:
+
+p-value(x) =
+
+b
+
+1
+
+δ (x(i))
+
+1
+b
+
+(cid:88)i=1
+
+δ (x)
+
+0
+
+≥
+
+−
+
+(cid:17)
+
+(cid:16)
+(We use the notation 1(x) to mean “1 if x is true, and 0 otherwise”.) However,
+although it’s generally true that the expected value of δ (X) over many test sets,
+(again assuming A isn’t better than B) is 0, this isn’t true for the bootstrapped test
+sets we created. That’s because we didn’t draw these samples from a distribution
+with 0 mean; we happened to create them from the original test set x, which happens
+to be biased (by .20) in favor of A. So to measure how surprising is our observed
+δ (x), we actually compute the p-value by counting over many test sets how often
+δ (x(i)) exceeds the expected value of δ (x) by δ (x) or more:
+
+p-value(x) =
+
+1
+b
+
+b
+
+1
+
+δ (x(i))
+
+(cid:88)i=1
+b
+
+(cid:16)
+
+1
+
+δ (x(i))
+
+≥
+
+=
+
+1
+b
+
+δ (x)
+
+−
+
+≥
+
+δ (x)
+
+(cid:17)
+
+2δ (x)
+
+(4.22)
+
+(cid:16)
+So if for example we have 10,000 test sets x(i) and a threshold of .01, and in only 47
+of the test sets do we ﬁnd that A is accidentally better δ (x(i))
+2δ (x), the resulting
+p-value of .0047 is smaller than .01, indicating that the delta we found, δ (x) is indeed
+
+≥
+
+(cid:17)
+
+(cid:88)i=1
+
+4.10
+
+• AVOIDING HARMS IN CLASSIFICATION
+
+77
+
+sufﬁciently surprising and unlikely to have happened by accident, and we can reject
+the null hypothesis and conclude A is better than B.
+
+function BOOTSTRAP(test set x, num of samples b) returns p-value(x)
+
+Calculate δ (x) # how much better does algorithm A do than B on x
+s = 0
+for i = 1 to b do
+
+for j = 1 to n do
+
+# Draw a bootstrap sample x(i) of size n
+
+Select a member of x at random and add it to x(i)
+
+Calculate δ (x(i)) # how much better does algorithm A do than B on x(i)
+s
+←
+p-value(x)
+return p-value(x)
+
+# on what % of the b samples did algorithm A beat expectations?
+# if very few did, our observed δ is probably not accidental
+
+s + 1 if δ (x(i))
+s
+b
+
+2δ (x)
+
+≥
+
+≈
+
+Figure 4.9 A version of the paired bootstrap algorithm after Berg-Kirkpatrick et al. (2012).
+
+The full algorithm for the bootstrap is shown in Fig. 4.9. It is given a test set x, a
+number of samples b, and counts the percentage of the b bootstrap test sets in which
+(i)) > 2δ (x). This percentage then acts as a one-sided empirical p-value
+δ (x∗
+
+4.10 Avoiding Harms in Classiﬁcation
+
+representational
+harms
+
+toxicity
+detection
+
+It is important to avoid harms that may result from classiﬁers, harms that exist both
+for naive Bayes classiﬁers and for the other classiﬁcation algorithms we introduce
+in later chapters.
+
+One class of harms is representational harms (Crawford 2017, Blodgett et al.
+2020), harms caused by a system that demeans a social group, for example by per-
+petuating negative stereotypes about them. For example Kiritchenko and Moham-
+mad (2018) examined the performance of 200 sentiment analysis systems on pairs of
+sentences that were identical except for containing either a common African Amer-
+ican ﬁrst name (like Shaniqua) or a common European American ﬁrst name (like
+Stephanie), chosen from the Caliskan et al. (2017) study discussed in Chapter 6.
+They found that most sy

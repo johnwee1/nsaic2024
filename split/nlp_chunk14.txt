@@ -1,0 +1,403 @@
+stems assigned lower sentiment and more negative emotion
+to sentences with African American names, reﬂecting and perpetuating stereotypes
+that associate African Americans with negative emotions (Popp et al., 2003).
+
+In other tasks classiﬁers may lead to both representational harms and other
+harms, such as censorship. For example the important text classiﬁcation task of
+toxicity detection is the task of detecting hate speech, abuse, harassment, or other
+kinds of toxic language. While the goal of such classiﬁers is to help reduce societal
+harm, toxicity classiﬁers can themselves cause harms. For example, researchers have
+shown that some widely used toxicity classiﬁers incorrectly ﬂag as being toxic sen-
+tences that are non-toxic but simply mention minority identities like women (Park
+et al., 2018), blind people (Hutchinson et al., 2020) or gay people (Dixon et al., 2018;
+Dias Oliva et al., 2021), or simply use linguistic features characteristic of varieties
+like African-American Vernacular English (Sap et al. 2019, Davidson et al. 2019).
+Such false positive errors, if employed by toxicity detection systems without human
+oversight, could lead to the censoring of discourse by or about these groups.
+
+These model problems can be caused by biases or other problems in the training
+
+78 CHAPTER 4
+
+• NAIVE BAYES, TEXT CLASSIFICATION, AND SENTIMENT
+
+model card
+
+data; in general, machine learning systems replicate and even amplify the biases
+in their training data. But these problems can also be caused by the labels (for
+example due to biases in the human labelers), by the resources used (like lexicons,
+or model components like pretrained embeddings), or even by model architecture
+(like what the model is trained to optimize). While the mitigation of these biases
+(for example by carefully considering the training data sources) is an important area
+of research, we currently don’t have general solutions. For this reason it’s important,
+when introducing any NLP model, to study these kinds of factors and make them
+clear. One way to do this is by releasing a model card (Mitchell et al., 2019) for
+each version of a model. A model card documents a machine learning model with
+information like:
+
+• training algorithms and parameters
+• training data sources, motivation, and preprocessing
+• evaluation data sources, motivation, and preprocessing
+• intended use and users
+• model performance across different demographic or other groups and envi-
+
+ronmental situations
+
+4.11 Summary
+
+This chapter introduced the naive Bayes model for classiﬁcation and applied it to
+the text categorization task of sentiment analysis.
+
+• Many language processing tasks can be viewed as tasks of classiﬁcation.
+• Text categorization, in which an entire text is assigned a class from a ﬁnite set,
+includes such tasks as sentiment analysis, spam detection, language identi-
+ﬁcation, and authorship attribution.
+
+• Sentiment analysis classiﬁes a text as reﬂecting the positive or negative orien-
+
+tation (sentiment) that a writer expresses toward some object.
+
+• Naive Bayes is a generative model that makes the bag-of-words assumption
+(position doesn’t matter) and the conditional independence assumption (words
+are conditionally independent of each other given the class)
+
+• Naive Bayes with binarized features seems to work better for many text clas-
+
+siﬁcation tasks.
+
+• Classiﬁers are evaluated based on precision and recall.
+• Classiﬁers are trained using distinct training, dev, and test sets, including the
+
+use of cross-validation in the training set.
+
+• Statistical signiﬁcance tests should be used to determine whether we can be
+
+conﬁdent that one version of a classiﬁer is better than another.
+
+• Designers of classiﬁers should carefully consider harms that may be caused
+by the model, including its training data and other components, and report
+model characteristics in a model card.
+
+Bibliographical and Historical Notes
+
+Multinomial naive Bayes text classiﬁcation was proposed by Maron (1961) at the
+RAND Corporation for the task of assigning subject categories to journal abstracts.
+
+BIBLIOGRAPHICAL AND HISTORICAL NOTES
+
+79
+
+His model introduced most of the features of the modern form presented here, ap-
+proximating the classiﬁcation task with one-of categorization, and implementing
+add-δ smoothing and information-based feature selection.
+
+The conditional independence assumptions of naive Bayes and the idea of Bayes-
+ian analysis of text seems to have arisen multiple times. The same year as Maron’s
+paper, Minsky (1961) proposed a naive Bayes classiﬁer for vision and other arti-
+ﬁcial intelligence problems, and Bayesian techniques were also applied to the text
+classiﬁcation task of authorship attribution by Mosteller and Wallace (1963). It had
+long been known that Alexander Hamilton, John Jay, and James Madison wrote
+the anonymously-published Federalist papers in 1787–1788 to persuade New York
+to ratify the United States Constitution. Yet although some of the 85 essays were
+clearly attributable to one author or another, the authorship of 12 were in dispute
+between Hamilton and Madison. Mosteller and Wallace (1963) trained a Bayesian
+probabilistic model of the writing of Hamilton and another model on the writings
+of Madison, then computed the maximum-likelihood author for each of the disputed
+essays. Naive Bayes was ﬁrst applied to spam detection in Heckerman et al. (1998).
+Metsis et al. (2006), Pang et al. (2002), and Wang and Manning (2012) show
+that using boolean attributes with multinomial naive Bayes works better than full
+counts. Binary multinomial naive Bayes is sometimes confused with another variant
+of naive Bayes that also uses a binary representation of whether a term occurs in
+a document: Multivariate Bernoulli naive Bayes. The Bernoulli variant instead
+estimates P(w
+c) as the fraction of documents that contain a term, and includes a
+|
+probability for whether a term is not in a document. McCallum and Nigam (1998)
+and Wang and Manning (2012) show that the multivariate Bernoulli variant of naive
+Bayes doesn’t work as well as the multinomial algorithm for sentiment or other text
+tasks.
+
+There are a variety of sources covering the many kinds of text classiﬁcation
+tasks. For sentiment analysis see Pang and Lee (2008), and Liu and Zhang (2012).
+Stamatatos (2009) surveys authorship attribute algorithms. On language identiﬁca-
+tion see Jauhiainen et al. (2019); Jaech et al. (2016) is an important early neural
+system. The task of newswire indexing was often used as a test case for text classi-
+ﬁcation algorithms, based on the Reuters-21578 collection of newswire articles.
+
+See Manning et al. (2008) and Aggarwal and Zhai (2012) on text classiﬁcation;
+classiﬁcation in general is covered in machine learning textbooks (Hastie et al. 2001,
+Witten and Frank 2005, Bishop 2006, Murphy 2012).
+
+Non-parametric methods for computing statistical signiﬁcance were used ﬁrst in
+NLP in the MUC competition (Chinchor et al., 1993), and even earlier in speech
+recognition (Gillick and Cox 1989, Bisani and Ney 2004). Our description of the
+bootstrap draws on the description in Berg-Kirkpatrick et al. (2012). Recent work
+has focused on issues including multiple test sets and multiple metrics (Søgaard et al.
+2014, Dror et al. 2017).
+
+Feature selection is a method of removing features that are unlikely to generalize
+well. Features are generally ranked by how informative they are about the classiﬁca-
+tion decision. A very common metric, information gain, tells us how many bits of
+information the presence of the word gives us for guessing the class. Other feature
+selection metrics include χ 2, pointwise mutual information, and GINI index; see
+Yang and Pedersen (1997) for a comparison and Guyon and Elisseeff (2003) for an
+introduction to feature selection.
+
+information
+gain
+
+80 CHAPTER 4
+
+• NAIVE BAYES, TEXT CLASSIFICATION, AND SENTIMENT
+
+Exercises
+
+4.1 Assume the following likelihoods for each word being part of a positive or
+
+negative movie review, and equal prior probabilities for each class.
+
+pos neg
+0.09 0.16
+I
+always 0.07 0.06
+like
+0.29 0.06
+foreign 0.04 0.15
+0.08 0.11
+ﬁlms
+
+What class will Naive bayes assign to the sentence “I always like foreign
+ﬁlms.”?
+
+4.2 Given the following short movie reviews, each labeled with a genre, either
+
+comedy or action:
+
+comedy
+
+1. fun, couple, love, love
+2. fast, furious, shoot action
+3. couple, ﬂy, fast, fun, fun comedy
+4. furious, shoot, shoot, fun action
+5. ﬂy, fast, shoot, love action
+
+and a new document D:
+
+fast, couple, shoot, ﬂy
+
+compute the most likely class for D. Assume a naive Bayes classiﬁer and use
+add-1 smoothing for the likelihoods.
+
+4.3
+
+Train two models, multinomial naive Bayes and binarized naive Bayes, both
+with add-1 smoothing, on the following document counts for key sentiment
+words, with positive or negative class assigned as noted.
+
+doc “good” “poor” “great” (class)
+d1. 3
+d2. 0
+d3. 1
+d4. 1
+d5. 0
+
+pos
+pos
+neg
+neg
+neg
+
+0
+1
+3
+5
+2
+
+3
+2
+0
+2
+0
+
+Use both naive Bayes models to assign a class (pos or neg) to this sentence:
+
+A good, good plot and great characters, but poor acting.
+
+Recall from page 65 that with naive Bayes text classiﬁcation, we simply ig-
+nore (throw out) any word that never occurred in the training document. (We
+don’t throw out words that appear in some classes but not others; that’s what
+add-one smoothing is for.) Do the two models agree or disagree?
+
+CHAPTER
+
+5 Logistic Regression
+
+logistic
+regression
+
+“And how do you know that these ﬁne begonias are not of equal importance?”
+Hercule Poirot, in Agatha Christie’s The Mysterious Affair at Styles
+
+Detective stories are as littered with clues as texts are with words. Yet for the
+poor reader it can be challenging to know how to weigh the author’s clues in order
+to make the crucial classiﬁcation task: deciding whodunnit.
+
+In this chapter we introduce an algorithm that is admirably suited for discovering
+the link between features or cues and some particular outcome: logistic regression.
+Indeed, logistic regression is one of the most important analytic tools in the social
+and natural sciences. In natural language processing, logistic regression is the base-
+line supervised machine learning algorithm for classiﬁcation, and also has a very
+close relationship with neural networks. As we will see in Chapter 7, a neural net-
+work can be viewed as a series of logistic regression classiﬁers stacked on top of
+each other. Thus the classiﬁcation and machine learning techniques introduced here
+will play an important role throughout the book.
+
+Logistic regression can be used to classify an observation into one of two classes
+(like ‘positive sentiment’ and ‘negative sentiment’), or into one of many classes.
+Because the mathematics for the two-class case is simpler, we’ll describe this special
+case of logistic regression ﬁrst in the next few sections, and then brieﬂy summarize
+the use of multinomial logistic regression for more than two classes in Section 5.3.
+We’ll introduce the mathematics of logistic regression in the next few sections.
+
+But let’s begin with some high-level issues.
+
+Generative and Discriminative Classiﬁers: The most important difference be-
+tween naive Bayes and logistic regression is that logistic regression is a discrimina-
+tive classiﬁer while naive Bayes is a generative classiﬁer.
+These are two very different frameworks for how
+to build a machine learning model. Consider a visual
+metaphor:
+imagine we’re trying to distinguish dog
+images from cat images. A generative model would
+have the goal of understanding what dogs look like
+and what cats look like. You might literally ask such
+a model to ‘generate’, i.e., draw, a dog. Given a test
+image, the system then asks whether it’s the cat model or the dog model that better
+ﬁts (is less surprised by) the image, and chooses that as its label.
+
+A discriminative model, by contrast, is only try-
+ing to learn to distinguish the classes (perhaps with-
+out learning much about them). So maybe all the
+dogs in the training data are wearing collars and the
+cats aren’t. If that one feature neatly separates the
+classes, the model is satisﬁed.
+If you ask such a
+model what it knows about cats all it can say is that
+they don’t wear collars.
+
+82 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+More formally, recall that the naive Bayes assigns a class c to a document d not
+
+d) but by computing a likelihood and a prior
+by directly computing P(c
+|
+
+ˆc = argmax
+c
+
+C
+
+∈
+
+likelihood
+
+prior
+
+P(d
+
+c)
+|
+(cid:122) (cid:125)(cid:124) (cid:123)
+
+P(c)
+
+(cid:122)(cid:125)(cid:124)(cid:123)
+
+(5.1)
+
+generative
+model
+
+discriminative
+model
+
+A generative model like naive Bayes makes use of this likelihood term, which
+expresses how to generate the features of a document if we knew it was of class c.
+
+By contrast a discriminative model in this text categorization scenario attempts
+d). Perhaps it will learn to assign a high weight to document
+to directly compute P(c
+|
+features that directly improve its ability to discriminate between possible classes,
+even if it couldn’t generate an example of one of the classes.
+
+Components of a probabilistic machine learning classiﬁer: Like naive Bayes,
+logistic regression is a probabilistic classiﬁer that makes use of supervised machine
+learning. Machine learning classiﬁers require a training corpus of m input/output
+pairs (x(i), y(i)). (We’ll use superscripts in parentheses to refer to individual instances
+in the training set—for sentiment classiﬁcation each instance might be an individual
+document to be classiﬁed.) A machine learning system for classiﬁcation then has
+four components:
+
+1. A feature representation of the input. For each input observation x(i), this
+will be a vector of features [x1, x2, ..., xn]. We will generally refer to feature
+i for input x( j) as x( j)
+, sometimes simpliﬁed as xi, but we will also see the
+notation fi, fi(x), or, for multiclass classiﬁcation, fi(c, x).
+
+i
+
+2. A classiﬁcation function that computes ˆy, the estimated class, via p(y
+
+x). In
+|
+the next section we will introduce the sigmoid and softmax tools for classiﬁ-
+cation.
+
+3. An objective function for learning, usually involving minimizing error on
+
+training examples. We will introduce the cross-entropy loss function.
+
+4. An algorithm for optimizing the objective function. We introduce the stochas-
+
+tic gradient descent algorithm.
+
+Logistic regression has two phases:
+
+training: We train the system (speciﬁcally the weights w and b) using stochastic
+
+gradient descent and the cross-entropy loss.
+
+x) and return the higher probability
+test: Given a test example x we compute p(y
+|
+
+label y = 1 or y = 0.
+
+5.1 The sigmoid function
+
+The goal of binary logistic regression is to train a classiﬁer that can make a binary
+decision about the class of a new input observation. Here we introduce the sigmoid
+classiﬁer that will help us make this decision.
+
+Consider a single input observation x, which we will represent by a vector of fea-
+tures [x1, x2, ..., xn] (we’ll show sample features in the next subsection). The classiﬁer
+output y can be 1 (meaning the observation is a member of the class) or 0 (the ob-
+servation is not a member of the class). We want to know the probability P(y = 1
+x)
+|
+that this observation is a member of the class. So perhaps the decision is “positive
+
+5.1
+
+• THE SIGMOID FUNCTION
+
+83
+
+sentiment” versus “negative sentiment”, the features represent counts of words in a
+x) is the probability that the document has positive sentiment,
+document, P(y = 1
+|

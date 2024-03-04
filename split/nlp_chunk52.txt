@@ -1,0 +1,605 @@
+report, has
+emphasized the importance of careful statistical methodology and the use of human
+evaluation (Kocmi et al., 2021; Marie et al., 2021).
+
+The early history of MT is surveyed in Hutchins 1986 and 1997; Nirenburg et al.
+(2002) collects early readings. See Croft (1990) or Comrie (1989) for introductions
+to linguistic typology.
+
+Exercises
+
+13.1 Compute by hand the chrF2,2 score for HYP2 on page 286 (the answer should
+
+round to .62).
+
+CHAPTER
+
+14 Question Answering and In-
+
+formation Retrieval
+
+The quest for knowledge is deeply human, and so it is not surprising that practically
+as soon as there were computers we were asking them questions. By the early 1960s,
+systems used the two major paradigms of question answering—retrieval-based and
+knowledge-based—to answer questions about baseball statistics or scientiﬁc facts.
+Even imaginary computers got into the act. Deep Thought, the computer that Dou-
+glas Adams invented in The Hitchhiker’s Guide to the Galaxy, managed to answer
+“the Ultimate Question Of Life, The Universe, and Everything”.1 In 2011, IBM’s
+Watson question-answering system won the TV game-show Jeopardy!, surpassing
+humans at answering questions like:
+
+2
+
+Question answering systems are designed to ﬁll human information needs that
+might arise in situations like talking to a virtual assistant or a chatbot, interacting
+with a search engine, or querying a database. Question answering systems often
+focus on a particular subset of these information needs: factoid questions, questions
+that can be answered with simple facts expressed in short texts, like the following:
+
+(14.1) Where is the Louvre Museum located?
+(14.2) What is the average age of the onset of autism?
+
+One way to do question answering is just to directly ask a large language model.
+For example, we could use the techniques of Chapter 12, prompting a large pre-
+trained causal language model with a string like
+
+Q: Where is the Louvre Museum located? A:
+
+have it do conditional generation given this preﬁx, and take the response as the
+answer. The idea is that huge pretrained language models have read a lot of facts
+in their pretraining data, presumably including the location of the Louvre, and have
+encoded this information in their parameters.
+
+For some general factoid questions this can be a useful approach and is used in
+practice. But prompting a large language model is not yet a solution for question
+answering. The main problem is that large language models often give the wrong
+answer! Large language models hallucinate. That is, they simply make up answers
+that sound reasonable. Sometime language models know they are hallucinating,
+but often they don’t: language model estimates of their conﬁdence in their answers
+aren’t well-calibrated. In a calibrated system, the conﬁdence of a system in the
+correctness of its answer is highly correlated with the probability of an answer being
+correct. So if the system is wrong, at least it might hedge it’s answer or tell us to go
+
+1 The answer was 42, but unfortunately the details of the question were never revealed.
+2 The answer, of course, is ‘Who is Bram Stoker’, and the novel was Dracula.
+
+hallucinate
+
+calibrated
+
+WILLIAM WILKINSON’S “AN ACCOUNT OF THE PRINCIPALITIES OF WALLACHIA AND MOLDOVIA”INSPIRED THIS AUTHOR’S MOST FAMOUS NOVEL294 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+check another source. But since language models are not well-calibrated, they often
+give a very wrong answer with complete certainty.
+
+A second problem is that simply prompting a large language model doesn’t allow
+us to ask questions about proprietary data. A common use of question-answering is
+to query private data, like asking an assistant about our email or private documents,
+or asking a question about our own medical records. Or a company may have in-
+ternal documents that contain answers for customer service or internal use. Or legal
+ﬁrms need to ask questions about legal discovery from proprietary documents. Fur-
+thermore, the use of internal datasets, or even the web itself, can be especially useful
+for rapidly changing or dynamic information; by contrast, large language models
+are often only released at long increments of many months and so may not have
+up-to-date information.
+
+For this reason the current dominant solution for question-answering is the two-
+stage retriever/reader model (Chen et al., 2017a), and that is the method we will
+focus on in this chapter. In a retriever/reader model, we use information retrieval
+techniques to ﬁrst retrieve documents that are likely to have information that might
+help answer the question. Then we either extract an answer from spans of text in
+the documents, or use large language models to generate an answer given these
+documents, sometimes called retrieval-augmented generation,
+
+Basing our answers on retrieved documents can solve the above-mentioned prob-
+lems with using simple prompting to answer questions. First, we can ensure that the
+answer is grounded in facts from some curated dataset. And we can give the answer
+accompanied by the context of the passage or document the answer came from. This
+information can help users have conﬁdence in the accuracy of the answer (or help
+them spot when it is wrong!). And we can use our retrieval techniques on any pro-
+prietary data we want, such as legal or medical data for those applications.
+
+We’ll begin by introducing information retrieval, the task of choosing the most
+relevant document from a document set given a user’s query expressing their infor-
+mation need. We’ll see the classic method based on cosines of sparse tf-idf vec-
+tors, as well as modern neural IR using dense retriever, in which we run documents
+through BERT or other language models to get neural representations, and use co-
+sine between dense representations of the query and document.
+
+We then introduce retriever-based question answering, via the retriever/reader
+model. This algorithm most commonly relies on the vast amount of text on the
+web, in which case it is sometimes called open domain QA, or on collections of
+proprietary data, or scientiﬁc papers like PubMed. We’ll go through the two types
+of readers, span extractors and retrieval-augmented generation.
+
+14.1
+
+Information Retrieval
+
+information
+retrieval
+
+Information retrieval or IR is the name of the ﬁeld encompassing the retrieval of all
+IR manner of media based on user information needs. The resulting IR system is often
+called a search engine. Our goal in this section is to give a sufﬁcient overview of IR
+to see its application to question answering. Readers with more interest speciﬁcally
+in information retrieval should see the Historical Notes section at the end of the
+chapter and textbooks like Manning et al. (2008).
+
+ad hoc retrieval
+
+document
+
+The IR task we consider is called ad hoc retrieval, in which a user poses a
+query to a retrieval system, which then returns an ordered set of documents from
+some collection. A document refers to whatever unit of text the system indexes and
+
+14.1
+
+•
+
+INFORMATION RETRIEVAL
+
+295
+
+collection
+
+term
+query
+
+retrieves (web pages, scientiﬁc papers, news articles, or even shorter passages like
+paragraphs). A collection refers to a set of documents being used to satisfy user
+requests. A term refers to a word in a collection, but it may also include phrases.
+Finally, a query represents a user’s information need expressed as a set of terms.
+The high-level architecture of an ad hoc retrieval engine is shown in Fig. 14.1.
+
+Figure 14.1 The architecture of an ad hoc IR system.
+
+term weight
+
+BM25
+
+The basic IR architecture uses the vector space model we introduced in Chap-
+ter 6, in which we map queries and document to vectors based on unigram word
+counts, and use the cosine similarity between the vectors to rank potential documents
+(Salton, 1971). This is thus an example of the bag-of-words model introduced in
+Chapter 4, since words are considered independently of their positions.
+
+14.1.1 Term weighting and document scoring
+
+Let’s look at the details of how the match between a document and query is scored.
+We don’t use raw word counts in IR, instead computing a term weight for each
+document word. Two term weighting schemes are common: the tf-idf weighting
+introduced in Chapter 6, and a slightly more powerful variant called BM25.
+
+We’ll reintroduce tf-idf here so readers don’t need to look back at Chapter 6.
+Tf-idf (the ‘-’ here is a hyphen, not a minus sign) is the product of two terms, the
+term frequency tf and the inverse document frequency idf.
+
+The term frequency tells us how frequent the word is; words that occur more
+often in a document are likely to be informative about the document’s contents. We
+usually use the log10 of the word frequency, rather than the raw count. The intuition
+is that a word appearing 100 times in a document doesn’t make that word 100 times
+more likely to be relevant to the meaning of the document. We also need to do
+something special with counts of 0, since we can’t take the log of 0.3
+
+tft, d =
+
+1 + log10 count(t, d)
+0
+(cid:40)
+
+if count(t, d) > 0
+otherwise
+
+(14.3)
+
+If we use log weighting, terms which occur 0 times in a document would have tf = 0,
+1 times in a document tf = 1 + log10(1) = 1 + 0 = 1, 10 times in a document tf =
+1 + log10(10) = 2, 100 times tf = 1 + log10(100) = 3, 1000 times tf = 4, and so on.
+The document frequency dft of a term t is the number of documents it oc-
+curs in. Terms that occur in only a few documents are useful for discriminating
+those documents from the rest of the collection; terms that occur across the entire
+
+3 We can also use this alternative formulation, which we have used in earlier editions:
+log10(count(t, d) + 1)
+
+tft, d =
+
+DocumentDocumentDocumentDocumentDocumentDocumentQuery ProcessingIndexingSearchDocumentDocumentDocumentDocumentDocumentRanked DocumentsDocumentqueryInvertedIndexqueryvectordocument collection296 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+collection aren’t as helpful. The inverse document frequency or idf term weight
+(Sparck Jones, 1972) is deﬁned as:
+
+idft = log10
+
+N
+dft
+
+(14.4)
+
+where N is the total number of documents in the collection, and dft is the number
+of documents in which term t occurs. The fewer documents in which a term occurs,
+the higher this weight; the lowest weight of 0 is assigned to terms that occur in every
+document.
+
+Here are some idf values for some words in the corpus of Shakespeare plays,
+ranging from extremely informative words that occur in only one play like Romeo,
+to those that occur in a few like salad or Falstaff, to those that are very common like
+fool or so common as to be completely non-discriminative since they occur in all 37
+plays like good or sweet.4
+
+Word
+Romeo
+salad
+Falstaff
+forest
+battle
+wit
+fool
+good
+sweet
+
+df
+1
+2
+4
+12
+21
+34
+36
+37
+37
+
+idf
+1.57
+1.27
+0.967
+0.489
+0.246
+0.037
+0.012
+0
+0
+
+The tf-idf value for word t in document d is then the product of term frequency
+
+tft, d and IDF:
+
+tf-idf(t, d) = tft, d ·
+
+idft
+
+14.1.2 Document Scoring
+
+We score document d by the cosine of its vector d with the query vector q:
+
+score(q, d) = cos(q, d) =
+
+q
+q
+|
+
+d
+d
+|
+
+·
+||
+
+(14.5)
+
+(14.6)
+
+Another way to think of the cosine computation is as the dot product of unit vectors;
+we ﬁrst normalize both the query and document vector to unit vectors, by dividing
+by their lengths, and then take the dot product:
+
+score(q, d) = cos(q, d) =
+
+q
+q
+|
+|
+
+·
+
+d
+d
+|
+|
+
+(14.7)
+
+We can spell out Eq. 14.7, using the tf-idf values and spelling out the dot product as
+a sum of products:
+
+score(q, d) =
+
+q
+t
+(cid:88)
+∈
+
+tf-idf(t, q)
+q tf-idf 2(qi, q) ·
+
+qi∈
+
+tf-idf(t, d)
+
+d tf-idf 2(di, d)
+
+(14.8)
+
+(cid:113)(cid:80)
+
+di∈
+
+(cid:113)(cid:80)
+
+4 Sweet was one of Shakespeare’s favorite adjectives, a fact probably related to the increased use of
+sugar in European recipes around the turn of the 16th century (Jurafsky, 2014, p. 175).
+
+14.1
+
+•
+
+INFORMATION RETRIEVAL
+
+297
+
+Now let’s use (14.8) to walk through an example of a tiny query against a collec-
+tion of 4 nano documents, computing tf-idf values and seeing the rank of the docu-
+ments. We’ll assume all words in the following query and documents are downcased
+and punctuation is removed:
+
+Query: sweet love
+Doc 1: Sweet sweet nurse! Love?
+Doc 2: Sweet sorrow
+Doc 3: How sweet is love?
+Doc 4: Nurse!
+
+, and
+
+q
+,
+|
+|
+
+d2|
+|
+
+d1|
+|
+
+Fig. 14.2 shows the computation of the tf-idf cosine between the query and Doc-
+ument 1, and the query and Document 2. The cosine is the normalized dot product
+of tf-idf values, so for the normalization we must need to compute the document
+for the query and the ﬁrst two documents using
+vector lengths
+Eq. 14.3, Eq. 14.4, Eq. 14.5, and Eq. 14.8 (computations for Documents 3 and 4 are
+also needed but are left as an exercise for the reader). The dot product between the
+vectors is the sum over dimensions of the product, for each dimension, of the values
+of the two tf-idf vectors for that dimension. This product is only non-zero where
+both the query and document have non-zero values, so for this example, in which
+only sweet and love have non-zero values in the query, the dot product will be the
+sum of the products of those elements of each vector.
+
+Query
+
+q
+tf-idf n’lized = tf-idf/
+|
+|
+
+cnt tf df idf
+word
+1
+sweet
+0
+nurse
+1
+love
+how
+0
+sorrow 0
+0
+is
+
+1 3 0.125 0.125 0.383
+0 2 0.301 0
+1 2 0.301 0.301 0.924
+0 1 0.602 0
+0 1 0.602 0
+0 1 0.602 0
+= √.1252 + .3012 = .326
+
+0
+0
+0
+
+0
+
+q
+|
+|
+
+Document 1
+tf-idf n’lized
+
+q
+×
+0.137
+0
+0.610
+0
+0
+0
+0
+0
+0
+= √.1632 + .3012 + .3012 = .456
+
+1.301 0.163 0.357
+1.000 0.301 0.661
+1.000 0.301 0.661
+0
+0
+0
+
+cnt tf
+word
+2
+sweet
+1
+nurse
+1
+love
+how
+0
+sorrow 0
+is
+0
+d1|
+|
+
+0
+0
+0
+
+Document 2
+tf-idf n’lized
+
+cnt tf
+1
+0
+0
+0
+1
+0
+
+q
+×
+1.000 0.125 0.203
+0.0779
+0
+0
+0
+0
+0
+0
+0
+1.000 0.602 0.979
+0
+0
+= √.1252 + .6022 = .615
+
+0
+0
+0
+
+0
+0
+0
+
+0
+
+0
+
+d2|
+|
+
+Cosine:
+
+of column: 0.747
+
+Cosine:
+
+of column: 0.0779
+
+Figure 14.2 Computation of tf-idf cosine score between the query and nano-documents 1 (0.747) and 2
+(0.0779), using Eq. 14.3, Eq. 14.4, Eq. 14.5 and Eq. 14.8.
+
+(cid:80)
+
+(cid:80)
+
+Document 1 has a higher cosine with the query (0.747) than Document 2 has
+with the query (0.0779), and so the tf-idf cosine model would rank Document 1
+above Document 2. This ranking is intuitive given the vector space model, since
+Document 1 has both terms including two instances of sweet, while Document 2 is
+
+298 CHAPTER 14
+
+• QUESTION ANSWERING AND INFORMATION RETRIEVAL
+
+missing one of the terms. We leave the computation for Documents 3 and 4 as an
+exercise for the reader.
+
+In practice, there are many variants and approximations to Eq. 14.8. For exam-
+ple, we might choose to simplify processing by removing some terms. To see this,
+let’s start by expanding the formula for tf-idf in Eq. 14.8 to explicitly mention the tf
+and idf terms from (14.5):
+
+score(q, d) =
+
+q
+t
+(cid:88)
+∈
+
+idft
+
+tft, q ·
+q tf-idf 2(qi, q) ·
+qi∈
+
+tft, d ·
+idft
+d tf-idf 2(di, d)
+di∈
+
+(14.9)
+
+(cid:113)(cid:80)
+
+(cid:113)(cid:80)
+
+In one common variant of tf-idf cosine, for example, we drop the idf term for the
+document. Eliminating the second copy of the idf term (since the identical term is
+already computed for the query) turns out to sometimes result in better performance:
+
+score(q, d) =
+
+q
+t
+(cid:88)
+∈
+
+idft
+
+tft, q·
+q tf-idf 2(qi, q) ·
+qi∈
+
+tft, d ·
+idft
+d tf-idf 2(di, d)
+di∈
+
+(14.10)
+
+Other variants of tf-idf eliminate various other terms.
+
+(cid:113)(cid:80)
+
+(cid:113)(cid:80)
+
+BM25
+
+A slightly more complex variant in the tf-idf family is the B

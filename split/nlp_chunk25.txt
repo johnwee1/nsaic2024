@@ -1,0 +1,471 @@
+unction, on the other hand, has nice properties that
+
+x1x2x3yw1w2w3∑bσ+1za7.2
+
+• THE XOR PROBLEM 139
+
+(a)
+
+(b)
+
+Figure 7.3 The tanh and ReLU activation functions.
+
+saturated
+
+vanishing
+gradient
+
+result from it being very close to linear. In the sigmoid or tanh functions, very high
+values of z result in values of y that are saturated, i.e., extremely close to 1, and have
+derivatives very close to 0. Zero derivatives cause problems for learning, because as
+we’ll see in Section 7.5, we’ll train networks by propagating an error signal back-
+wards, multiplying gradients (partial derivatives) from each layer of the network;
+gradients that are almost 0 cause the error signal to get smaller and smaller until it is
+too small to be used for training, a problem called the vanishing gradient problem.
+Rectiﬁers don’t have this problem, since the derivative of ReLU for high values of z
+is 1 rather than very close to 0.
+
+7.2 The XOR problem
+
+Early in the history of neural networks it was realized that the power of neural net-
+works, as with the real neurons that inspired them, comes from combining these
+units into larger networks.
+
+One of the most clever demonstrations of the need for multi-layer networks was
+the proof by Minsky and Papert (1969) that a single neural unit cannot compute
+some very simple functions of its input. Consider the task of computing elementary
+logical functions of two inputs, like AND, OR, and XOR. As a reminder, here are
+the truth tables for those functions:
+
+AND
+x1 x2 y
+0
+0
+0
+0
+1
+0
+0
+0
+1
+1
+1
+1
+
+OR
+x1 x2 y
+0
+0
+0
+1
+1
+0
+1
+0
+1
+1
+1
+1
+
+XOR
+x1 x2 y
+0
+0
+0
+1
+1
+0
+1
+0
+1
+0
+1
+1
+
+perceptron
+
+This example was ﬁrst shown for the perceptron, which is a very simple neural
+unit that has a binary output and does not have a non-linear activation function. The
+output y of a perceptron is 0 or 1, and is computed as follows (using the same weight
+w, input x, and bias b as in Eq. 7.2):
+
+y =
+
+0,
+1,
+
+if w
+if w
+
+·
+·
+
+(cid:26)
+
+x + b
+0
+x + b > 0
+
+≤
+
+(7.7)
+
+140 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+It’s very easy to build a perceptron that can compute the logical AND and OR
+
+functions of its binary inputs; Fig. 7.4 shows the necessary weights.
+
+(a)
+
+(b)
+
+Figure 7.4 The weights w and bias b for perceptrons for computing logical functions. The
+inputs are shown as x1 and x2 and the bias as a special node with value +1 which is multiplied
+with the bias weight b. (a) logical AND, with weights w1 = 1 and w2 = 1 and bias weight
+b =
+1. (b) logical OR, with weights w1 = 1 and w2 = 1 and bias weight b = 0. These
+weights/biases are just one from an inﬁnite number of possible sets of weights and biases that
+would implement the functions.
+
+−
+
+It turns out, however, that it’s not possible to build a perceptron to compute
+
+logical XOR! (It’s worth spending a moment to give it a try!)
+
+decision
+boundary
+
+linearly
+separable
+
+The intuition behind this important result relies on understanding that a percep-
+tron is a linear classiﬁer. For a two-dimensional input x1 and x2, the perceptron
+equation, w1x1 + w2x2 + b = 0 is the equation of a line. (We can see this by putting
+b/w2).) This line acts as a
+it in the standard linear format: x2 = (
+decision boundary in two-dimensional space in which the output 0 is assigned to all
+inputs lying on one side of the line, and the output 1 to all input points lying on the
+other side of the line. If we had more than 2 inputs, the decision boundary becomes
+a hyperplane instead of a line, but the idea is the same, separating the space into two
+categories.
+
+w1/w2)x1 + (
+
+−
+
+−
+
+Fig. 7.5 shows the possible logical inputs (00, 01, 10, and 11) and the line drawn
+by one possible set of parameters for an AND and an OR classiﬁer. Notice that there
+is simply no way to draw a line that separates the positive cases of XOR (01 and 10)
+from the negative cases (00 and 11). We say that XOR is not a linearly separable
+function. Of course we could draw a boundary with a curve, or some other function,
+but not a single line.
+
+7.2.1 The solution: neural networks
+
+While the XOR function cannot be calculated by a single perceptron, it can be cal-
+culated by a layered network of perceptron units. Rather than see this with networks
+of simple perceptrons, however, let’s see how to compute XOR using two layers of
+ReLU-based units following Goodfellow et al. (2016). Fig. 7.6 shows a ﬁgure with
+the input being processed by two layers of neural units. The middle layer (called
+h) has two units, and the output layer (called y) has one unit. A set of weights and
+biases are shown that allows the network to correctly compute the XOR function.
+
+Let’s walk through what happens with the input x = [0, 0]. If we multiply each
+input value by the appropriate weight, sum, and then add the bias b, we get the vector
+[0, -1], and we then apply the rectiﬁed linear transformation to give the output of the
+h layer as [0, 0]. Now we once again multiply by the weights, sum, and add the
+bias (0 in this case) resulting in the value 0. The reader should work through the
+computation of the remaining 3 possible input pairs to see that the resulting y values
+are 1 for the inputs [0, 1] and [1, 0] and 0 for [0, 0] and [1, 1].
+
+x1x2+1-111x1x2+10117.2
+
+• THE XOR PROBLEM 141
+
+Figure 7.5 The functions AND, OR, and XOR, represented with input x1 on the x-axis and input x2 on the
+y-axis. Filled circles represent perceptron outputs of 1, and white circles perceptron outputs of 0. There is no
+way to draw a line that correctly separates the two categories for XOR. Figure styled after Russell and Norvig
+(2002).
+
+Figure 7.6 XOR solution after Goodfellow et al. (2016). There are three ReLU units, in
+two layers; we’ve called them h1, h2 (h for “hidden layer”) and y1. As before, the numbers
+on the arrows represent the weights w for each unit, and we represent the bias b as a weight
+on a unit clamped to +1, with the bias weights/units in gray.
+
+It’s also instructive to look at the intermediate results, the outputs of the two
+hidden nodes h1 and h2. We showed in the previous paragraph that the h vector for
+the inputs x = [0, 0] was [0, 0]. Fig. 7.7b shows the values of the h layer for all
+4 inputs. Notice that hidden representations of the two input points x = [0, 1] and
+x = [1, 0] (the two cases with XOR output = 1) are merged to the single point h =
+[1, 0]. The merger makes it easy to linearly separate the positive and negative cases
+of XOR. In other words, we can view the hidden layer of the network as forming a
+representation of the input.
+
+In this example we just stipulated the weights in Fig. 7.6. But for real examples
+the weights for neural networks are learned automatically using the error backprop-
+agation algorithm to be introduced in Section 7.5. That means the hidden layers will
+learn to form useful representations. This intuition, that neural networks can auto-
+matically learn useful representations of the input, is one of their key advantages,
+and one that we will return to again and again in later chapters.
+
+0011x1x20011x1x20011x1x2a)  x1 AND x2b)  x1 OR x2c)  x1 XOR x2?x1x2h1h2y1+11-1111-201+10142 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+Figure 7.7 The hidden layer forming a new representation of the input.
+(b) shows the
+representation of the hidden layer, h, compared to the original input representation x in (a).
+Notice that the input point [0, 1] has been collapsed with the input point [1, 0], making it
+possible to linearly separate the positive and negative cases of XOR. After Goodfellow et al.
+(2016).
+
+7.3 Feedforward Neural Networks
+
+feedforward
+network
+
+multi-layer
+perceptrons
+MLP
+
+hidden layer
+
+fully-connected
+
+Let’s now walk through a slightly more formal presentation of the simplest kind of
+neural network, the feedforward network. A feedforward network is a multilayer
+network in which the units are connected with no cycles; the outputs from units in
+each layer are passed to units in the next higher layer, and no outputs are passed
+back to lower layers. (In Chapter 9 we’ll introduce networks with cycles, called
+recurrent neural networks.)
+
+For historical reasons multilayer networks, especially feedforward networks, are
+sometimes called multi-layer perceptrons (or MLPs); this is a technical misnomer,
+since the units in modern multilayer networks aren’t perceptrons (perceptrons are
+purely linear, but modern networks are made up of units with non-linearities like
+sigmoids), but at some point the name stuck.
+
+Simple feedforward networks have three kinds of nodes:
+
+input units, hidden
+
+units, and output units.
+
+Fig. 7.8 shows a picture. The input layer x is a vector of simple scalar values just
+
+as we saw in Fig. 7.2.
+
+The core of the neural network is the hidden layer h formed of hidden units hi,
+each of which is a neural unit as described in Section 7.1, taking a weighted sum of
+its inputs and then applying a non-linearity. In the standard architecture, each layer
+is fully-connected, meaning that each unit in each layer takes as input the outputs
+from all the units in the previous layer, and there is a link between every pair of units
+from two adjacent layers. Thus each hidden unit sums over all the input units.
+
+Recall that a single hidden unit has as parameters a weight vector and a bias. We
+represent the parameters for the entire hidden layer by combining the weight vector
+and bias for each unit i into a single weight matrix W and a single bias vector b for
+the whole layer (see Fig. 7.8). Each element W ji of the weight matrix W represents
+the weight of the connection from the ith input unit xi to the jth hidden unit h j.
+
+The advantage of using a single matrix W for the weights of the entire layer is
+that now the hidden layer computation for a feedforward network can be done very
+efﬁciently with simple matrix operations. In fact, the computation only has three
+
+0011x1x2a) The original x space0011h1h22b) The new (linearly separable) h space7.3
+
+• FEEDFORWARD NEURAL NETWORKS
+
+143
+
+Figure 7.8 A simple 2-layer feedforward network, with one hidden layer, one output layer,
+and one input layer (the input layer is usually not counted when enumerating layers).
+
+steps: multiplying the weight matrix by the input vector x, adding the bias vector b,
+and applying the activation function g (such as the sigmoid, tanh, or ReLU activation
+function deﬁned above).
+
+The output of the hidden layer, the vector h, is thus the following (for this exam-
+
+ple we’ll use the sigmoid function σ as our activation function):
+
+h = σ (Wx + b)
+
+(7.8)
+
+Notice that we’re applying the σ function here to a vector, while in Eq. 7.3 it was
+applied to a scalar. We’re thus allowing σ (
+), and indeed any activation function
+·
+), to apply to a vector element-wise, so g[z1, z2, z3] = [g(z1), g(z2), g(z3)].
+g(
+·
+Let’s introduce some constants to represent the dimensionalities of these vectors
+and matrices. We’ll refer to the input layer as layer 0 of the network, and have n0
+represent the number of inputs, so x is a vector of real numbers of dimension n0,
+Rn0, a column vector of dimensionality [n0, 1]. Let’s call the
+or more formally x
+hidden layer layer 1 and the output layer layer 2. The hidden layer has dimensional-
+Rn1 (since each hidden unit can take a different bias
+ity n1, so h
+value). And the weight matrix W has dimensionality W
+
+∈
+Rn1 and also b
+
+n0, i.e. [n1, n0].
+
+∈
+
+∈
+
+Rn1×
+
+Take a moment to convince yourself that the matrix multiplication in Eq. 7.8 will
+
+∈
+
+compute the value of each h j as σ
+
+n0
+i=1 W jixi + b j
+
+.
+
+As we saw in Section 7.2, the resulting value h (for hidden but also for hypoth-
+esis) forms a representation of the input. The role of the output layer is to take
+this new representation h and compute a ﬁnal output. This output could be a real-
+valued number, but in many cases the goal of the network is to make some sort of
+classiﬁcation decision, and so we will focus on the case of classiﬁcation.
+
+(cid:0)(cid:80)
+
+(cid:1)
+
+If we are doing a binary task like sentiment classiﬁcation, we might have a sin-
+gle output node, and its scalar value y is the probability of positive versus negative
+sentiment. If we are doing multinomial classiﬁcation, such as assigning a part-of-
+speech tag, we might have one output node for each potential part-of-speech, whose
+output value is the probability of that part-of-speech, and the values of all the output
+nodes must sum to one. The output layer is thus a vector y that gives a probability
+distribution across the output nodes.
+
+Let’s see how this happens. Like the hidden layer, the output layer has a weight
+matrix (let’s call it U), but some models don’t include a bias vector b in the output
+
+x1x2xn0……+1b…UWinput layerhidden layeroutput layerh1y1y2yn2h2h3hn1144 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+layer, so we’ll simplify by eliminating the bias vector in this example. The weight
+matrix is multiplied by its input vector (h) to produce the intermediate output z:
+
+z = Uh
+
+∈
+n1, and element Ui j is the weight from unit j in the hidden layer to unit i in the
+
+∈
+
+Rn2, weight matrix U has dimensionality U
+
+There are n2 output nodes, so z
+Rn2×
+output layer.
+
+normalizing
+
+softmax
+
+However, z can’t be the output of the classiﬁer, since it’s a vector of real-valued
+numbers, while what we need for classiﬁcation is a vector of probabilities. There is
+a convenient function for normalizing a vector of real values, by which we mean
+converting it to a vector that encodes a probability distribution (all the numbers lie
+between 0 and 1 and sum to 1): the softmax function that we saw on page 89 of
+Chapter 5. More generally for any vector z of dimensionality d, the softmax is
+deﬁned as:
+
+softmax(zi) =
+
+exp(zi)
+d
+j=1 exp(z j)
+
+1
+
+i
+
+≤
+
+≤
+
+d
+
+Thus for example given a vector
+
+(cid:80)
+
+z = [0.6, 1.1,
+
+1.5, 1.2, 3.2,
+
+−
+
+1.1],
+
+−
+
+(7.9)
+
+(7.10)
+
+the softmax function will normalize it to a probability distribution (shown rounded):
+
+softmax(z) = [0.055, 0.090, 0.0067, 0.10, 0.74, 0.010]
+
+(7.11)
+
+You may recall that we used softmax to create a probability distribution from a
+vector of real-valued numbers (computed from summing weights times features) in
+the multinomial version of logistic regression in Chapter 5.
+
+That means we can think of a neural network classiﬁer with one hidden layer
+as building a vector h which is a hidden layer representation of the input, and then
+running standard multinomial logistic regression on the features that the network
+develops in h. By contrast, in Chapter 5 the features were mainly designed by hand
+via feature templates. So a neural network is like multinomial logistic regression,
+but (a) with many layers, since a deep neural network is like layer after layer of lo-
+gistic regression classiﬁers; (b) with those intermediate layers having many possible
+activation functions (tanh, ReLU, sigmoid) instead of just sigmoid (although we’ll
+continue to use σ for convenience to mean any activation function); (c) rather than
+forming the features by feature templates, the prior layers of the network induce the
+feature representations themselves.
+
+Here are the ﬁnal equations for a feedforward network with a single hidden layer,
+which takes an input vector x, outputs a probability distribution y, and is parameter-
+ized by weight matrices W and U and a bias vector b:
+
+h = σ (Wx + b)
+z = Uh
+y = softmax(z)
+
+(7.12)
+
+∈
+
+n0, U
+
+Rn1×
+
+Rn1,
+And just to remember the shapes of all our variables, x
+∈
+Rn2. We’ll call this network a 2-
+W
+layer network (we traditionally don’t count the input layer when numb

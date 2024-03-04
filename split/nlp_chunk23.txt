@@ -1,0 +1,318 @@
+ﬁrst-order associate of book or poem. Two words have second-order
+co-occurrence (sometimes called paradigmatic association) if they have similar
+neighbors. Thus wrote is a second-order associate of words like said or remarked.
+
+Analogy/Relational Similarity: Another semantic property of embeddings is their
+ability to capture relational meanings. In an important early vector space model of
+cognition, Rumelhart and Abrahamson (1973) proposed the parallelogram model
+for solving simple analogy problems of the form a is to b as a* is to what?. In
+such problems, a system is given a problem like apple:tree::grape:?, i.e., apple is
+, and must ﬁll in the word vine. In the parallelogram
+to tree as grape is to
+model, illustrated in Fig. 6.15, the vector from the word apple to the word tree (=
+#   »
+#        »
+tree
+grape); the nearest word to that point
+−
+is returned.
+
+#       »
+apple) is added to the vector for grape (
+
+In early work with sparse embeddings, scholars showed that sparse vector mod-
+els of meaning could solve such analogy problems (Turney and Littman, 2005),
+but the parallelogram method received more modern attention because of its suc-
+cess with word2vec or GloVe vectors (Mikolov et al. 2013c, Levy and Goldberg
+2014b, Pennington et al. 2014). For example, the result of the expression
+
+#     »
+king
+
+−
+
+6.10
+
+• SEMANTIC PROPERTIES OF EMBEDDINGS
+
+129
+
+Figure 6.15 The parallelogram model for analogy problems (Rumelhart and Abrahamson,
+1973): the location of
+
+#     »
+vine can be found by subtracting
+
+#   »
+tree and adding
+
+#       »
+grape.
+
+#            »
+woman is a vector close to
+
+#     »
+#     »
+man +
+Italy results
+#         »
+in a vector that is close to
+Rome. The embedding model thus seems to be extract-
+ing representations of relations like MALE-FEMALE, or CAPITAL-CITY-OF, or even
+COMPARATIVE/SUPERLATIVE, as shown in Fig. 6.16 from GloVe.
+
+#         »
+queen. Similarly,
+
+#           »
+France +
+
+−
+
+#       »
+apple from
+#      »
+Paris
+
+(a)
+
+(b)
+
+Figure 6.16 Relational properties of the GloVe vector space, shown by projecting vectors onto two dimen-
+sions.
+(b) offsets seem to capture comparative and superlative
+morphology (Pennington et al., 2014).
+
+#            »
+woman is close to
+
+#     »
+man +
+
+#        »
+queen.
+
+#     »
+king
+
+(a)
+
+−
+
+For a a : b :: a∗ : b∗ problem, meaning the algorithm is given vectors a, b, and
+
+a∗ and must ﬁnd b∗, the parallelogram method is thus:
+ˆb∗ = argmin
+
+distance(x, b
+
+a + a∗)
+
+x
+
+−
+
+(6.41)
+
+with some distance function, such as Euclidean distance.
+
+There are some caveats. For example, the closest value returned by the paral-
+lelogram algorithm in word2vec or GloVe embedding spaces is usually not in fact
+b* but one of the 3 input words or their morphological variants (i.e., cherry:red ::
+potato:x returns potato or potatoes instead of brown), so these must be explicitly
+excluded. Furthermore while embedding spaces perform well if the task involves
+frequent words, small distances, and certain relations (like relating countries with
+their capitals or verbs/nouns with their inﬂected forms), the parallelogram method
+with embeddings doesn’t work as well for other relations (Linzen 2016, Gladkova
+et al. 2016, Schluter 2018, Ethayarajh et al. 2019a), and indeed Peterson et al. (2020)
+argue that the parallelogram method is in general too simple to model the human
+cognitive process of forming analogies of this kind.
+
+treeapplegrapevine130 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+6.10.1 Embeddings and Historical Semantics
+
+Embeddings can also be a useful tool for studying how meaning changes over time,
+by computing multiple embedding spaces, each from texts written in a particular
+time period. For example Fig. 6.17 shows a visualization of changes in meaning in
+English words over the last two centuries, computed by building separate embed-
+ding spaces for each decade from historical corpora like Google n-grams (Lin et al.,
+2012b) and the Corpus of Historical American English (Davies, 2012).
+
+Figure 6.17 A t-SNE visualization of the semantic change of 3 words in English using
+word2vec vectors. The modern sense of each word, and the grey context words, are com-
+puted from the most recent (modern) time-point embedding space. Earlier points are com-
+puted from earlier historical embedding spaces. The visualizations show the changes in the
+word gay from meanings related to “cheerful” or “frolicsome” to referring to homosexuality,
+the development of the modern “transmission” sense of broadcast from its original sense of
+sowing seeds, and the pejoration of the word awful as it shifted from meaning “full of awe”
+to meaning “terrible or appalling” (Hamilton et al., 2016b).
+
+6.11 Bias and Embeddings
+
+In addition to their ability to learn word meaning from text, embeddings, alas,
+also reproduce the implicit biases and stereotypes that were latent in the text. As
+the prior section just showed, embeddings can roughly model relational similar-
+ity: ‘queen’ as the closest word to ‘king’ - ‘man’ + ‘woman’ implies the analogy
+man:woman::king:queen. But these same embedding analogies also exhibit gender
+stereotypes. For example Bolukbasi et al. (2016) ﬁnd that the closest occupation
+to ‘computer programmer’ - ‘man’ + ‘woman’ in word2vec embeddings trained on
+news text is ‘homemaker’, and that the embeddings similarly suggest the analogy
+‘father’ is to ‘doctor’ as ‘mother’ is to ‘nurse’. This could result in what Crawford
+(2017) and Blodgett et al. (2020) call an allocational harm, when a system allo-
+cates resources (jobs or credit) unfairly to different groups. For example algorithms
+that use embeddings as part of a search for hiring potential programmers or doctors
+might thus incorrectly downweight documents with women’s names.
+
+It turns out that embeddings don’t just reﬂect the statistics of their input, but also
+amplify bias; gendered terms become more gendered in embedding space than they
+were in the input text statistics (Zhao et al. 2017, Ethayarajh et al. 2019b, Jia et al.
+2020), and biases are more exaggerated than in actual labor employment statistics
+(Garg et al., 2018).
+
+Embeddings also encode the implicit associations that are a property of human
+reasoning. The Implicit Association Test (Greenwald et al., 1998) measures peo-
+
+allocational
+harm
+
+bias
+ampliﬁcation
+
+CHAPTER5.DYNAMICSOCIALREPRESENTATIONSOFWORDMEANING79Figure5.1:Two-dimensionalvisualizationofsemanticchangeinEnglishusingSGNSvectors(seeSection5.8forthevisualizationalgorithm).A,Thewordgayshiftedfrommeaning“cheerful”or“frolicsome”toreferringtohomosexuality.A,Intheearly20thcenturybroadcastreferredto“castingoutseeds”;withtheriseoftelevisionandradioitsmeaningshiftedto“transmittingsignals”.C,Awfulunderwentaprocessofpejoration,asitshiftedfrommeaning“fullofawe”tomeaning“terribleorappalling”[212].thatadverbials(e.g.,actually)haveageneraltendencytoundergosubjectiﬁcationwheretheyshiftfromobjectivestatementsabouttheworld(e.g.,“Sorry,thecarisactuallybroken”)tosubjectivestatements(e.g.,“Ican’tbelieveheactuallydidthat”,indicatingsurprise/disbelief).5.2.2ComputationallinguisticstudiesTherearealsoanumberofrecentworksanalyzingsemanticchangeusingcomputationalmethods.[200]uselatentsemanticanalysistoanalyzehowwordmeaningsbroadenandnarrowovertime.[113]userawco-occurrencevectorstoperformanumberofhistoricalcase-studiesonsemanticchange,and[252]performasimilarsetofsmall-scalecase-studiesusingtemporaltopicmodels.[87]constructpoint-wisemutualinformation-basedembeddingsandfoundthatsemanticchangesuncoveredbytheirmethodhadreasonableagreementwithhumanjudgments.[129]and[119]use“neural”word-embeddingmethodstodetectlinguisticchangepoints.Finally,[257]analyzehistoricalco-occurrencestotestwhethersynonymstendtochangeinsimilarways.representational
+harm
+
+debiasing
+
+6.12
+
+• EVALUATING VECTOR MODELS
+
+131
+
+ple’s associations between concepts (like ‘ﬂowers’ or ‘insects’) and attributes (like
+‘pleasantness’ and ‘unpleasantness’) by measuring differences in the latency with
+which they label words in the various categories.7 Using such methods, people
+in the United States have been shown to associate African-American names with
+unpleasant words (more than European-American names), male names more with
+mathematics and female names with the arts, and old people’s names with unpleas-
+ant words (Greenwald et al. 1998, Nosek et al. 2002a, Nosek et al. 2002b). Caliskan
+et al. (2017) replicated all these ﬁndings of implicit associations using GloVe vectors
+and cosine similarity instead of human latencies. For example African-American
+names like ‘Leroy’ and ‘Shaniqua’ had a higher GloVe cosine with unpleasant words
+while European-American names (‘Brad’, ‘Greg’, ‘Courtney’) had a higher cosine
+with pleasant words. These problems with embeddings are an example of a repre-
+sentational harm (Crawford 2017, Blodgett et al. 2020), which is a harm caused by
+a system demeaning or even ignoring some social groups. Any embedding-aware al-
+gorithm that made use of word sentiment could thus exacerbate bias against African
+Americans.
+
+Recent research focuses on ways to try to remove these kinds of biases, for
+example by developing a transformation of the embedding space that removes gen-
+der stereotypes but preserves deﬁnitional gender (Bolukbasi et al. 2016, Zhao et al.
+2017) or changing the training procedure (Zhao et al., 2018b). However, although
+these sorts of debiasing may reduce bias in embeddings, they do not eliminate it
+(Gonen and Goldberg, 2019), and this remains an open problem.
+
+Historical embeddings are also being used to measure biases in the past. Garg
+et al. (2018) used embeddings from historical texts to measure the association be-
+tween embeddings for occupations and embeddings for names of various ethnici-
+ties or genders (for example the relative cosine similarity of women’s names versus
+men’s to occupation words like ‘librarian’ or ‘carpenter’) across the 20th century.
+They found that the cosines correlate with the empirical historical percentages of
+women or ethnic groups in those occupations. Historical embeddings also repli-
+cated old surveys of ethnic stereotypes; the tendency of experimental participants in
+1933 to associate adjectives like ‘industrious’ or ‘superstitious’ with, e.g., Chinese
+ethnicity, correlates with the cosine between Chinese last names and those adjectives
+using embeddings trained on 1930s text. They also were able to document historical
+gender biases, such as the fact that embeddings for adjectives related to competence
+(‘smart’, ‘wise’, ‘thoughtful’, ‘resourceful’) had a higher cosine with male than fe-
+male words, and showed that this bias has been slowly decreasing since 1960. We
+return in later chapters to this question about the role of bias in natural language
+processing.
+
+6.12 Evaluating Vector Models
+
+The most important evaluation metric for vector models is extrinsic evaluation on
+tasks, i.e., using vectors in an NLP task and seeing whether this improves perfor-
+mance over some other model.
+
+7 Roughly speaking, if humans associate ‘ﬂowers’ with ‘pleasantness’ and ‘insects’ with ‘unpleasant-
+ness’, when they are instructed to push a green button for ‘ﬂowers’ (daisy, iris, lilac) and ‘pleasant words’
+(love, laughter, pleasure) and a red button for ‘insects’ (ﬂea, spider, mosquito) and ‘unpleasant words’
+(abuse, hatred, ugly) they are faster than in an incongruous condition where they push a red button for
+‘ﬂowers’ and ‘unpleasant words’ and a green button for ‘insects’ and ‘pleasant words’.
+
+132 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+Nonetheless it is useful to have intrinsic evaluations. The most common metric
+is to test their performance on similarity, computing the correlation between an
+algorithm’s word similarity scores and word similarity ratings assigned by humans.
+WordSim-353 (Finkelstein et al., 2002) is a commonly used set of ratings from 0
+to 10 for 353 noun pairs; for example (plane, car) had an average score of 5.77.
+SimLex-999 (Hill et al., 2015) is a more difﬁcult dataset that quantiﬁes similarity
+(cup, mug) rather than relatedness (cup, coffee), and including both concrete and
+abstract adjective, noun and verb pairs. The TOEFL dataset is a set of 80 questions,
+each consisting of a target word with 4 additional word choices; the task is to choose
+which is the correct synonym, as in the example: Levied is closest in meaning to:
+imposed, believed, requested, correlated (Landauer and Dumais, 1997). All of these
+datasets present words without context.
+
+Slightly more realistic are intrinsic similarity tasks that include context. The
+Stanford Contextual Word Similarity (SCWS) dataset (Huang et al., 2012) and the
+Word-in-Context (WiC) dataset (Pilehvar and Camacho-Collados, 2019) offer richer
+evaluation scenarios. SCWS gives human judgments on 2,003 pairs of words in their
+sentential context, while WiC gives target words in two sentential contexts that are
+either in the same or different senses; see Chapter 23. The semantic textual similarity
+task (Agirre et al. 2012, Agirre et al. 2015) evaluates the performance of sentence-
+level similarity algorithms, consisting of a set of pairs of sentences, each pair with
+human-labeled similarity scores.
+
+Another task used for evaluation is the analogy task, discussed on page 128,
+where the system has to solve problems of the form a is to b as a* is to b*, given a, b,
+and a* and having to ﬁnd b* (Turney and Littman, 2005). A number of sets of tuples
+have been created for this task, (Mikolov et al. 2013a, Mikolov et al. 2013c, Glad-
+kova et al. 2016), covering morphology (city:cities::child:children), lexicographic
+relations (leg:table::spout:teapot) and encyclopedia relations (Beijing:China::Dublin:Ireland),
+some drawing from the SemEval-2012 Task 2 dataset of 79 different relations (Jur-
+gens et al., 2012).
+
+All embedding algorithms suffer from inherent variability. For example because
+of randomness in the initialization and the random negative sampling, algorithms
+like word2vec may produce different results even from the same dataset, and in-
+dividual documents in a collection may strongly impact the resulting embeddings
+(Tian et al. 2016, Hellrich and Hahn 2016, Antoniak and Mimno 2018). When em-
+beddings are used to study word associations in particular corpora, therefore, it is
+best practice to train multiple embeddings with bootstrap sampling over documents
+and average the results (Antoniak and Mimno, 2018).
+
+6.13 Summary
+
+• In vector semantics, a word is modeled as a vector—a point in high-dimensional
+space, also called an embedding. In this chapter we focus on static embed-
+dings, where each word is mapped to a ﬁxed embedding.
+
+• Vector semantic models fall into two classes: sparse and dense. In sparse
+models each dimension corresponds to a word in the vocabulary V and cells
+are functions of co-occurrence counts. The term-document matrix has a
+row for each word (term) in the vocabulary and a column for each document.
+The word-context or term-term matrix has a row for each (target) word in
+
+BIBLIOGRAPHICAL AND HISTORICAL NOTES
+
+133
+
+the vocabulary and a column for each context term in the vocabulary. Two
+sparse weightings are common: the tf-idf weighting which weights each cell
+by its term frequency and inverse document frequency, and PPMI (point-
+wise positive mutual information), which is most common for word-context
+matrices.
+
+• Dense vector models have dimensionality 50–1000. Word2vec algorithms
+like skip-gram are a popular way to compute dense embeddings. Skip-gram
+train

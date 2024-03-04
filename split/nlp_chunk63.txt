@@ -1,0 +1,251 @@
+ent words like Tuesday more than function words like a or of. While researchers
+generally agree that this would be a good idea, it has proved difﬁcult to agree on
+a metric that works in every application of ASR. For dialogue systems, however,
+where the desired semantic output is more clear, a metric called slot error rate or
+concept error rate has proved extremely useful; it is discussed in Chapter 15 on page
+323.
+
+16.6 TTS
+
+The goal of text-to-speech (TTS) systems is to map from strings of letters to wave-
+forms, a technology that’s important for a variety of applications from dialogue sys-
+tems to games to education.
+
+Like ASR systems, TTS systems are generally based on the encoder-decoder
+architecture, either using LSTMs or Transformers. There is a general difference in
+training. The default condition for ASR systems is to be speaker-independent: they
+are trained on large corpora with thousands of hours of speech from many speakers
+because they must generalize well to an unseen test speaker. By contrast, in TTS, it’s
+less crucial to use multiple voices, and so basic TTS systems are speaker-dependent:
+trained to have a consistent voice, on much less data, but all from one speaker. For
+example, one commonly used public domain dataset, the LJ speech corpus, consists
+of 24 hours of one speaker, Linda Johnson, reading audio books in the LibriVox
+project (Ito and Johnson, 2017), much smaller than standard ASR corpora which are
+hundreds or thousands of hours.2
+
+We generally break up the TTS task into two components. The ﬁrst component
+is an encoder-decoder model for spectrogram prediction: it maps from strings of
+letters to mel spectrographs: sequences of mel spectral values over time. Thus we
+
+2 There is also recent TTS research on the task of multi-speaker TTS, in which a system is trained on
+speech from many speakers, and can switch between different voices.
+
+16.6
+
+• TTS
+
+355
+
+might map from this string:
+
+It’s time for lunch!
+
+to the following mel spectrogram:
+
+vocoding
+
+vocoder
+
+The second component maps from mel spectrograms to waveforms. Generating
+waveforms from intermediate representations like spectrograms is called vocoding
+and this second component is called a vocoder:
+
+These standard encoder-decoder algorithms for TTS are still quite computation-
+ally intensive, so a signiﬁcant focus of modern research is on ways to speed them
+up.
+
+non-standard
+words
+
+16.6.1 TTS Preprocessing: Text normalization
+
+Before either of these two steps, however, TTS systems require text normaliza-
+tion preprocessing for handling non-standard words: numbers, monetary amounts,
+dates, and other concepts that are verbalized differently than they are spelled. A TTS
+system seeing a number like 151 needs to know to verbalize it as one hundred ﬁfty
+one if it occurs as $151 but as one ﬁfty one if it occurs in the context 151 Chapulte-
+pec Ave.. The number 1750 can be spoken in at least four different ways, depending
+on the context:
+
+seventeen fifty:
+one seven five zero:
+seventeen hundred and fifty:
+one thousand, seven hundred, and fifty:
+
+(in “The European economy in 1750”)
+(in “The password is 1750”)
+
+(in “1750 dollars”)
+
+(in “1750 dollars”)
+
+Often the verbalization of a non-standard word depends on its meaning (what
+Taylor (2009) calls its semiotic class). Fig. 16.15 lays out some English non-
+standard word types.
+
+Many classes have preferred realizations. A year is generally read as paired
+digits (e.g., seventeen fifty for 1750). $3.2 billion must be read out with the
+word dollars at the end, as three point two billion dollars. Some ab-
+breviations like N.Y. are expanded (to New York), while other acronyms like GPU
+are pronounced as letter sequences. In languages with grammatical gender, normal-
+ization may depend on morphological properties. In French, the phrase 1 mangue
+(‘one mangue’) is normalized to une mangue, but 1 ananas (‘one pineapple’) is
+normalized to un ananas. In German, Heinrich IV (‘Henry IV’) can be normalized
+to Heinrich der Vierte, Heinrich des Vierten, Heinrich dem Vierten, or
+Heinrich den Vierten depending on the grammatical case of the noun (Demberg,
+2006).
+
+356 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+verbalization
+government
+
+examples
+gov’t, N.Y., mph
+
+semiotic class
+abbreviations
+acronyms read as letters GPU, D.C., PC, UN, IBM G P U
+twelve
+cardinal numbers
+seventh
+ordinal numbers
+one oh one
+numbers read as digits
+eleven forty ﬁve
+times
+February twenty eighth
+dates
+nineteen ninety nine
+years
+three dollars forty ﬁve
+money
+three point four ﬁve billion dollars
+money in tr/m/billions
+seventy ﬁve percent
+percentage
+
+12, 45, 1/2, 0.6
+May 7, 3rd, Bill Gates III
+Room 101
+3.20, 11:45
+28/02 (or in US, 2/28)
+1999, 80s, 1900s, 2045
+$3.45, e250, $200K
+$3.45 billion
+75% 3.4%
+
+Figure 16.15 Some types of non-standard words in text normalization; see Sproat et al.
+(2001) and (van Esch and Sproat, 2018) for many more.
+
+Modern end-to-end TTS systems can learn to do some normalization themselves,
+but TTS systems are only trained on a limited amount of data (like the 220,000 words
+we mentioned above for the LJ corpus (Ito and Johnson, 2017)), and so a separate
+normalization step is important.
+
+Normalization can be done by rule or by an encoder-decoder model. Rule-based
+normalization is done in two stages: tokenization and verbalization. In the tokeniza-
+tion stage we hand-write write rules to detect non-standard words. These can be
+regular expressions, like the following for detecting years:
+
+(20[0-9][0-9]/
+/(1[89][0-9][0-9])
+|
+
+A second pass of rules express how to verbalize each semiotic class. Larger TTS
+systems instead use more complex rule-systems, like the Kestral system of (Ebden
+and Sproat, 2015), which ﬁrst classiﬁes and parses each input into a normal form
+and then produces text using a verbalization grammar. Rules have the advantage
+that they don’t require training data, and they can be designed for high precision, but
+can be brittle, and require expert rule-writers so are hard to maintain.
+
+The alternative model is to use encoder-decoder models, which have been shown
+to work better than rules for such transduction tasks, but do require expert-labeled
+training sets in which non-standard words have been replaced with the appropriate
+verbalization; such training sets for some languages are available (Sproat and Gor-
+man 2018, Zhang et al. 2019).
+
+In the simplest encoder-decoder setting, we simply treat the problem like ma-
+
+chine translation, training a system to map from:
+They live at 224 Mission St.
+
+to
+
+They live at two twenty four Mission Street
+
+While encoder-decoder algorithms are highly accurate, they occasionally pro-
+duce errors that are egregious; for example normalizing 45 minutes as forty ﬁve mil-
+limeters. To address this, more complex systems use mechanisms like lightweight
+covering grammars, which enumerate a large set of possible verbalizations but
+don’t try to disambiguate, to constrain the decoding to avoid such outputs (Zhang
+et al., 2019).
+
+16.6.2 TTS: Spectrogram prediction
+
+The exact same architecture we described for ASR—the encoder-decoder with attention–
+can be used for the ﬁrst component of TTS. Here we’ll give a simpliﬁed overview
+
+Tacotron2
+
+Wavenet
+
+location-based
+attention
+
+16.6
+
+• TTS
+
+357
+
+of the Tacotron2 architecture (Shen et al., 2018), which extends the earlier Tacotron
+(Wang et al., 2017) architecture and the Wavenet vocoder (van den Oord et al.,
+2016). Fig. 16.16 sketches out the entire architecture.
+
+The encoder’s job is to take a sequence of letters and produce a hidden repre-
+sentation representing the letter sequence, which is then used by the attention mech-
+anism in the decoder. The Tacotron2 encoder ﬁrst maps every input grapheme to
+a 512-dimensional character embedding. These are then passed through a stack
+of 3 convolutional layers, each containing 512 ﬁlters with shape 5
+1, i.e. each
+ﬁlter spanning 5 characters, to model the larger letter context. The output of the
+ﬁnal convolutional layer is passed through a biLSTM to produce the ﬁnal encoding.
+It’s common to use a slightly higher quality (but slower) version of attention called
+location-based attention, in which the computation of the α values (Eq. 9.37 in
+Chapter 9) makes use of the α values from the prior time-state.
+
+×
+
+In the decoder, the predicted mel spectrum from the prior time slot is passed
+through a small pre-net as a bottleneck. This prior output is then concatenated with
+the encoder’s attention vector context and passed through 2 LSTM layers. The out-
+put of this LSTM is used in two ways. First, it is passed through a linear layer, and
+some output processing, to autoregressively predict one 80-dimensional log-mel ﬁl-
+terbank vector frame (50 ms, with a 12.5 ms stride) at each step. Second, it is passed
+through another linear layer to a sigmoid to make a “stop token prediction” decision
+about whether to stop producing output.
+
+Figure 16.16 The Tacotron2 architecture: An encoder-decoder maps from graphemes to
+mel spectrograms, followed by a vocoder that maps to waveﬁles. Figure modiﬁed from Shen
+et al. (2018).
+
+The system is trained on gold log-mel ﬁlterbank features, using teacher forcing,
+that is the decoder is fed the correct log-model spectral feature at each decoder step
+instead of the predicted decoder output from the prior step.
+
+16.6.3 TTS: Vocoding
+
+WaveNet
+
+The vocoder for Tacotron 2 is an adaptation of the WaveNet vocoder (van den Oord
+et al., 2016). Here we’ll give a somewhat simpliﬁed description of vocoding using
+WaveNet.
+
+Recall that the goal of the vocoding process here will be to invert a log mel spec-
+trum representations back into a time-domain waveform representation. WaveNet is
+an autoregressive network, like the language models we introduced in Chapter 9. It
+
+Whilelinearspectrogramsdiscardphaseinformation(andarethereforelossy),algorithmssuchasGrifﬁn-Lim[14]arecapableofestimatingthisdiscardedinformation,whichenablestime-domainconversionviatheinverseshort-timeFouriertransform.Melspectro-gramsdiscardevenmoreinformation,presentingachallengingin-verseproblem.However,incomparisontothelinguisticandacousticfeaturesusedinWaveNet,themelspectrogramisasimpler,lower-levelacousticrepresentationofaudiosignals.ItshouldthereforebestraightforwardforasimilarWaveNetmodelconditionedonmelspectrogramstogenerateaudio,essentiallyasaneuralvocoder.In-deed,wewillshowthatitispossibletogeneratehighqualityaudiofrommelspectrogramsusingamodiﬁedWaveNetarchitecture.2.2.SpectrogramPredictionNetworkAsinTacotron,melspectrogramsarecomputedthroughashort-timeFouriertransform(STFT)usinga50msframesize,12.5msframehop,andaHannwindowfunction.Weexperimentedwitha5msframehoptomatchthefrequencyoftheconditioninginputsintheoriginalWaveNet,butthecorrespondingincreaseintemporalresolutionresultedinsigniﬁcantlymorepronunciationissues.WetransformtheSTFTmagnitudetothemelscaleusingan80channelmelﬁlterbankspanning125Hzto7.6kHz,followedbylogdynamicrangecompression.Priortologcompression,theﬁlterbankoutputmagnitudesareclippedtoaminimumvalueof0.01inordertolimitdynamicrangeinthelogarithmicdomain.Thenetworkiscomposedofanencoderandadecoderwithatten-tion.Theencoderconvertsacharactersequenceintoahiddenfeaturerepresentationwhichthedecoderconsumestopredictaspectrogram.Inputcharactersarerepresentedusingalearned512-dimensionalcharacterembedding,whicharepassedthroughastackof3convolu-tionallayerseachcontaining512ﬁlterswithshape5⇥1,i.e.,whereeachﬁlterspans5characters,followedbybatchnormalization[18]andReLUactivations.AsinTacotron,theseconvolutionallayersmodellonger-termcontext(e.g.,N-grams)intheinputcharactersequence.Theoutputoftheﬁnalconvolutionallayerispassedintoasinglebi-directional[19]LSTM[20]layercontaining512units(256ineachdirection)togeneratetheencodedfeatures.Theencoderoutputisconsumedbyanattentionnetworkwhichsummarizesthefullencodedsequenceasaﬁxed-lengthcontextvectorforeachdecoderoutputstep.Weusethelocation-sensitiveattentionfrom[21],whichextendstheadditiveattentionmechanism[22]tousecumulativeattentionweightsfrompreviousdecodertimestepsasanadditionalfeature.Thisencouragesthemodeltomoveforwardconsistentlythroughtheinput,mitigatingpotentialfailuremodeswheresomesubsequencesarerepeatedorignoredbythedecoder.Attentionprobabilitiesarecomputedafterprojectinginputsandlo-cationfeaturesto128-dimensionalhiddenrepresentations.Locationfeaturesarecomputedusing321-Dconvolutionﬁltersoflength31.Thedecoderisanautoregressiverecurrentneuralnetworkwhichpredictsamelspectrogramfromtheencodedinputsequenceoneframeatatime.Thepredictionfromtheprevioustimestepisﬁrstpassedthroughasmallpre-netcontaining2fullyconnectedlayersof256hiddenReLUunits.Wefoundthatthepre-netactingasaninformationbottleneckwasessentialforlearningattention.Thepre-netoutputandattentioncontextvectorareconcatenatedandpassedthroughastackof2uni-directionalLSTMlayerswith1024units.TheconcatenationoftheLSTMoutputandtheattentioncontextvectorisprojectedthroughalineartransformtopredictthetargetspectrogramframe.Finally,thepredictedmelspectrogramispassedthrougha5-layerconvolutionalpost-netwhichpredictsaresidualtoaddtothepredictiontoimprovetheoverallreconstruction.Each(cid:39)(cid:76)(cid:69)(cid:86)(cid:69)(cid:71)(cid:88)(cid:73)(cid:86)(cid:4)(cid:41)(cid:81)(cid:70)(cid:73)(cid:72)(cid:72)(cid:77)(cid:82)(cid:75)(cid:48)(cid:83)(cid:71)(cid:69)(cid:88)(cid:77)(cid:83)(cid:82)(cid:4)(cid:55)(cid:73)(cid:82)(cid:87)(cid:77)(cid:88)(cid:77)(cid:90)(cid:73)(cid:4)(cid:37)(cid:88)(cid:88)(cid:73)(cid:82)(cid:88)(cid:77)(cid:83)(cid:82)(cid:23)(cid:4)(cid:39)(cid:83)(cid:82)(cid:90)(cid:4)(cid:48)(cid:69)(cid:93)(cid:73)(cid:86)(cid:87)(cid:38)(cid:77)(cid:72)(cid:77)(cid:86)(cid:73)(cid:71)(cid:88)(cid:77)(cid:83)(cid:82)(cid:69)(cid:80)(cid:4)(cid:48)(cid:55)(cid:56)(cid:49)(cid:45)(cid:82)(cid:84)(cid:89)(cid:88)(cid:4)(cid:56)(cid:73)(cid:92)(cid:88)(cid:22)(cid:4)(cid:48)(cid:69)(cid:93)(cid:73)(cid:86)(cid:4)(cid:52)(cid:86)(cid:73)(cid:17)(cid:50)(cid:73)(cid:88)(cid:22)(cid:4)(cid:48)(cid:55)(cid:56)(cid:49)(cid:4)(cid:48)(cid:69)(cid:93)(cid:73)(cid:86)(cid:87)(cid:48)(cid:77)(cid:82)(cid:73)(cid:69)(cid:86)(cid:4)(cid:52)(cid:86)(cid:83)(cid:78)(cid:73)(cid:71)(cid:88)(cid:77)(cid:83)(cid:82)(cid:48)(cid:77)(cid:82)(cid:73)(cid:69)(cid:86)(cid:4)(cid:52)(cid:86)(cid:83)(cid:78)(cid:73)(cid:71)(cid:88)(cid:77)(cid:83)(cid:82)(cid:55)(cid:88)(cid:83)(cid:84)(cid:4)(cid:56)(cid:83)(cid:79)(cid:73)(cid:82)(cid:25)(cid:4)(cid:39)(cid:83)(cid:82)(cid:90)(cid:4)(cid:48)(cid:69)(cid:93)(cid:73)(cid:86)(cid:4)(cid:52)(cid:83)(cid:87)(cid:88)(cid:17)(cid:50)(cid:73)(cid:88)(cid:48)(cid:72)(cid:79)(cid:3)(cid:54)(cid:83)(cid:72)(cid:70)(cid:87)(cid:85)(cid:82)(cid:74)(cid:85)(cid:68)(cid:80)(cid:59)(cid:69)(cid:90)(cid:73)(cid:50)(cid:73)(cid:88)(cid:4)(cid:49)(cid:83)(cid:48)(cid:59)(cid:69)(cid:90)(cid:73)(cid:74)(cid:83)(cid:86)(cid:81)(cid:4)(cid:55)(cid:69)(cid:81)(cid:84)(cid:80)(cid:73)(cid:87)Fig.1.BlockdiagramoftheTacotron2systemarchitecture.post-netlayeriscomprisedof512ﬁlterswithshape5⇥1withbatchnormalization,followedbytanhactivationsonallbuttheﬁnallayer.Weminimizethesummedmeansquarederror(MSE)frombeforeandafterthepost-nettoaidconvergence.Wealsoexperimentedwithalog-likelihoodlossbymodelingtheoutputdistributionwithaMixtureDensityNetwork[23,24]toavoidassumingaconstantvarianceovertime,butfoundthattheseweremoredifﬁculttotrainandtheydidnotleadtobettersoundingsamples.Inparalleltospectrogramframeprediction,theconcatenationofdecoderLSTMoutputandtheattentioncontextisprojecteddowntoascalarandpassedthroughas

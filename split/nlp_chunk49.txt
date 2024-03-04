@@ -1,0 +1,461 @@
+, the completed hypothesis is removed
+from the frontier and the size of the beam is reduced by one. The search continues
+until the beam has been reduced to 0. The result will be k hypotheses.
+
+To score each node by its log probability, we use the chain rule of probability to
+x) into the product of the probability of each word given its prior
+|
+
+break down p(y
+context, which we can turn into a sum of logs (for an output string of length t):
+
+x)
+score(y) = log P(y
+|
+x)P(y2|
+= log (P(y1|
+=
+
+t
+
+log P(yi|
+
+y1, ..., yi
+
+y1, x)P(y3|
+1, x)
+
+−
+
+(cid:88)i=1
+
+y1, y2, x)...P(yt |
+
+y1, ..., yt
+
+1, x))
+
+−
+
+(13.15)
+
+Thus at each step, to compute the probability of a partial sentence, we simply add the
+log probability of the preﬁx sentence so far to the log probability of generating the
+next token. Fig. 13.9 shows the scoring for the example sentence shown in Fig. 13.8,
+using some simple made-up probabilities. Log probabilities are negative or 0, and
+the max of two log probabilities is the one that is greater (closer to 0).
+
+Figure 13.9 Scoring for beam search decoding with a beam width of k = 2. We maintain the log probability
+of each hypothesis in the beam by incrementally adding the logprob of generating each next token. Only the top
+k paths are extended to the next step.
+
+Fig. 13.10 gives the algorithm. One problem with this version of the algorithm is
+that the completed hypotheses may have different lengths. Because language mod-
+els generally assign lower probabilities to longer strings, a naive algorithm would
+choose shorter strings for y. (This is not an issue during the earlier steps of decod-
+ing; since beam search is breadth-ﬁrst, all the hypotheses being compared had the
+same length.) For this reason we often apply length normalization methods, like
+
+BOSarrivedthethewitchgreenwitchmagewhoy2y3log P(y1|x)y1log P(y2|y1,x)log P(y3|y2,y1,x)-.92-1.6-1.2-.69-2.3-.69-1.6-2.3arrived-.11-.51witch-.36-.22EOS-.51EOS-2.3at-1.61bylog P(y4|y3,y2,y1,x)log P(y5|y4,y3,y2,y1,x)arrivedcame-1.6y4y5log P(arrived|x) log P(arrived witch|x)log P(the|x)log P(the green|x)log P(the witch|x) =-1.6log P (arrived the|x) log P (“the green witch arrived”|x) = log P (the|x) + log P(green|the,x) + log P(witch | the, green,x)+logP(arrived|the,green,witch,x)+log P(EOS|the,green,witch,arrived,x)= -2.3= -3.9= -1.6= -2.1=-.92-2.1-3.2-4.4-2.2-2.5-3.7-2.7-3.8-2.7-4.813.4
+
+• DECODING IN MT: BEAM SEARCH
+
+281
+
+function BEAMDECODE(c, beam width) returns best paths
+
+y0, h0 ←
+0
+path
+()
+←
+complete paths
+state
+←
+frontier
+
+state
+(cid:105)
+
+← (cid:104)
+
+()
+
+←
+(c, y0, h0, path)
+
+;initial state
+
+;initial frontier
+
+while frontier contains incomplete paths and beamwidth > 0
+
+extended frontier
+for each state
+
+← (cid:104)(cid:105)
+frontier do
+
+←
+
+∈
+DECODE(state)
+
+y
+for each word i
+successor
+extended frontier
+
+←
+
+Vocabulary do
+
+∈
+NEWSTATE(state, i, yi)
+
+←
+
+ADDTOBEAM(successor, extended frontier,
+
+beam width)
+
+for each state in extended frontier do
+
+if state is complete do
+complete paths
+←
+extended frontier
+beam width
+
+←
+
+frontier
+
+extended frontier
+
+←
+return completed paths
+
+beam width - 1
+
+←
+
+APPEND(complete paths, state)
+
+REMOVE(extended frontier, state)
+
+function NEWSTATE(state, word, word prob) returns new state
+
+function ADDTOBEAM(state, frontier, width) returns updated frontier
+
+if LENGTH(frontier) < width then
+
+frontier
+
+INSERT(state, frontier)
+else if SCORE(state) > SCORE(WORSTOF(frontier))
+
+←
+
+frontier
+←
+frontier
+←
+return frontier
+
+REMOVE(WORSTOF(frontier))
+INSERT(state, frontier)
+
+Figure 13.10 Beam search decoding.
+
+dividing the logprob by the number of words:
+
+score(y) = log P(y
+
+x) =
+|
+
+1
+t
+
+t
+
+(cid:88)i=1
+
+log P(yi|
+
+y1, ..., yi
+
+1, x)
+
+−
+
+(13.16)
+
+For MT we generally use beam widths k between 5 and 10, giving us k hypotheses at
+the end. We can pass all k to the downstream application with their respective scores,
+or if we just need a single translation we can pass the most probable hypothesis.
+
+13.4.1 Minimum Bayes Risk Decoding
+
+minimum
+Bayes risk
+MBR
+
+Minimum Bayes risk or MBR decoding is an alternative decoding algorithm that
+can work even better than beam search and also tends to be better than the other
+decoding algorithms like temperature sampling introduced in Section 10.8.
+
+The intuition of minimum Bayes risk is that instead of trying to choose the trans-
+lation which is most probable, we choose the one that is likely have the least error.
+
+282 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+For example, we might want our decoding algorithm to ﬁnd the translation which
+has the highest score on some evaluation metric. For example in Section 13.6 we will
+introduce metrics like chrF or BERTScore that measure the goodness-of-ﬁt between
+a candidate translation and a set of reference human translations. A translation that
+maximizes this score, especially with a hypothetically huge set of perfect human
+translations is likely to be a good one (have minimum risk) even if it is not the most
+probable translation by our particular probability estimator.
+
+In practice, we don’t know the perfect set of translations for a given sentence. So
+the standard simpliﬁcation used in MBR decoding algorithms is to instead choose
+the candidate translation which is most similar (by some measure of goodness-of-
+ﬁt) with some set of candidate translations. We’re essentially approximating the
+enormous space of all possible translations U with a smaller set of possible candidate
+translations Y.
+
+Given this set of possible candidate translations Y, and some similarity or align-
+ment function util, we choose the best translation ˆy as the translation which is most
+similar to all the other candidate translations:
+
+ˆy = argmax
+y
+
+Y
+
+util(y, c)
+
+(13.17)
+
+∈
+
+Y
+(cid:88)c
+∈
+Various util functions can be used, like chrF or BERTscore or BLEU. We can get the
+set of candidate translations by sampling using one of the basic sampling algorithms
+of Section 10.8 like temperature sampling; good results can be obtained with as few
+as 32 or 64 candidates.
+
+Minimum Bayes risk decoding can also be used for other NLP tasks; indeed
+it was widely applied to speech recognition (Stolcke et al., 1997; Goel and Byrne,
+2000) before being applied to machine translation (Kumar and Byrne, 2004), and
+has been shown to work well across many other generation tasks as well (e.g., sum-
+marization, dialogue, and image captioning (Suzgun et al., 2023)).
+
+13.5 Translating in low-resource situations
+
+For some languages, and especially for English, online resources are widely avail-
+able. There are many large parallel corpora that contain translations between En-
+glish and many languages. But the vast majority of the world’s languages do not
+have large parallel training texts available. An important ongoing research question
+is how to get good translation with lesser resourced languages. The resource prob-
+lem can even be true for high resource languages when we need to translate into low
+resource domains (for example in a particular genre that happens to have very little
+bitext).
+
+Here we brieﬂy introduce two commonly used approaches for dealing with this
+data sparsity: backtranslation, which is a special case of the general statistical
+technique called data augmentation, and multilingual models, and also discuss
+some socio-technical issues.
+
+13.5.1 Data Augmentation
+
+Data augmentation is a statistical technique for dealing with insufﬁcient training
+data, by adding new synthetic data that is generated from the current natural data.
+
+backtranslation
+
+13.5
+
+• TRANSLATING IN LOW-RESOURCE SITUATIONS
+
+283
+
+The most common data augmentation technique for machine translation is called
+backtranslation. Backtranslation relies on the intuition that while parallel corpora
+may be limited for particular languages or domains, we can often ﬁnd a large (or
+at least larger) monolingual corpus, to add to the smaller parallel corpora that are
+available. The algorithm makes use of monolingual corpora in the target language
+by creating synthetic bitexts.
+
+In backtranslation, our goal is to improve source-to-target MT, given a small
+parallel text (a bitext) in the source/target languages, and some monolingual data in
+the target language. We ﬁrst use the bitext to train a MT system in the reverse di-
+rection: a target-to-source MT system . We then use it to translate the monolingual
+target data to the source language. Now we can add this synthetic bitext (natural
+target sentences, aligned with MT-produced source sentences) to our training data,
+and retrain our source-to-target MT model. For example suppose we want to trans-
+late from Navajo to English but only have a small Navajo-English bitext, although of
+course we can ﬁnd lots of monolingual English data. We use the small bitext to build
+an MT engine going the other way (from English to Navajo). Once we translate the
+monolingual English text to Navajo, we can add this synthetic Navajo/English bitext
+to our training data.
+
+Backtranslation has various parameters. One is how we generate the backtrans-
+lated data; we can run the decoder in greedy inference, or use beam search. Or we
+can do sampling, like the temperature sampling algorithm we saw in Chapter 10.
+Another parameter is the ratio of backtranslated data to natural bitext data; we can
+choose to upsample the bitext data (include multiple copies of each sentence). In
+general backtranslation works surprisingly well; one estimate suggests that a system
+trained on backtranslated text gets about 2/3 of the gain as would training on the
+same amount of natural bitext (Edunov et al., 2018).
+
+13.5.2 Multilingual models
+
+The models we’ve described so far are for bilingual translation: one source language,
+one target language. It’s also possible to build a multilingual translator.
+
+In a multilingual translator, we train the system by giving it parallel sentences
+in many different pairs of languages. That means we need to tell the system which
+language to translate from and to! We tell the system which language is which
+by adding a special token ls to the encoder specifying the source language we’re
+translating from, and a special token lt to the decoder telling it the target language
+we’d like to translate into.
+
+Thus we slightly update Eq. 13.9 above to add these tokens in Eq. 13.19:
+
+h = encoder(x, ls)
+
+yi+1 = decoder(h, lt , y1, . . . , yi))
+
+[1, . . . , m]
+
+i
+∀
+
+∈
+
+(13.18)
+
+(13.19)
+
+One advantage of a multilingual model is that they can improve the translation
+of lower-resourced languages by drawing on information from a similar language
+in the training data that happens to have more resources. Perhaps we don’t know
+the meaning of a word in Galician, but the word appears in the similar and higher-
+resourced language Spanish.
+
+13.5.3 Sociotechnical issues
+
+Many issues in dealing with low-resource languages go beyond the purely techni-
+cal. One problem is that for low-resource languages, especially from low-income
+
+284 CHAPTER 13
+
+• MACHINE TRANSLATION
+
+countries, native speakers are often not involved as the curators for content selec-
+tion, as the language technologists, or as the evaluators who measure performance
+(
+et al., 2020). Indeed, one well-known study that manually audited a large set of
+∀
+parallel corpora and other major multilingual datasets found that for many of the
+corpora, less than 50% of the sentences were of acceptable quality, with a lot of
+data consisting of repeated sentences with web boilerplate or incorrect translations,
+suggesting that native speakers may not have been sufﬁciently involved in the data
+process (Kreutzer et al., 2022).
+
+Other issues, like the tendency of many MT approaches to focus on the case
+where one of the languages is English (Anastasopoulos and Neubig, 2020), have to
+do with allocation of resources. Where most large multilingual systems were trained
+on bitexts in which English was one of the two languages, recent huge corporate
+systems like those of Fan et al. (2021) and Costa-juss`a et al. (2022) and datasets
+like Schwenk et al. (2021) attempt to handle large numbers of languages (up to 200
+languages) and create bitexts between many more pairs of languages and not just
+through English.
+
+∀
+
+At the smaller end,
+
+et al. (2020) propose a participatory design process to
+encourage content creators, curators, and language technologists who speak these
+low-resourced languages to participate in developing MT algorithms. They provide
+online groups, mentoring, and infrastructure, and report on a case study on devel-
+oping MT algorithms for low-resource African languages. Among their conclusions
+was perform MT evaluation by post-editing rather than direct evaluation, since hav-
+ing labelers edit an MT system and then measure the distance between the MT output
+and its post-edited version both was simpler to train evaluators and makes it easier to
+measure true errors in the MT output and not differences due to linguistic variation
+(Bentivogli et al., 2018).
+
+13.6 MT Evaluation
+
+Translations are evaluated along two dimensions:
+
+adequacy
+
+1. adequacy: how well the translation captures the exact meaning of the source
+
+sentence. Sometimes called faithfulness or ﬁdelity.
+
+ﬂuency
+
+2. ﬂuency: how ﬂuent the translation is in the target language (is it grammatical,
+
+clear, readable, natural).
+
+Using humans to evaluate is most accurate, but automatic metrics are also used for
+convenience.
+
+13.6.1 Using Human Raters to Evaluate MT
+
+The most accurate evaluations use human raters, such as online crowdworkers, to
+evaluate each translation along the two dimensions. For example, along the dimen-
+sion of ﬂuency, we can ask how intelligible, how clear, how readable, or how natural
+the MT output (the target text) is. We can give the raters a scale, for example, from
+1 (totally unintelligible) to 5 (totally intelligible), or 1 to 100, and ask them to rate
+each sentence or paragraph of the MT output.
+
+We can do the same thing to judge the second dimension, adequacy, using raters
+to assign scores on a scale. If we have bilingual raters, we can give them the source
+sentence and a proposed target sentence, and rate, on a 5-point or 100-point scale,
+
+ranking
+
+chrF
+
+13.6
+
+• MT EVALUATION
+
+285
+
+how much of the information in the source was preserved in the target. If we only
+have monolingual raters but we have a good human translation of the source text, we
+can give the monolingual raters the human reference translation and a target machine
+translation and again rate how much information is preserved. An alternative is to
+do ranking: give the raters a pair of candidate translations, and ask them which one
+they prefer.
+
+Training of human raters (who are often online crowdworkers) is essential; raters
+without translation expertise ﬁnd it difﬁcult to separate ﬂuency and adequacy, and
+so training includes examples carefully distinguishing these. Raters often disagree
+(source sentences may be ambiguous, raters will have different world knowledge,
+raters may apply scales differently). It is therefore common to remove outlier raters,
+and (if we use a ﬁne-grained enough scale) normalizing raters by subtracting the
+mean from their scores and dividing by the variance.
+
+As discussed above, an alternative way of using human raters is to have them
+post-edit translations, taking the MT output and changing it minimally until they
+feel it represents a correct translation. The difference between their post-edited
+translations and the original MT output can then be used as a measure of quality.
+
+13.6.2 Automatic Evaluation
+
+While humans produce the best evaluation

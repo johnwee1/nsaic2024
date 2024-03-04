@@ -1,0 +1,464 @@
+ts from the table. Of course, instead of returning every parse
+for a sentence, we usually want just the best parse; we’ll see how to do that in the
+next section.
+
+17.6.4 CKY in Practice
+
+Finally, we should note that while the restriction to CNF does not pose a problem
+theoretically, it does pose some non-trivial problems in practice. The returned CNF
+trees may not be consistant with the original grammar built by the grammar devel-
+opers, and will complicate any syntax-driven approach to semantic analysis.
+
+One approach to getting around these problems is to keep enough information
+around to transform our trees back to the original grammar as a post-processing step
+of the parse. This is trivial in the case of the transformation used for rules with length
+greater than 2. Simply deleting the new dummy non-terminals and promoting their
+daughters restores the original tree.
+
+In the case of unit productions, it turns out to be more convenient to alter the ba-
+sic CKY algorithm to handle them directly than it is to store the information needed
+to recover the correct trees. Exercise 17.3 asks you to make this change. Many of
+the probabilistic parsers presented in Appendix C use the CKY algorithm altered in
+
+......[0,n][i,i+1][i,i+2][i,j-2][i,j-1][i+1,j][i+2,j][j-1,j][j-2,j][i,j]...[0,1][n-1, n]382 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+Figure 17.14 Filling the cells of column 5 after reading the word Houston.
+
+Bookthe flight throughHoustonS, VP, Verb, Nominal, NounS,VP,X2DetNPNominal,NounNominalPrepNP,Proper-Noun[0,1][0,2][0,3][0,4][0,5][1,2][1,3][2,3][1,4][2,5][2,4][3,4][4,5][3,5][1,5]Bookthe flight throughHoustonS, VP, Verb, Nominal, NounS,VP,X2DetNPNPNominal,NounPrepPPNP,Proper-Noun[0,1][0,2][0,3][0,4][0,5][1,2][1,3][2,3][1,4][2,5][2,4][3,4][4,5][3,5][1,5]Bookthe flight throughHoustonS, VP, Verb, Nominal, NounS,VP,X2DetNPNPNominal,NounNominalPrepPPNP,Proper-Noun[0,1][0,2][0,3][0,4][0,5][1,2][1,3][2,3][1,4][2,5][2,4][3,4][4,5][3,5][1,5]Bookthe flight throughHoustonS, VP, Verb, Nominal, NounS,VP,X2DetNPNPNominal,NounNominalPrepPPNP,Proper-Noun[0,1][0,2][0,3][0,4][0,5][1,2][1,3][2,3][1,4][2,5][2,4][3,4][4,5][3,5][1,5]Bookthe flight throughHoustonS, VP, Verb, Nominal, NounS,VP,X2DetNPNPNominal,NounNominalPrepPPNP,Proper-Noun[0,1][0,2][0,3][0,4][1,2][1,3][2,3][1,4][2,5][2,4][3,4][4,5][3,5][1,5]S2, VPS3S1,VP, X217.7
+
+• SPAN-BASED NEURAL CONSTITUENCY PARSING
+
+383
+
+just this manner.
+
+17.7 Span-Based Neural Constituency Parsing
+
+While the CKY parsing algorithm we’ve seen so far does great at enumerating all
+the possible parse trees for a sentence, it has a large problem: it doesn’t tell us which
+parse is the correct one! That is, it doesn’t disambiguate among the possible parses.
+To solve the disambiguation problem we’ll use a simple neural extension of the
+CKY algorithm. The intuition of such parsing algorithms (often called span-based
+constituency parsing, or neural CKY), is to train a neural classiﬁer to assign a
+score to each constituent, and then use a modiﬁed version of CKY to combine these
+constituent scores to ﬁnd the best-scoring parse tree.
+
+Here we’ll describe a version of the algorithm from Kitaev et al. (2019). This
+parser learns to map a span of words to a constituent, and, like CKY, hierarchically
+combines larger and larger spans to build the parse-tree bottom-up. But unlike clas-
+sic CKY, this parser doesn’t use the hand-written grammar to constrain what con-
+stituents can be combined, instead just relying on the learned neural representations
+of spans to encode likely combinations.
+
+17.7.1 Computing Scores for a Span
+
+span
+
+Let’s begin by considering just the constituent (we’ll call it a span) that lies between
+fencepost positions i and j with non-terminal symbol label l. We’ll build a system
+to assign a score s(i, j, l) to this constituent span.
+
+Figure 17.15 A simpliﬁed outline of computing the span score for the span the ﬂight with
+the label NP.
+
+Fig. 17.15 sketches the architecture. The input word tokens are embedded by
+
+ENCODER[START]BooktheflightthroughHouston[END]map to subwordsmap back to words013245MLPi=1hj-hij=3NPCompute score for spanRepresent spanCKY for computing best parsepostprocessing layers384 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+passing them through a pretrained language model like BERT. Because BERT oper-
+ates on the level of subword (wordpiece) tokens rather than words, we’ll ﬁrst need to
+convert the BERT outputs to word representations. One standard way of doing this
+is to simply use the ﬁrst subword unit as the representation for the entire word; us-
+ing the last subword unit, or the sum of all the subword units are also common. The
+embeddings can then be passed through some postprocessing layers; Kitaev et al.
+(2019), for example, use 8 Transformer layers.
+
+The resulting word encoder outputs yt are then used to compute a span score.
+First, we must map the word encodings (indexed by word positions) to span encod-
+ings (indexed by fenceposts). We do this by representing each fencepost with two
+separate values; the intuition is that a span endpoint to the right of a word represents
+different information than a span endpoint to the left of a word. We convert each
+word output yt into a (leftward-pointing) value for spans ending at this fencepost,
+←−y t , and a (rightward-pointing) value −→y t for spans beginning at this fencepost, by
+splitting yt into two halves. Each span then stretches from one double-vector fence-
+post to another, as in the following representation of the ﬂight, which is span(1, 3):
+
+START0
+
+y0 −→y0 ←−y1
+
+0
+(cid:13)
+
+Book
+y1 −→y1 ←−y2
+
+the
+y2 −→y2 ←−y3
+
+ﬂight
+y3 −→y3 ←−y4
+
+through
+
+y4 −→y4 ←−y5
+
+. . .
+
+1
+(cid:13)
+
+2
+(cid:13)
+
+span(1,3)
+
+3
+(cid:13)
+
+4
+(cid:13)
+
+A traditional way to represent a span, developed originally for RNN-based models
+(Wang and Chang, 2016), but extended also to Transformers, is to take the differ-
+ence between the embeddings of its start and end, i.e., representing span (i, j) by
+subtracting the embedding of i from the embedding of j. Here we represent a span
+by concatenating the difference of each of its fencepost components:
+
+v(i, j) = [−→y j − −→yi ; ←−−y j+1 − ←−−yi+1]
+
+(17.5)
+
+The span vector v is then passed through an MLP span classiﬁer, with two fully-
+connected layers and one ReLU activation function, whose output dimensionality is
+the number of possible non-terminal labels:
+
+s(i, j,
+
+) = W2 ReLU(LayerNorm(W1v(i, j)))
+·
+
+(17.6)
+
+The MLP then outputs a score for each possible non-terminal.
+
+17.7.2
+
+Integrating Span Scores into a Parse
+
+Now we have a score for each labeled constituent span s(i, j, l). But we need a score
+for an entire parse tree. Formally a tree T is represented as a set of
+such labeled
+spans, with the tth span starting at position it and ending at position jt , with label lt :
+
+T
+|
+
+|
+
+T =
+
+{
+
+(it , jt , lt ) : t = 1, . . . ,
+
+T
+|
+
+|}
+
+(17.7)
+
+Thus once we have a score for each span, the parser can compute a score for the
+whole tree s(T ) simply by summing over the scores of its constituent spans:
+
+s(T ) =
+
+s(i, j, l)
+
+(17.8)
+
+(cid:88)(i, j,l)
+∈
+
+T
+
+17.8
+
+• EVALUATING PARSERS
+
+385
+
+And we can choose the ﬁnal parse tree as the tree with the maximum score:
+
+ˆT = argmax
+
+s(T )
+
+T
+
+(17.9)
+
+The simplest method to produce the most likely parse is to greedily choose the
+highest scoring label for each span. This greedy method is not guaranteed to produce
+a tree, since the best label for a span might not ﬁt into a complete tree. In practice,
+however, the greedy method tends to ﬁnd trees; in their experiments Gaddy et al.
+(2018) ﬁnds that 95% of predicted bracketings form valid trees.
+
+Nonetheless it is more common to use a variant of the CKY algorithm to ﬁnd the
+full parse. The variant deﬁned in Gaddy et al. (2018) works as follows. Let’s deﬁne
+sbest(i, j) as the score of the best subtree spanning (i, j). For spans of length one, we
+choose the best label:
+
+sbest(i, i + 1) = max
+
+l
+
+s(i, i + 1, l)
+
+For other spans (i, j), the recursion is:
+
+sbest(i, j) = max
+
+l
+
+s(i, j, l)
+
++ max
+
+[sbest(i, k) + sbest(k, j)]
+
+k
+
+(17.10)
+
+(17.11)
+
+Note that the parser is using the max label for span (i, j) + the max labels for spans
+(i, k) and (k, j) without worrying about whether those decisions make sense given a
+grammar. The role of the grammar in classical parsing is to help constrain possible
+combinations of constituents (NPs like to be followed by VPs). By contrast, the
+neural model seems to learn these kinds of contextual constraints during its mapping
+from spans to non-terminals.
+
+For more details on span-based parsing, including the margin-based training al-
+gorithm, see Stern et al. (2017), Gaddy et al. (2018), Kitaev and Klein (2018), and
+Kitaev et al. (2019).
+
+17.8 Evaluating Parsers
+
+PARSEVAL
+
+The standard tool for evaluating parsers that assign a single parse tree to a sentence
+is the PARSEVAL metrics (Black et al., 1991). The PARSEVAL metric measures
+how much the constituents in the hypothesis parse tree look like the constituents in a
+hand-labeled, reference parse. PARSEVAL thus requires a human-labeled reference
+(or “gold standard”) parse tree for each sentence in the test set; we generally draw
+these reference parses from a treebank like the Penn Treebank.
+
+A constituent in a hypothesis parse Ch of a sentence s is labeled correct if there
+is a constituent in the reference parse Cr with the same starting point, ending point,
+and non-terminal symbol. We can then measure the precision and recall just as for
+tasks we’ve seen already like named entity tagging:
+
+labeled recall: = # of correct constituents in hypothesis parse of s
+# of total constituents in reference parse of s
+
+labeled precision: = # of correct constituents in hypothesis parse of s
+# of total constituents in hypothesis parse of s
+
+386 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+S(dumped)
+
+NP(workers)
+
+VP(dumped)
+
+NNS(workers)
+
+VBD(dumped)
+
+NP(sacks)
+
+PP(into)
+
+workers
+
+dumped
+
+NNS(sacks)
+
+P
+
+NP(bin)
+
+sacks
+
+into
+
+DT(a)
+
+NN(bin)
+
+a
+
+bin
+
+Figure 17.16 A lexicalized tree from Collins (1999).
+
+As usual, we often report a combination of the two, F1:
+
+F1 =
+
+2PR
+P + R
+
+(17.12)
+
+We additionally use a new metric, crossing brackets, for each sentence s:
+
+cross-brackets: the number of constituents for which the reference parse has a
+bracketing such as ((A B) C) but the hypothesis parse has a bracketing such
+as (A (B C)).
+
+For comparing parsers that use different grammars, the PARSEVAL metric in-
+cludes a canonicalization algorithm for removing information likely to be grammar-
+speciﬁc (auxiliaries, pre-inﬁnitival “to”, etc.) and for computing a simpliﬁed score
+(Black et al., 1991). The canonical implementation of the PARSEVAL metrics is
+called evalb (Sekine and Collins, 1997).
+
+evalb
+
+17.9 Heads and Head-Finding
+
+Syntactic constituents can be associated with a lexical head; N is the head of an NP,
+V is the head of a VP. This idea of a head for each constituent dates back to Bloom-
+ﬁeld 1914, and is central to the dependency grammars and dependency parsing we’ll
+introduce in Chapter 18. Indeed, heads can be used as a way to map between con-
+stituency and dependency parses. Heads are also important in probabilistic pars-
+ing (Appendix C) and in constituent-based grammar formalisms like Head-Driven
+Phrase Structure Grammar (Pollard and Sag, 1994)..
+
+In one simple model of lexical heads, each context-free rule is associated with
+a head (Charniak 1997, Collins 1999). The head is the word in the phrase that is
+grammatically the most important. Heads are passed up the parse tree; thus, each
+non-terminal in a parse tree is annotated with a single word, which is its lexical head.
+Figure 17.16 shows an example of such a tree from Collins (1999), in which each
+non-terminal is annotated with its head.
+
+For the generation of such a tree, each CFG rule must be augmented to identify
+one right-side constituent to be the head child. The headword for a node is then set to
+the headword of its head child. Choosing these head children is simple for textbook
+examples (NN is the head of NP) but is complicated and indeed controversial for
+
+17.10
+
+• SUMMARY
+
+387
+
+most phrases. (Should the complementizer to or the verb be the head of an inﬁnite
+verb phrase?) Modern linguistic theories of syntax generally include a component
+that deﬁnes heads (see, e.g., (Pollard and Sag, 1994)).
+
+An alternative approach to ﬁnding a head is used in most practical computational
+systems. Instead of specifying head rules in the grammar itself, heads are identiﬁed
+In other words, once
+dynamically in the context of trees for speciﬁc sentences.
+a sentence is parsed, the resulting tree is walked to decorate each node with the
+appropriate head. Most current systems rely on a simple set of handwritten rules,
+such as a practical one for Penn Treebank grammars given in Collins (1999) but
+developed originally by Magerman (1995). For example, the rule for ﬁnding the
+head of an NP is as follows (Collins, 1999, p. 238):
+
+• If the last word is tagged POS, return last-word.
+• Else search from right to left for the ﬁrst child which is an NN, NNP, NNPS, NX, POS,
+
+or JJR.
+
+• Else search from left to right for the ﬁrst child which is an NP.
+• Else search from right to left for the ﬁrst child which is a $, ADJP, or PRN.
+• Else search from right to left for the ﬁrst child which is a CD.
+• Else search from right to left for the ﬁrst child which is a JJ, JJS, RB or QP.
+• Else return the last word
+
+Selected other rules from this set are shown in Fig. 17.17. For example, for VP
+rules of the form VP
+Yn, the algorithm would start from the left of Y1 · · ·
+Yn looking for the ﬁrst Yi of type TO; if no TOs are found, it would search for the
+ﬁrst Yi of type VBD; if no VBDs are found, it would search for a VBN, and so on.
+See Collins (1999) for more details.
+
+Y1 · · ·
+
+→
+
+Parent Direction
+ADJP
+
+Left
+
+Priority List
+NNS QP NN $ ADVP JJ VBN VBG ADJP JJR NP JJS DT FW RBR RBS
+SBAR RB
+RB RBR RBS FW ADVP TO CD JJR JJ IN NP JJS NN
+
+ADVP
+PRN
+PRT
+QP
+S
+SBAR
+VP
+Figure 17.17 Some head rules from Collins (1999). The head rules are also called a head percolation table.
+
+RP
+$ IN NNS NN JJ RB DT CD NCD QP JJR JJS
+TO IN VP S SBAR ADJP UCP NP
+WHNP WHPP WHADVP WHADJP IN DT S SQ SINV SBAR FRAG
+TO VBD VBN MD VBZ VB VBG VBP VP ADJP NN NNS NP
+
+Right
+Left
+Right
+Left
+Left
+Left
+Left
+
+17.10 Summary
+
+This chapter introduced constituency parsing. Here’s a summary of the main points:
+
+• In many languages, groups of consecutive words act as a group or a con-
+stituent, which can be modeled by context-free grammars (which are also
+known as phrase-structure grammars).
+
+• A context-free grammar consists of a set of rules or productions, expressed
+over a set of non-terminal symbols and a set of terminal symbols. Formally,
+a particular context-free language is the set of strings that can be derived
+from a particular context-free grammar.
+
+388 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+• Structural ambiguity is a signiﬁcant problem for parsers. Common sources
+of structural ambiguity include PP-attachment and coordination ambiguity.
+• Dynamic programming parsing algorithms, such as CKY, use a table of
+
+partial parses to efﬁciently parse ambiguous sentences.
+
+• CKY restricts the form of the grammar to Chomsky normal form (CNF).
+• The basic CKY algorithm compactly represents all possible parses of the sen-
+
+tence but doesn’t choose a single best parse.
+
+• Choosing a single parse from all possible parses (disa

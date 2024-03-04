@@ -1,0 +1,276 @@
+rom the web via Common Crawl (https://commoncrawl.org/).
+
+To train the original BERT models, pairs of text segments were selected from
+the training corpus according to the next sentence prediction 50/50 scheme. Pairs
+were sampled so that their combined length was less than the 512 token input. To-
+kens within these sentence pairs were then masked using the MLM approach with
+the combined loss from the MLM and NSP objectives used for a ﬁnal loss. Ap-
+proximately 40 passes (epochs) over the training data was required for the model to
+converge.
+
+Some models, like the RoBERTa model, drop the next sentence prediction ob-
+jective, and therefore change the training regime a bit. Instead of sampling pairs of
+sentence, the input is simply a series of contiguous sentences. If the document runs
+out before 512 tokens are reached, an extra separator token is added, and sentences
+from the next document are packed in, until we reach a total of 512 tokens. Usually
+large batch sizes are used, between 8K and 32K tokens.
+
+Multilingual models have an additional decision to make: what data to use to
+build the vocabulary? Recall that all language models use subword tokenization
+(BPE or SentencePiece Unigram LM are the two most common algorithms). What
+text should be used to learn this multilingual tokenization, given that it’s easier to get
+much more text in some languages than others? One option would be to create this
+vocabulary-learning dataset by sampling sentences from our training data (perhaps
+
+Cancelmyﬂight[SEP] 1CE LossAnd the Bidirectional Transformer Encoderp1p2p3p4p5p6p7p8[CLS]++s1SoftmaxToken +Segment +PositionalEmbeddings hotel p9[SEP] ++s1s1s1s1s2s2s2s2++++++++++++++zCLS250 CHAPTER 11
+
+• FINE-TUNING AND MASKED LANGUAGE MODELS
+
+web text from Common Crawl), randomly. In that case we will choose a lot of sen-
+tences from languages like languages with lots of web representation like English,
+and the tokens will be biased toward rare English tokens instead of creating frequent
+tokens from languages with less data. Instead, it is common to divide the training
+data into subcorpora of N different languages, compute the number of sentences ni
+of each language i, and readjust these probabilities so as to upweight the probability
+of less-represented languages (Lample and Conneau, 2019). The new probability of
+selecting a sentence from each of the N languages (whose prior frequency is ni) is
+qi}i=1...N, where:
+
+{
+
+qi =
+
+pα
+i
+N
+j=1 pα
+i
+
+with pi =
+
+ni
+N
+k=1 nk
+
+(11.7)
+
+(cid:80)
+
+(cid:80)
+
+Recall from (6.32) in Chapter 6 that an α value between 0 and 1 will give higher
+weight to lower probability samples. Conneau et al. (2020) show that α = 0.3 works
+well to give rare languages more inclusion in the tokenization, resulting in better
+multilingual performance overall.
+
+The result of this pretraining process consists of both learned word embeddings,
+as well as all the parameters of the bidirectional encoder that are used to produce
+contextual embeddings for novel inputs.
+
+For many purposes, a pretrained multilingual model is more practical than a
+monolingual model, since it avoids the need to build many (100!) separate monolin-
+gual models. And multilingual models can improve performance on low-resourced
+languages by leveraging linguistic information from a similar language in the train-
+ing data that happens to have more resources. Nonetheless, when the number of
+languages grows very large, multilingual models exhibit what has been called the
+curse of multilinguality (Conneau et al., 2020): the performance on each language
+degrades compared to a model training on fewer languages. Another problem with
+multilingual models is that they ‘have an accent’: grammatical structures in higher-
+resource languages (often English) bleed into lower-resource languages; the vast
+amount of English language in training makes the model’s representations for low-
+resource languages slightly more English-like (Papadimitriou et al., 2023).
+
+11.3 Contextual Embeddings
+
+contextual
+embeddings
+
+Given a pretrained language model and a novel input sentence, we can think of the
+sequence of model outputs as constituting contextual embeddings for each token in
+the input. These contextual embeddings are vectors representing some aspect of the
+meaning of a token in context, and can be used for any task requiring the meaning of
+tokens or words. More formally, given a sequence of input tokens x1, ..., xn, we can
+use the output vector zi from the ﬁnal layer of the model as a representation of the
+meaning of token xi in the context of sentence x1, ..., xn. Or instead of just using the
+vector zi from the ﬁnal layer of the model, it’s common to compute a representation
+for xi by averaging the output tokens zi from each of the last four layers of the model.
+Just as we used static embeddings like word2vec in Chapter 6 to represent the
+meaning of words, we can use contextual embeddings as representations of word
+meanings in context for any task that might require a model of word meaning. Where
+static embeddings represent the meaning of word types (vocabulary entries), contex-
+tual embeddings represent the meaning of word instances: instances of a particular
+
+11.3
+
+• CONTEXTUAL EMBEDDINGS
+
+251
+
+ambiguous
+
+word sense
+
+WordNet
+
+Figure 11.6 The output of a BERT-style model is a contextual embedding vector zi for each
+input token xi.
+
+word type in a particular context. Thus where word2vec had a single vector for each
+word type, contextual embeddings provide a single vector for each instance of that
+word type in its sentential context. Contextual embeddings can thus be used for
+tasks like measuring the semantic similarity of two words in context, and are useful
+in linguistic tasks that require models of word meaning.
+
+11.3.1 Contextual Embeddings and Word Sense
+
+Words are ambiguous: the same word can be used to mean different things.
+In
+Chapter 6 we saw that the word “mouse” can mean (1) a small rodent, or (2) a hand-
+operated device to control a cursor. The word “bank” can mean: (1) a ﬁnancial
+institution or (2) a sloping mound. We say that the words ‘mouse’ or ‘bank’ are
+polysemous (from Greek ‘many senses’, poly- ‘many’ + sema, ‘sign, mark’).2
+
+A sense (or word sense) is a discrete representation of one aspect of the meaning
+of a word. We can represent each sense with a superscript: bank1 and bank2,
+mouse1 and mouse2. These senses can be found listed in online thesauruses (or
+thesauri) like WordNet (Fellbaum, 1998), which has datasets in many languages
+listing the senses of many words. In context, it’s easy to see the different meanings:
+mouse1 : .... a mouse controlling a computer system in 1968.
+mouse2 : .... a quiet animal like a mouse
+bank1 : ...a bank can hold the investments in a custodial account ...
+bank2 : ...as agriculture burgeons on the east bank, the river ...
+
+This fact that context disambiguates the senses of mouse and bank above can
+also be visualized geometrically. Fig. 11.7 shows a two-dimensional project of many
+instances of the BERT embeddings of the word die in English and German. Each
+point in the graph represents the use of die in one input sentence. We can clearly see
+at least two different English senses of die (the singular of dice and the verb to die,
+as well as the German article, in the BERT embedding space.
+
+Thus while thesauruses like WordNet give discrete lists of senses, embeddings
+(whether static or contextual) offer a continuous high-dimensional model of meaning
+
+2 The word polysemy itself is ambiguous; you may see it used in a different way, to refer only to cases
+where a word’s senses are related in some structured way, reserving the word homonymy to mean sense
+ambiguities with no relation between the senses (Haber and Poesio, 2020). Here we will use ‘polysemy’
+to mean any kind of sense ambiguity, and ‘structured polysemy’ for polysemy with sense relations.
+
+InputEmbeddingsTransformerBlocks[CLS]Solongandthanksforallz1zCLSz2z3z4z5z6252 CHAPTER 11
+
+• FINE-TUNING AND MASKED LANGUAGE MODELS
+
+Figure 11.7 Each blue dot shows a BERT contextual embedding for the word die from different sentences
+in English and German, projected into two dimensions with the UMAP algorithm. The German and English
+meanings and the different English senses fall into different clusters. Some sample points are shown with the
+contextual sentence they came from. Figure from Coenen et al. (2019).
+
+that, although it can be clustered, doesn’t divide up into fully discrete senses.
+
+Word Sense Disambiguation
+
+word sense
+disambiguation
+WSD
+
+The task of selecting the correct sense for a word is called word sense disambigua-
+tion, or WSD. WSD algorithms take as input a word in context and a ﬁxed inventory
+of potential word senses (like the ones in WordNet) and outputs the correct word
+sense in context. Fig. 11.8 sketches out the task.
+
+Figure 11.8 The all-words WSD task, mapping from input words (x) to WordNet senses
+(y). Figure inspired by Chaplot and Salakhutdinov (2018).
+
+WSD can be a useful analytic tool for text analysis in the humanities and social
+sciences, and word senses can play a role in model interpretability for word repre-
+sentations. Word senses also have interesting distributional properties. For example
+a word often is used in roughly the same sense through a discourse, an observation
+called the one sense per discourse rule (Gale et al., 1992a).
+
+one sense per
+discourse
+
+Figure4:Embeddingsfortheword"die"indifferentcontexts,visualizedwithUMAP.Samplepointsareannotatedwithcorrespondingsentences.Overallannotations(bluetext)areaddedasaguide.4.1VisualizationofwordsensesOurﬁrstexperimentisanexploratoryvisualizationofhowwordsenseaffectscontextembeddings.Fordataondifferentwordsenses,wecollectedallsentencesusedintheintroductionstoEnglish-languageWikipediaarticles.(Textoutsideofintroductionswasfrequentlyfragmentary.)Wecreatedaninteractiveapplication,whichweplantomakepublic.Auserentersaword,andthesystemretrieves1,000sentencescontainingthatword.ItsendsthesesentencestoBERT-baseasinput,andforeachoneitretrievesthecontextembeddingforthewordfromalayeroftheuser’schoosing.Thesystemvisualizesthese1,000contextembeddingsusingUMAP[15],generallyshowingclearclustersrelatingtowordsenses.Differentsensesofawordaretypicallyspatiallyseparated,andwithintheclustersthereisoftenfurtherstructurerelatedtoﬁneshadesofmeaning.InFigure4,forexample,wenotonlyseecrisp,well-separatedclustersforthreemeaningsoftheword“die,”butwithinoneoftheseclustersthereisakindofquantitativescale,relatedtothenumberofpeopledying.SeeAppendix6.4forfurtherexamples.Theapparentdetailintheclusterswevisualizedraisestwoimmediatequestions.First,isitpossibletoﬁndquantitativecorroborationthatwordsensesarewell-represented?Second,howcanweresolveaseemingcontradiction:intheprevioussection,wesawhowpositionrepresentedsyntax;yethereweseepositionrepresentingsemantics.4.2MeasurementofwordsensedisambiguationcapabilityThecrispclustersseeninvisualizationssuchasFigure4suggestthatBERTmaycreatesimple,effectiveinternalrepresentationsofwordsenses,puttingdifferentmeaningsindifferentlocations.Totestthishypothesisquantitatively,wetestwhetherasimpleclassiﬁerontheseinternalrepresentationscanperformwellatword-sensedisambiguation(WSD).Wefollowtheproceduredescribedin[20],whichperformedasimilarexperimentwiththeELMomodel.Foragivenwordwithnsenses,wemakeanearest-neighborclassiﬁerwhereeachneighboristhecentroidofagivenwordsense’sBERT-baseembeddingsinthetrainingdata.Toclassifyanewwordweﬁndtheclosestofthesecentroids,defaultingtothemostcommonlyusedsenseifthewordwasnotpresentinthetrainingdata.Weusedthedataandevaluationfrom[21]:thetrainingdatawasSemCor[17](33,362senses),andthetestingdatawasthesuitedescribedin[21](3,669senses).Thesimplenearest-neighborclassiﬁerachievesanF1scoreof71.1,higherthanthecurrentstateoftheart(Table1),withtheaccuracymonotonicallyincreasingthroughthelayers.Thisisastrongsignalthatcontextembeddingsarerepresentingword-senseinformation.Additionally,anevenhigherscoreof71.5wasobtainedusingthetechniquedescribedinthefollowingsection.6anelectricguitarandbassplayerstandoﬀtoonesideelectric1: using electricityelectric2:  tenseelectric3: thrillingguitar1 bass1: low range…bass4: sea ﬁsh… bass7: instrument…player1: in gameplayer2: musician player3: actor…stand1: upright…stand5: bear… stand10: put upright…side1: relative region…side3: of body… side11: slope…x1y1x2y2x3y3y4y5y6x4x5x611.3
+
+• CONTEXTUAL EMBEDDINGS
+
+253
+
+The best performing WSD algorithm is a simple 1-nearest-neighbor algorithm
+using contextual word embeddings, due to Melamud et al. (2016) and Peters et al.
+(2018). At training time we pass each sentence in some sense-labeled dataset (like
+the SemCore or SenseEval datasets in various languages) through any contextual
+embedding (e.g., BERT) resulting in a contextual embedding for each labeled token.
+(There are various ways to compute this contextual embedding vi for a token i; for
+BERT it is common to pool multiple layers by summing the vector representations
+of i from the last four BERT layers). Then for each sense s of any word in the corpus,
+for each of the n tokens of that sense, we average their n contextual representations
+vi to produce a contextual sense embedding vs for s:
+
+vs =
+
+1
+n
+
+vi
+
+(cid:88)i
+
+vi ∈
+∀
+
+tokens(s)
+
+(11.8)
+
+At test time, given a token of a target word t in context, we compute its contextual
+embedding t and choose its nearest neighbor sense from the training set, i.e., the
+sense whose sense embedding has the highest cosine with t:
+
+sense(t) = argmax
+senses(t)
+
+s
+
+∈
+
+cosine(t, vs)
+
+(11.9)
+
+Fig. 11.9 illustrates the model.
+
+Figure 11.9 The nearest-neighbor algorithm for WSD. In green are the contextual embed-
+dings precomputed for each sense of each word; here we just show a few of the senses for
+ﬁnd. A contextual embedding is computed for the target word found, and then the nearest
+neighbor sense (in this case ﬁnd9
+
+v) is chosen. Figure inspired by Loureiro and Jorge (2019).
+
+11.3.2 Contextual Embeddings and Word Similarity
+
+In Chapter 6 we introduced the idea that we could measure the similarity of two
+words by considering how close they are geometrically, by using the cosine as a
+similarity function. The idea of meaning similarity is also clear geometrically in the
+meaning clusters in Fig. 11.7; the representation of a word which has a particular
+sense in a context is closer to other instances of the same sense of the word. Thus we
+often measure the similarity between two instances of two words in context (or two
+instances of the same word in two different contexts) by using the cosine between
+their contextual embeddings.
+
+Usually some transformations to the embeddings are required before computing
+cosine. This is because contextual embeddings (whether from masked language
+
+I  found  the  jar  emptycIcfoundfind1vcthecjarcemptyfind9vfind5vfind4vENCODER254 CHAPTER 11
+
+• FINE-TUNING AND MASKED LANGUAGE MODELS
+
+anisotropy
+
+models or from autoregressive ones) have the property that the vectors for all words
+are extremely similar. If we look at the embeddings from the ﬁnal layer of BERT
+or other models, embeddings for instances of any two randomly chosen words will
+have extremely high cosines that can be quite close to 1, meaning all word vectors
+tend to point in the same direction. The property of vectors in a system all tending
+to point in the same direction is known as anisotropy. Ethayarajh (2019) deﬁnes
+the anisotropy of a model as the expected cosine similarity of any pair of words in
+a corpus. The word ‘isotropy’ means unifo

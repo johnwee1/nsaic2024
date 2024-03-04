@@ -1,0 +1,408 @@
+SEMANTICS
+
+107
+
+principle of
+contrast
+
+similarity
+
+couch/sofa vomit/throw up ﬁlbert/hazelnut car/automobile
+
+A more formal deﬁnition of synonymy (between words rather than senses) is that
+two words are synonymous if they are substitutable for one another in any sentence
+without changing the truth conditions of the sentence, the situations in which the
+sentence would be true.
+
+While substitutions between some pairs of words like car / automobile or wa-
+ter / H2O are truth preserving, the words are still not identical in meaning. Indeed,
+probably no two words are absolutely identical in meaning. One of the fundamental
+tenets of semantics, called the principle of contrast (Girard 1718, Br´eal 1897, Clark
+1987), states that a difference in linguistic form is always associated with some dif-
+ference in meaning. For example, the word H2O is used in scientiﬁc contexts and
+would be inappropriate in a hiking guide—water would be more appropriate— and
+this genre difference is part of the meaning of the word. In practice, the word syn-
+onym is therefore used to describe a relationship of approximate or rough synonymy.
+
+Word Similarity While words don’t have many synonyms, most words do have
+lots of similar words. Cat is not a synonym of dog, but cats and dogs are certainly
+similar words. In moving from synonymy to similarity, it will be useful to shift from
+talking about relations between word senses (like synonymy) to relations between
+words (like similarity). Dealing with words avoids having to commit to a particular
+representation of word senses, which will turn out to simplify our task.
+
+The notion of word similarity is very useful in larger semantic tasks. Knowing
+how similar two words are can help in computing how similar the meaning of two
+phrases or sentences are, a very important component of tasks like question answer-
+ing, paraphrasing, and summarization. One way of getting values for word similarity
+is to ask humans to judge how similar one word is to another. A number of datasets
+have resulted from such experiments. For example the SimLex-999 dataset (Hill
+et al., 2015) gives values on a scale from 0 to 10, like the examples below, which
+range from near-synonyms (vanish, disappear) to pairs that scarcely seem to have
+anything in common (hole, agreement):
+
+9.8
+
+vanish disappear
+belief
+muscle bone
+modest ﬂexible
+hole
+
+impression 5.95
+3.65
+0.98
+
+agreement 0.3
+
+relatedness
+
+association
+
+semantic ﬁeld
+
+Word Relatedness The meaning of two words can be related in ways other than
+similarity. One such class of connections is called word relatedness (Budanitsky
+and Hirst, 2006), also traditionally called word association in psychology.
+
+Consider the meanings of the words coffee and cup. Coffee is not similar to cup;
+they share practically no features (coffee is a plant or a beverage, while a cup is a
+manufactured object with a particular shape). But coffee and cup are clearly related;
+they are associated by co-participating in an everyday event (the event of drinking
+coffee out of a cup). Similarly scalpel and surgeon are not similar but are related
+eventively (a surgeon tends to make use of a scalpel).
+
+One common kind of relatedness between words is if they belong to the same
+semantic ﬁeld. A semantic ﬁeld is a set of words which cover a particular semantic
+domain and bear structured relations with each other. For example, words might be
+
+108 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+topic models
+
+semantic frame
+
+related by being in the semantic ﬁeld of hospitals (surgeon, scalpel, nurse, anes-
+thetic, hospital), restaurants (waiter, menu, plate, food, chef), or houses (door, roof,
+kitchen, family, bed). Semantic ﬁelds are also related to topic models, like Latent
+Dirichlet Allocation, LDA, which apply unsupervised learning on large sets of texts
+to induce sets of associated words from text. Semantic ﬁelds and topic models are
+very useful tools for discovering topical structure in documents.
+
+In Chapter 23 we’ll introduce more relations between senses like hypernymy or
+
+IS-A, antonymy (opposites) and meronymy (part-whole relations).
+
+Semantic Frames and Roles Closely related to semantic ﬁelds is the idea of a
+semantic frame. A semantic frame is a set of words that denote perspectives or
+participants in a particular type of event. A commercial transaction, for example,
+is a kind of event in which one entity trades money to another entity in return for
+some good or service, after which the good changes hands or perhaps the service is
+performed. This event can be encoded lexically by using verbs like buy (the event
+from the perspective of the buyer), sell (from the perspective of the seller), pay
+(focusing on the monetary aspect), or nouns like buyer. Frames have semantic roles
+(like buyer, seller, goods, money), and words in a sentence can take on these roles.
+Knowing that buy and sell have this relation makes it possible for a system to
+know that a sentence like Sam bought the book from Ling could be paraphrased as
+Ling sold the book to Sam, and that Sam has the role of the buyer in the frame and
+Ling the seller. Being able to recognize such paraphrases is important for question
+answering, and can help in shifting perspective for machine translation.
+
+connotations
+
+sentiment
+
+Connotation Finally, words have affective meanings or connotations. The word
+connotation has different meanings in different ﬁelds, but here we use it to mean the
+aspects of a word’s meaning that are related to a writer or reader’s emotions, senti-
+ment, opinions, or evaluations. For example some words have positive connotations
+(wonderful) while others have negative connotations (dreary). Even words whose
+meanings are similar in other ways can vary in connotation; consider the difference
+in connotations between fake, knockoff, forgery, on the one hand, and copy, replica,
+reproduction on the other, or innocent (positive connotation) and naive (negative
+connotation). Some words describe positive evaluation (great, love) and others neg-
+ative evaluation (terrible, hate). Positive or negative evaluation language is called
+sentiment, as we saw in Chapter 4, and word sentiment plays a role in important
+tasks like sentiment analysis, stance detection, and applications of NLP to the lan-
+guage of politics and consumer reviews.
+
+Early work on affective meaning (Osgood et al., 1957) found that words varied
+
+along three important dimensions of affective meaning:
+
+valence: the pleasantness of the stimulus
+
+arousal: the intensity of emotion provoked by the stimulus
+
+dominance: the degree of control exerted by the stimulus
+
+Thus words like happy or satisﬁed are high on valence, while unhappy or an-
+noyed are low on valence. Excited is high on arousal, while calm is low on arousal.
+Controlling is high on dominance, while awed or inﬂuenced are low on dominance.
+Each word is thus represented by three numbers, corresponding to its value on each
+of the three dimensions:
+
+6.2
+
+• VECTOR SEMANTICS
+
+109
+
+Valence Arousal Dominance
+
+courageous 8.05
+music
+7.67
+heartbreak 2.45
+6.71
+cub
+
+5.5
+5.57
+5.65
+3.95
+
+7.38
+6.5
+3.58
+4.24
+
+Osgood et al. (1957) noticed that in using these 3 numbers to represent the
+meaning of a word, the model was representing each word as a point in a three-
+dimensional space, a vector whose three dimensions corresponded to the word’s
+rating on the three scales. This revolutionary idea that word meaning could be rep-
+resented as a point in space (e.g., that part of the meaning of heartbreak can be
+represented as the point [2.45, 5.65, 3.58]) was the ﬁrst expression of the vector se-
+mantics models that we introduce next.
+
+6.2 Vector Semantics
+
+vector
+semantics
+
+Vector semantics is the standard way to represent word meaning in NLP, helping
+us model many of the aspects of word meaning we saw in the previous section. The
+roots of the model lie in the 1950s when two big ideas converged: Osgood’s 1957
+idea mentioned above to use a point in three-dimensional space to represent the
+connotation of a word, and the proposal by linguists like Joos (1950), Harris (1954),
+and Firth (1957) to deﬁne the meaning of a word by its distribution in language
+use, meaning its neighboring words or grammatical environments. Their idea was
+that two words that occur in very similar distributions (whose neighboring words are
+similar) have similar meanings.
+
+For example, suppose you didn’t know the meaning of the word ongchoi (a re-
+
+cent borrowing from Cantonese) but you see it in the following contexts:
+
+(6.1) Ongchoi is delicious sauteed with garlic.
+(6.2) Ongchoi is superb over rice.
+(6.3) ...ongchoi leaves with salty sauces...
+
+And suppose that you had seen many of these context words in other contexts:
+
+(6.4) ...spinach sauteed with garlic over rice...
+(6.5) ...chard stems and leaves are delicious...
+(6.6) ...collard greens and other salty leafy greens
+
+The fact that ongchoi occurs with words like rice and garlic and delicious and
+salty, as do words like spinach, chard, and collard greens might suggest that ongchoi
+is a leafy green similar to these other leafy greens.1 We can do the same thing
+computationally by just counting words in the context of ongchoi.
+
+The idea of vector semantics is to represent a word as a point in a multidimen-
+sional semantic space that is derived (in ways we’ll see) from the distributions of
+word neighbors. Vectors for representing words are called embeddings (although
+the term is sometimes more strictly applied only to dense vectors like word2vec
+(Section 6.8), rather than sparse tf-idf or PPMI vectors (Section 6.3-Section 6.6)).
+The word “embedding” derives from its mathematical sense as a mapping from one
+space or structure to another, although the meaning has shifted; see the end of the
+chapter.
+
+1
+
+It’s in fact Ipomoea aquatica, a relative of morning glory sometimes called water spinach in English.
+
+embeddings
+
+110 CHAPTER 6
+
+• VECTOR SEMANTICS AND EMBEDDINGS
+
+Figure 6.1 A two-dimensional (t-SNE) projection of embeddings for some words and
+phrases, showing that words with similar meanings are nearby in space. The original 60-
+dimensional embeddings were trained for sentiment analysis. Simpliﬁed from Li et al. (2015)
+with colors added for explanation.
+
+Fig. 6.1 shows a visualization of embeddings learned for sentiment analysis,
+showing the location of selected words projected down from 60-dimensional space
+into a two dimensional space. Notice the distinct regions containing positive words,
+negative words, and neutral function words.
+
+The ﬁne-grained model of word similarity of vector semantics offers enormous
+power to NLP applications. NLP applications like the sentiment classiﬁers of Chap-
+ter 4 or Chapter 5 depend on the same words appearing in the training and test sets.
+But by representing words as embeddings, classiﬁers can assign sentiment as long as
+it sees some words with similar meanings. And as we’ll see, vector semantic models
+can be learned automatically from text without supervision.
+
+In this chapter we’ll introduce the two most commonly used models. In the tf-idf
+model, an important baseline, the meaning of a word is deﬁned by a simple function
+of the counts of nearby words. We will see that this method results in very long
+vectors that are sparse, i.e. mostly zeros (since most words simply never occur in
+the context of others). We’ll introduce the word2vec model family for construct-
+ing short, dense vectors that have useful semantic properties. We’ll also introduce
+the cosine, the standard way to use embeddings to compute semantic similarity, be-
+tween two words, two sentences, or two documents, an important tool in practical
+applications like question answering, summarization, or automatic essay grading.
+
+6.3 Words and Vectors
+
+“The most important attributes of a vector in 3-space are
+
+”
+Location, Location, Location
+}
+Randall Munroe, https://xkcd.com/2358/
+
+{
+
+Vector or distributional models of meaning are generally based on a co-occurrence
+
+matrix, a way of representing how often words co-occur. We’ll look at two popular
+matrices: the term-document matrix and the term-term matrix.
+
+6.3.1 Vectors and documents
+
+term-document
+matrix
+
+In a term-document matrix, each row represents a word in the vocabulary and each
+column represents a document from some collection of documents. Fig. 6.2 shows a
+small selection from a term-document matrix showing the occurrence of four words
+in four plays by Shakespeare. Each cell in this matrix represents the number of times
+
+goodnicebadworstnot goodwonderfulamazingterriﬁcdislikeworsevery goodincredibly goodfantasticincredibly badnowyouithatwithbyto’sareisathan6.3
+
+• WORDS AND VECTORS
+
+111
+
+a particular word (deﬁned by the row) occurs in a particular document (deﬁned by
+the column). Thus fool appeared 58 times in Twelfth Night.
+
+As You Like It
+1
+114
+36
+20
+
+battle
+good
+fool
+wit
+Figure 6.2 The term-document matrix for four words in four Shakespeare plays. Each cell
+contains the number of times the (row) word occurs in the (column) document.
+
+Twelfth Night
+0
+80
+58
+15
+
+Julius Caesar
+7
+62
+1
+2
+
+Henry V
+13
+89
+4
+3
+
+vector space
+model
+
+vector
+
+vector space
+
+dimension
+
+The term-document matrix of Fig. 6.2 was ﬁrst deﬁned as part of the vector
+space model of information retrieval (Salton, 1971). In this model, a document is
+represented as a count vector, a column in Fig. 6.3.
+
+To review some basic linear algebra, a vector is, at heart, just a list or array of
+numbers. So As You Like It is represented as the list [1,114,36,20] (the ﬁrst column
+vector in Fig. 6.3) and Julius Caesar is represented as the list [7,62,1,2] (the third
+column vector). A vector space is a collection of vectors, characterized by their
+dimension. In the example in Fig. 6.3, the document vectors are of dimension 4,
+just so they ﬁt on the page; in real term-document matrices, the vectors representing
+each document would have dimensionality
+
+V
+|
+The ordering of the numbers in a vector space indicates different dimensions on
+which documents vary. Thus the ﬁrst dimension for both these vectors corresponds
+to the number of times the word battle occurs, and we can compare each dimension,
+noting for example that the vectors for As You Like It and Twelfth Night have similar
+values (1 and 0, respectively) for the ﬁrst dimension.
+
+, the vocabulary size.
+|
+
+battle
+good
+fool
+wit
+
+As You Like It
+1
+114
+36
+20
+
+Twelfth Night
+0
+80
+58
+15
+
+Julius Caesar
+7
+62
+1
+2
+
+Henry V
+13
+89
+4
+3
+
+Figure 6.3 The term-document matrix for four words in four Shakespeare plays. The red
+boxes show that each document is represented as a column vector of length four.
+
+We can think of the vector for a document as a point in
+
+-dimensional space;
+|
+thus the documents in Fig. 6.3 are points in 4-dimensional space. Since 4-dimensional
+spaces are hard to visualize, Fig. 6.4 shows a visualization in two dimensions; we’ve
+arbitrarily chosen the dimensions corresponding to the words battle and fool.
+
+V
+|
+
+Term-document matrices were originally deﬁned as a means of ﬁnding similar
+documents for the task of document information retrieval. Two documents that are
+similar will tend to have similar words, and if two documents have similar words
+their column vectors will tend to be similar. The vectors for the comedies As You
+Like It [1,114,36,20] and Twelfth Night [0,80,58,15] look a lot more like each other
+(more fools and wit than battles) than they look like Julius Caesar [7,62,1,2] or
+Henry V [13,89,4,3]. This is clear with the raw numbers; in the ﬁrst dimension
+(battle) the c

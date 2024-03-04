@@ -1,0 +1,564 @@
+ionScaleinductionLookingaheadExample:attenuatorsIMDB – 53,775 tokensCategory-0.50-0.39-0.28-0.17-0.060.060.170.280.390.500.050.090.15Cat = 0.33 (p = 0.004)Cat^2 = -4.02 (p < 0.001)OpenTable – 3,890 tokensCategory-0.50-0.250.000.250.500.080.38Cat = 0.11 (p = 0.707)Cat^2 = -6.2 (p = 0.014)Goodreads – 3,424 tokensCategory-0.50-0.250.000.250.500.080.190.36Cat = -0.55 (p = 0.128)Cat^2 = -5.04 (p = 0.016)Amazon/Tripadvisor – 2,060 tokensCategory-0.50-0.250.000.250.500.120.28Cat = 0.42 (p = 0.207)Cat^2 = -2.74 (p = 0.05)somewhat/rIMDB – 33,515 tokensCategory-0.50-0.39-0.28-0.17-0.060.060.170.280.390.500.040.090.17Cat = -0.13 (p = 0.284)Cat^2 = -5.37 (p < 0.001)OpenTable – 2,829 tokensCategory-0.50-0.250.000.250.500.080.31Cat = 0.2 (p = 0.265)Cat^2 = -4.16 (p = 0.007)Goodreads – 1,806 tokensCategory-0.50-0.250.000.250.500.050.120.180.35Cat = -0.87 (p = 0.016)Cat^2 = -5.74 (p = 0.004)Amazon/Tripadvisor – 2,158 tokensCategory-0.50-0.250.000.250.500.110.29Cat = 0.54 (p = 0.183)Cat^2 = -3.32 (p = 0.045)fairly/rIMDB – 176,264 tokensCategory-0.50-0.39-0.28-0.17-0.060.060.170.280.390.500.050.090.13Cat = -0.43 (p < 0.001)Cat^2 = -3.6 (p < 0.001)OpenTable – 8,982 tokensCategory-0.50-0.250.000.250.500.080.140.190.32Cat = -0.64 (p = 0.035)Cat^2 = -4.47 (p = 0.007)Goodreads – 11,895 tokensCategory-0.50-0.250.000.250.500.070.150.34Cat = -0.71 (p = 0.072)Cat^2 = -4.59 (p = 0.018)Amazon/Tripadvisor – 5,980 tokensCategory-0.50-0.250.000.250.500.150.28Cat = 0.26 (p = 0.496)Cat^2 = -2.23 (p = 0.131)pretty/r“Potts&diagrams”Potts,&Christopher.&2011.&NSF&workshop&on&restructuring&adjectives.goodgreatexcellentdisappointingbadterribletotallyabsolutelyutterlysomewhatfairlyprettyPositive scalarsNegative scalarsEmphaticsAttenuators1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating21.5
+
+• SUPERVISED LEARNING OF WORD SENTIMENT
+
+473
+
+Figure 21.11 Potts diagrams (Potts, 2011) for emphatic and attenuating adverbs.
+
+than cheap restaurants.
+
+Given two classes of documents, to ﬁnd words more associated with one cate-
+gory than another, we could measure the difference in frequencies (is a word w more
+frequent in class A or class B?). Or instead of the difference in frequencies we could
+compute the ratio of frequencies, or compute the log odds ratio (the log of the ratio
+between the odds of the two words). We could then sort words by whichever associ-
+ation measure we pick, ranging from words overrepresented in category A to words
+overrepresented in category B.
+
+The problem with simple log-likelihood or log odds methods is that they overem-
+phasize differences in very rare words, and often also in very frequent words. Very
+rare words will seem to occur very differently in the two corpora since with tiny
+counts there may be statistical ﬂuctations, or even zero occurrences in one corpus
+compared to non-zero occurrences in the other. Very frequent words will also seem
+different since all counts are large.
+
+In this section we walk through the details of one solution to this problem: the
+“log odds ratio informative Dirichlet prior” method of Monroe et al. (2008) that is a
+particularly useful method for ﬁnding words that are statistically overrepresented in
+one particular category of texts compared to another. It’s based on the idea of using
+another large corpus to get a prior estimate of what we expect the frequency of each
+word to be.
+
+Let’s start with the goal: assume we want to know whether the word horrible
+occurs more in corpus i or corpus j. We could compute the log likelihood ratio,
+using f i(w) to mean the frequency of word w in corpus i, and ni to mean the total
+number of words in corpus i:
+
+log likelihood
+ratio
+
+llr(horrible) = log
+
+Pi(horrible)
+P j(horrible)
+= log Pi(horrible)
+fi(horrible)
+ni
+
+= log
+
+log P j(horrible)
+f j(horrible)
+n j
+
+log
+
+(21.7)
+
+−
+
+−
+
+log odds ratio
+
+Instead, let’s compute the log odds ratio: does horrible have higher odds in i or in
+
+OverviewDataMethodsCategorizationScaleinductionLookingaheadExample:attenuatorsIMDB – 53,775 tokensCategory-0.50-0.39-0.28-0.17-0.060.060.170.280.390.500.050.090.15Cat = 0.33 (p = 0.004)Cat^2 = -4.02 (p < 0.001)OpenTable – 3,890 tokensCategory-0.50-0.250.000.250.500.080.38Cat = 0.11 (p = 0.707)Cat^2 = -6.2 (p = 0.014)Goodreads – 3,424 tokensCategory-0.50-0.250.000.250.500.080.190.36Cat = -0.55 (p = 0.128)Cat^2 = -5.04 (p = 0.016)Amazon/Tripadvisor – 2,060 tokensCategory-0.50-0.250.000.250.500.120.28Cat = 0.42 (p = 0.207)Cat^2 = -2.74 (p = 0.05)somewhat/rIMDB – 33,515 tokensCategory-0.50-0.39-0.28-0.17-0.060.060.170.280.390.500.040.090.17Cat = -0.13 (p = 0.284)Cat^2 = -5.37 (p < 0.001)OpenTable – 2,829 tokensCategory-0.50-0.250.000.250.500.080.31Cat = 0.2 (p = 0.265)Cat^2 = -4.16 (p = 0.007)Goodreads – 1,806 tokensCategory-0.50-0.250.000.250.500.050.120.180.35Cat = -0.87 (p = 0.016)Cat^2 = -5.74 (p = 0.004)Amazon/Tripadvisor – 2,158 tokensCategory-0.50-0.250.000.250.500.110.29Cat = 0.54 (p = 0.183)Cat^2 = -3.32 (p = 0.045)fairly/rIMDB – 176,264 tokensCategory-0.50-0.39-0.28-0.17-0.060.060.170.280.390.500.050.090.13Cat = -0.43 (p < 0.001)Cat^2 = -3.6 (p < 0.001)OpenTable – 8,982 tokensCategory-0.50-0.250.000.250.500.080.140.190.32Cat = -0.64 (p = 0.035)Cat^2 = -4.47 (p = 0.007)Goodreads – 11,895 tokensCategory-0.50-0.250.000.250.500.070.150.34Cat = -0.71 (p = 0.072)Cat^2 = -4.59 (p = 0.018)Amazon/Tripadvisor – 5,980 tokensCategory-0.50-0.250.000.250.500.150.28Cat = 0.26 (p = 0.496)Cat^2 = -2.23 (p = 0.131)pretty/r“Potts&diagrams”Potts,&Christopher.&2011.&NSF&workshop&on&restructuring&adjectives.goodgreatexcellentdisappointingbadterribletotallyabsolutelyutterlysomewhatfairlyprettyPositive scalarsNegative scalarsEmphaticsAttenuators1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating1  2  3  4  5  6  7  8  9  10rating474 CHAPTER 21
+
+• LEXICONS FOR SENTIMENT, AFFECT, AND CONNOTATION
+
+j:
+
+lor(horrible) = log
+
+1
+
+(cid:18)
+
+Pi(horrible)
+
+Pi(horrible)
+−
+fi(horrible)
+ni
+
+fi(horrible)
+ni
+
+−
+fi(horrible)
+
+log
+
+1
+
+(cid:18)
+
+−
+
+(cid:19)
+
+log 
+
+−
+
+
+
+
+
+
+
+
+
+1
+
+log
+
+P j(horrible)
+
+−
+
+P j(horrible)
+f j(horrible)
+n j
+
+f j(horrible)
+n j
+
+−
+f j(horrible)
+
+(cid:19)
+
+
+
+
+
+
+1
+
+= log 
+
+
+
+
+= log
+
+(21.8)
+
+(cid:19)
+
+(cid:18)
+
+−
+
+−
+
+ni
+
+n j
+
+fi(horrible)
+The Dirichlet intuition is to use a large background corpus to get a prior estimate of
+what we expect the frequency of each word w to be. We’ll do this very simply by
+adding the counts from that corpus to the numerator and denominator, so that we’re
+essentially shrinking the counts toward that prior. It’s like asking how large are the
+differences between i and j given what we would expect given their frequencies in
+a well-estimated large background corpus.
+
+f j(horrible)
+
+−
+
+(cid:18)
+
+(cid:19)
+
+The method estimates the difference between the frequency of word w in two
+, which is estimated
+
+corpora i and j via the prior-modiﬁed log odds ratio for w, δ (i
+−
+w
+as:
+
+j)
+
+j)
+
+−
+
+(cid:18)
+
+δ (i
+w
+
+= log
+
+f i
+w + αw
+( f i
+ni + α0 −
+
+f j
+w + αw
+( f j
+n j + α0 −
+(where ni is the size of corpus i, n j is the size of corpus j, f i
+w is the count of word
+w in corpus i, f j
+w is the count of word w in corpus j, α0 is the scaled size of the
+background corpus, and αw is the scaled count of word w in the background corpus.)
+In addition, Monroe et al. (2008) make use of an estimate for the variance of the
+
+w + αw) (cid:33)
+
+w + αw)
+
+(21.9)
+
+log
+
+(cid:32)
+
+−
+
+(cid:19)
+
+log–odds–ratio:
+
+σ 2
+
+j)
+
+ˆδ (i
+−
+w
+
+1
+f i
+w + αw
+
++
+
+1
+f j
+w + αw
+
+≈
+
+(cid:17)
+The ﬁnal statistic for a word is then the z–score of its log–odds–ratio:
+
+(cid:16)
+
+j)
+
+ˆδ (i
+−
+w
+
+σ 2
+
+j)
+
+ˆδ (i
+w
+
+−
+
+(21.10)
+
+(21.11)
+
+(cid:114)
+
+(cid:16)
+
+(cid:17)
+
+The Monroe et al. (2008) method thus modiﬁes the commonly used log odds ratio
+in two ways: it uses the z-scores of the log odds ratio, which controls for the amount
+of variance in a word’s frequency, and it uses counts from a background corpus to
+provide a prior count for words.
+
+Fig. 21.12 shows the method applied to a dataset of restaurant reviews from
+Yelp, comparing the words used in 1-star reviews to the words used in 5-star reviews
+(Jurafsky et al., 2014). The largest difference is in obvious sentiment words, with the
+1-star reviews using negative sentiment words like worse, bad, awful and the 5-star
+reviews using positive sentiment words like great, best, amazing. But there are other
+illuminating differences. 1-star reviews use logical negation (no, not), while 5-star
+reviews use emphatics and emphasize universality (very, highly, every, always). 1-
+star reviews use ﬁrst person plurals (we, us, our) while 5 star reviews use the second
+person. 1-star reviews talk about people (manager, waiter, customer) while 5-star
+reviews talk about dessert and properties of expensive restaurants like courses and
+atmosphere. See Jurafsky et al. (2014) for more details.
+
+21.6
+
+• USING LEXICONS FOR SENTIMENT RECOGNITION
+
+475
+
+Class
+Negative
+
+Negation
+
+Words in 1-star reviews
+worst, rude, terrible, horrible, bad,
+tasteless,
+awful, disgusting, bland,
+gross, mediocre, overpriced, worse,
+poor
+no, not
+
+1Pl pro
+3 pro
+Past verb was, were, asked,
+
+we, us, our
+she, he, her, him
+
+told, said, did,
+
+charged, waited, left, took
+
+Sequencers after, then
+Nouns
+
+manager, waitress, waiter, customer,
+customers, attitude, waste, poisoning,
+money, bill, minutes
+would, should
+
+Class
+Positive
+
+Emphatics/
+universals
+2 pro
+Articles
+Advice
+
+Conjunct
+Nouns
+
+Words in 5-star reviews
+great, best, love(d), delicious, amazing,
+favorite, perfect, excellent, awesome,
+friendly, fantastic, fresh, wonderful, in-
+credible, sweet, yum(my)
+very, highly, perfectly, deﬁnitely, abso-
+lutely, everything, every, always
+you
+a, the
+try, recommend
+
+also, as, well, with, and
+atmosphere, dessert, chocolate, wine,
+course, menu
+
+Irrealis
+modals
+Comp
+Figure 21.12 The top 50 words associated with one–star and ﬁve-star restaurant reviews in a Yelp dataset of
+900,000 reviews, using the Monroe et al. (2008) method (Jurafsky et al., 2014).
+
+in, of, die, city, mouth
+
+Prep, other
+
+Auxiliaries
+
+is/’s, can, ’ve, are
+
+to, that
+
+21.6 Using Lexicons for Sentiment Recognition
+
+In Chapter 4 we introduced the naive Bayes algorithm for sentiment analysis. The
+lexicons we have focused on throughout the chapter so far can be used in a number
+of ways to improve sentiment detection.
+
+In the simplest case, lexicons can be used when we don’t have sufﬁcient training
+data to build a supervised sentiment analyzer; it can often be expensive to have a
+human assign sentiment to each document to train the supervised classiﬁer.
+
+In such situations, lexicons can be used in a rule-based algorithm for classiﬁca-
+tion. The simplest version is just to use the ratio of positive to negative words: if a
+document has more positive than negative words (using the lexicon to decide the po-
+larity of each word in the document), it is classiﬁed as positive. Often a threshold λ
+is used, in which a document is classiﬁed as positive only if the ratio is greater than
+λ . If the sentiment lexicon includes positive and negative weights for each word,
+θ +
+w and θ −w , these can be used as well. Here’s a simple such sentiment algorithm:
+
+f + =
+
+f − =
+
+(cid:88)w s.t. w
+∈
+
+positivelexicon
+
+θ +
+w count(w)
+
+θ −w count(w)
+
+> λ
+
+negativelexicon
+
+(cid:88)w s.t. w
+∈
++ if f +
+f −
+if f −
+f + > λ
+otherwise.
+
+−
+0
+
+sentiment = 
+
+
+
+(21.12)
+
+If supervised training data is available, these counts computed from sentiment lex-
+icons, sometimes weighted or normalized in various ways, can also be used as fea-
+tures in a classiﬁer along with other lexical or non-lexical features. We return to
+such algorithms in Section 21.7.
+
+476 CHAPTER 21
+
+• LEXICONS FOR SENTIMENT, AFFECT, AND CONNOTATION
+
+21.7 Using Lexicons for Affect Recognition
+
+Detection of emotion (and the other kinds of affective meaning described by Scherer
+(2000)) can be done by generalizing the algorithms described above for detecting
+sentiment.
+
+The most common algorithms involve supervised classiﬁcation: a training set is
+labeled for the affective meaning to be detected, and a classiﬁer is built using features
+extracted from the training set. As with sentiment analysis, if the training set is large
+enough, and the test set is sufﬁciently similar to the training set, simply using all
+the words or all the bigrams as features in a powerful classiﬁer like SVM or logistic
+regression, as described in Fig. 4.2 in Chapter 4, is an excellent algorithm whose
+performance is hard to beat. Thus we can treat affective meaning classiﬁcation of a
+text sample as simple document classiﬁcation.
+
+Some modiﬁcations are nonetheless often necessary for very large datasets. For
+example, the Schwartz et al. (2013) study of personality, gender, and age using 700
+million words of Facebook posts used only a subset of the n-grams of lengths 1-
+3. Only words and phrases used by at least 1% of the subjects were included as
+features, and 2-grams and 3-grams were only kept if they had sufﬁciently high PMI
+(PMI greater than 2
+
+length, where length is the number of words):
+
+∗
+
+pmi(phrase) = log
+
+p(phrase)
+
+p(w)
+
+phrase
+
+(cid:89)w
+∈
+
+(21.13)
+
+Various weights can be used for the features, including the raw count in the training
+set, or some normalized probability or log probability. Schwartz et al. (2013), for
+example, turn feature counts into phrase likelihoods by normalizing them by each
+subject’s total word use.
+
+p(phrase
+
+subject) =
+|
+
+freq(phrase, subject)
+
+freq(phrase(cid:48), subject)
+
+(21.14)
+
+phrase(cid:48)
+
+vocab(subject)
+(cid:88)
+∈
+
+If the training data is sparser, or not as similar to the test set, any of the lexicons
+we’ve discussed can play a helpful role, either alone or in combination with all the
+words and n-grams.
+
+Many possible values can be used for lexicon features. The simplest is just an
+indicator function, in which the value of a feature fL takes the value 1 if a particular
+text has any word from the relevant lexicon L. Using the notation of Chapter 4, in
+which a feature value is deﬁned for a particular output class c and document x.
+
+fL(c, x) =
+
+(cid:26)
+
+w : w
+1 if
+∃
+0 otherwise
+
+∈
+
+L & w
+
+∈
+
+x & class = c
+
+Alternatively the value of a feature fL for a particular lexicon L can be the total
+number of word tokens in the document that occur in L:
+
+fL =
+
+count(w)
+
+For lexica in which each word is associated with a score or weight, the count can be
+multiplied by a weight θ L
+w:
+
+L
+(cid:88)w
+∈
+
+fL =
+
+θ L
+wcount(w)
+
+L
+(cid:88)w
+∈
+
+21.8
+
+• LEXICON-BASED METHODS FOR ENTITY-CENTRIC AFFECT
+
+477
+
+Counts can alternatively be logged or normalized per writer as in Eq. 21.14.
+
+However they are deﬁned, these lexicon features are then used in a supervised
+classiﬁer to predict the desired affective category for the text or document. Once
+a classiﬁer is trained, we can examine which lexicon features are associated with
+which classes. For a classiﬁer like logistic regressio

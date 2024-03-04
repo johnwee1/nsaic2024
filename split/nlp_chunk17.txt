@@ -1,0 +1,981 @@
+ing rate η. A higher (faster) learning
+rate means that we should move w more on each step. The change we make in our
+parameter is the learning rate times the gradient (or the slope, in our single-variable
+
+wLoss0w1wminslope of loss at w1 is negative(goal)one stepof gradientdescent5.6
+
+• GRADIENT DESCENT
+
+95
+
+example):
+
+wt+1 = wt
+
+d
+dw
+
+η
+
+−
+
+L( f (x; w), y)
+
+(5.26)
+
+Now let’s extend the intuition from a function of one scalar variable w to many
+variables, because we don’t just want to move left or right, we want to know where
+in the N-dimensional space (of the N parameters that make up θ ) we should move.
+The gradient is just such a vector; it expresses the directional components of the
+sharpest slope along each of those N dimensions. If we’re just imagining two weight
+dimensions (say for one weight w and one bias b), the gradient might be a vector with
+two orthogonal components, each of which tells us how much the ground slopes in
+the w dimension and in the b dimension. Fig. 5.5 shows a visualization of the value
+of a 2-dimensional gradient vector taken at the red point.
+
+In an actual logistic regression, the parameter vector w is much longer than 1 or
+2, since the input feature vector x can be quite long, and we need a weight wi for
+each xi. For each dimension/variable wi in w (plus the bias b), the gradient will have
+a component that tells us the slope with respect to that variable. In each dimension
+wi, we express the slope as a partial derivative ∂
+of the loss function. Essentially
+∂ wi
+we’re asking: “How much would a small change in that variable wi inﬂuence the
+total loss function L?”
+
+Formally, then, the gradient of a multi-variable function f is a vector in which
+each component expresses the partial derivative of f with respect to one of the vari-
+ables. We’ll use the inverted Greek delta symbol ∇ to refer to the gradient, and
+represent ˆy as f (x; θ ) to make the dependence on θ more obvious:
+
+∇L( f (x; θ ), y) =
+
+
+
+
+
+
+
+
+The ﬁnal equation for updating θ based on the gradient is thus
+
+
+
+
+
+
+
+
+
+
+
+
+
+∂
+∂ w1
+∂
+∂ w2
+
+L( f (x; θ ), y)
+L( f (x; θ ), y)
+...
+∂
+L( f (x; θ ), y)
+∂ wn
+∂
+∂ b L( f (x; θ ), y)
+
+θ t+1 = θ t
+
+−
+
+η∇L( f (x; θ ), y)
+
+(5.27)
+
+(5.28)
+
+Figure 5.5 Visualization of the gradient vector at the red point in two dimensions w and
+b, showing a red arrow in the x-y plane pointing in the direction we will go to look for the
+minimum: the opposite direction of the gradient (recall that the gradient points in the direction
+of increase not decrease).
+
+Cost(w,b)wb96 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+5.6.1 The Gradient for Logistic Regression
+
+In order to update θ , we need a deﬁnition for the gradient ∇L( f (x; θ ), y). Recall that
+for logistic regression, the cross-entropy loss function is:
+
+LCE( ˆy, y) =
+
+[y log σ (w
+
+x + b) + (1
+
+y) log (1
+
+σ (w
+
+·
+
+−
+
+−
+
+·
+
+−
+
+x + b))]
+
+(5.29)
+
+It turns out that the derivative of this function for one observation vector x is Eq. 5.30
+(the interested reader can see Section 5.10 for the derivation of this equation):
+
+∂ LCE( ˆy, y)
+∂ w j
+
+= [σ (w
+
+x + b)
+
+y]x j
+
+−
+
+·
+y)x j
+
+= ( ˆy
+
+−
+
+You’ll also sometimes see this equation in the equivalent form:
+
+∂ LCE( ˆy, y)
+∂ w j
+
+=
+
+(y
+
+−
+
+−
+
+ˆy)x j
+
+(5.30)
+
+(5.31)
+
+hyperparameter
+
+Note in these equations that the gradient with respect to a single weight w j rep-
+resents a very intuitive value: the difference between the true y and our estimated
+ˆy = σ (w
+x + b) for that observation, multiplied by the corresponding input value
+x j.
+
+·
+
+5.6.2 The Stochastic Gradient Descent Algorithm
+
+Stochastic gradient descent is an online algorithm that minimizes the loss function
+by computing its gradient after each training example, and nudging θ in the right
+direction (the opposite direction of the gradient). (An “online algorithm” is one that
+processes its input example by example, rather than waiting until it sees the entire
+input.) Fig. 5.6 shows the algorithm.
+
+The learning rate η is a hyperparameter that must be adjusted. If it’s too high,
+the learner will take steps that are too large, overshooting the minimum of the loss
+function. If it’s too low, the learner will take steps that are too small, and take too
+long to get to the minimum. It is common to start with a higher learning rate and then
+slowly decrease it, so that it is a function of the iteration k of training; the notation
+ηk can be used to mean the value of the learning rate at iteration k.
+
+We’ll discuss hyperparameters in more detail in Chapter 7, but in short, they are
+a special kind of parameter for any machine learning model. Unlike regular param-
+eters of a model (weights like w and b), which are learned by the algorithm from
+the training set, hyperparameters are special parameters chosen by the algorithm
+designer that affect how the algorithm works.
+
+5.6.3 Working through an example
+
+Let’s walk through a single step of the gradient descent algorithm. We’ll use a
+simpliﬁed version of the example in Fig. 5.2 as it sees a single observation x, whose
+correct value is y = 1 (this is a positive review), and with a feature vector x = [x1, x2]
+consisting of these two features:
+
+x1 = 3
+x2 = 2
+
+(count of positive lexicon words)
+
+(count of negative lexicon words)
+
+5.6
+
+• GRADIENT DESCENT
+
+97
+
+function STOCHASTIC GRADIENT DESCENT(L(), f (), x, y) returns θ
+
+# where: L is the loss function
+#
+#
+#
+
+f is a function parameterized by θ
+x is the set of training inputs x(1), x(2), ..., x(m)
+y is the set of training outputs (labels) y(1), y(2), ..., y(m)
+
+0
+
+θ
+repeat til done # see caption
+
+←
+For each training tuple (x(i), y(i)) (in random order)
+
+1. Optional (for reporting):
+
+Compute ˆy (i) = f (x(i); θ )
+Compute the loss L( ˆy (i), y(i)) # How far off is ˆy(i) from the true output y(i)?
+
+# How are we doing on this tuple?
+# What is our estimated output ˆy?
+
+2. g
+3. θ
+return θ
+
+←
+←
+
+∇θ L( f (x(i); θ ), y(i))
+θ
+
+η g
+
+−
+
+# How should we move θ to maximize loss?
+# Go the other way instead
+
+Figure 5.6 The stochastic gradient descent algorithm. Step 1 (computing the loss) is used
+mainly to report how well we are doing on the current tuple; we don’t need to compute the
+loss in order to compute the gradient. The algorithm can terminate when it converges (or
+when the gradient norm < (cid:15)), or when progress halts (for example when the loss starts going
+up on a held-out set).
+
+Let’s assume the initial weights and bias in θ 0 are all set to 0, and the initial learning
+rate η is 0.1:
+
+w1 = w2 = b = 0
+
+η = 0.1
+
+The single update step requires that we compute the gradient, multiplied by the
+learning rate
+
+θ t+1 = θ t
+
+−
+
+η∇θ L( f (x(i); θ ), y(i))
+
+In our mini example there are three parameters, so the gradient vector has 3 dimen-
+sions, for w1, w2, and b. We can compute the ﬁrst gradient as follows:
+
+∇w,bL = 
+
+
+
+
+∂ LCE( ˆy,y)
+∂ w1
+∂ LCE( ˆy,y)
+∂ w2
+∂ LCE( ˆy,y)
+∂ b
+
+=
+
+
+
+
+
+
+
+
+(σ (w
+(σ (w
+σ (w
+
+x + b)
+·
+x + b)
+·
+x + b)
+
+y)x1
+−
+y)x2
+−
+y
+−
+
+·
+
+=
+
+
+
+
+
+(σ (0)
+(σ (0)
+σ (0)
+
+1)x1
+−
+1)x2
+−
+1
+−
+
+=
+
+
+
+
+
+=
+
+
+
+
+
+0.5x1
+0.5x2
+0.5
+
+−
+−
+−
+
+1.5
+1.0
+0.5
+
+−
+−
+−
+
+
+
+
+
+
+Now that we have a gradient, we compute the new parameter vector θ 1 by moving
+θ 0 in the opposite direction from the gradient:
+
+
+
+
+
+
+
+
+
+
+
+
+
+w1
+w2
+b
+
+1.5
+1.0
+0.5
+
+.15
+.1
+.05
+
+θ 1 =
+
+−
+−
+−
+So after one step of gradient descent, the weights have shifted to be: w1 = .15,
+w2 = .1, and b = .05.
+
+−
+
+=
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+η
+
+Note that this observation x happened to be a positive example. We would expect
+that after seeing more negative examples with high counts of negative words, that
+the weight w2 would shift to have a negative value.
+
+98 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+5.6.4 Mini-batch training
+
+batch training
+
+mini-batch
+
+Stochastic gradient descent is called stochastic because it chooses a single random
+example at a time, moving the weights so as to improve performance on that single
+example. That can result in very choppy movements, so it’s common to compute the
+gradient over batches of training instances rather than a single instance.
+
+For example in batch training we compute the gradient over the entire dataset.
+By seeing so many examples, batch training offers a superb estimate of which di-
+rection to move the weights, at the cost of spending a lot of time processing every
+single example in the training set to compute this perfect direction.
+
+A compromise is mini-batch training: we train on a group of m examples (per-
+haps 512, or 1024) that is less than the whole dataset. (If m is the size of the dataset,
+then we are doing batch gradient descent; if m = 1, we are back to doing stochas-
+tic gradient descent.) Mini-batch training also has the advantage of computational
+efﬁciency. The mini-batches can easily be vectorized, choosing the size of the mini-
+batch based on the computational resources. This allows us to process all the exam-
+ples in one mini-batch in parallel and then accumulate the loss, something that’s not
+possible with individual or batch training.
+
+We just need to deﬁne mini-batch versions of the cross-entropy loss function
+we deﬁned in Section 5.5 and the gradient in Section 5.6.1. Let’s extend the cross-
+entropy loss for one example from Eq. 5.23 to mini-batches of size m. We’ll continue
+to use the notation that x(i) and y(i) mean the ith training features and training label,
+respectively. We make the assumption that the training examples are independent:
+
+log p(training labels) = log
+
+m
+
+p(y(i)
+
+m
+
+(cid:89)i=1
+log p(y(i)
+
+x(i))
+|
+
+x(i))
+|
+
+=
+
+=
+
+(cid:88)i=1
+m
+
+−
+
+(cid:88)i=1
+
+LCE( ˆy(i), y(i))
+
+(5.32)
+
+Now the cost function for the mini-batch of m examples is the average loss for each
+example:
+
+Cost( ˆy, y) =
+
+1
+m
+
+=
+
+−
+
+m
+
+LCE( ˆy(i), y(i))
+
+(cid:88)i=1
+m
+1
+m
+
+(cid:88)i=1
+
+y(i) log σ (w
+
+·
+
+x(i) + b) + (1
+
+−
+
+y(i)) log
+
+1
+
+(cid:16)
+
+σ (w
+
+−
+
+·
+
+x(i) + b)
+(cid:17)
+
+(5.33)
+
+The mini-batch gradient is the average of the individual gradients from Eq. 5.30:
+
+∂Cost( ˆy, y)
+∂ w j
+
+=
+
+1
+m
+
+m
+
+σ (w
+
+(cid:88)i=1 (cid:104)
+
+x(i) + b)
+
+·
+
+−
+
+y(i)
+
+x(i)
+j
+
+(cid:105)
+
+(5.34)
+
+Instead of using the sum notation, we can more efﬁciently compute the gradient
+in its matrix form, following the vectorization we saw on page 87, where we have
+a matrix X of size [m
+f ] representing the m inputs in the batch, and a vector y of
+size [m
+
+1] representing the correct outputs:
+
+×
+
+×
+
+5.7 Regularization
+
+5.7
+
+• REGULARIZATION
+
+99
+
+∂Cost( ˆy, y)
+∂ w
+
+=
+
+=
+
+1
+m
+1
+m
+
+(cid:124)
+y)
+
+X
+
+(ˆy
+
+−
+
+(σ (Xw + b)
+
+(cid:124)
+y)
+
+X
+
+−
+
+(5.35)
+
+Numquam ponenda est pluralitas sine necessitate
+‘Plurality should never be proposed unless needed’
+William of Occam
+
+overﬁtting
+
+generalize
+
+regularization
+
+L2
+regularization
+
+There is a problem with learning weights that make the model perfectly match the
+training data. If a feature is perfectly predictive of the outcome because it happens
+to only occur in one class, it will be assigned a very high weight. The weights for
+features will attempt to perfectly ﬁt details of the training set, in fact too perfectly,
+modeling noisy factors that just accidentally correlate with the class. This problem is
+called overﬁtting. A good model should be able to generalize well from the training
+data to the unseen test set, but a model that overﬁts will have poor generalization.
+
+To avoid overﬁtting, a new regularization term R(θ ) is added to the objective
+function in Eq. 5.25, resulting in the following objective for a batch of m exam-
+ples (slightly rewritten from Eq. 5.25 to be maximizing log probability rather than
+minimizing loss, and removing the 1
+
+m term which doesn’t affect the argmax):
+
+m
+
+ˆθ = argmax
+
+log P(y(i)
+
+θ
+
+(cid:88)i=1
+
+x(i))
+|
+
+−
+
+αR(θ )
+
+(5.36)
+
+The new regularization term R(θ ) is used to penalize large weights. Thus a setting
+of the weights that matches the training data perfectly— but uses many weights with
+high values to do so—will be penalized more than a setting that matches the data a
+little less well, but does so using smaller weights. There are two common ways to
+compute this regularization term R(θ ). L2 regularization is a quadratic function of
+the weight values, named because it uses the (square of the) L2 norm of the weight
+||2, is the same as the Euclidean distance of the vector θ
+θ
+values. The L2 norm,
+||
+from the origin. If θ consists of n weights, then:
+
+R(θ ) =
+
+θ
+
+||
+
+2
+2 =
+||
+
+n
+
+θ 2
+j
+
+(cid:88)j=1
+
+The L2 regularized objective function becomes:
+
+ˆθ = argmax
+
+θ
+
+m
+
+(cid:34)
+
+(cid:88)i=1
+
+log P(y(i)
+
+x(i))
+|
+
+(cid:35) −
+
+α
+
+n
+
+θ 2
+j
+
+(cid:88)j=1
+
+(5.37)
+
+(5.38)
+
+L1
+regularization
+
+L1 regularization is a linear function of the weight values, named after the L1 norm
+W
+||1, the sum of the absolute values of the weights, or Manhattan distance (the
+
+||
+
+100 CHAPTER 5
+
+• LOGISTIC REGRESSION
+
+Manhattan distance is the distance you’d have to walk between two points in a city
+with a street grid like New York):
+
+R(θ ) =
+
+θ
+
+||
+
+||1 =
+
+n
+
+(cid:88)i=1
+
+θi|
+|
+
+The L1 regularized objective function becomes:
+
+ˆθ = argmax
+
+θ
+
+m
+
+(cid:34)
+
+(cid:88)i=1
+
+log P(y(i)
+
+x(i))
+|
+
+(cid:35) −
+
+α
+
+n
+
+(cid:88)j=1
+
+θ j|
+|
+
+(5.39)
+
+(5.40)
+
+lasso
+
+ridge
+
+These kinds of regularization come from statistics, where L1 regularization is called
+lasso regression (Tibshirani, 1996) and L2 regularization is called ridge regression,
+and both are commonly used in language processing. L2 regularization is easier to
+optimize because of its simple derivative (the derivative of θ 2 is just 2θ ), while
+L1 regularization is more complex (the derivative of
+is non-continuous at zero).
+But while L2 prefers weight vectors with many small weights, L1 prefers sparse
+solutions with some larger weights but many more weights set to zero. Thus L1
+regularization leads to much sparser weight vectors, that is, far fewer features.
+
+θ
+|
+
+|
+
+Both L1 and L2 regularization have Bayesian interpretations as constraints on
+the prior of how weights should look. L1 regularization can be viewed as a Laplace
+prior on the weights. L2 regularization corresponds to assuming that weights are
+distributed according to a Gaussian distribution with mean µ = 0. In a Gaussian
+or normal distribution, the further away a value is from the mean, the lower its
+probability (scaled by the variance σ ). By using a Gaussian prior on the weights, we
+are saying that weights prefer to have the value 0. A Gaussian for a weight θ j is
+
+1
+
+2πσ 2
+j
+
+exp
+
+(cid:32)−
+
+µ j)2
+
+(θ j −
+2σ 2
+j
+
+(cid:33)
+
+(5.41)
+
+If we multiply each weight by a Gaussian prior on the weight, we are thus maximiz-
+ing the following constraint:
+
+(cid:113)
+
+ˆθ = argmax
+
+θ
+
+m
+
+(cid:89)i=1
+
+P(y(i)
+
+x(i))
+|
+
+×
+
+n
+
+(cid:89)j=1
+
+1
+
+2πσ 2
+j
+
+exp
+
+(cid:32)−
+
+µ j)2
+
+(θ j −
+2σ 2
+j
+
+(cid:33)
+
+(5.42)
+
+which in log space, with µ = 0, and assuming 2σ 2 = 1, corresponds to
+
+(cid:113)
+
+m
+
+ˆθ = argmax
+
+log P(y(i)
+
+(cid:88)i=1
+which is in the same form as Eq. 5.38.
+
+θ
+
+x(i))
+|
+
+−
+
+α
+
+n
+
+θ 2
+j
+
+(cid:88)j=1
+
+(5.43)
+
+5.8 Learning in Multinomial Logistic Regression
+
+The loss function for multinomial logistic regression generalizes the loss function
+for binary logistic regression from 2 to K classes. Recall that that the cross-entropy
+loss for binary logistic regression (repeated from Eq. 5.23) is:
+
+LCE( ˆy, y) =
+
+x) =
+log p(y
+|
+
+−
+
+−
+
+[y log ˆy + (1
+
+y) log(1
+
+ˆy)]
+
+−
+
+−
+
+(5.44)
+
+5.8
+
+• LEARNING IN MULTINOMIAL LOGISTIC REGRESSION
+
+101
+
+The loss function for multinomial logistic regression generalizes the two terms in
+Eq. 5.44 (one that is non-zero when y = 1 and one that is non-zero when y = 0) to
+K terms. As we mentioned above, for multinomial regression we’ll represent both y
+and ˆy as vectors. The tru

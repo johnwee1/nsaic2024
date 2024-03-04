@@ -1,0 +1,493 @@
+uting a semantic axis.
+
+In the ﬁrst step, we choose seed words by hand. There are two methods for
+dealing with the fact that the affect of a word is different in different contexts: (1)
+start with a single large seed lexicon and rely on the induction algorithm to ﬁne-tune
+it to the domain, or (2) choose different seed words for different genres. Hellrich
+et al. (2019) suggests that for modeling affect across different historical time periods,
+starting with a large modern affect dictionary is better than small seedsets tuned to be
+stable across time. As an example of the second approach, Hamilton et al. (2016a)
+deﬁne one set of seed words for general sentiment analysis, a different set for Twitter,
+and yet another set for sentiment in ﬁnancial text:
+
+Domain
+
+Positive seeds
+
+Negative seeds
+
+General
+
+Twitter
+
+Finance
+
+loved,
+
+loved,
+
+good, lovely, excellent, fortunate, pleas-
+ant, delightful, perfect,
+love,
+happy
+loves, awesome, nice,
+love,
+amazing, best, fantastic, correct, happy
+successful, excellent, proﬁt, beneﬁcial,
+improving,
+improved, success, gains,
+positive
+
+bad, horrible, poor, unfortunate, un-
+pleasant, disgusting, evil, hated, hate,
+unhappy
+hate, hated, hates, terrible, nasty, awful,
+worst, horrible, wrong, sad
+negligent, loss, volatile, wrong, losses,
+damages, bad, litigation, failure, down,
+negative
+
+In the second step, we compute embeddings for each of the pole words. These
+embeddings can be off-the-shelf word2vec embeddings, or can be computed directly
+
+468 CHAPTER 21
+
+• LEXICONS FOR SENTIMENT, AFFECT, AND CONNOTATION
+
+on a speciﬁc corpus (for example using a ﬁnancial corpus if a ﬁnance lexicon is the
+goal), or we can ﬁne-tune off-the-shelf embeddings to a corpus. Fine-tuning is espe-
+cially important if we have a very speciﬁc genre of text but don’t have enough data
+to train good embeddings. In ﬁne-tuning, we begin with off-the-shelf embeddings
+like word2vec, and continue training them on the small target corpus.
+
+Once we have embeddings for each pole word, we create an embedding that
+represents each pole by taking the centroid of the embeddings of each of the seed
+words; recall that the centroid is the multidimensional version of the mean. Given
+1 ), E(w+
+2 ), ..., E(w+
+a set of embeddings for the positive seed words S+ =
+n )
+,
+}
+and embeddings for the negative seed words S− =
+E(w−1 ), E(w−2 ), ..., E(w−m)
+, the
+}
+{
+pole centroids are:
+
+E(w+
+
+{
+
+V+ =
+
+1
+n
+
+V− =
+
+1
+m
+
+n
+
+(cid:88)1
+m
+
+E(w+
+i )
+
+E(w−i )
+
+(21.1)
+
+(cid:88)1
+The semantic axis deﬁned by the poles is computed just by subtracting the two vec-
+tors:
+
+Vaxis = V+
+
+V−
+
+−
+
+(21.2)
+
+Vaxis, the semantic axis, is a vector in the direction of positive sentiment. Finally,
+we compute (via cosine similarity) the angle between the vector in the direction of
+positive sentiment and the direction of w’s embedding. A higher cosine means that
+w is more aligned with S+ than S−.
+
+score(w) = cos
+
+E(w), Vaxis
+Vaxis
+Vaxis(cid:107)
+
+·
+(cid:107)(cid:107)
+
+E(w)
+(cid:0)
+E(w)
+(cid:107)
+
+=
+
+(cid:1)
+
+(21.3)
+
+If a dictionary of words with sentiment scores is sufﬁcient, we’re done! Or if we
+need to group words into a positive and a negative lexicon, we can use a threshold
+or other method to give us discrete lexicons.
+
+21.4.2 Label Propagation
+
+An alternative family of methods deﬁnes lexicons by propagating sentiment labels
+on graphs, an idea suggested in early work by Hatzivassiloglou and McKeown
+(1997). We’ll describe the simple SentProp (Sentiment Propagation) algorithm of
+Hamilton et al. (2016a), which has four steps:
+
+1. Deﬁne a graph: Given word embeddings, build a weighted lexical graph by
+connecting each word with its k nearest neighbors (according to cosine simi-
+larity). The weights of the edge between words wi and w j are set as:
+
+Ei, j = arccos
+
+wi(cid:62)wj
+wj
+wi
+(cid:107)
+
+(cid:107)(cid:107)
+
+.
+
+(cid:107) (cid:19)
+
+−
+
+(cid:18)
+
+(21.4)
+
+2. Deﬁne a seed set: Choose positive and negative seed words.
+3. Propagate polarities from the seed set: Now we perform a random walk on
+this graph, starting at the seed set. In a random walk, we start at a node and
+
+21.4
+
+• SEMI-SUPERVISED INDUCTION OF AFFECT LEXICONS
+
+469
+
+then choose a node to move to with probability proportional to the edge prob-
+ability. A word’s polarity score for a seed set is proportional to the probability
+of a random walk from the seed set landing on that word (Fig. 21.7).
+
+4. Create word scores: We walk from both positive and negative seed sets,
+resulting in positive (rawscore+(wi)) and negative (rawscore−(wi)) raw label
+scores. We then combine these values into a positive-polarity score as:
+
+score+(wi) =
+
+rawscore+(wi)
+rawscore+(wi) + rawscore−(wi)
+
+(21.5)
+
+It’s often helpful to standardize the scores to have zero mean and unit variance
+within a corpus.
+
+5. Assign conﬁdence to each score: Because sentiment scores are inﬂuenced by
+the seed set, we’d like to know how much the score of a word would change if
+a different seed set is used. We can use bootstrap sampling to get conﬁdence
+regions, by computing the propagation B times over random subsets of the
+positive and negative seed sets (for example using B = 50 and choosing 7 of
+the 10 seed words each time). The standard deviation of the bootstrap sampled
+polarity scores gives a conﬁdence measure.
+
+(a)
+
+(b)
+
+Figure 21.7
+polarity scores (shown here as colors green or red) based on the frequency of random walk visits.
+
+Intuition of the SENTPROP algorithm. (a) Run random walks from the seed words. (b) Assign
+
+21.4.3 Other Methods
+
+The core of semisupervised algorithms is the metric for measuring similarity with
+the seed words. The Turney and Littman (2003) and Hamilton et al. (2016a) ap-
+proaches above used embedding cosine as the distance metric: words were labeled
+as positive basically if their embeddings had high cosines with positive seeds and
+low cosines with negative seeds. Other methods have chosen other kinds of distance
+metrics besides embedding cosine.
+
+For example the Hatzivassiloglou and McKeown (1997) algorithm uses syntactic
+cues; two adjectives are considered similar if they were frequently conjoined by and
+and rarely conjoined by but. This is based on the intuition that adjectives conjoined
+by the words and tend to have the same polarity; positive adjectives are generally
+coordinated with positive, negative with negative:
+
+fair and legitimate, corrupt and brutal
+
+but less often positive adjectives coordinated with negative:
+
+*fair and brutal, *corrupt and legitimate
+
+By contrast, adjectives conjoined by but are likely to be of opposite polarity:
+
+idolizeloveadoreappreciatelikeﬁnddislikeseenoticedisapproveabhorhateloathedespiseuncoveridolizeloveadoreappreciatelikeﬁnddislikeseenoticedisapproveabhorhateloathedespiseuncover470 CHAPTER 21
+
+• LEXICONS FOR SENTIMENT, AFFECT, AND CONNOTATION
+
+fair but brutal
+
+Another cue to opposite polarity comes from morphological negation (un-, im-,
+-less). Adjectives with the same root but differing in a morphological negative (ad-
+equate/inadequate, thoughtful/thoughtless) tend to be of opposite polarity.
+
+Yet another method for ﬁnding words that have a similar polarity to seed words is
+to make use of a thesaurus like WordNet (Kim and Hovy 2004, Hu and Liu 2004b).
+A word’s synonyms presumably share its polarity while a word’s antonyms probably
+have the opposite polarity. After a seed lexicon is built, each lexicon is updated as
+follows, possibly iterated.
+
+Lex+: Add synonyms of positive words (well) and antonyms (like ﬁne) of negative
+
+words
+
+Lex−: Add synonyms of negative words (awful) and antonyms (like evil) of positive
+
+words
+
+SentiWordNet
+
+An extension of this algorithm assigns polarity to WordNet senses, called Senti-
+WordNet (Baccianella et al., 2010). Fig. 21.8 shows some examples.
+
+‘deserving of esteem’
+
+‘may be computed or estimated’
+
+Synset
+good#6
+‘agreeable or pleasing’
+respectable#2 honorable#4 good#4 estimable#2
+estimable#3 computable#1
+sting#1 burn#4 bite#2
+acute#6
+acute#4
+acute#1
+Figure 21.8 Examples from SentiWordNet 3.0 (Baccianella et al., 2010). Note the differences between senses
+of homonymous words: estimable#3 is purely objective, while estimable#2 is positive; acute can be positive
+(acute#6), negative (acute#1), or neutral (acute #4).
+
+‘of critical importance and consequence’
+‘of an angle; less than 90 degrees’
+‘having or experiencing a rapid onset and short but severe course’
+
+Pos Neg Obj
+0
+1
+0
+0.75
+0
+0
+0.875 .125
+0
+0.625 0.125 .250
+0
+0
+
+‘cause a sharp or stinging pain’
+
+0
+0.25
+1
+
+1
+0.5
+
+0
+0.5
+
+In this algorithm, polarity is assigned to entire synsets rather than words. A
+positive lexicon is built from all the synsets associated with 7 positive words, and a
+negative lexicon from synsets associated with 7 negative words. A classiﬁer is then
+trained from this data to take a WordNet gloss and decide if the sense being deﬁned
+is positive, negative or neutral. A further step (involving a random-walk algorithm)
+assigns a score to each WordNet synset for its degree of positivity, negativity, and
+neutrality.
+
+In summary, semisupervised algorithms use a human-deﬁned set of seed words
+for the two poles of a dimension, and use similarity metrics like embedding cosine,
+coordination, morphology, or thesaurus structure to score words by how similar they
+are to the positive seeds and how dissimilar to the negative seeds.
+
+21.5 Supervised Learning of Word Sentiment
+
+Semi-supervised methods require only minimal human supervision (in the form of
+seed sets). But sometimes a supervision signal exists in the world and can be made
+use of. One such signal is the scores associated with online reviews.
+
+The web contains an enormous number of online reviews for restaurants, movies,
+books, or other products, each of which have the text of the review along with an
+
+21.5
+
+• SUPERVISED LEARNING OF WORD SENTIMENT
+
+471
+
+Movie review excerpts (IMDb)
+10 A great movie. This ﬁlm is just a wonderful experience. It’s surreal, zany, witty and slapstick
+
+all at the same time. And terriﬁc performances too.
+
+1 This was probably the worst movie I have ever seen. The story went nowhere even though they
+
+could have done some interesting stuff with it.
+
+Restaurant review excerpts (Yelp)
+5 The service was impeccable. The food was cooked and seasoned perfectly... The watermelon
+
+2
+
+1
+
+was perfectly square ... The grilled octopus was ... mouthwatering...
+...it took a while to get our waters, we got our entree before our starter, and we never received
+silverware or napkins until we requested them...
+
+I am going to try and stop being deceived by eye-catching titles. I so wanted to like this book
+and was so disappointed by it.
+
+Book review excerpts (GoodReads)
+
+5 This book is hilarious. I would recommend it to anyone looking for a satirical read with a
+
+romantic twist and a narrator that keeps butting in
+
+Product review excerpts (Amazon)
+5 The lid on this blender though is probably what I like the best about it... enables you to pour
+into something without even taking the lid off! ... the perfect pitcher! ... works fantastic.
+I hate this blender... It is nearly impossible to get frozen fruit and ice to turn into a smoothie...
+You have to add a TON of liquid. I also wish it had a spout ...
+
+1
+
+Figure 21.9 Excerpts from some reviews from various review websites, all on a scale of 1 to 5 stars except
+IMDb, which is on a scale of 1 to 10 stars.
+
+associated review score: a value that may range from 1 star to 5 stars, or scoring 1
+to 10. Fig. 21.9 shows samples extracted from restaurant, book, and movie reviews.
+We can use this review score as supervision: positive words are more likely to
+appear in 5-star reviews; negative words in 1-star reviews. And instead of just a
+binary polarity, this kind of supervision allows us to assign a word a more complex
+representation of its polarity: its distribution over stars (or other scores).
+
+Thus in a ten-star system we could represent the sentiment of each word as a
+10-tuple, each number a score representing the word’s association with that polarity
+c), or some other
+level. This association can be a raw count, or a likelihood P(w
+|
+function of the count, for each class c from 1 to 10.
+
+For example, we could compute the IMDb likelihood of a word like disap-
+point(ed/ing) occurring in a 1 star review by dividing the number of times disap-
+point(ed/ing) occurs in 1-star reviews in the IMDb dataset (8,557) by the total num-
+ber of words occurring in 1-star reviews (25,395,214), so the IMDb estimate of
+1) is .0003.
+P(disappointing
+|
+
+A slight modiﬁcation of this weighting, the normalized likelihood, can be used
+
+as an illuminating visualization (Potts, 2011)1
+
+c) =
+P(w
+|
+
+PottsScore(w) =
+
+count(w, c)
+
+C count(w, c)
+w
+∈
+c)
+P(w
+|
+c)
+c P(w
+|
+
+(cid:80)
+
+(21.6)
+
+(cid:80)
+Dividing the IMDb estimate P(disappointing
+1) of .0003 by the sum of the likeli-
+|
+hood P(w
+c) over all categories gives a Potts score of 0.10. The word disappointing
+|
+thus is associated with the vector [.10, .12, .14, .14, .13, .11, .08, .06, .06, .05]. The
+
+1 Each element of the Potts score of a word w and category c can be shown to be a variant of the
+pointwise mutual information pmi(w, c) without the log term; see Exercise 25.1.
+
+472 CHAPTER 21
+
+• LEXICONS FOR SENTIMENT, AFFECT, AND CONNOTATION
+
+Potts diagram
+
+Potts diagram (Potts, 2011) is a visualization of these word scores, representing the
+prior sentiment of a word as a distribution over the rating categories.
+
+Fig. 21.10 shows the Potts diagrams for 3 positive and 3 negative scalar adjec-
+tives. Note that the curve for strongly positive scalars have the shape of the letter
+J, while strongly negative scalars look like a reverse J. By contrast, weakly posi-
+tive and negative scalars have a hump-shape, with the maximum either below the
+mean (weakly negative words like disappointing) or above the mean (weakly pos-
+itive words like good). These shapes offer an illuminating typology of affective
+meaning.
+
+Figure 21.10 Potts diagrams (Potts, 2011) for positive and negative scalar adjectives, show-
+ing the J-shape and reverse J-shape for strongly positive and negative adjectives, and the
+hump-shape for more weakly polarized adjectives.
+
+Fig. 21.11 shows the Potts diagrams for emphasizing and attenuating adverbs.
+Note that emphatics tend to have a J-shape (most likely to occur in the most posi-
+tive reviews) or a U-shape (most likely to occur in the strongly positive and nega-
+tive). Attenuators all have the hump-shape, emphasizing the middle of the scale and
+downplaying both extremes. The diagrams can be used both as a typology of lexical
+sentiment, and also play a role in modeling sentiment compositionality.
+
+c), or normalized
+w), likelihood P(w
+In addition to functions like posterior P(c
+|
+|
+likelihood (Eq. 21.6) many other functions of the count of a word occurring with a
+sentiment label have been used. We’ll introduce some of these on page 476, includ-
+ing ideas like normalizing the counts per writer in Eq. 21.14.
+
+21.5.1 Log Odds Ratio Informative Dirichlet Prior
+
+One thing we often want to do with word polarity is to distinguish between words
+that are more likely to be used in one category of texts than in another. We may, for
+example, want to know the words most associated with 1 star reviews versus those
+associated with 5 star reviews. These differences may not be just related to senti-
+ment. We might want to ﬁnd words used more often by Democratic than Republican
+members of Congress, or words used more often in menus of expensive restaurants
+
+OverviewDataMethodsCategorizat

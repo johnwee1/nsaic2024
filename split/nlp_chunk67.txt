@@ -1,0 +1,678 @@
+g two-rule grammar:
+
+VP
+VP
+
+→
+→
+
+VBD NP PP
+VP PP
+
+The generation of a symbol A with a potentially inﬁnite sequence of symbols B with
+a rule of the form A
+
+A B is known as Chomsky-adjunction.
+
+→
+
+Chomsky-
+adjunction
+
+17.5 Ambiguity
+
+structural
+ambiguity
+
+Ambiguity is the most serious problem faced by syntactic parsers. Chapter 8 intro-
+duced the notions of part-of-speech ambiguity and part-of-speech disambigua-
+tion. Here, we introduce a new kind of ambiguity, called structural ambiguity,
+illustrated with a new toy grammar L1, shown in Figure 17.8, which adds a few
+rules to the L0 grammar from the last chapter.
+
+Structural ambiguity occurs when the grammar can assign more than one parse
+to a sentence. Groucho Marx’s well-known line as Captain Spaulding in Animal
+
+376 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+S
+
+S
+
+NP
+
+VP
+
+NP
+
+VP
+
+Pronoun
+
+Verb
+
+NP
+
+Pronoun
+
+VP
+
+PP
+
+I
+
+shot
+
+Det
+
+Nominal
+
+I
+
+Verb
+
+NP
+
+in my pajamas
+
+an
+
+Nominal
+
+PP
+
+shot
+
+Det
+
+Nominal
+
+Noun
+
+in my pajamas
+
+an
+
+Noun
+
+elephant
+
+elephant
+
+Figure 17.9 Two parse trees for an ambiguous sentence. The parse on the left corresponds to the humorous
+reading in which the elephant is in the pajamas, the parse on the right corresponds to the reading in which
+Captain Spaulding did the shooting in his pajamas.
+
+attachment
+ambiguity
+
+PP-attachment
+ambiguity
+
+coordination
+ambiguity
+
+Crackers is ambiguous because the phrase in my pajamas can be part of the NP
+headed by elephant or a part of the verb phrase headed by shot. Figure 17.9 illus-
+trates these two analyses of Marx’s line using rules from L1.
+
+Structural ambiguity, appropriately enough, comes in many forms. Two common
+kinds of ambiguity are attachment ambiguity and coordination ambiguity. A
+sentence has an attachment ambiguity if a particular constituent can be attached to
+the parse tree at more than one place. The Groucho Marx sentence is an example
+of PP-attachment ambiguity: the preposition phrase can be attached either as part
+of the NP or as part of the VP. Various kinds of adverbial phrases are also subject
+to this kind of ambiguity. For instance, in the following example the gerundive-VP
+ﬂying to Paris can be part of a gerundive sentence whose subject is the Eiffel Tower
+or it can be an adjunct modifying the VP headed by saw:
+
+(17.2) We saw the Eiffel Tower ﬂying to Paris.
+
+In coordination ambiguity phrases can be conjoined by a conjunction like and.
+For example, the phrase old men and women can be bracketed as [old [men and
+women]], referring to old men and old women, or as [old men] and [women], in
+which case it is only the men who are old. These ambiguities combine in complex
+ways in real sentences, like the following news sentence from the Brown corpus:
+
+(17.3) President Kennedy today pushed aside other White House business to
+
+devote all his time and attention to working on the Berlin crisis address he
+will deliver tomorrow night to the American people over nationwide
+television and radio.
+
+This sentence has a number of ambiguities, although since they are semantically
+unreasonable, it requires a careful reading to see them. The last noun phrase could be
+parsed [nationwide [television and radio]] or [[nationwide television] and radio].
+The direct object of pushed aside should be other White House business but could
+also be the bizarre phrase [other White House business to devote all his time and
+attention to working] (i.e., a structure like Kennedy afﬁrmed [his intention to propose
+a new budget to address the deﬁcit]). Then the phrase on the Berlin crisis address he
+
+17.6
+
+• CKY PARSING: A DYNAMIC PROGRAMMING APPROACH
+
+377
+
+will deliver tomorrow night to the American people could be an adjunct modifying
+the verb pushed. A PP like over nationwide television and radio could be attached
+to any of the higher VPs or NPs (e.g., it could modify people or night).
+
+The fact that there are many grammatically correct but semantically unreason-
+able parses for naturally occurring sentences is an irksome problem that affects all
+parsers. Fortunately, the CKY algorithm below is designed to efﬁciently handle
+structural ambiguities. And as we’ll see in the following section, we can augment
+CKY with neural methods to choose a single correct parse by syntactic disambigua-
+tion.
+
+syntactic
+disambiguation
+
+17.6 CKY Parsing: A Dynamic Programming Approach
+
+Dynamic programming provides a powerful framework for addressing the prob-
+lems caused by ambiguity in grammars. Recall that a dynamic programming ap-
+proach systematically ﬁlls in a table of solutions to subproblems. The complete
+table has the solution to all the subproblems needed to solve the problem as a whole.
+In the case of syntactic parsing, these subproblems represent parse trees for all the
+constituents detected in the input.
+
+The dynamic programming advantage arises from the context-free nature of our
+grammar rules—once a constituent has been discovered in a segment of the input we
+can record its presence and make it available for use in any subsequent derivation
+that might require it. This provides both time and storage efﬁciencies since subtrees
+can be looked up in a table, not reanalyzed. This section presents the Cocke-Kasami-
+Younger (CKY) algorithm, the most widely used dynamic-programming based ap-
+proach to parsing. Chart parsing (Kaplan 1973, Kay 1982) is a related approach,
+and dynamic programming methods are often referred to as chart parsing methods.
+
+17.6.1 Conversion to Chomsky Normal Form
+
+→
+
+B C or A
+
+The CKY algorithm requires grammars to ﬁrst be in Chomsky Normal Form (CNF).
+Recall from Section 17.4 that grammars in CNF are restricted to rules of the form
+A
+w. That is, the right-hand side of each rule must expand either to
+two non-terminals or to a single terminal. Restricting a grammar to CNF does not
+lead to any loss in expressiveness, since any context-free grammar can be converted
+into a corresponding CNF grammar that accepts exactly the same set of strings as
+the original grammar.
+
+→
+
+Let’s start with the process of converting a generic CFG into one represented in
+CNF. Assuming we’re dealing with an (cid:15)-free grammar, there are three situations we
+need to address in any generic grammar: rules that mix terminals with non-terminals
+on the right-hand side, rules that have a single non-terminal on the right-hand side,
+and rules in which the length of the right-hand side is greater than 2.
+
+The remedy for rules that mix terminals and non-terminals is to simply introduce
+a new dummy non-terminal that covers only the original terminal. For example, a
+rule for an inﬁnitive verb phrase such as INF-VP
+to VP would be replaced by the
+two rules INF-VP
+
+to.
+Rules with a single non-terminal on the right are called unit productions. We
+can eliminate unit productions by rewriting the right-hand side of the original rules
+with the right-hand side of all the non-unit production rules that they ultimately lead
+γ
+to. More formally, if A ∗
+⇒
+
+B by a chain of one or more unit productions and B
+
+TO VP and TO
+
+→
+
+→
+
+→
+
+→
+
+chart parsing
+
+Unit
+productions
+
+378 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+γ for each such rule in
+is a non-unit production in our grammar, then we add A
+the grammar and discard all the intervening unit productions. As we demonstrate
+with our toy grammar, this can lead to a substantial ﬂattening of the grammar and a
+consequent promotion of terminals to fairly high levels in the resulting trees.
+
+→
+
+Rules with right-hand sides longer than 2 are normalized through the introduc-
+tion of new non-terminals that spread the longer sequences over several new rules.
+Formally, if we have a rule like
+
+A
+
+→
+
+B C γ
+
+we replace the leftmost pair of non-terminals with a new non-terminal and introduce
+a new production, resulting in the following new rules:
+
+A
+
+X1
+
+→
+
+→
+
+X1 γ
+B C
+
+In the case of longer right-hand sides, we simply iterate this process until the of-
+fending rule has been replaced by rules of length 2. The choice of replacing the
+leftmost pair of non-terminals is purely arbitrary; any systematic scheme that results
+in binary rules would sufﬁce.
+
+rules S
+
+In our current grammar, the rule S
+Aux NP.
+The entire conversion process can be summarized as follows:
+
+X1 VP and X1
+
+→
+
+→
+
+→
+
+Aux NP VP would be replaced by the two
+
+1. Copy all conforming rules to the new grammar unchanged.
+2. Convert terminals within rules to dummy non-terminals.
+3. Convert unit productions.
+4. Make all rules binary and add them to new grammar.
+
+Figure 17.10 shows the results of applying this entire conversion procedure to
+the L1 grammar introduced earlier on page 375. Note that this ﬁgure doesn’t show
+the original lexical rules; since these original lexical rules are already in CNF, they
+all carry over unchanged to the new grammar. Figure 17.10 does, however, show
+the various places where the process of eliminating unit productions has, in effect,
+created new lexical rules. For example, all the original verbs have been promoted to
+both VPs and to Ss in the converted grammar.
+
+17.6.2 CKY Recognition
+
+With our grammar now in CNF, each non-terminal node above the part-of-speech
+level in a parse tree will have exactly two daughters. A two-dimensional matrix can
+be used to encode the structure of an entire tree. For a sentence of length n, we will
+work with the upper-triangular portion of an (n + 1)
+(n + 1) matrix. Each cell [i, j]
+in this matrix contains the set of non-terminals that represent all the constituents that
+span positions i through j of the input. Since our indexing scheme begins with 0, it’s
+natural to think of the indexes as pointing at the gaps between the input words (as in
+0 Book 1 that 2 ﬂight 3). These gaps are often called fenceposts, on the metaphor of
+the posts between segments of fencing. It follows then that the cell that represents
+the entire input resides in position [0, n] in the matrix.
+
+×
+
+Since each non-terminal entry in our table has two daughters in the parse, it fol-
+lows that for each constituent represented by an entry [i, j], there must be a position
+in the input, k, where it can be split into two parts such that i < k < j. Given such
+
+fenceposts
+
+17.6
+
+• CKY PARSING: A DYNAMIC PROGRAMMING APPROACH
+
+379
+
+L1 Grammar
+NP VP
+Aux NP VP
+
+VP
+
+S
+S
+
+S
+
+→
+→
+
+→
+
+NP
+→
+NP
+→
+NP
+→
+Nominal
+Nominal
+Nominal
+VP
+VP
+VP
+
+→
+→
+→
+
+Pronoun
+Proper-Noun
+Det Nominal
+
+Noun
+Nominal Noun
+Nominal PP
+
+→
+→
+→
+Verb
+Verb NP
+Verb NP PP
+
+prefer
+
+|
+
+L1 in CNF
+
+NP VP
+X1 VP
+
+Aux NP
+
+|
+
+include
+
+book
+Verb NP
+X2 PP
+Verb PP
+VP PP
+I
+|
+TWA
+|
+Det Nominal
+
+she
+
+me
+|
+Houston
+
+prefer
+
+|
+
+|
+
+ﬂight
+
+book
+|
+Nominal Noun
+Nominal PP
+include
+
+|
+
+→
+→
+→
+book
+Verb NP
+X2 PP
+Verb NP
+Verb PP
+VP PP
+Preposition NP
+
+→
+
+→
+→
+
+→
+→
+→
+→
+→
+
+S
+S
+X1
+S
+S
+S
+S
+S
+NP
+→
+NP
+→
+NP
+→
+Nominal
+Nominal
+Nominal
+VP
+VP
+VP
+X2
+VP
+VP
+PP
+
+→
+→
+→
+→
+→
+→
+→
+
+meal
+
+|
+
+money
+
+→
+→
+→
+
+Verb PP
+VP PP
+Preposition NP
+
+VP
+VP
+PP
+Figure 17.10 L
+here, all the original lexical entries from L
+
+1 Grammar and its conversion to CNF. Note that although they aren’t shown
+
+1 carry over unchanged as well.
+
+a position k, the ﬁrst constituent [i, k] must lie to the left of entry [i, j] somewhere
+along row i, and the second entry [k, j] must lie beneath it, along column j.
+
+To make this more concrete, consider the following example with its completed
+
+parse matrix, shown in Fig. 17.11.
+
+(17.4) Book the ﬂight through Houston.
+
+The superdiagonal row in the matrix contains the parts of speech for each word in
+the input. The subsequent diagonals above that superdiagonal contain constituents
+that cover all the spans of increasing length in the input.
+
+Given this setup, CKY recognition consists of ﬁlling the parse table in the right
+way. To do this, we’ll proceed in a bottom-up fashion so that at the point where we
+are ﬁlling any cell [i, j], the cells containing the parts that could contribute to this
+entry (i.e., the cells to the left and the cells below) have already been ﬁlled. The
+algorithm given in Fig. 17.12 ﬁlls the upper-triangular matrix a column at a time
+working from left to right, with each column ﬁlled from bottom to top, as the right
+side of Fig. 17.11 illustrates. This scheme guarantees that at each point in time we
+have all the information we need (to the left, since all the columns to the left have
+already been ﬁlled, and below since we’re ﬁlling bottom to top). It also mirrors on-
+line processing, since ﬁlling the columns from left to right corresponds to processing
+each word one at a time.
+
+The outermost loop of the algorithm given in Fig. 17.12 iterates over the columns,
+and the second loop iterates over the rows, from the bottom up. The purpose of the
+innermost loop is to range over all the places where a substring spanning i to j in
+the input might be split in two. As k ranges over the places where the string can be
+split, the pairs of cells we consider move, in lockstep, to the right along row i and
+down along column j. Figure 17.13 illustrates the general case of ﬁlling cell [i, j].
+
+380 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+Figure 17.11 Completed parse table for Book the ﬂight through Houston.
+
+function CKY-PARSE(words, grammar) returns table
+
+for j
+
+from 1 to LENGTH(words) do
+
+←
+for all
+
+for i
+
+←
+for k
+
+A
+A
+{
+|
+table[ j
+from j
+
+words[ j]
+
+←
+
+∈
+table[ j
+
+1, j]
+−
+2 down to 0 do
+1 do
+BC
+
+→
+−
+−
+i + 1 to j
+−
+A
+A
+{
+→
+table[i,j]
+
+|
+
+←
+for all
+
+grammar
+1, j]
+
+}
+A
+
+∪
+
+grammar and B
+A
+
+∈
+table[i,j]
+
+←
+
+∪
+
+table[i, k] and C
+
+table[k, j]
+
+}
+
+∈
+
+∈
+
+Figure 17.12 The CKY algorithm.
+
+At each such split, the algorithm considers whether the contents of the two cells can
+be combined in a way that is sanctioned by a rule in the grammar. If such a rule
+exists, the non-terminal on its left-hand side is entered into the table.
+
+Figure 17.14 shows how the ﬁve cells of column 5 of the table are ﬁlled after the
+word Houston is read. The arrows point out the two spans that are being used to add
+an entry to the table. Note that the action in cell [0, 5] indicates the presence of three
+alternative parses for this input, one where the PP modiﬁes the ﬂight, one where
+it modiﬁes the booking, and one that captures the second argument in the original
+VP
+
+Verb NP PP rule, now captured indirectly with the VP
+
+X2 PP rule.
+
+→
+
+→
+
+17.6.3 CKY Parsing
+
+The algorithm given in Fig. 17.12 is a recognizer, not a parser. That is, it can tell
+us whether a valid parse exists for a given sentence based on whether or not if ﬁnds
+an S in cell [0, n], but it can’t provide the derivation, which is the actual job for a
+parser. To turn it into a parser capable of returning all possible parses for a given
+input, we can make two simple changes to the algorithm:
+the ﬁrst change is to
+augment the entries in the table so that each non-terminal is paired with pointers to
+the table entries from which it was derived (more or less as shown in Fig. 17.14), the
+second change is to permit multiple versions of the same non-terminal to be entered
+into the table (again as shown in Fig. 17.14). With these changes, the completed
+table contains all the possible parses for a given input. Returning an arbitrary single
+
+Bookthe flight throughHoustonS, VP, Verb, Nominal, NounS,VP,X2S,VP,X2DetNPNPNominal,NounNominalPrepPPNP,Proper-Noun[0,1][0,2][0,3][0,4][0,5][1,2][1,3][2,3][1,4][2,5][2,4][3,4][4,5][3,5][1,5]17.6
+
+• CKY PARSING: A DYNAMIC PROGRAMMING APPROACH
+
+381
+
+Figure 17.13 All the ways to ﬁll the [i, j]th cell in the CKY table.
+
+parse consists of choosing an S from cell [0, n] and then recursively retrieving its
+component constituen

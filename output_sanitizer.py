@@ -4,7 +4,11 @@ import os
 """Helper script to sanitize the output from gpt files. idk how useful this will be but whatevs"""
 
 ### the .txt suffix IS NEEDED HERE!
+<<<<<<< HEAD
 FILENAME = "reinforcement_learning_qns.txt"
+=======
+FILENAME = "nlp_qns.txt"
+>>>>>>> 8a5606603468172b6566e3558c80ea04159807b9
 
 
 def parse_text_file(input_file, output_file):

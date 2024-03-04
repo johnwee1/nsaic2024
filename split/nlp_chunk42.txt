@@ -1,0 +1,367 @@
+ment in the sequence is computed separately.
+
+Large models are generally trained by ﬁlling the full context window (for ex-
+ample 2048 or 4096 tokens for GPT3 or GPT4) with text. If documents are shorter
+than this, multiple documents are packed into the window with a special end-of-text
+token between them. The batch size for gradient descent is usually quite large (the
+largest GPT-3 model uses a batch size of 3.2 million tokens).
+
+10.9.2 Training corpora for large language models
+
+Large language models are mainly trained on text scraped from the web, augmented
+by more carefully curated data. Because these training corpora are so large, they are
+likely to contain many natural examples that can be helpful for NLP tasks, such as
+question and answer pairs (for example from FAQ lists), translations of sentences
+between various languages, documents together with their summaries, and so on.
+
+Web text is usually taken from corpora of automatically-crawled web pages like
+the common crawl, a series of snapshots of the entire web produced by the non-
+proﬁt Common Crawl (https://commoncrawl.org/) that each have billions of
+webpages. Various cleanups of common crawl data exist, such as the Colossal Clean
+Crawled Corpus (C4; Raffel et al. 2020), a corpus of 156 billion tokens of English
+that is ﬁltered in various ways (deduplicated, removing non-natural language like
+code, sentences with offensive words from a blocklist). What is in this data? An
+analysis suggests that in large part it’s patent text documents, Wikipedia, and news
+sites (Dodge et al., 2021). Wikipedia plays a role in lots of language model training,
+as do corpora of books. The GPT3 models, for example, are trained mostly on the
+web (429 billion tokens), some text from books (67 billion tokens) and Wikipedia
+(3 billion tokens).
+
+common crawl
+
+InputEmbeddingsTransformerBlockSoftmax overVocabularySolongandthanksforlongandthanksforNext wordall…Loss……=Linear Layer10.10
+
+• POTENTIAL HARMS FROM LANGUAGE MODELS
+
+239
+
+10.9.3 Scaling laws
+
+The performance of large language models has shown to be mainly determined by
+3 factors: model size (the number of parameters not counting embeddings), dataset
+size (the amount of training data), and the amount of computer used for training.
+That is, we can improve a model by adding parameters (adding more layers or having
+wider contexts or both), by training on more data, or by training for more iterations.
+The relationships between these factors and performance are known as scaling
+laws. Roughly speaking, the performance of a large language model (the loss) scales
+as a power-law with each of these three properties of model training.
+
+For example, Kaplan et al. (2020) found the following three relationships for
+loss L as a function of the number of non-embedding parameters N, the dataset size
+D, and the compute budget C, for models training with limited parameters, dataset,
+or compute budget, if in each case the other two properties are held constant:
+
+scaling laws
+
+L(N) =
+
+L(D) =
+
+L(C) =
+
+Nc
+N
+Dc
+D
+Cc
+C
+
+(cid:18)
+
+(cid:18)
+
+(cid:18)
+
+αN
+
+(cid:19)
+
+αD
+
+(cid:19)
+
+αC
+
+(cid:19)
+
+(10.52)
+
+(10.53)
+
+(10.54)
+
+The number of (non-embedding) parameters N can be roughly computed as fol-
+lows (ignoring biases, and with d as the input and output dimensionality of the
+model, dattn as the self-attention layer size, and dff the size of the feedforward layer):
+
+N
+
+≈
+
+≈
+
+2 d nlayer(2 dattn + dff)
+12 nlayer d2
+(assuming dattn = dff/4 = d)
+
+(10.55)
+
+96
+
+×
+
+×
+
+Thus GPT-3, with n = 96 layers and dimensionality d = 12288, has 12
+122882
+
+175 billion parameters.
+
+The values of Nc, Dc, Cc, αN, αD, and αC depend on the exact transformer
+architecture, tokenization, and vocabulary size, so rather than all the precise values,
+scaling laws focus on the relationship with loss.2
+
+≈
+
+Scaling laws can be useful in deciding how to train a model to a particular per-
+formance, for example by looking at early in the training curve, or performance with
+smaller amounts of data, to predict what the loss would be if we were to add more
+data or increase model size. Other aspects of scaling laws can also tell us how much
+data we need to add when scaling up a model.
+
+10.10 Potential Harms from Language Models
+
+Large pretrained neural language models exhibit many of the potential harms dis-
+cussed in Chapter 4 and Chapter 6. Many of these harms become realized when
+pretrained language models are used for any downstream task, particularly those
+
+2 For the initial experiment in Kaplan et al. (2020) the precise values were αN = 0.076, Nc = 8.8
+(parameters), αD = 0.095, Dc = 5.4
+
+1013 (tokens), αC = 0.050, Cc = 3.1
+
+108 (petaﬂop-days).
+
+1013
+
+×
+
+×
+
+×
+
+240 CHAPTER 10
+
+• TRANSFORMERS AND LARGE LANGUAGE MODELS
+
+hallucination
+
+toxic language
+
+involving text generation, whether question answering, machine translation, or in
+assistive technologies like writing aids or web search query completion, or predic-
+tive typing for email (Olteanu et al., 2020).
+
+For example, language models are prone to saying things that are false, a prob-
+lem called hallucination. Language models are trained to generate text that is pre-
+dictable and coherent, but the training algorithms we have seen so far don’t have any
+way to enforce that the text that is generated is correct or true. This causes enormous
+problems for any application where the facts matter!
+
+A second source of harm is that language models can generate toxic language.
+Gehman et al. (2020) show that even completely non-toxic prompts can lead large
+language models to output hate speech and abuse their users. Language models also
+generate stereotypes (Cheng et al., 2023) and negative attitudes (Brown et al., 2020;
+Sheng et al., 2019) about many demographic groups.
+
+One source of biases is the training data. Gehman et al. (2020) shows that large
+language model training datasets include toxic text scraped from banned sites. There
+are other biases than toxicity: the training data is disproportionately generated by
+authors from the US and from developed countries. Such biased population samples
+likely skew the resulting generation toward the perspectives or topics of this group
+alone. Furthermore, language models can amplify demographic and other biases in
+training data, just as we saw for embedding models in Chapter 6.
+
+Language models can also be used by malicious actors for generating text for
+misinformation, phishing, or other socially harmful activities (Brown et al., 2020).
+McGufﬁe and Newhouse (2020) show how large language models generate text that
+emulates online extremists, with the risk of amplifying extremist movements and
+their attempt to radicalize and recruit.
+
+Language models also present privacy issues since they can leak information
+about their training data. It is thus possible for an adversary to extract training-data
+text from a language model such as an individual person’s name, phone number,
+and address (Henderson et al. 2017, Carlini et al. 2021). This is a problem if large
+language models are trained on private datasets such as electronic health records.
+
+Related to privacy is the issue of copyright. Large language models are trained
+on text that is copyrighted. In some countries, like the United States, the fair use
+doctrine allows copyrighted content to be used to build language models, but possi-
+bly not if they are used to generate text that competes with the market for the text
+they are trained on.
+
+Finding ways to mitigate all these harms is an important current research area in
+NLP. At the very least, carefully analyzing the data used to pretrain large language
+models is important as a way of understanding issues of toxicity, bias, privacy, and
+fair use, making it extremely important that language models include datasheets
+(page 16) or model cards (page 78) giving full replicable information on the cor-
+pora used to train them. Open-source models can specify their exact training data.
+Requirements that models are transparent in such ways is also in the process of being
+incorporated into the regulations of various national governments.
+
+10.11 Summary
+
+This chapter has introduced the transformer, and how it can be applied to build large
+language models. Here’s a summary of the main points that we covered:
+
+BIBLIOGRAPHICAL AND HISTORICAL NOTES
+
+241
+
+• Transformers are non-recurrent networks based on self-attention. A self-
+attention layer maps input sequences to output sequences of the same length,
+using attention heads that model how the surrounding words are relevant for
+the processing of the current word.
+
+• A transformer block consists of a single attention layer followed by a feed-
+forward layer with residual connections and layer normalizations following
+each. Transformer blocks can be stacked to make deeper and more powerful
+networks.
+
+• Language models can be built out of stacks of transformer blocks, with a linear
+
+and softmax max layer at the top.
+
+• Transformer-based language models have a wide context window (as wide as
+4096 tokens for current models) allowing them to draw on enormous amounts
+of context to predict upcoming words.
+
+• Many NLP tasks—such as question answering, summarization, sentiment,
+and machine translation—can be cast as tasks of word prediction and hence
+addressed with Large language models.
+
+• The choice of which word to generate in large language models is generally
+
+done by using a sampling algorithm.
+
+• Because of their ability to be used in so many ways, language models also
+have the potential to cause harms. Some harms include hallucinations, bias,
+stereotypes, misinformation and propaganda, and violations of privacy and
+copyright.
+
+Bibliographical and Historical Notes
+
+The transformer (Vaswani et al., 2017) was developed drawing on two lines of prior
+research: self-attention and memory networks. Encoder-decoder attention, the
+idea of using a soft weighting over the encodings of input words to inform a gen-
+erative decoder (see Chapter 13) was developed by Graves (2013) in the context of
+handwriting generation, and Bahdanau et al. (2015) for MT. This idea was extended
+to self-attention by dropping the need for separate encoding and decoding sequences
+and instead seeing attention as a way of weighting the tokens in collecting informa-
+tion passed from lower layers to higher layers (Ling et al., 2015; Cheng et al., 2016;
+Liu et al., 2016). Other aspects of the transformer, including the terminology of key,
+query, and value, came from memory networks, a mechanism for adding an ex-
+ternal read-write memory to networks, by using an embedding of a query to match
+keys representing content in an associative memory (Sukhbaatar et al., 2015; Weston
+et al., 2015; Graves et al., 2014).
+
+MORE HISTORY TBD IN NEXT DRAFT.
+
+242 CHAPTER 11
+
+• FINE-TUNING AND MASKED LANGUAGE MODELS
+
+CHAPTER
+
+11 Fine-Tuning and Masked Lan-
+
+guage Models
+
+Larvatus prodeo [Masked, I go forward]
+Descartes
+
+masked
+language
+modeling
+
+BERT
+
+ﬁne-tuning
+
+transfer
+learning
+
+In the previous chapter we saw how to pretrain transformer language models,
+and how these pretrained models can be used as a tool for many kinds of NLP tasks,
+by casting the tasks as word prediction. The models we introduced in Chapter 10 to
+do this task are causal or left-to-right transformer models.
+
+In this chapter we’ll introduce a second paradigm for pretrained language mod-
+els, called the bidirectional transformer encoder, trained via masked language
+modeling, a method that allows the model to see entire texts at a time, including
+both the right and left context. We’ll introduce the most widely-used version of the
+masked language modeling architecture, the BERT model (Devlin et al., 2019).
+
+We’ll also introduce two important ideas that are often used with these masked
+language models. The ﬁrst is the idea of ﬁne-tuning. Fine-tuning is the process
+of taking the network learned by these pretrained models, and further training the
+model, often via an added neural net classiﬁer that takes the top layer of the network
+as input, to perform some downstream task like named entity tagging or question an-
+swering or coreference. The intuition is that the pretraining phase learns a language
+model that instantiates rich representations of word meaning, that thus enables the
+model to more easily learn (‘be ﬁne-tuned to’) the requirements of a downstream
+language understanding task. The pretrain-ﬁnetune paradigm is an instance of what
+is called transfer learning in machine learning: the method of acquiring knowledge
+from one task or domain, and then applying it (transferring it) to solve a new task.
+
+The second idea that we introduce in this chapter is the idea of contextual em-
+beddings: representations for words in context. The methods of Chapter 6 like
+word2vec or GloVe learned a single vector embedding for each unique word w in
+the vocabulary. By contrast, with contextual embeddings, such as those learned by
+masked language models like BERT, each word w will be represented by a different
+vector each time it appears in a different context. While the causal language models
+of Chapter 10 also use contextual embeddings, the embeddings created by masked
+language models seem to function particularly well as representations.
+
+11.1 Bidirectional Transformer Encoders
+
+Let’s begin by introducing the bidirectional transformer encoder that underlies mod-
+els like BERT and its descendants like RoBERTa (Liu et al., 2019) or SpanBERT
+(Joshi et al., 2020). In Chapter 10 we explored causal (left-to-right) transformers
+that can serve as the basis for powerful language models—models that can eas-
+ily be applied to autoregressive generation problems such as contextual generation,
+summarization and machine translation. However, when applied to sequence classi-
+ﬁcation and labeling problems causal models have obvious shortcomings since they
+
+11.1
+
+• BIDIRECTIONAL TRANSFORMER ENCODERS
+
+243
+
+are based on an incremental, left-to-right processing of their inputs. If we want to
+assign the correct named-entity tag to each word in a sentence, or other sophisticated
+linguistic labels like the parse tags we’ll introduce in later chapters, we’ll want to
+be able to take into account information from the right context as we process each
+element. Fig. 11.1a, reproduced here from Chapter 10, illustrates the information
+ﬂow in the purely left-to-right approach of Chapter 10. As can be seen, the hidden
+state computation at each point in time is based solely on the current and earlier
+elements of the input, ignoring potentially useful information located to the right of
+each tagging decision.
+
+(a) The causal, backward looking, transformer model we saw in Chapter 10. Each output is
+Figure 11.1
+computed independently of the others using only information seen earlier in the context. (b) Information ﬂow in
+a bidirectional self-attention model. In processing each element of the sequence, the model attends to all inputs,
+both before and after the current one.
+
+Bidirectional encoders overcome this limitation by allowing the self-attention
+
+mechanism to range over the entire input, as shown in Fig. 11.1b.
+
+Why bidirectional encoders? The causal models of Chapter 10 are generative
+models, designed to easily generate the next token in a sequence. But the focus
+of bidirectional encoders is instead on computing contextualized representations of
+the input tokens. Bidirectional encoders use self-attention to map sequences of
+input embeddings (x1, ..., xn) to sequences of output embeddings the same length
+(y1,

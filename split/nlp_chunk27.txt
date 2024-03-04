@@ -1,0 +1,755 @@
+uting a mathematical
+expression, in which the computation is broken down into separate operations, each
+of which is modeled as a node in a graph.
+
+Consider computing the function L(a, b, c) = c(a + 2b). If we make each of the
+component addition and multiplication operations explicit, and add names (d and e)
+for the intermediate outputs, the resulting series of computations is:
+
+∗
+
+d = 2
+b
+e = a + d
+L = c
+e
+
+∗
+
+We can now represent this as a graph, with nodes for each operation, and di-
+rected edges showing the outputs from each operation as the inputs to the next, as
+in Fig. 7.12. The simplest use of computation graphs is to compute the value of
+the function with some given inputs. In the ﬁgure, we’ve assumed the inputs a = 3,
+b = 1, c =
+2, and we’ve shown the result of the forward pass to compute the re-
+sult L(3, 1,
+2) =
+10. In the forward pass of a computation graph, we apply each
+operation left to right, passing the outputs of each computation as the input to the
+next node.
+
+−
+−
+
+−
+
+7.5.4 Backward differentiation on computation graphs
+
+The importance of the computation graph comes from the backward pass, which
+is used to compute the derivatives that we’ll need for the weight update. In this
+example our goal is to compute the derivative of the output function L with respect
+to each of the input variables, i.e., ∂ L
+∂ a tells us how
+much a small change in a affects L.
+
+∂ c . The derivative ∂ L
+
+∂ b , and ∂ L
+
+∂ a , ∂ L
+
+chain rule
+
+Backwards differentiation makes use of the chain rule in calculus, so let’s re-
+mind ourselves of that. Suppose we are computing the derivative of a composite
+
+152 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+Figure 7.12 Computation graph for the function L(a, b, c) = c(a+2b), with values for input
+nodes a = 3, b = 1, c =
+
+2, showing the forward pass computation of L.
+
+−
+
+function f (x) = u(v(x)). The derivative of f (x) is the derivative of u(x) with respect
+to v(x) times the derivative of v(x) with respect to x:
+
+d f
+dx
+
+=
+
+du
+dv ·
+
+dv
+dx
+
+(7.29)
+
+The chain rule extends to more than two functions. If computing the derivative of a
+composite function f (x) = u(v(w(x))), the derivative of f (x) is:
+
+d f
+dx
+
+=
+
+du
+dv ·
+
+dv
+dw ·
+
+dw
+dx
+
+(7.30)
+
+The intuition of backward differentiation is to pass gradients back from the ﬁnal
+node to all the nodes in the graph. Fig. 7.13 shows part of the backward computation
+at one node e. Each node takes an upstream gradient that is passed in from its parent
+node to the right, and for each of its inputs computes a local gradient (the gradient
+of its output with respect to its input), and uses the chain rule to multiply these two
+to compute a downstream gradient to be passed on to the next earlier node.
+
+Figure 7.13 Each node (like e here) takes an upstream gradient, multiplies it by the local
+gradient (the gradient of its output with respect to its input), and uses the chain rule to compute
+a downstream gradient to be passed on to a prior node. A node may have multiple local
+gradients if it has multiple inputs.
+
+Let’s now compute the 3 derivatives we need. Since in the computation graph
+
+L = ce, we can directly compute the derivative ∂ L
+∂ c :
+
+For the other two, we’ll need to use the chain rule:
+
+∂ L
+∂ c
+
+= e
+
+∂ L
+∂ a
+∂ L
+∂ b
+
+=
+
+=
+
+∂ L
+∂ e
+∂ L
+∂ e
+
+∂ e
+∂ a
+∂ e
+∂ d
+
+∂ d
+∂ b
+
+(7.31)
+
+(7.32)
+
+e=a+dd = 2bL=cea=3b=1c=-2e=5d=2L=-10forward passabcedLed∂L∂d∂L∂e=∂e∂d∂L∂e∂e∂dupstream gradientdownstream gradientlocal gradient7.5
+
+• TRAINING NEURAL NETS
+
+153
+
+Eq. 7.32 and Eq. 7.31 thus require ﬁve intermediate derivatives: ∂ L
+∂ d , and
+∂ d
+∂ b , which are as follows (making use of the fact that the derivative of a sum is the
+sum of the derivatives):
+
+∂ e , ∂ L
+
+∂ a , ∂ e
+
+∂ c , ∂ e
+
+L = ce :
+
+e = a + d :
+
+d = 2b :
+
+∂ L
+∂ c
+∂ e
+∂ d
+
+= e
+
+= 1
+
+∂ L
+∂ e
+∂ e
+∂ a
+∂ d
+∂ b
+
+= c,
+
+= 1,
+
+= 2
+
+In the backward pass, we compute each of these partials along each edge of the
+graph from right to left, using the chain rule just as we did above. Thus we begin by
+computing the downstream gradients from node L, which are ∂ L
+∂ c . For node e,
+we then multiply this upstream gradient ∂ L
+∂ e by the local gradient (the gradient of the
+output with respect to the input), ∂ e
+∂ d to get the output we send back to node d: ∂ L
+∂ d .
+And so on, until we have annotated the graph all the way to all the input variables.
+The forward pass conveniently already will have computed the values of the forward
+intermediate variables we need (like d and e) to compute these derivatives. Fig. 7.14
+shows the backward pass.
+
+∂ e and ∂ L
+
+Figure 7.14 Computation graph for the function L(a, b, c) = c(a + 2b), showing the backward pass computa-
+tion of ∂ L
+
+∂ a , ∂ L
+
+∂ b , and ∂ L
+∂ c .
+
+Backward differentiation for a neural network
+
+Of course computation graphs for real neural networks are much more complex.
+Fig. 7.15 shows a sample computation graph for a 2-layer neural network with n0 =
+2, n1 = 2, and n2 = 1, assuming binary classiﬁcation and hence using a sigmoid
+output unit for simplicity. The function that the computation graph is computing is:
+
+z[1] = W[1]x + b[1]
+a[1] = ReLU(z[1])
+z[2] = W[2]a[1] + b[2]
+a[2] = σ (z[2])
+ˆy = a[2]
+
+(7.33)
+
+e=d+ad = 2bL=cea=3b=1e=5d=2L=-10 abc∂L=5∂c∂L=-2∂e∂e=1∂d∂d=2∂b∂e=1∂abackward passc=-2∂L=-2∂e∂L=5∂c∂L∂d=-2∂e∂d∂L∂e=∂L∂a=-2∂e∂a∂L∂e=∂L∂b=-4∂d∂b∂L∂d=154 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+For the backward pass we’ll also need to compute the loss L. The loss function
+
+for binary sigmoid output from Eq. 7.23 is
+
+LCE ( ˆy, y) =
+
+[y log ˆy + (1
+
+−
+
+Our output ˆy = a[2], so we can rephrase this as
+
+y) log(1
+
+ˆy)]
+
+−
+
+−
+
+LCE (a[2], y) =
+
+y log a[2] + (1
+
+y) log(1
+
+−
+
+−
+
+a[2])
+(cid:105)
+
+−
+
+(cid:104)
+
+(7.34)
+
+(7.35)
+
+Figure 7.15 Sample computation graph for a simple 2-layer neural net (= 1 hidden layer) with two input units
+and 2 hidden units. We’ve adjusted the notation a bit to avoid long equations in the nodes by just mentioning
+[1]
+the function that is being computed, and the resulting variable name. Thus the * to the right of node w
+11 means
+[1]
+11 is to be multiplied by x1, and the node z[1] = + means that the value of z[1] is computed by summing
+
+that w
+
+the three nodes that feed into it (the two products, and the bias term b
+
+[1]
+i ).
+
+The weights that need updating (those for which we need to know the partial
+derivative of the loss function) are shown in teal. In order to do the backward pass,
+we’ll need to know the derivatives of all the functions in the graph. We already saw
+in Section 5.10 the derivative of the sigmoid σ :
+
+dσ (z)
+dz
+
+= σ (z)(1
+
+σ (z))
+
+−
+
+(7.36)
+
+We’ll also need the derivatives of each of the other activation functions. The
+
+derivative of tanh is:
+
+d tanh(z)
+dz
+The derivative of the ReLU is
+
+tanh2(z)
+
+= 1
+
+−
+
+d ReLU(z)
+dz
+
+=
+
+0 f or z < 0
+1 f or z
+0
+
+≥
+
+(cid:26)
+
+(7.37)
+
+(7.38)
+
+We’ll give the start of the computation, computing the derivative of the loss
+∂ z (and leaving the rest of the computation as an
+
+function L with respect to z, or ∂ L
+exercise for the reader). By the chain rule:
+
+∂ L
+∂ z
+
+=
+
+∂ L
+∂ a[2]
+
+∂ a[2]
+∂ z
+
+(7.39)
+
+z[2] = +a[2] = σ a[1] = ReLUz[1] = +b[1]****x1x2a[1] = ReLUz[1] = +b[1]**w[2]11w[1]11w[1]12w[1]21w[1]22b[2]w[2]12L (a[2],y)12111227.5
+
+• TRAINING NEURAL NETS
+
+155
+
+So let’s ﬁrst compute ∂ L
+
+∂ a[2] , taking the derivative of Eq. 7.35, repeated here:
+
+LCE (a[2], y) =
+
+∂ L
+∂ a[2]
+
+=
+
+=
+
+=
+
+−
+
+(cid:104)
+
+y log a[2] + (1
+
+−
+∂ log(a[2])
+
+y) log(1
+
+−
+
+y
+
+− (cid:32)(cid:32)
+
+∂ a[2] (cid:33)
+
++ (1
+
+−
+
+y)
+
+a[2])
+(cid:105)
+∂ log(1
+
+−
+∂ a[2]
+
+a[2])
+
+(cid:33)
+
+y
+
+1
+a[2]
+
++
+
+−
+
+−
+
+(cid:18)(cid:18)
+y
+a[2]
+
+(cid:18)
+
+1
+a[2]
+
+−
+
+1)
+
+(
+−
+
+(cid:19)
+
+(7.40)
+
++ (1
+
+y)
+
+1
+
+−
+
+(cid:19)
+y
+1
+
+1
+−
+a[2]
+−
+
+(cid:19)
+
+Next, by the derivative of the sigmoid:
+
+∂ a[2]
+∂ z
+
+= a[2](1
+
+a[2])
+
+−
+
+Finally, we can use the chain rule:
+
+∂ L
+∂ z
+
+=
+
+∂ L
+∂ a[2]
+
+∂ a[2]
+∂ z
+
+=
+
+−
+(cid:18)
+= a[2]
+
+y
+a[2]
+
++
+
+y
+
+−
+
+y
+1
+
+1
+−
+a[2]
+−
+
+(cid:19)
+
+a[2](1
+
+a[2])
+
+−
+
+(7.41)
+
+Continuing the backward computation of the gradients (next by passing the gra-
+1 and the two product nodes, and so on, back to all the teal nodes), is
+
+dients over b[2]
+left as an exercise for the reader.
+
+7.5.5 More details on learning
+
+Optimization in neural networks is a non-convex optimization problem, more com-
+plex than for logistic regression, and for that and other reasons there are many best
+practices for successful learning.
+
+For logistic regression we can initialize gradient descent with all the weights and
+biases having the value 0. In neural networks, by contrast, we need to initialize the
+weights with small random numbers. It’s also helpful to normalize the input values
+to have 0 mean and unit variance.
+
+Various forms of regularization are used to prevent overﬁtting. One of the most
+important is dropout: randomly dropping some units and their connections from
+the network during training (Hinton et al. 2012, Srivastava et al. 2014). Tuning
+of hyperparameters is also important. The parameters of a neural network are the
+weights W and biases b; those are learned by gradient descent. The hyperparameters
+are things that are chosen by the algorithm designer; optimal values are tuned on a
+devset rather than by gradient descent learning on the training set. Hyperparameters
+include the learning rate η, the mini-batch size, the model architecture (the number
+of layers, the number of hidden nodes per layer, the choice of activation functions),
+how to regularize, and so on. Gradient descent itself also has many architectural
+variants such as Adam (Kingma and Ba, 2015).
+
+Finally, most modern neural networks are built using computation graph for-
+malisms that make it easy and natural to do gradient computation and parallelization
+
+dropout
+
+hyperparameter
+
+156 CHAPTER 7
+
+• NEURAL NETWORKS AND NEURAL LANGUAGE MODELS
+
+on vector-based GPUs (Graphic Processing Units). PyTorch (Paszke et al., 2017)
+and TensorFlow (Abadi et al., 2015) are two of the most popular. The interested
+reader should consult a neural network textbook for further details; some sugges-
+tions are at the end of the chapter.
+
+7.6 Feedforward Neural Language Modeling
+
+As our second application of feedforward networks, let’s consider language mod-
+eling: predicting upcoming words from prior words. Neural language modeling—
+based on the transformer architecture that we will see in Chapter 10—is the algo-
+rithm the underlies all of modern NLP. In this section and the next we’ll introduce a
+simpler version of neural language models for feedforward networks, an algorithm
+ﬁrst introduced by Bengio et al. (2003). The feedforward language model introduces
+many of the important concepts of neural language modeling, concepts we’ll return
+to as we describe more powerful models inChapter 9 and Chapter 10.
+
+Neural language models have many advantages over the n-gram language mod-
+els of Chapter 3. Compared to n-gram models, neural language models can handle
+much longer histories, can generalize better over contexts of similar words, and are
+more accurate at word-prediction. On the other hand, neural net language models
+are much more complex, are slower and need more energy to train, and are less inter-
+pretable than n-gram models, so for some smaller tasks an n-gram language model
+is still the right tool.
+
+A feedforward neural language model (LM) is a feedforward network that takes
+as input at time t a representation of some number of previous words (wt
+2,
+etc.) and outputs a probability distribution over possible next words. Thus—like the
+n-gram LM—the feedforward neural LM approximates the probability of a word
+given the entire prior context P(wt |
+1
+previous words:
+
+1) by approximating based on the N
+
+1, wt
+
+w1:t
+
+−
+
+−
+
+−
+
+−
+
+−
+
+−
+
+≈
+
+1)
+
+P(wt |
+
+w1, . . . , wt
+
+N+1, . . . , wt
+
+P(wt |
+wt
+In the following examples we’ll use a 4-gram example, so we’ll show a neural net to
+estimate the probability P(wt = i
+wt
+|
+
+Neural language models represent words in this prior context by their embed-
+dings, rather than just by their word identity as used in n-gram language models.
+Using embeddings allows neural language models to generalize better to unseen
+data. For example, suppose we’ve seen this sentence in training:
+
+(7.42)
+
+3, wt
+
+2, wt
+
+1).
+
+1)
+
+−
+
+−
+
+−
+
+−
+
+I have to make sure that the cat gets fed.
+
+but have never seen the words “gets fed” after the word “dog”. Our test set has the
+preﬁx “I forgot to make sure that the dog gets”. What’s the next word? An n-gram
+language model will predict “fed” after “that the cat gets”, but not after “that the dog
+gets”. But a neural LM, knowing that “cat” and “dog” have similar embeddings, will
+be able to generalize from the “cat” context to assign a high enough probability to
+“fed” even after seeing “dog”.
+
+7.6.1 Forward inference in the neural language model
+
+forward
+inference
+
+Let’s walk through forward inference or decoding for neural language models.
+Forward inference is the task, given an input, of running a forward pass on the
+
+one-hot vector
+
+7.6
+
+• FEEDFORWARD NEURAL LANGUAGE MODELING
+
+157
+
+network to produce a probability distribution over possible outputs, in this case next
+words.
+
+We ﬁrst represent each of the N previous words as a one-hot vector of length
+V
+, i.e., with one dimension for each word in the vocabulary. A one-hot vector is
+|
+|
+a vector that has one element equal to 1—in the dimension corresponding to that
+word’s index in the vocabulary— while all the other elements are set to zero. Thus
+in a one-hot representation for the word “toothpaste”, supposing it is V5, i.e., index
+5 in the vocabulary, x5 = 1, and xi = 0
+i
+∀
+
+= 5, as shown here:
+
+[0 0 0 0 1 0 0 ... 0 0 0 0]
+... |V|
+
+1 2 3 4 5 6 7 ...
+
+−
+
+−
+
+1, wt
+
+2, and wt
+
+The feedforward neural language model (sketched in Fig. 7.17) has a moving
+window that can see N words into the past. We’ll let N equal 3, so the 3 words
+wt
+3 are each represented as a one-hot vector. We then multiply
+these one-hot vectors by the embedding matrix E. The embedding weight matrix E
+has a column for each word, each a column vector of d dimensions, and hence has
+dimensionality d
+. Multiplying by a one-hot vector that has only one non-zero
+|
+element xi = 1 simply selects out the relevant column vector for word i, resulting in
+the embedding for word i, as shown in Fig. 7.16.
+
+× |
+
+V
+
+−
+
+Figure 7.16 Selecting the embedding vector for word V5 by multiplying the embedding
+matrix E with a one-hot vector with a 1 in index 5.
+
+The 3 resulting embedding vectors are concatenated to produce e, the embedding
+layer. This is followed by a hidden layer and an output layer whose softmax produces
+a probability distribution over words. For example y42, the value of output node 42,
+is the probability of the next word wt being V42, the vocabulary word with index 42
+(which is the word ‘ﬁsh’ in our example).
+
+Here’s the algorithm in detail for our mini example:
+
+1. Select three embeddings from E: Given the three previous words, we look
+up their indices, create 3 one-hot vectors, and then multiply each by the em-
+bedding matrix E. Consider wt
+3. The one-hot vector for ‘for’ (index 35) is
+multiplied by the embedding matrix E, to give the ﬁrst part of the ﬁrst hidden
+layer, the embedding layer. Since each column of the input matrix E is an
+embedding for a word, and the input is a one-hot column vector xi for word
+Vi, the embedding layer for input w will be Exi = ei, the embedding for word
+i. We now concatenate the three embeddings for the three context words to
+produce the embedding layer e.
+
+−
+
+2. Multiply by W: We multiply by W (and add b) and pass thro

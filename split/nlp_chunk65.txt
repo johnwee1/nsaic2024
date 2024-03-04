@@ -1,0 +1,287 @@
+algorithm to speech processing
+(Baker, 1975a) during his graduate work at CMU. Independently, Frederick Jelinek
+and collaborators (drawing from their research in information-theoretical models
+inﬂuenced by the work of Shannon (1948)) applied HMMs to speech at the IBM
+Thomas J. Watson Research Center (Jelinek et al., 1975). One early difference was
+the decoding algorithm; Baker’s DRAGON system used Viterbi (dynamic program-
+ming) decoding, while the IBM system applied Jelinek’s stack decoding algorithm
+(Jelinek, 1969). Baker then joined the IBM group for a brief time before founding
+the speech-recognition company Dragon Systems.
+
+The use of the HMM, with Gaussian Mixture Models (GMMs) as the phonetic
+component, slowly spread through the speech community, becoming the dominant
+paradigm by the 1990s. One cause was encouragement by ARPA, the Advanced
+Research Projects Agency of the U.S. Department of Defense. ARPA started a
+ﬁve-year program in 1971 to build 1000-word, constrained grammar, few speaker
+speech understanding (Klatt, 1977), and funded four competing systems of which
+Carnegie-Mellon University’s Harpy system (Lowerre, 1976), which used a simpli-
+ﬁed version of Baker’s HMM-based DRAGON system was the best of the tested sys-
+tems. ARPA (and then DARPA) funded a number of new speech research programs,
+beginning with 1000-word speaker-independent read-speech tasks like “Resource
+Management” (Price et al., 1988), recognition of sentences read from the Wall Street
+Journal (WSJ), Broadcast News domain (LDC 1998, Graff 1997) (transcription of
+actual news broadcasts, including quite difﬁcult passages such as on-the-street inter-
+views) and the Switchboard, CallHome, CallFriend, and Fisher domains (Godfrey
+et al. 1992, Cieri et al. 2004) (natural telephone conversations between friends or
+strangers). Each of the ARPA tasks involved an approximately annual bakeoff at
+which systems were evaluated against each other. The ARPA competitions resulted
+in wide-scale borrowing of techniques among labs since it was easy to see which
+ideas reduced errors the previous year, and the competitions were probably an im-
+
+warping
+
+dynamic time
+warping
+
+bakeoff
+
+362 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+hybrid
+
+Kaldi
+
+ESPnet
+
+portant factor in the eventual spread of the HMM paradigm.
+
+By around 1990 neural alternatives to the HMM/GMM architecture for ASR
+arose, based on a number of earlier experiments with neural networks for phoneme
+recognition and other speech tasks. Architectures included the time-delay neural
+network (TDNN)—the ﬁrst use of convolutional networks for speech— (Waibel
+et al. 1989, Lang et al. 1990), RNNs (Robinson and Fallside, 1991), and the hybrid
+HMM/MLP architecture in which a feedforward neural network is trained as a pho-
+netic classiﬁer whose outputs are used as probability estimates for an HMM-based
+architecture (Morgan and Bourlard 1990, Bourlard and Morgan 1994, Morgan and
+Bourlard 1995).
+
+While the hybrid systems showed performance close to the standard HMM/GMM
+models, the problem was speed: large hybrid models were too slow to train on the
+CPUs of that era. For example, the largest hybrid system, a feedforward network,
+was limited to a hidden layer of 4000 units, producing probabilities over only a few
+dozen monophones. Yet training this model still required the research group to de-
+sign special hardware boards to do vector processing (Morgan and Bourlard, 1995).
+A later analytic study showed the performance of such simple feedforward MLPs
+for ASR increases sharply with more than 1 hidden layer, even controlling for the
+total number of parameters (Maas et al., 2017). But the computational resources of
+the time were insufﬁcient for more layers.
+
+Over the next two decades a combination of Moore’s law and the rise of GPUs
+allowed deep neural networks with many layers. Performance was getting close to
+traditional systems on smaller tasks like TIMIT phone recognition by 2009 (Mo-
+hamed et al., 2009), and by 2012, the performance of hybrid systems had surpassed
+traditional HMM/GMM systems (Jaitly et al. 2012, Dahl et al. 2012, inter alia).
+Originally it seemed that unsupervised pretraining of the networks using a tech-
+nique like deep belief networks was important, but by 2013, it was clear that for
+hybrid HMM/GMM feedforward networks, all that mattered was to use a lot of data
+and enough layers, although a few other components did improve performance: us-
+ing log mel features instead of MFCCs, using dropout, and using rectiﬁed linear
+units (Deng et al. 2013, Maas et al. 2013, Dahl et al. 2013).
+
+Meanwhile early work had proposed the CTC loss function by 2006 (Graves
+et al., 2006), and by 2012 the RNN-Transducer was deﬁned and applied to phone
+recognition (Graves 2012, Graves et al. 2013), and then to end-to-end speech recog-
+nition rescoring (Graves and Jaitly, 2014), and then recognition (Maas et al., 2015),
+(Our de-
+with advances such as specialized beam search (Hannun et al., 2014).
+scription of CTC in the chapter draws on Hannun (2017), which we encourage the
+interested reader to follow).
+
+The encoder-decoder architecture was applied to speech at about the same time
+by two different groups, in the Listen Attend and Spell system of Chan et al. (2016)
+and the attention-based encoder decoder architecture of Chorowski et al. (2014)
+and Bahdanau et al. (2016). By 2018 Transformers were included in this encoder-
+decoder architecture. Karita et al. (2019) is a nice comparison of RNNs vs Trans-
+formers in encoder-architectures for ASR, TTS, and speech-to-speech translation.
+
+Popular toolkits for speech processing include Kaldi (Povey et al., 2011) and
+
+ESPnet (Watanabe et al. 2018, Hayashi et al. 2020).
+
+TTS As we noted at the beginning of the chapter, speech synthesis is one of the
+earliest ﬁelds of speech and language processing. The 18th century saw a number
+of physical models of the articulation process, including the von Kempelen model
+mentioned above, as well as the 1773 vowel model of Kratzenstein in Copenhagen
+
+EXERCISES
+
+363
+
+using organ pipes.
+
+The early 1950s saw the development of three early paradigms of waveform
+
+synthesis: formant synthesis, articulatory synthesis, and concatenative synthesis.
+
+Modern encoder-decoder systems are distant descendants of formant synthesiz-
+ers. Formant synthesizers originally were inspired by attempts to mimic human
+speech by generating artiﬁcial spectrograms. The Haskins Laboratories Pattern
+Playback Machine generated a sound wave by painting spectrogram patterns on a
+moving transparent belt and using reﬂectance to ﬁlter the harmonics of a wave-
+form (Cooper et al., 1951); other very early formant synthesizers include those of
+Lawrence (1953) and Fant (1951). Perhaps the most well-known of the formant
+synthesizers were the Klatt formant synthesizer and its successor systems, includ-
+ing the MITalk system (Allen et al., 1987) and the Klattalk software used in Digital
+Equipment Corporation’s DECtalk (Klatt, 1982). See Klatt (1975) for details.
+
+A second early paradigm, concatenative synthesis, seems to have been ﬁrst pro-
+posed by Harris (1953) at Bell Laboratories; he literally spliced together pieces of
+magnetic tape corresponding to phones. Soon afterwards, Peterson et al. (1958) pro-
+posed a theoretical model based on diphones, including a database with multiple
+copies of each diphone with differing prosody, each labeled with prosodic features
+including F0, stress, and duration, and the use of join costs based on F0 and formant
+distance between neighboring units. But such diphone synthesis models were not
+actually implemented until decades later (Dixon and Maxey 1968, Olive 1977). The
+1980s and 1990s saw the invention of unit selection synthesis, based on larger units
+of non-uniform length and the use of a target cost, (Sagisaka 1988, Sagisaka et al.
+1992, Hunt and Black 1996, Black and Taylor 1994, Syrdal et al. 2000).
+
+A third paradigm, articulatory synthesizers attempt to synthesize speech by
+modeling the physics of the vocal tract as an open tube. Representative models
+include Stevens et al. (1953), Flanagan et al. (1975), and Fant (1986). See Klatt
+(1975) and Flanagan (1972) for more details.
+
+Most early TTS systems used phonemes as input; development of the text anal-
+ysis components of TTS came somewhat later, drawing on NLP. Indeed the ﬁrst
+true text-to-speech system seems to have been the system of Umeda and Teranishi
+(Umeda et al. 1968, Teranishi and Umeda 1968, Umeda 1976), which included a
+parser that assigned prosodic boundaries, as well as accent and stress.
+
+Exercises
+
+16.1 Analyze each of the errors in the incorrectly recognized transcription of “um
+the phone is I left the. . . ” on page 352. For each one, give your best guess as
+to whether you think it is caused by a problem in signal processing, pronun-
+ciation modeling, lexicon size, language model, or pruning in the decoding
+search.
+
+Part III
+
+ANNOTATING LINGUISTIC
+STRUCTURE
+
+In the ﬁnal part of the book we discuss the task of detecting linguistic structure.
+In the early history of NLP these structures were an intermediate step toward deeper
+language processing. In modern NLP, we don’t generally make explicit use of parse
+or other structures inside the neural language models we introduced in Part I, or
+directly in applications like those we discussed in Part II.
+
+Instead linguistic structure plays a number of new roles. One of the most im-
+portant roles is to provide a useful interpretive lens on neural networks. Knowing
+that a particular layer or neuron may be computing something related to a particular
+kind of structure can help us break open the ‘black box’ and understand what the
+components of our language models are doing. A second important role for linguis-
+tic structure is as as a practical tool for social scientiﬁc studies of text: knowing
+which adjective modiﬁes which noun, or whether a particular implicit metaphor is
+being used, can be important for measuring attitudes toward groups or individuals.
+Detailed semantic structure can be helpful, for example in ﬁnding particular clauses
+that have particular meanings in legal contracts. Word sense labels can help keep any
+corpus study from measuring facts about the wrong word sense. Relation structures
+can be used to help build knowledge bases from text. Finally, linguistic structure
+can be important to answer questions about language itself. To answer linguistic
+questions about how language changes over time or across individuals we’ll need to
+be able, for example, to parse entire documents from different time periods.
+
+In our study of linguistic structure, we begin with one of the oldest tasks in
+computational linguistics: the extraction of syntactic structure, and give two sets of
+algorithms for parsing: extracting syntactic structure, including constituency pars-
+ing and dependency parsing. We then introduce model-theoretic semantics and give
+algorithms for semantic parsing. We then introduce a variety of structures related
+to meaning, including semantic roles, word senses, entity relations, and events. We
+conclude with linguistic structures that tend to be related to discourse and meaning
+over larger texts, including coreference, and discourse coherence. In each case we’ll
+give algorithms for automatically annotating the relevant structure.
+
+CHAPTER
+
+17 Context-Free Grammars and
+
+Constituency Parsing
+
+syntax
+
+Because the Night by Bruce Springsteen and Patty Smith
+The Fire Next Time by James Baldwin
+If on a winter’s night a traveler by Italo Calvino
+Love Actually by Richard Curtis
+Suddenly Last Summer by Tennessee Williams
+A Scanner Darkly by Philip K. Dick
+
+Six titles that are not constituents, from Geoffrey K. Pullum on
+Language Log (who was pointing out their incredible rarity).
+
+One morning I shot an elephant in my pajamas.
+How he got into my pajamas I don’t know.
+
+Groucho Marx, Animal Crackers, 1930
+
+The study of grammar has an ancient pedigree. The grammar of Sanskrit was
+described by the Indian grammarian P¯an. ini sometime between the 7th and 4th cen-
+turies BCE, in his famous treatise the As.t.¯adhy¯ay¯ı (‘8 books’). And our word syntax
+comes from the Greek s´yntaxis, meaning “setting out together or arrangement”, and
+refers to the way words are arranged together. We have seen syntactic notions in
+previous chapters like the use of part-of-speech categories (Chapter 8). In this chap-
+ter and the next one we introduce formal models for capturing more sophisticated
+notions of grammatical structure, and algorithms for parsing these structures.
+
+Our focus in this chapter is context-free grammars and the CKY algorithm
+for parsing them. Context-free grammars are the backbone of many formal mod-
+els of the syntax of natural language (and, for that matter, of computer languages).
+Syntactic parsing is the task of assigning a syntactic structure to a sentence. Parse
+trees (whether for context-free grammars or for the dependency or CCG formalisms
+we introduce in following chapters) can be used in applications such as grammar
+checking: sentence that cannot be parsed may have grammatical errors (or at least
+be hard to read). Parse trees can be an intermediate stage of representation for the
+formal semantic analysis of Chapter 20. And parsers and the grammatical structure
+they assign a sentence are a useful text analysis tool for text data science applications
+that require modeling the relationship of elements in sentences.
+
+In this chapter we introduce context-free grammars, give a small sample gram-
+mar of English, introduce more formal deﬁnitions of context-free grammars and
+grammar normal form, and talk about treebanks: corpora that have been anno-
+tated with syntactic structure. We then discuss parse ambiguity and the problems
+it presents, and turn to parsing itself, giving the famous Cocke-Kasami-Younger
+(CKY) algorithm (Kasami 1965, Younger 1967), the standard dynamic program-
+ming approach to syntactic parsing. The CKY algorithm returns an efﬁcient repre-
+sentation of the set of parse trees for a sentence, but doesn’t tell us which parse tree
+is the right one. For that, we need to augment CKY with scores for each possible
+constituent. We’ll see how to do this with neural span-based parsers. Finally, we’ll
+introduce the standard set of metrics for evaluating parser accuracy.
+
+368 CHAPTER 17
+
+• CONTEXT-FREE GRAMMARS AND CONSTITUENCY PARSING
+
+17.1 Constituency
+
+Syntactic constituency is the idea that groups of words can behave as single units,
+or constituents. Part of developing a grammar involves building an inventory of the
+constituents in the language. How do words group together in English? Consider
+the noun phrase, a sequence of words surrounding at least one noun. Here are some
+examples of noun phrases (thanks to Damon Runyon):
+
+noun phrase
+
+Harry the Horse
+the Broadway coppers
+they
+
+a high-class spot such as Mindy’s
+the reason he comes into the Hot Box
+three parties from Brooklyn
+
+What evidence do we have that these words group together (or “form constituents”)?
+
+One piece of evidence is that they can all appear in similar syntactic environments,
+for example, before a verb.
+
+three parties from Brooklyn arrive. . .
+a high-class spot such as Mindy’s attracts. . .
+the Broadway coppers love. . .
+they sit
+
+But while the whole noun phrase can occur before a verb, this is not true of each
+of the individual words that make up a noun phrase. The following are not grammat-
+ical sentences of English (recal

@@ -1,0 +1,334 @@
+
+Make simplifying assumptions. You may build in a simple ﬂight database or
+you may use a ﬂight information system on the Web as your backend.
+
+CHAPTER
+
+16 Automatic Speech Recognition
+
+and Text-to-Speech
+
+I KNOW not whether
+I see your meaning: if I do, it lies
+Upon the wordy wavelets of your voice,
+Dim as an evening shadow in a brook,
+Thomas Lovell Beddoes, 1851
+
+Understanding spoken language, or at least transcribing the words into writing, is
+one of the earliest goals of computer language processing. In fact, speech processing
+predates the computer by many decades!
+The ﬁrst machine that recognized speech
+was a toy from the 1920s. “Radio Rex”,
+shown to the right, was a celluloid dog
+that moved (by means of a spring) when
+the spring was released by 500 Hz acous-
+tic energy. Since 500 Hz is roughly the
+ﬁrst formant of the vowel [eh] in “Rex”,
+Rex seemed to come when he was called
+(David, Jr. and Selfridge, 1962).
+
+In modern times, we expect more of our automatic systems. The task of auto-
+
+ASR
+
+matic speech recognition (ASR) is to map any waveform like this:
+
+to the appropriate string of words:
+
+It’s time for lunch!
+
+Automatic transcription of speech by any speaker in any environment is still far from
+solved, but ASR technology has matured to the point where it is now viable for many
+practical tasks. Speech is a natural interface for communicating with smart home ap-
+pliances, personal assistants, or cellphones, where keyboards are less convenient, in
+telephony applications like call-routing (“Accounting, please”) or in sophisticated
+dialogue applications (“I’d like to change the return date of my ﬂight”). ASR is also
+useful for general transcription, for example for automatically generating captions
+for audio or video text (transcribing movies or videos or live discussions). Transcrip-
+tion is important in ﬁelds like law where dictation plays an important role. Finally,
+ASR is important as part of augmentative communication (interaction between com-
+puters and humans with some disability resulting in difﬁculties or inabilities in typ-
+ing or audition). The blind Milton famously dictated Paradise Lost to his daughters,
+and Henry James dictated his later novels after a repetitive stress injury.
+
+What about the opposite problem, going from text to speech? This is a problem
+with an even longer history. In Vienna in 1769, Wolfgang von Kempelen built for
+
+338 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+the Empress Maria Theresa the famous Mechanical Turk, a chess-playing automaton
+consisting of a wooden box ﬁlled with gears, behind which sat a robot mannequin
+who played chess by moving pieces with his mechanical arm. The Turk toured Eu-
+rope and the Americas for decades, defeating Napoleon Bonaparte and even playing
+Charles Babbage. The Mechanical Turk might have been one of the early successes
+of artiﬁcial intelligence were it not for the fact that it was, alas, a hoax, powered by
+a human chess player hidden inside the box.
+
+is
+
+What
+
+an extraordinarily
+
+that von Kempelen,
+
+less well known is
+proliﬁc inventor, also built between
+1769 and 1790 what was deﬁnitely
+the ﬁrst full-sentence
+not a hoax:
+speech synthesizer, shown partially to
+the right. His device consisted of a
+bellows to simulate the lungs, a rub-
+ber mouthpiece and a nose aperture, a
+reed to simulate the vocal folds, var-
+ious whistles for the fricatives, and a
+small auxiliary bellows to provide the puff of air for plosives. By moving levers
+with both hands to open and close apertures, and adjusting the ﬂexible leather “vo-
+cal tract”, an operator could produce different consonants and vowels.
+
+speech
+synthesis
+text-to-speech
+
+TTS
+
+More than two centuries later, we no longer build our synthesizers out of wood
+and leather, nor do we need human operators. The modern task of speech synthesis,
+also called text-to-speech or TTS, is exactly the reverse of ASR; to map text:
+
+It’s time for lunch!
+
+to an acoustic waveform:
+
+Modern speech synthesis has a wide variety of applications. TTS is used in
+conversational agents that conduct dialogues with people, plays a role in devices
+that read out loud for the blind or in games, and can be used to speak for sufferers
+of neurological disorders, such as the late astrophysicist Steven Hawking who, after
+he lost the use of his voice because of ALS, spoke by manipulating a TTS system.
+
+In the next sections we’ll show how to do ASR with encoder-decoders, intro-
+duce the CTC loss functions, the standard word error rate evaluation metric, and
+describe how acoustic features are extracted. We’ll then see how TTS can be mod-
+eled with almost the same algorithm in reverse, and conclude with a brief mention
+of other speech tasks.
+
+16.1 The Automatic Speech Recognition Task
+
+digit
+recognition
+
+Before describing algorithms for ASR, let’s talk about how the task itself varies.
+One dimension of variation is vocabulary size. Some ASR tasks can be solved with
+extremely high accuracy, like those with a 2-word vocabulary (yes versus no) or
+an 11 word vocabulary like digit recognition (recognizing sequences of digits in-
+cluding zero to nine plus oh). Open-ended tasks like transcribing videos or human
+conversations, with large vocabularies of up to 60,000 words, are much harder.
+
+16.1
+
+• THE AUTOMATIC SPEECH RECOGNITION TASK
+
+339
+
+A second dimension of variation is who the speaker is talking to. Humans speak-
+ing to machines (either dictating or talking to a dialogue system) are easier to recog-
+nize than humans speaking to humans. Read speech, in which humans are reading
+out loud, for example in audio books, is also relatively easy to recognize. Recog-
+nizing the speech of two humans talking to each other in conversational speech,
+for example, for transcribing a business meeting, is the hardest. It seems that when
+humans talk to machines, or read without an audience present, they simplify their
+speech quite a bit, talking more slowly and more clearly.
+
+A third dimension of variation is channel and noise. Speech is easier to recognize
+if it’s recorded in a quiet room with head-mounted microphones than if it’s recorded
+by a distant microphone on a noisy city street, or in a car with the window open.
+
+A ﬁnal dimension of variation is accent or speaker-class characteristics. Speech
+is easier to recognize if the speaker is speaking the same dialect or variety that the
+system was trained on. Speech by speakers of regional or ethnic dialects, or speech
+by children can be quite difﬁcult to recognize if the system is only trained on speak-
+ers of standard dialects, or only adult speakers.
+
+A number of publicly available corpora with human-created transcripts are used
+to create ASR test and training sets to explore this variation; we mention a few of
+them here since you will encounter them in the literature. LibriSpeech is a large
+open-source read-speech 16 kHz dataset with over 1000 hours of audio books from
+the LibriVox project, with transcripts aligned at the sentence level (Panayotov et al.,
+2015). It is divided into an easier (“clean”) and a more difﬁcult portion (“other”)
+with the clean portion of higher recording quality and with accents closer to US
+English. This was done by running a speech recognizer (trained on read speech from
+the Wall Street Journal) on all the audio, computing the WER for each speaker based
+on the gold transcripts, and dividing the speakers roughly in half, with recordings
+from lower-WER speakers called “clean” and recordings from higher-WER speakers
+“other”.
+
+The Switchboard corpus of prompted telephone conversations between strangers
+was collected in the early 1990s; it contains 2430 conversations averaging 6 min-
+utes each, totaling 240 hours of 8 kHz speech and about 3 million words (Godfrey
+et al., 1992). Switchboard has the singular advantage of an enormous amount of
+auxiliary hand-done linguistic labeling, including parses, dialogue act tags, phonetic
+and prosodic labeling, and discourse and information structure. The CALLHOME
+corpus was collected in the late 1990s and consists of 120 unscripted 30-minute
+telephone conversations between native speakers of English who were usually close
+friends or family (Canavan et al., 1997).
+
+The Santa Barbara Corpus of Spoken American English (Du Bois et al., 2005) is
+a large corpus of naturally occurring everyday spoken interactions from all over the
+United States, mostly face-to-face conversation, but also town-hall meetings, food
+preparation, on-the-job talk, and classroom lectures. The corpus was anonymized by
+removing personal names and other identifying information (replaced by pseudonyms
+in the transcripts, and masked in the audio).
+
+CORAAL is a collection of over 150 sociolinguistic interviews with African
+American speakers, with the goal of studying African American Language (AAL),
+the many variations of language used in African American communities (Kendall
+and Farrington, 2020). The interviews are anonymized with transcripts aligned at
+the utterance level. The CHiME Challenge is a series of difﬁcult shared tasks with
+corpora that deal with robustness in ASR. The CHiME 5 task, for example, is ASR of
+conversational speech in real home environments (speciﬁcally dinner parties). The
+
+read speech
+
+conversational
+speech
+
+LibriSpeech
+
+Switchboard
+
+CALLHOME
+
+CORAAL
+
+CHiME
+
+340 CHAPTER 16
+
+• AUTOMATIC SPEECH RECOGNITION AND TEXT-TO-SPEECH
+
+HKUST
+
+AISHELL-1
+
+corpus contains recordings of twenty different dinner parties in real homes, each
+with four participants, and in three locations (kitchen, dining area, living room),
+recorded both with distant room microphones and with body-worn mikes. The
+HKUST Mandarin Telephone Speech corpus has 1206 ten-minute telephone con-
+versations between speakers of Mandarin across China, including transcripts of the
+conversations, which are between either friends or strangers (Liu et al., 2006). The
+AISHELL-1 corpus contains 170 hours of Mandarin read speech of sentences taken
+from various domains, read by different speakers mainly from northern China (Bu
+et al., 2017).
+
+Figure 16.1 shows the rough percentage of incorrect words (the word error rate,
+or WER, deﬁned on page 352) from state-of-the-art systems on some of these tasks.
+Note that the error rate on read speech (like the LibriSpeech audiobook corpus) is
+around 2%; this is a solved task, although these numbers come from systems that re-
+quire enormous computational resources. By contrast, the error rate for transcribing
+conversations between humans is much higher; 5.8 to 11% for the Switchboard and
+CALLHOME corpora. The error rate is higher yet again for speakers of varieties
+like African American Vernacular English, and yet again for difﬁcult conversational
+tasks like transcription of 4-speaker dinner party speech, which can have error rates
+as high as 81.3%. Character error rates (CER) are also much lower for read Man-
+darin speech than for natural conversation.
+
+WER%
+English Tasks
+1.4
+LibriSpeech audiobooks 960hour clean
+2.6
+LibriSpeech audiobooks 960hour other
+5.8
+Switchboard telephone conversations between strangers
+11.0
+CALLHOME telephone conversations between family
+27.0
+Sociolinguistic interviews, CORAAL (AAL)
+47.9
+CHiMe5 dinner parties with body-worn microphones
+81.3
+CHiMe5 dinner parties with distant microphones
+CER%
+Chinese (Mandarin) Tasks
+6.7
+AISHELL-1 Mandarin read speech corpus
+HKUST Mandarin Chinese telephone conversations
+23.5
+Figure 16.1 Rough Word Error Rates (WER = % of words misrecognized) reported around
+2020 for ASR on various American English recognition tasks, and character error rates (CER)
+for two Chinese recognition tasks.
+
+16.2 Feature Extraction for ASR: Log Mel Spectrum
+
+feature vector
+
+The ﬁrst step in ASR is to transform the input waveform into a sequence of acoustic
+feature vectors, each vector representing the information in a small time window
+of the signal. Let’s see how to convert a raw waveﬁle to the most commonly used
+features, sequences of log mel spectrum vectors. A speech signal processing course
+is recommended for more details.
+
+16.2.1 Sampling and Quantization
+
+The input to a speech recognizer is a complex series of changes in air pressure.
+These changes in air pressure obviously originate with the speaker and are caused
+
+16.2
+
+• FEATURE EXTRACTION FOR ASR: LOG MEL SPECTRUM 341
+
+by the speciﬁc way that air passes through the glottis and out the oral or nasal cav-
+ities. We represent sound waves by plotting the change in air pressure over time.
+One metaphor which sometimes helps in understanding these graphs is that of a ver-
+tical plate blocking the air pressure waves (perhaps in a microphone in front of a
+speaker’s mouth, or the eardrum in a hearer’s ear). The graph measures the amount
+of compression or rarefaction (uncompression) of the air molecules at this plate.
+Figure 16.2 shows a short segment of a waveform taken from the Switchboard corpus
+of telephone speech of the vowel [iy] from someone saying “she just had a baby”.
+
+Figure 16.2 A waveform of an instance of the vowel [iy] (the last vowel in the word “baby”). The y-axis
+shows the level of air pressure above and below normal atmospheric pressure. The x-axis shows time. Notice
+that the wave repeats regularly.
+
+sampling
+
+Nyquist
+frequency
+
+quantization
+
+The ﬁrst step in digitizing a sound wave like Fig. 16.2 is to convert the analog
+representations (ﬁrst air pressure and then analog electric signals in a microphone)
+into a digital signal. This analog-to-digital conversion has two steps: sampling and
+quantization. To sample a signal, we measure its amplitude at a particular time; the
+sampling rate is the number of samples taken per second. To accurately measure a
+wave, we must have at least two samples in each cycle: one measuring the positive
+part of the wave and one measuring the negative part. More than two samples per
+cycle increases the amplitude accuracy, but fewer than two samples causes the fre-
+quency of the wave to be completely missed. Thus, the maximum frequency wave
+that can be measured is one whose frequency is half the sample rate (since every
+cycle needs two samples). This maximum frequency for a given sampling rate is
+called the Nyquist frequency. Most information in human speech is in frequencies
+below 10,000 Hz; thus, a 20,000 Hz sampling rate would be necessary for com-
+plete accuracy. But telephone speech is ﬁltered by the switching network, and only
+frequencies less than 4,000 Hz are transmitted by telephones. Thus, an 8,000 Hz
+sampling rate is sufﬁcient for telephone-bandwidth speech like the Switchboard
+corpus, while 16,000 Hz sampling is often used for microphone speech.
+
+Although using higher sampling rates produces higher ASR accuracy, we can’t
+combine different sampling rates for training and testing ASR systems. Thus if
+we are testing on a telephone corpus like Switchboard (8 KHz sampling), we must
+downsample our training corpus to 8 KHz. Similarly, if we are training on mul-
+tiple corpora and one of them includes telephone speech, we downsample all the
+wideband corpora to 8Khz.
+
+Amplitude measurements are stored as integers, either 8 bit (values from -128–
+127) or 16 bit (values from -32768–32767). This process of representing real-valued
+numbers as integers is called quantization; all values that are closer together than
+the minimum granularity (the quantum size) are represented identically. We refer to
+each sample at time index n in the digitized, quantized waveform as x[n].
+
+Once data is quantized, it is stored in various formats
