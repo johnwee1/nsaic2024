@@ -1,0 +1,470 @@
+id:0)
+
+¯Rt
+
+¯Rt
+
+Ia=At −
+πt(At)
+Ia=At −
+(cid:0)
+πt(a)
+
+(cid:1)
+
+πt(a)
+
+/πt(At)
+
+.
+
+(cid:1)
+
+(cid:3)
+
+(cid:2)(cid:0)
+
+(cid:1)(cid:0)
+
+(cid:1)(cid:3)
+
+Recall that our plan has been to write the performance gradient as an expecta-
+tion of something that we can sample on each step, as we have just done, and
+then update on each step proportional to the sample. Substituting a sample
+of the expectation above for the performance gradient in (2.11) yields:
+
+Ht+1(a) = Ht(a) + α
+
+¯Rt
+
+Rt −
+
+Ia=At −
+
+πt(a)
+
+,
+
+a,
+
+∀
+
+(cid:0)
+
+(cid:1)(cid:0)
+
+(cid:1)
+
+which you will recognize as being equivalent to our original algorithm (2.10).
+
+Thus it remains only to show that ∂ πt(b)
+
+assumed earlier. Recall the standard quotient rule for derivatives:
+
+∂Ht(a) = πt(b)
+(cid:0)
+
+Ia=b −
+
+(cid:1)
+
+πt(a)
+
+, as we
+
+∂
+∂x
+
+f (x)
+g(x)
+
+(cid:20)
+
+=
+
+(cid:21)
+
+∂f (x)
+∂x g(x)
+
+f (x) ∂g(x)
+∂x
+
+−
+g(x)2
+
+.
+
+46
+
+CHAPTER 2. MULTI-ARM BANDITS
+
+Using this, we can write
+
+πt(b)
+
+∂
+∂Ht(a)
+∂
+∂Ht(a)
+∂eHt(b)
+∂Ht(a)
+
+(cid:80)
+Ia=beHt(a)
+
+eHt(b)
+n
+c=1 eHt(c)
+
+(cid:20)
+n
+c=1 eHt(c)
+(cid:80)
+(
+
+−
+c=1 eHt(c))2
+
+n
+
+(cid:21)
+eHt(b) ∂ (cid:80)n
+
+c=1 eHt(c)
+∂Ht(a)
+
+n
+c=1 eHt(c)
+(cid:80)
+−
+c=1 eHt(c))2
+n
+
+(
+(cid:80)
+
+eHt(b)eHt(a)
+
+∂ πt(b)
+∂Ht(a)
+
+=
+
+=
+
+=
+
+=
+
+=
+
+Ia=beHt(b)
+
+(cid:80)
+n
+c=1 eHt(c) −
+
+eHt(b)eHt(a)
+c=1 eHt(c))2
+
+n
+
+(
+
+= Ia=bπt(b)
+(cid:80)
+= πt(b)
+
+−
+Ia=b −
+
+πt(b)πt(a)
+(cid:80)
+πt(a)
+
+.
+
+(by the quotient rule)
+
+(because ∂ex
+
+∂x = ex)
+
+Q.E.D.
+
+(cid:0)
+
+(cid:1)
+
+We have just shown that the expected update of the gradient-bandit algo-
+rithm is equal to the gradient of expected reward, and thus that the algorithm
+is an instance of stochastic gradient ascent. This assures us that the algorithm
+has robust convergence properties.
+
+Note that we did not require anything of the reward baseline other than
+that it not depend on the selected action. For example, we could have set
+is to zero, or to 1000, and the algorithm would still have been an instance
+of stochastic gradient ascent. The choice of the baseline does not aﬀect the
+expected update of the algorithm, but it does aﬀect the variance of the update
+and thus the rate of convergence (as shown, e.g., in Figure 2.4). Choosing it
+as the average of the rewards may not be the very best, but it is simple and
+works well in practice.
+
+2.8 Associative Search (Contextual Bandits)
+
+So far in this chapter we have considered only nonassociative tasks, in which
+there is no need to associate diﬀerent actions with diﬀerent situations.
+In
+these tasks the learner either tries to ﬁnd a single best action when the task is
+stationary, or tries to track the best action as it changes over time when the
+task is nonstationary. However, in a general reinforcement learning task there
+is more than one situation, and the goal is to learn a policy: a mapping from
+situations to the actions that are best in those situations. To set the stage for
+
+2.9. SUMMARY
+
+47
+
+the full problem, we brieﬂy discuss the simplest way in which nonassociative
+tasks extend to the associative setting.
+
+As an example, suppose there are several diﬀerent n-armed bandit tasks,
+and that on each play you confront one of these chosen at random. Thus, the
+bandit task changes randomly from play to play. This would appear to you as
+a single, nonstationary n-armed bandit task whose true action values change
+randomly from play to play. You could try using one of the methods described
+in this chapter that can handle nonstationarity, but unless the true action
+values change slowly, these methods will not work very well. Now suppose,
+however, that when a bandit task is selected for you, you are given some
+distinctive clue about its identity (but not its action values). Maybe you are
+facing an actual slot machine that changes the color of its display as it changes
+its action values. Now you can learn a policy associating each task, signaled
+by the color you see, with the best action to take when facing that task—for
+instance, if red, play arm 1; if green, play arm 2. With the right policy you
+can usually do much better than you could in the absence of any information
+distinguishing one bandit task from another.
+
+This is an example of an associative search task, so called because it in-
+volves both trial-and-error learning in the form of search for the best actions
+and association of these actions with the situations in which they are best.2
+Associative search tasks are intermediate between the n-armed bandit problem
+and the full reinforcement learning problem. They are like the full reinforce-
+ment learning problem in that they involve learning a policy, but like our
+version of the n-armed bandit problem in that each action aﬀects only the
+immediate reward. If actions are allowed to aﬀect the next situation as well as
+the reward, then we have the full reinforcement learning problem. We present
+this problem in the next chapter and consider its ramiﬁcations throughout the
+rest of the book.
+
+2.9 Summary
+
+We have presented in this chapter several simple ways of balancing exploration
+and exploitation. The ε-greedy methods choose randomly a small fraction of
+the time, whereas UCB methods choose deterministically but achieve explo-
+ration by subtly favoring at each step the actions that have so far received fewer
+samples. Gradient-bandit algorithms estimate not action values, but action
+preferences, and favor the more preferred actions in a graded, probabalistic
+manner using a soft-max distribution. The simple expedient of initializing
+
+2Associative search tasks are often now termed contextual bandits in the literature.
+
+48
+
+CHAPTER 2. MULTI-ARM BANDITS
+
+Figure 2.5: A parameter study of the various bandit algorithms presented in
+this chapter. Each point is the average reward obtained over 1000 steps with
+a particular algorithm at a particular setting of its parameter.
+
+estimates optimistically causes even greedy methods to explore signiﬁcantly.
+
+It is natural to ask which of these methods is best. Although this is a
+diﬃcult question to answer in general, we can certainly run them all on the
+10-armed testbed that we have used throughout this chapter and compare
+their performances. A complication is that they all have a parameter; to
+get a meaningful comparison we will have to consider their performance as
+a function of their parameter. Our graphs so far have shown the course of
+learning over time for each algorithm and parameter setting, but it would
+be too visually confusing to show such a learning curve for each algorithm
+and parameter value. Instead we summarize a complete learning curve by its
+average value over the 1000 steps; this value is proportional to the area under
+the learning curves we have shown up to now. Figure 2.5 shows this measure
+for the various bandit algorithms from this chapter, each as a function of its
+own parameter shown on a single scale on the x-axis. Note that the parameter
+values are varied by factors of two and presented on a log scale. Note also
+the characteristic inverted-U shapes of each algorithm’s performance; all the
+algorithms perform best at an intermediate value of their parameter, neither
+too large nor too big. In assessing an method, we should attend not just to
+how well it does at its best parameter setting, but also to how sensitive it is to
+its parameter value. All of these algorithms are fairly insensitive, performing
+well over a range of parameter values varying by about an order of magnitude.
+Overall, on this problem, UCB seems to perform best.
+
+Averagerewardover ﬁrst 1000 steps1.51.41.31.21.11𝜀-greedyUCBgradientbanditgreedy withoptimisticinitializationα = 0.1↵/c/Q01241/21/41/81/161/321/641/1282.9. SUMMARY
+
+49
+
+Despite their simplicity, in our opinion the methods presented in this chap-
+ter can fairly be considered the state of the art. There are more sophisticated
+methods, but their complexity and assumptions make them impractical for the
+full reinforcement learning problem that is our real focus. Starting in Chap-
+ter 5 we present learning methods for solving the full reinforcement learning
+problem that use in part the simple methods explored in this chapter.
+
+Although the simple methods explored in this chapter may be the best we
+can do at present, they are far from a fully satisfactory solution to the problem
+of balancing exploration and exploitation.
+
+The classical solution to balancing exploration and exploitation in n-armed
+bandit problems is to compute special functions called Gittins indices. These
+provide an optimal solution to a certain kind of bandit problem more general
+than that considered here but that assumes the prior distribution of possible
+problems is known. Unfortunately, neither the theory nor the computational
+tractability of this method appear to generalize to the full reinforcement learn-
+ing problem that we consider in the rest of the book.
+
+There is also a well-known algorithm for computing the Bayes optimal way
+to balance exploration and exploitation. This method is computationally in-
+tractable when done exactly, but there may be eﬃcient ways to approximate it.
+In this method we assume that we know the distribution of problem instances,
+that is, the probability of each possible set of true action values. Given any
+action selection, we can then compute the probability of each possible imme-
+diate reward and the resultant posterior probability distribution over action
+values. This evolving distribution becomes the information state of the prob-
+lem. Given a horizon, say 1000 plays, one can consider all possible actions, all
+possible resulting rewards, all possible next actions, all next rewards, and so
+on for all 1000 plays. Given the assumptions, the rewards and probabilities
+of each possible chain of events can be determined, and one need only pick
+the best. But the tree of possibilities grows extremely rapidly; even if there
+are only two actions and two rewards, the tree will have 22000 leaves. This
+approach eﬀectively turns the bandit problem into an instance of the full rein-
+forcement learning problem. In the end, we may be able to use reinforcement
+learning methods to approximate this optimal solution. But that is a topic for
+current research and beyond the scope of this book.
+
+Bibliographical and Historical Remarks
+
+2.1
+
+Bandit problems have been studied in statistics, engineering, and psy-
+chology. In statistics, bandit problems fall under the heading “sequen-
+tial design of experiments,” introduced by Thompson (1933, 1934) and
+
+50
+
+CHAPTER 2. MULTI-ARM BANDITS
+
+Robbins (1952), and studied by Bellman (1956). Berry and Fristedt
+(1985) provide an extensive treatment of bandit problems from the
+perspective of statistics. Narendra and Thathachar (1989) treat bandit
+problems from the engineering perspective, providing a good discussion
+of the various theoretical traditions that have focused on them. In psy-
+chology, bandit problems have played roles in statistical learning theory
+(e.g., Bush and Mosteller, 1955; Estes, 1950).
+
+The term greedy is often used in the heuristic search literature (e.g.,
+Pearl, 1984). The conﬂict between exploration and exploitation is
+known in control engineering as the conﬂict between identiﬁcation (or
+estimation) and control (e.g., Witten, 1976). Feldbaum (1965) called it
+the dual control problem, referring to the need to solve the two prob-
+lems of identiﬁcation and control simultaneously when trying to control
+a system under uncertainty. In discussing aspects of genetic algorithms,
+Holland (1975) emphasized the importance of this conﬂict, referring to
+it as the conﬂict between the need to exploit and the need for new
+information.
+
+2.2
+
+Action-value methods for our n-armed bandit problem were ﬁrst pro-
+posed by Thathachar and Sastry (1985). These are often called esti-
+mator algorithms in the learning automata literature. The term action
+value is due to Watkins (1989). The ﬁrst to use ε-greedy methods may
+also have been Watkins (1989, p. 187), but the idea is so simple that
+some earlier use seems likely.
+
+2.3–4 This material falls under the general heading of stochastic iterative
+
+algorithms, which is well covered by Bertsekas and Tsitsiklis (1996).
+
+2.5
+
+2.6
+
+2.7
+
+Optimistic initialization was used in reinforcement learning by Sutton
+(1996).
+
+Early work on using estimates of the upper conﬁdence bound to select
+actions was done by Lai and Robbins (1985), Kaelbling (1993b), and
+Agarwal (1995). The UCB algorithm we present here is called UCB1
+in the literature and was ﬁrst developed by Auer, Cesa-Bianchi and
+Fischer (2002).
+
+Gradient-bandit algorithms are a special case of the gradient-based
+reinforcement learning algorithms introduced by Williams (1992), and
+that later developed into the actor–critic and policy-gradient algorithms
+that we treat later in this book. Further discussion of the choice of
+
+2.9. SUMMARY
+
+51
+
+2.8
+
+2.9
+
+baseline is provided there and by Greensmith, Bartlett, and Baxter
+(2001, 2004) and Dick (2015).
+
+The term softmax for the action selection rule (2.9) is due to Bridle
+(1990). This rule appears to have been ﬁrst proposed by Luce (1959).
+
+The term associative search and the corresponding problem were in-
+troduced by Barto, Sutton, and Brouwer (1981). The term associative
+reinforcement learning has also been used for associative search (Barto
+and Anandan, 1985), but we prefer to reserve that term as a synonym
+for the full reinforcement learning problem (as in Sutton, 1984). (And,
+as we noted, the modern literature also uses the term “contextual ban-
+dits” for this problem.) We note that Thorndike’s Law of Eﬀect (quoted
+in Chapter 1) describes associative search by referring to the formation
+of associative links between situations (states) and actions. Accord-
+ing to the terminology of operant, or instrumental, conditioning (e.g.,
+Skinner, 1938), a discriminative stimulus is a stimulus that signals the
+presence of a particular reinforcement contingency. In our terms, dif-
+ferent discriminative stimuli correspond to diﬀerent states.
+
+The Gittins index approach is due to Gittins and Jones (1974). Duﬀ
+(1995) showed how it is possible to learn Gittins indices for bandit
+problems through reinforcement learning. Bellman (1956) was the ﬁrst
+to show how dynamic programming could be used to compute the op-
+timal balance between exploration and exploitation within a Bayesian
+formulation of the problem. The survey by Kumar (1985) provides
+a good discussion of Bayesian and non-Bayesian approaches to these
+problems. The term information state comes from the literature on
+partially observable MDPs; see, e.g., Lovejoy (1991).
+
+Exercises
+
+Exercise 2.1 In the comparison shown in Figure 2.1, which method will
+perform best in the long run in terms of cumulative reward and cumulative
+probability of selecting the best action? How much better will it be? Express
+your answer quantitatively.
+
+Exercise 2.2 Give pseudocode for a complete algorithm for the n-armed
+bandit problem. Use greedy action selection and incremental computation of
+action values with α = 1
+k step-size parameter. Assume a function bandit(a)
+that takes an action and returns a reward. Use arrays and variables; do not
+
+52
+
+CHAPTER 2. MULTI-ARM BANDITS
+
+subscript anything by the time index t (for examples of this style of pseu-
+docode, see Figures 4.1 and 4.3). Indicate how the action values are initialized
+and updated after each reward. Indicate how the step-size parameters are set
+for each action as a function of how many times it has been tried.
+
+Exercise 2.3 If the step-size parameters, αk, are not constant, the

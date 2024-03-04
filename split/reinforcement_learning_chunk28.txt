@@ -1,0 +1,329 @@
+p methods are favored.
+
+Bibliographical and Historical Remarks
+
+7.1–2 The forward view of eligibility traces in terms of n-step returns and the
+λ-return is due to Watkins (1989), who also ﬁrst discussed the error
+reduction property of n-step returns. Our presentation is based on
+the slightly modiﬁed treatment by Jaakkola, Jordan, and Singh (1994).
+The results in the random walk examples were made for this text based
+on work of Sutton (1988) and Singh and Sutton (1996). The use of
+backup diagrams to describe these and other algorithms in this chapter
+is new, as are the terms “forward view” and “backward view.”
+
+192
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+TD(λ) was proved to converge in the mean by Dayan (1992), and with
+probability 1 by many researchers, including Peng (1993), Dayan and
+Sejnowski (1994), and Tsitsiklis (1994). Jaakkola, Jordan, and Singh
+(1994), in addition, ﬁrst proved convergence of TD(λ) under on-line
+updating. Gurvits, Lin, and Hanson (1994) proved convergence of a
+more general class of eligibility trace methods.
+
+7.3
+
+TD(λ) with accumulating traces was introduced by Sutton (1988, 1984).
+Replacing traces are due to Singh and Sutton (1996). Dutch traces are
+due to van Seijen and Sutton (2014, in prep).
+
+Eligibility traces came into reinforcement learning via the fecund ideas
+of Klopf (1972). Our use of eligibility traces was based on Klopf’s
+work (Sutton, 1978a, 1978b, 1978c; Barto and Sutton, 1981a, 1981b;
+Sutton and Barto, 1981a; Barto, Sutton, and Anderson, 1983; Sutton,
+1984). We may have been the ﬁrst to use the term “eligibility trace”
+(Sutton and Barto, 1981). The idea that stimuli produce aftereﬀects
+in the nervous system that are important for learning is very old. See
+Section 14.??.
+
+7.4
+
+7.5
+
+The episode-by-episode equivalence of forward and backward views,
+and the relationships to Monte Carlo methods, were proved by Sutton
+(1988) for undiscounted episodic tasks, then extended to the general
+case in the ﬁrst edition of this book (1989). We see these as now
+superceded by the analyses and step-by-step equivalences in Section
+9.??.
+
+Sarsa(λ) was ﬁrst explored as a control method by Rummery and Ni-
+ranjan (1994; Rummery, 1995). Our presentation of replacing traces
+omits a subtlety which is sometimes found to be beneﬁcial: clearing
+(setting to zero) the traces of all the actions not taken in the state that
+is visited, as suggested by Singh and Sutton (1996). This can also be
+done in Q(λ). Nowadays we would recommend just using dutch traces,
+which generalize better to function approximation.
+
+7.6 Watkins’s Q(λ) is due to Watkins (1989). Peng’s Q(λ) is due to Peng
+and Williams (Peng, 1993; Peng and Williams, 1994, 1996). Rummery
+(1995) made extensive comparative studies of these algorithms.
+
+Convergence has still not been proved for any control method for 0 <
+λ < 1.
+
+7.10. CONCLUSIONS
+
+193
+
+7.8-9 The ideas in these two sections were generally known for many years,
+but beyond what is in the sources cited in the sections themselves, this
+text may be the ﬁrst place they have been described. Perhaps the ﬁrst
+published discussion of variable λ was by Watkins (1989), who pointed
+out that the cutting oﬀ of the backup sequence (Figure 7.14) in his
+Q(λ) when a nongreedy action was selected could be implemented by
+temporarily setting λ to 0.
+
+Exercises
+
+Exercise 7.1 Why do you think a larger random walk task (19 states instead
+of 5) was used in the examples of this chapter? Would a smaller walk have
+shifted the advantage to a diﬀerent value of n? How about the change in left-
+1? Would that have made any diﬀerence in the best
+side outcome from 0 to
+value of n?
+
+−
+
+Exercise 7.2 Why do you think on-line methods worked better than oﬀ-line
+methods on the example task?
+
+∗Exercise 7.3 In the lower part of Figure 7.2, notice that the plot for n = 3 is
+diﬀerent from the others, dropping to low performance at a much lower value of
+α than similar methods. In fact, the same was observed for n = 5, n = 7, and
+n = 9. Can you explain why this might have been so? In fact, we are not sure
+ourselves. See http://www.cs.utexas.edu/~ikarpov/Classes/RL/RandomWalk/
+for an attempt at a thorough answer by Igor Karpov.
+
+Exercise 7.4 The parameter λ characterizes how fast the exponential weight-
+ing in Figure 7.4 falls oﬀ, and thus how far into the future the λ-return algo-
+rithm looks in determining its backup. But a rate factor such as λ is sometimes
+an awkward way of characterizing the speed of the decay. For some purposes it
+is better to specify a time constant, or half-life. What is the equation relating
+λ and the half-life, τλ, the time by which the weighting sequence will have
+fallen to half of its initial value?
+
+Exercise 7.5 (programming) Draw a backup diagram for Sarsa(λ) with
+replacing traces.
+
+Exercise 7.6 Write pseudocode for an implementation of TD(λ) that up-
+dates only value estimates for states whose traces are greater than some small
+positive constant.
+
+Exercise 7.7 Write equations or pseudocode for Sarsa(λ) and/or Q(λ) with
+dutch traces. Do the same for a true-on-line version.
+
+194
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+Chapter 8
+
+Planning and Learning with
+Tabular Methods
+
+In this chapter we develop a uniﬁed view of methods that require a model
+of the environment, such as dynamic programming and heuristic search, and
+methods that can be used without a model, such as Monte Carlo and temporal-
+diﬀerence methods. We think of the former as planning methods and of the
+latter as learning methods. Although there are real diﬀerences between these
+two kinds of methods, there are also great similarities. In particular, the heart
+of both kinds of methods is the computation of value functions. Moreover, all
+the methods are based on looking ahead to future events, computing a backed-
+up value, and then using it to update an approximate value function. Earlier
+in this book we presented Monte Carlo and temporal-diﬀerence methods as
+distinct alternatives, then showed how they can be seamlessly integrated by
+using eligibility traces such as in TD(λ). Our goal in this chapter is a similar
+integration of planning and learning methods. Having established these as
+distinct in earlier chapters, we now explore the extent to which they can be
+intermixed.
+
+8.1 Models and Planning
+
+By a model of the environment we mean anything that an agent can use to
+predict how the environment will respond to its actions. Given a state and an
+action, a model produces a prediction of the resultant next state and next re-
+ward. If the model is stochastic, then there are several possible next states and
+next rewards, each with some probability of occurring. Some models produce
+a description of all possibilities and their probabilities; these we call distri-
+bution models. Other models produce just one of the possibilities, sampled
+
+195
+
+196CHAPTER 8. PLANNING AND LEARNING WITH TABULAR METHODS
+
+according to the probabilities; these we call sample models. For example, con-
+sider modeling the sum of a dozen dice. A distribution model would produce
+all possible sums and their probabilities of occurring, whereas a sample model
+would produce an individual sum drawn according to this probability distribu-
+tion. The kind of model assumed in dynamic programming—estimates of the
+s, a) and r(s, a, s(cid:48))—
+state transition probabilities and expected rewards, p(s(cid:48)
+|
+is a distribution model. The kind of model used in the blackjack example in
+Chapter 5 is a sample model. Distribution models are stronger than sample
+models in that they can always be used to produce samples. However, in sur-
+prisingly many applications it is much easier to obtain sample models than
+distribution models.
+
+Models can be used to mimic or simulate experience. Given a starting state
+and action, a sample model produces a possible transition, and a distribution
+model generates all possible transitions weighted by their probabilities of oc-
+curring. Given a starting state and a policy, a sample model could produce an
+entire episode, and a distribution model could generate all possible episodes
+and their probabilities. In either case, we say the model is used to simulate
+the environment and produce simulated experience.
+
+The word planning is used in several diﬀerent ways in diﬀerent ﬁelds. We
+use the term to refer to any computational process that takes a model as
+input and produces or improves a policy for interacting with the modeled
+environment:
+
+Within artiﬁcial intelligence, there are two distinct approaches to planning ac-
+cording to our deﬁnition. In state-space planning, which includes the approach
+we take in this book, planning is viewed primarily as a search through the state
+space for an optimal policy or path to a goal. Actions cause transitions from
+In what we
+state to state, and value functions are computed over states.
+call plan-space planning, planning is instead viewed as a search through the
+space of plans. Operators transform one plan into another, and value func-
+tions, if any, are deﬁned over the space of plans. Plan-space planning includes
+evolutionary methods and partial-order planning, a popular kind of planning
+in artiﬁcial intelligence in which the ordering of steps is not completely de-
+termined at all stages of planning. Plan-space methods are diﬃcult to apply
+eﬃciently to the stochastic optimal control problems that are the focus in rein-
+forcement learning, and we do not consider them further (but see Section 15.6
+for one application of reinforcement learning within plan-space planning).
+
+The uniﬁed view we present in this chapter is that all state-space planning
+methods share a common structure, a structure that is also present in the
+
+planningmodelpolicy8.1. MODELS AND PLANNING
+
+197
+
+learning methods presented in this book. It takes the rest of the chapter to
+develop this view, but there are two basic ideas: (1) all state-space planning
+methods involve computing value functions as a key intermediate step toward
+improving the policy, and (2) they compute their value functions by backup
+operations applied to simulated experience. This common structure can be
+diagrammed as follows:
+
+Dynamic programming methods clearly ﬁt this structure: they make sweeps
+through the space of states, generating for each state the distribution of pos-
+sible transitions. Each distribution is then used to compute a backed-up value
+and update the state’s estimated value. In this chapter we argue that vari-
+ous other state-space planning methods also ﬁt this structure, with individual
+methods diﬀering only in the kinds of backups they do, the order in which
+they do them, and in how long the backed-up information is retained.
+
+Viewing planning methods in this way emphasizes their relationship to the
+learning methods that we have described in this book. The heart of both
+learning and planning methods is the estimation of value functions by backup
+operations. The diﬀerence is that whereas planning uses simulated experience
+generated by a model, learning methods use real experience generated by the
+environment. Of course this diﬀerence leads to a number of other diﬀerences,
+for example, in how performance is assessed and in how ﬂexibly experience
+can be generated. But the common structure means that many ideas and
+algorithms can be transferred between planning and learning. In particular,
+in many cases a learning algorithm can be substituted for the key backup step
+of a planning method. Learning methods require only experience as input, and
+in many cases they can be applied to simulated experience just as well as to real
+experience. Figure 8.1 shows a simple example of a planning method based on
+one-step tabular Q-learning and on random samples from a sample model. This
+method, which we call random-sample one-step tabular Q-planning, converges
+to the optimal policy for the model under the same conditions that one-step
+tabular Q-learning converges to the optimal policy for the real environment
+(each state–action pair must be selected an inﬁnite number of times in Step
+1, and α must decrease appropriately over time).
+
+In addition to the uniﬁed view of planning and learning methods, a second
+theme in this chapter is the beneﬁts of planning in small, incremental steps.
+This enables planning to be interrupted or redirected at any time with lit-
+tle wasted computation, which appears to be a key requirement for eﬃciently
+intermixing planning with acting and with learning of the model. More sur-
+prisingly, later in this chapter we present evidence that planning in very small
+
+valuesbackupsmodelsimulatedexperiencepolicy198CHAPTER 8. PLANNING AND LEARNING WITH TABULAR METHODS
+
+Do forever:
+
+1. Select a state, S
+∈
+2. Send S, A to a sample model, and obtain
+
+S, and an action, A
+
+∈
+
+A(s), at random
+
+a sample next reward, R, and a sample next state, S(cid:48)
+
+3. Apply one-step tabular Q-learning to S, A, R, S(cid:48):
+
+Q(S, A)
+
+←
+
+Q(S, A) + α
+
+R + γ maxa Q(S(cid:48), a)
+
+Q(S, A)
+
+−
+
+(cid:2)
+Figure 8.1: Random-sample one-step tabular Q-planning
+
+(cid:3)
+
+steps may be the most eﬃcient approach even on pure planning problems if
+the problem is too large to be solved exactly.
+
+8.2 Integrating Planning, Acting, and Learn-
+
+ing
+
+When planning is done on-line, while interacting with the environment, a num-
+ber of interesting issues arise. New information gained from the interaction
+may change the model and thereby interact with planning. It may be desirable
+to customize the planning process in some way to the states or decisions cur-
+rently under consideration, or expected in the near future. If decision-making
+and model-learning are both computation-intensive processes, then the avail-
+able computational resources may need to be divided between them. To begin
+exploring these issues, in this section we present Dyna-Q, a simple architec-
+ture integrating the major functions needed in an on-line planning agent. Each
+function appears in Dyna-Q in a simple, almost trivial, form. In subsequent
+sections we elaborate some of the alternate ways of achieving each function
+and the trade-oﬀs between them. For now, we seek merely to illustrate the
+ideas and stimulate your intuition.
+
+Within a planning agent, there are at least two roles for real experience: it
+can be used to improve the model (to make it more accurately match the real
+environment) and it can be used to directly improve the value function and
+policy using the kinds of reinforcement learning methods we have discussed in
+previous chapters. The former we call model-learning, and the latter we call
+direct reinforcement learning (direct RL). The possible relationships between
+experience, model, values, and policy are summarized in Figure 8.2. Each
+arrow shows a relationship of inﬂuence and presumed improvement. Note how
+experience can improve value and policy functions either directly or indirectly
+via the model. It is the latter, which is sometimes called indirect reinforcement
+learning, that is involved in planning.
+
+8.2.
+
+INTEGRATING PLANNING, ACTING, AND LEARNING
+
+199
+
+Figure 8.2: Relationships among learning, planning, and acting.
+
+Both direct and indirect methods have advantages and disadvantages. In-
+direct methods often make fuller use of a limited amount of experience and
+thus achieve a better policy with fewer environmental interactions. On the
+other hand, direct methods are much simpler and are not aﬀected by biases
+in the design of the model. Some have argued that indirect methods are al-
+ways superior to direct ones, while others have argued t

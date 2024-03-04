@@ -1,0 +1,783 @@
+but conﬁdent that what is shown here is
+indeed the optimal policy for the version of blackjack we have described.
+
+124
+
+CHAPTER 5. MONTE CARLO METHODS
+
+Figure 5.5: The optimal policy and state-value function for blackjack, found by
+Monte Carlo ES (Figure 5.4). The state-value function shown was computed
+from the action-value function found by Monte Carlo ES.
+
+5.4 Monte Carlo Control without Exploring
+
+Starts
+
+How can we avoid the unlikely assumption of exploring starts? The only
+general way to ensure that all actions are selected inﬁnitely often is for the
+agent to continue to select them. There are two approaches to ensuring this,
+resulting in what we call on-policy methods and oﬀ-policy methods. On-
+policy methods attempt to evaluate or improve the policy that is used to make
+decisions, whereas oﬀ-policy methods evaluate or improve a policy diﬀerent
+from that used to generate the data. The Monte Carlo ES method developed
+above is an example of an on-policy method. In this section we show how an
+on-policy Monte Carlo control method can be designed that does not use the
+unrealistic assumption of exploring starts. Oﬀ-policy methods are considered
+in the next section.
+
+S and all a
+
+In on-policy control methods the policy is generally soft, meaning that
+A(s), but gradually shifted closer and
+π(a
+s) > 0 for all s
+|
+closer to a deterministic optimal policy. Many of the methods discussed in
+Chapter 2 provide mechanisms for this. The on-policy method we present in
+this section uses ε-greedy policies, meaning that most of the time they choose
+an action that has maximal estimated action value, but with probability ε
+
+∈
+
+∈
+
+UsableaceNousableace2010A23456789Dealer showingPlayer sumHITSTICK19211112131415161718!*10A23456789HITSTICK2019211112131415161718V*211012ADealer showingPlayer sum10A1221+1"1v*UsableaceNousableace2010A23456789Dealer showingPlayer sumHITSTICK19211112131415161718!*10A23456789HITSTICK2019211112131415161718V*211012ADealer showingPlayer sum10A1221+1"1v*UsableaceNousableace2010A23456789Dealer showingPlayer sumHITSTICK19211112131415161718!*10A23456789HITSTICK2019211112131415161718V*211012ADealer showingPlayer sum10A1221+1"1v*Dealer showingPlayer sum**5.4. MONTE CARLO CONTROL WITHOUT EXPLORING STARTS 125
+
+they instead select an action at random. That is, all nongreedy actions are
+, and the remaining bulk of the
+given the minimal probability of selection,
+, is given to the greedy action. The ε-greedy policies
+probability, 1
+are examples of ε-soft policies, deﬁned as policies for which π(a
+for
+all states and actions, for some ε > 0. Among ε-soft policies, ε-greedy policies
+are in some sense those that are closest to greedy.
+
+ε + (cid:15)
+A(s)
+|
+|
+
+(cid:15)
+A(s)
+|
+
+(cid:15)
+A(s)
+
+s)
+|
+
+≥
+
+−
+
+|
+
+|
+
+|
+
+The overall idea of on-policy Monte Carlo control is still that of GPI. As in
+Monte Carlo ES, we use ﬁrst-visit MC methods to estimate the action-value
+function for the current policy. Without the assumption of exploring starts,
+however, we cannot simply improve the policy by making it greedy with respect
+to the current value function, because that would prevent further exploration
+of nongreedy actions. Fortunately, GPI does not require that the policy be
+taken all the way to a greedy policy, only that it be moved toward a greedy
+policy. In our on-policy method we will move it only to an ε-greedy policy.
+For any ε-soft policy, π, any ε-greedy policy with respect to qπ is guaranteed
+to be better than or equal to π.
+
+That any ε-greedy policy with respect to qπ is an improvement over any
+ε-soft policy π is assured by the policy improvement theorem. Let π(cid:48) be the
+ε-greedy policy. The conditions of the policy improvement theorem apply
+because for any s
+
+S:
+
+∈
+
+qπ(s, π(cid:48)(s)) =
+
+π(cid:48)(a
+
+s)qπ(s, a)
+|
+
+a
+(cid:88)
+(cid:15)
+A(s)
+|
+
+(cid:15)
+A(s)
+|
+
+=
+
+≥
+
+qπ(s, a) + (1
+
+ε) max
+
+a
+
+−
+
+qπ(s, a)
+
+(5.2)
+
+qπ(s, a) + (1
+
+ε)
+
+−
+
+π(a
+
+a
+(cid:88)
+
+s)
+|
+
+1
+
+−
+|
+ε
+
+−
+
+(cid:15)
+A(s)
+|
+
+qπ(s, a)
+
+a
+
+| (cid:88)
+
+a
+
+| (cid:88)
+
+(the sum is a weighted average with nonnegative weights summing to 1, and
+as such it must be less than or equal to the largest number averaged)
+s)qπ(s, a)
+π(a
+|
+
+qπ(s, a) +
+
+qπ(s, a)
+
+−
+
+=
+
+(cid:15)
+A(s)
+|
+
+a
+
+| (cid:88)
+
+(cid:15)
+A(s)
+|
+= vπ(s).
+
+a
+
+| (cid:88)
+
+a
+(cid:88)
+
+Thus, by the policy improvement theorem, π(cid:48)
+vπ(s), for all
+S). We now prove that equality can hold only when both π(cid:48) and π are
+s
+optimal among the ε-soft policies, that is, when they are better than or equal
+to all other ε-soft policies.
+
+π (i.e., vπ(cid:48)(s)
+
+≥
+
+≥
+
+∈
+
+Consider a new environment that is just like the original environment, ex-
+cept with the requirement that policies be ε-soft “moved inside” the environ-
+ment. The new environment has the same action and state set as the original
+
+126
+
+CHAPTER 5. MONTE CARLO METHODS
+
+−
+
+and behaves as follows. If in state s and taking action a, then with probability
+ε the new environment behaves exactly like the old environment. With
+1
+probability ε it repicks the action at random, with equal probabilities, and
+then behaves like the old environment with the new, random action. The best
+one can do in this new environment with general policies is the same as the
+best one could do in the original environment with ε-soft policies. Let
+and
+q
+denote the optimal value functions for the new environment. Then a policy
+∗
+π is optimal among ε-soft policies if and only if vπ =
+. From the deﬁnition
+we know that it is the unique solution to
+of
+(cid:101)
+
+v
+∗
+
+(cid:101)
+
+v
+
+∗
+
+v
+∗
+
+(cid:101)
+
+v
+∗
+
+(cid:101)
+
+(s) = (1
+
+= (1
+
+−
+
+−
+
+ε) max
+
+a
+
+q
+
+∗
+
+(s, a) +
+
+ε) max
+
+a
+
+p(s(cid:48), r
+
+(cid:101)
+(cid:88)s(cid:48),r
+
++
+
+(cid:15)
+A(s)
+|
+
+a
+
+| (cid:88)
+
+(cid:88)s(cid:48),r
+
+(cid:101)
+(s, a)
+
+∗
+
+q
+
+a
+
+| (cid:88)
+r + γ
+
+(cid:101)
+v
+
+(s(cid:48))
+
+∗
+
+(cid:15)
+A(s)
+|
+s, a)
+|
+
+(cid:104)
+p(s(cid:48), r
+
+s, a)
+|
+
+(cid:105)
+(cid:101)
+v
+r + γ
+∗
+
+(cid:104)
+
+(s(cid:48))
+
+.
+
+(cid:105)
+
+(cid:101)
+
+When equality holds and the ε-soft policy π is no longer improved, then we
+also know, from (5.2), that
+
+vπ(s) = (1
+
+= (1
+
+−
+
+−
+
+ε) max
+
+a
+
+qπ(s, a) +
+
+ε) max
+
+a
+
+p(s(cid:48), r
+
++
+
+(cid:88)s(cid:48),r
+
+(cid:15)
+A(s)
+|
+
+a
+
+| (cid:88)
+
+(cid:88)s(cid:48),r
+
+(cid:15)
+A(s)
+|
+s, a)
+|
+
+(cid:104)
+p(s(cid:48), r
+
+qπ(s, a)
+
+a
+
+| (cid:88)
+r + γvπ(s(cid:48))
+
+(cid:105)
+r + γvπ(s(cid:48))
+
+.
+
+(cid:105)
+
+s, a)
+|
+
+(cid:104)
+
+However, this equation is the same as the previous one, except for the substi-
+tution of vπ for
+
+is the unique solution, it must be that vπ =
+
+. Since
+
+.
+
+v
+∗
+
+v
+∗
+
+v
+∗
+
+(cid:101)
+
+(cid:101)
+
+In essence, we have shown in the last few pages that policy iteration works
+for ε-soft policies. Using the natural notion of greedy policy for ε-soft policies,
+one is assured of improvement on every step, except when the best policy has
+been found among the ε-soft policies. This analysis is independent of how
+the action-value functions are determined at each stage, but it does assume
+that they are computed exactly. This brings us to roughly the same point
+as in the previous section. Now we only achieve the best policy among the
+ε-soft policies, but on the other hand, we have eliminated the assumption of
+exploring starts. The complete algorithm is given in Figure 5.6.
+
+(cid:101)
+
+5.5. OFF-POLICY PREDICTION VIA IMPORTANCE SAMPLING 127
+
+Initialize, for all s
+
+S, a
+
+A(s):
+
+∈
+
+∈
+
+arbitrary
+
+Q(s, a)
+Returns(s, a)
+π(a
+
+←
+
+s)
+|
+
+←
+
+empty list
+an arbitrary ε-soft policy
+
+←
+
+Repeat forever:
+
+(a) Generate an episode using π
+(b) For each pair s, a appearing in the episode:
+
+return following the ﬁrst occurrence of s, a
+
+←
+
+G
+Append G to Returns(s, a)
+Q(s, a)
+
+average(Returns(s, a))
+
+←
+(c) For each s in the episode:
+arg maxa Q(s, a)
+A(s):
+1
+ε/
+
+a∗ ←
+For all a
+
+s)
+π(a
+|
+
+←
+
+∈
+
+ε + ε/
+−
+A(s)
+|
+
+|
+
+(cid:26)
+
+A(s)
+|
+
+|
+
+if a = a∗
+= a∗
+if a
+
+Figure 5.6: An on-policy ﬁrst-visit MC control algorithm for ε-soft policies.
+
+5.5 Oﬀ-policy Prediction via Importance Sam-
+
+pling
+
+So far we have considered methods for estimating the value functions for a
+policy given an inﬁnite supply of episodes generated using that policy. Suppose
+now that all we have are episodes generated from a diﬀerent policy. That is,
+suppose we wish to estimate vπ or qπ, but all we have are episodes following
+another policy µ, where µ
+= π. We call π the target policy because learning its
+value function is the target of the learning process, and we call µ the behavior
+policy because it is the policy controlling the agent and generating behavior.
+The overall problem is called oﬀ-policy learning because it is learning about a
+policy given only experience “oﬀ” (not following) that policy.
+
+In order to use episodes from µ to estimate values for π, we must require
+that every action taken under π is also taken, at least occasionally, under µ.
+That is, we require that π(a
+s) > 0. This is called the
+s) > 0 implies µ(a
+|
+|
+assumption of coverage. It follows from coverage that µ must be stochastic
+in states where it is not identical to π. The target policy π, on the other
+hand, may be deterministic, and, in fact, this is a case of particular interest.
+Typically the target policy is the deterministic greedy policy with respect to
+the current action-value function estimate. This policy we hope becomes a
+deterministic optimal policy while the behavior policy remains stochastic and
+more exploratory, for example, an ε-greedy policy.
+
+(cid:54)
+(cid:54)
+128
+
+CHAPTER 5. MONTE CARLO METHODS
+
+Importance sampling is a general technique for estimating expected values
+under one distribution given samples from another. We apply this technique
+to oﬀ-policy learning by weighting returns according to the relative probability
+of their trajectories occurring under the target and behavior policies, called
+the importance-sampling ratio. Given a starting state St, the probability of
+the subsequent state–action trajectory, At, St+1, At+1, . . . , ST , occurring under
+any policy π is
+
+T
+
+1
+
+−
+
+(cid:89)k=t
+
+π(Ak|
+
+Sk)p(Sk+1|
+
+Sk, Ak),
+
+where p is the state-transition probability function deﬁned by (3.8). Thus, the
+relative probability of the trajectory under the target and behavior policies
+(the importance-sampling ratio) is
+
+ρT
+t =
+
+(cid:81)
+
+T
+
+1
+
+T
+
+−
+
+k=t π(Ak|
+k=t µ(Ak|
+
+−
+
+1
+
+Sk)p(Sk+1|
+Sk)p(Sk+1|
+
+Sk, Ak)
+Sk, Ak)
+
+=
+
+T
+
+1
+
+−
+
+(cid:89)k=t
+
+π(Ak|
+µ(Ak|
+
+Sk)
+Sk)
+
+.
+
+(5.3)
+
+(cid:81)
+
+Note that although the trajectory probabilities depend on the MDP’s transi-
+tion probabilities, which are generally unknown, all the transition probabilities
+cancel and drop out. The importance sampling ratio ends up depending only
+on the two policies and not at all on the MDP.
+
+Now we are ready to give a Monte Carto algorithm that uses a batch of
+observed episodes following policy µ to estimate vπ(s). It is convenient here to
+number time steps in a way that increases across episode boundaries. That is,
+if the ﬁrst episode of the batch ends in a terminal state at time 100, then the
+next episode begins at time t = 101. This enables us to use time-step numbers
+to refer to particular steps in particular episodes. In particular, we can deﬁne
+the set of all time steps in which state s is visited, denoted T(s). This is for
+an every-visit method; for a ﬁrst-visit method, T(s) would only include time
+steps that were ﬁrst visits to s within their episode. Also, let T (t) denote the
+ﬁrst time of termination following time t, and Gt denote the return after t
+up through T (t). Then
+T(s) are the returns that pertain to state s, and
+ρT (t)
+T(s) are the corresponding importance-sampling ratios. To estimate
+t
+{
+vπ(s), we simply scale the returns by the ratios and average the results:
+
+Gt}t
+
+}t
+∈
+
+{
+
+∈
+
+V (s) =
+
+(cid:80)
+
+t
+∈
+
+t Gt
+
+T(s) ρT (t)
+T(s)
+|
+|
+
+.
+
+(5.4)
+
+When importance sampling is done as a simple average in this way it is called
+ordinary importance sampling.
+
+5.5. OFF-POLICY PREDICTION VIA IMPORTANCE SAMPLING 129
+
+An important alternative is weighted importance sampling, which uses a
+
+weighted average, deﬁned as
+
+V (s) =
+
+(cid:80)
+
+t
+∈
+
+T(s) ρT (t)
+t Gt
+T(s) ρT (t)
+
+t
+
+t
+∈
+
+,
+
+(5.5)
+
+(cid:80)
+
+t
+
+or zero if the denominator is zero. To understand these two varieties of im-
+portance sampling, consider their estimates after observing a single return. In
+the weighted-average estimate, the ratio ρT (t)
+for the single return cancels in
+the numerator and denominator, so that the estimate is equal to the observed
+return independent of the ratio (assuming the ratio is nonzero). Given that
+this return was the only one observed, this is a reasonable estimate, but of
+course its expectation is vµ(s) rather than vπ(s), and in this statistical sense it
+is biased. In contrast, the simple average (5.4) is always vπ(s) in expectation
+(it is unbiased), but it can be extreme. Suppose the ratio were ten, indicating
+that the trajectory observed is ten times as likely under the target policy as
+under the behavior policy. In this case the ordinary importance-sampling es-
+timate would be ten times the observed return. That is, it would be quite far
+from the observed return even though the episode’s trajectory is considered
+very representative of the target policy.
+
+Formally, the diﬀerence between the two kinds of importance sampling
+is expressed in their variances. The variance of the ordinary importance-
+sampling estimator is in general unbounded because the variance of the ratios
+is unbounded, whereas in the weighted estimator the largest weight on any
+single return is one. In fact, assuming bounded returns, the variance of the
+weighted importance-sampling estimator converges to zero even if the variance
+of the ratios themselves is inﬁnite (Precup, Sutton, and Dasgupta 2001). In
+practice, the weighted estimator usually has dramatically lower variance and is
+strongly preferred. A complete every-visit MC algorithm for oﬀ-policy policy
+evaluation using weighted importance sampling is given at the end of the next
+section in Figure 5.9.
+
+130
+
+CHAPTER 5. MONTE CARLO METHODS
+
+Example 5.4: Oﬀ-policy Estimation of a Blackjack State Value
+We applied both ordinary and weighted importance-sampling methods to es-
+timate the value of a single blackjack state from oﬀ-policy data. Recall that
+one of the advantages of Monte Carlo methods is that they can be used to
+evaluate a single state without forming estimates for any other states. In this
+example, we evaluated the state in which the dealer is showing a deuce, the
+sum of the player’s cards is 13, and the player has a usable ace (that is, the
+player holds an ace and a deuce, or equivalently three aces). The data was
+generated by starting in this state then choosing to hit or stick at random with
+equal probability (the behavior policy). The target policy was to stick only
+on a sum of 20 or 21, as in Example 5.1. The value of this state under the
+0.27726 (this was determined by separately
+target policy is approximately
+generating one-hundred million episodes using the target policy and averaging
+their returns). Both oﬀ-policy methods closely approximated this value after
+1000 oﬀ-policy episodes using the random policy. Figure 5.7 shows the mean
+squared error (estimated from 100 independent runs) for each method as a
+function of number of episodes. The weighted importance-sampling method
+has much lower overall error in this example, as is typical in practice.
+
+−
+
+Figure 5.7: Weighted importance sampling produces lower error estimates of
+the value of a single blackjack state from oﬀ-policy episodes (see Example 5.4).
+
+Ordinary importance samplingWeighted importance samplingEpisodes (log scale)010100100010,000Me

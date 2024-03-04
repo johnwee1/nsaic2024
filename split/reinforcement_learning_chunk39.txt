@@ -1,0 +1,358 @@
+ side, resulting in a second on-move
+position. The backup was toward the minimax value of a search launched from
+the second on-move position. Thus, the overall eﬀect was that of a backup
+consisting of one full move of real events and then a search over possible events,
+as suggested by Figure 14.3. Samuel’s actual algorithm was signiﬁcantly more
+complex than this for computational reasons, but this was the basic idea.
+
+Samuel did not include explicit rewards. Instead, he ﬁxed the weight of the
+most important feature, the piece advantage feature, which measured the num-
+
+14.2. SAMUEL’S CHECKERS PLAYER
+
+281
+
+Figure 14.3: The backup diagram for Samuel’s checkers player.
+
+ber of pieces the program had relative to how many its opponent had, giving
+higher weight to kings, and including reﬁnements so that it was better to trade
+pieces when winning than when losing. Thus, the goal of Samuel’s program
+was to improve its piece advantage, which in checkers is highly correlated with
+winning.
+
+However, Samuel’s learning method may have been missing an essential
+part of a sound temporal-diﬀerence algorithm. Temporal-diﬀerence learning
+can be viewed as a way of making a value function consistent with itself, and
+this we can clearly see in Samuel’s method. But also needed is a way of tying
+the value function to the true value of the states. We have enforced this via
+rewards and by discounting or giving a ﬁxed value to the terminal state. But
+Samuel’s method included no rewards and no special treatment of the terminal
+positions of games. As Samuel himself pointed out, his value function could
+have become consistent merely by giving a constant value to all positions.
+He hoped to discourage such solutions by giving his piece-advantage term a
+large, nonmodiﬁable weight. But although this may decrease the likelihood of
+ﬁnding useless evaluation functions, it does not prohibit them. For example,
+a constant function could still be attained by setting the modiﬁable weights
+so as to cancel the eﬀect of the nonmodiﬁable one.
+
+Since Samuel’s learning procedure was not constrained to ﬁnd useful eval-
+uation functions, it should have been possible for it to become worse with
+experience. In fact, Samuel reported observing this during extensive self-play
+training sessions. To get the program improving again, Samuel had to in-
+tervene and set the weight with the largest absolute value back to zero. His
+interpretation was that this drastic intervention jarred the program out of local
+optima, but another possibility is that it jarred the program out of evaluation
+
+hypothetical eventsactual eventsbackup282
+
+CHAPTER 14. APPLICATIONS AND CASE STUDIES
+
+functions that were consistent but had little to do with winning or losing the
+game.
+
+Despite these potential problems, Samuel’s checkers player using the gener-
+alization learning method approached “better-than-average” play. Fairly good
+amateur opponents characterized it as “tricky but beatable” (Samuel, 1959).
+In contrast to the rote-learning version, this version was able to develop a
+good middle game but remained weak in opening and endgame play. This
+program also included an ability to search through sets of features to ﬁnd
+those that were most useful in forming the value function. A later version
+(Samuel, 1967) included reﬁnements in its search procedure, such as alpha-
+beta pruning, extensive use of a supervised learning mode called “book learn-
+ing,” and hierarchical lookup tables called signature tables (Griﬃth, 1966) to
+represent the value function instead of linear function approximation. This
+version learned to play much better than the 1959 program, though still not
+at a master level. Samuel’s checkers-playing program was widely recognized
+as a signiﬁcant achievement in artiﬁcial intelligence and machine learning.
+
+14.3 The Acrobot
+
+Reinforcement learning has been applied to a wide variety of physical control
+tasks (e.g., for a collection of robotics applications, see Connell and Mahade-
+van, 1993). One such task is the acrobot, a two-link, underactuated robot
+roughly analogous to a gymnast swinging on a high bar (Figure 14.4). The ﬁrst
+joint (corresponding to the gymnast’s hands on the bar) cannot exert torque,
+but the second joint (corresponding to the gymnast bending at the waist)
+can. The system has four continuous state variables: two joint positions and
+two joint velocities. The equations of motion are given in Figure 14.5. This
+system has been widely studied by control engineers (e.g., Spong, 1994) and
+machine-learning researchers (e.g., Dejong and Spong, 1994; Boone, 1997).
+
+One objective for controlling the acrobot is to swing the tip (the “feet”)
+above the ﬁrst joint by an amount equal to one of the links in minimum time.
+In this task, the torque applied at the second joint is limited to three choices:
+positive torque of a ﬁxed magnitude, negative torque of the same magnitude,
+1 is given on all time steps until the goal is reached,
+or no torque. A reward of
+which ends the episode. No discounting is used (γ = 1). Thus, the optimal
+value, v
+(s), of any state, s, is the minimum time to reach the goal (an integer
+∗
+number of steps) starting from s.
+
+−
+
+Sutton (1996) addressed the acrobot swing-up task in an on-line, modelfree
+context. Although the acrobot was simulated, the simulator was not available
+
+14.3. THE ACROBOT
+
+283
+
+Figure 14.4: The acrobot.
+
+τ +
+
+d2
+d1
+c2 + 2l1lc2 cos θ2) + I1 + I2
+
+φ1 −
+
+m2l1lc2 ˙θ2
+
+(cid:18)
+
+1 sin θ2 −
+
+φ2
+
+(cid:19)
+
+¨θ1 =
+
+¨θ2 =
+
+−
+
+(cid:18)
+
+−
+
+1
+
+1
+
+−
+
+m2l2
+
+1 (d2 ¨θ2 + φ1)
+d−
+d2
+2
+c2 + I2 −
+d1 (cid:19)
+c1 + m2(l2
+1 + l2
+c2 + l1lc2 cos θ2) + I2
+2 sin θ2 −
+
+m2l1lc2 ˙θ2
++ (m1lc1 + m2l1)g cos(θ1 −
+
+d1 = m1l2
+d2 = m2(l2
+φ1 =
+
+φ2 = m2lc2g cos(θ1 + θ2 −
+
+π/2)
+
+2m2l1lc2 ˙θ2 ˙θ1 sin θ2
+
+π/2) + φ2
+
++1,
+
+Figure 14.5: The equations of motions of the simulated acrobot. A time
+step of 0.05 seconds was used in the simulation, with actions chosen after
+every four time steps. The torque applied at the second joint is denoted by
+τ
+. There were no constraints on the joint positions, but the
+∈ {
+angular velocities were limited to ˙θ1 ∈
+9π, 9π]. The
+constants were m1 = m2 = 1 (masses of the links), l1 = l2 = 1 (lengths of
+links), lc1 = lc2 = 0.5 (lengths to center of mass of links), I1 = I2 = 1 (moments
+of inertia of links), and g = 9.8 (gravity).
+
+4π, 4π] and ˙θ2 ∈
+−
+
+1, 0
+}
+
+−
+
+−
+
+[
+
+[
+
+!1!2Goal: Raise tip above lineTorqueappliedheretip284
+
+CHAPTER 14. APPLICATIONS AND CASE STUDIES
+
+for use by the agent/controller in any way. The training and interaction were
+just as if a real, physical acrobot had been used. Each episode began with
+both links of the acrobot hanging straight down and at rest. Torques were
+applied by the reinforcement learning agent until the goal was reached, which
+always happened eventually. Then the acrobot was restored to its initial rest
+position and a new episode was begun.
+
+The learning algorithm used was Sarsa(λ) with linear function approxima-
+tion, tile coding, and replacing traces as in Figure 9.8. With a small, discrete
+action set, it is natural to use a separate set of tilings for each action. The
+next choice is of the continuous variables with which to represent the state.
+A clever designer would probably represent the state in terms of the angular
+position and velocity of the center of mass and of the second link, which might
+make the solution simpler and consistent with broad generalization. But since
+this was just a test problem, a more naive, direct representation was used in
+terms of the positions and velocities of the links: θ1, ˙θ1, θ2, and ˙θ2. The two
+angles are restricted to a limited range by the physics of the acrobot (see Fig-
+ure 14.5) and the two angles are naturally restricted to [0, 2π]. Thus, the state
+space in this task is a bounded rectangular region in four dimensions.
+
+This leaves the question of what tilings to use. There are many possi-
+bilities, as discussed in Chapter 9. One is to use a complete grid, slicing
+the four-dimensional space along all dimensions, and thus into many small
+four-dimensional tiles. Alternatively, one could slice along only one of the
+dimensions, making hyperplanar stripes. In this case one has to pick which
+dimension to slice along. And of course in all cases one has to pick the width of
+the slices, the number of tilings of each kind, and, if there are multiple tilings,
+how to oﬀset them. One could also slice along pairs or triplets of dimensions
+to get other tilings. For example, if one expected the velocities of the two links
+to interact strongly in their eﬀect on value, then one might make many tilings
+that sliced along both of these dimensions. If one thought the region around
+zero velocity was particularly critical, then the slices could be more closely
+spaced there.
+
+Sutton used tilings that sliced in a variety of simple ways. Each of the four
+dimensions was divided into six equal intervals. A seventh interval was added
+to the angular velocities so that tilings could be oﬀset by a random fraction
+of an interval in all dimensions (see Chapter 9, subsection “Tile Coding”). Of
+the total of 48 tilings, 12 sliced along all four dimensions as discussed above,
+dividing the space into 6
+7 = 1764 tiles each. Another 12 tilings sliced
+along three dimensions (3 randomly oﬀset tilings each for each of the 4 sets of
+three dimensions), and another 12 sliced along two dimensions (2 tilings for
+each of the 6 sets of two dimensions. Finally, a set of 12 tilings depended each
+on only one dimension (3 tilings for each of the 4 dimensions). This resulted
+
+×
+
+×
+
+×
+
+7
+
+6
+
+14.3. THE ACROBOT
+
+285
+
+Figure 14.6: Learning curves for Sarsa(λ) on the acrobot task.
+
+in a total of approximately 25, 000 tiles for each action. This number is small
+enough that hashing was not necessary. All tilings were oﬀset by a random
+fraction of an interval in all relevant dimensions.
+
+The remaining parameters of the learning algorithm were α = 0.2/48,
+λ = 0.9, (cid:15) = 0, and w0 = 0. The use of a greedy policy (ε = 0) seemed
+preferable on this task because long sequences of correct actions are needed to
+do well. One exploratory action could spoil a whole sequence of good actions.
+Exploration was ensured instead by starting the action values optimistically, at
+the low value of 0. As discussed in Section 2.7 and Example 9.2, this makes the
+agent continually disappointed with whatever rewards it initially experiences,
+driving it to keep trying new things.
+
+Figure 14.6 shows learning curves for the acrobot task and the learning al-
+gorithm described above. Note from the single-run curve that single episodes
+were sometimes extremely long. On these episodes, the acrobot was usu-
+ally spinning repeatedly at the second joint while the ﬁrst joint changed only
+slightly from vertical down. Although this often happened for many time steps,
+it always eventually ended as the action values were driven lower. All runs
+ended with an eﬃcient policy for solving the problem, usually lasting about
+75 steps. A typical ﬁnal solution is shown in Figure 14.7. First the acrobot
+pumps back and forth several times symmetrically, with the second link always
+down. Then, once enough energy has been added to the system, the second
+link is swung upright and stabbed to the goal height.
+
+10010001100200300400Steps per episode(log scale)500Episodestypicalsingle runmedian of10 runssmoothedaverage of10 runs286
+
+CHAPTER 14. APPLICATIONS AND CASE STUDIES
+
+Figure 14.7: A typical learned behavior of the acrobot. Each group is a series
+of consecutive positions, the thicker line being the ﬁrst. The arrow indicates
+the torque applied at the second joint.
+
+14.4 Elevator Dispatching
+
+Waiting for an elevator is a situation with which we are all familiar. We press a
+button and then wait for an elevator to arrive traveling in the right direction.
+We may have to wait a long time if there are too many passengers or not
+enough elevators. Just how long we wait depends on the dispatching strategy
+the elevators use to decide where to go. For example, if passengers on several
+ﬂoors have requested pickups, which should be served ﬁrst? If there are no
+pickup requests, how should the elevators distribute themselves to await the
+next request? Elevator dispatching is a good example of a stochastic optimal
+control problem of economic importance that is too large to solve by classical
+techniques such as dynamic programming.
+
+Crites and Barto (1996; Crites, 1996) studied the application of reinforce-
+ment learning techniques to the four-elevator, ten-ﬂoor system shown in Fig-
+ure 14.8. Along the right-hand side are pickup requests and an indication
+of how long each has been waiting. Each elevator has a position, direction,
+and speed, plus a set of buttons to indicate where passengers want to get
+oﬀ. Roughly quantizing the continuous variables, Crites and Barto estimated
+that the system has over 1022 states. This large state set rules out classi-
+cal dynamic programming methods such as value iteration. Even if one state
+could be backed up every microsecond it would still require over 1000 years to
+complete just one sweep through the state space.
+
+14.4. ELEVATOR DISPATCHING
+
+287
+
+Figure 14.8: Four elevators in a ten-story building.
+
+In practice, modern elevator dispatchers are designed heuristically and eval-
+uated on simulated buildings. The simulators are quite sophisticated and de-
+tailed. The physics of each elevator car is modeled in continuous time with
+continuous state variables. Passenger arrivals are modeled as discrete, stochas-
+tic events, with arrival rates varying frequently over the course of a simulated
+day. Not surprisingly, the times of greatest traﬃc and greatest challenge to the
+dispatching algorithm are the morning and evening rush hours. Dispatchers
+are generally designed primarily for these diﬃcult periods.
+
+The performance of elevator dispatchers is measured in several diﬀerent
+ways, all with respect to an average passenger entering the system. The aver-
+age waiting time is how long the passenger waits before getting on an elevator,
+and the average system time is how long the passenger waits before being
+dropped oﬀ at the destination ﬂoor. Another frequently encountered statistic
+is the percentage of passengers whose waiting time exceeds 60 seconds. The
+objective that Crites and Barto focused on is the average squared waiting time.
+This objective is commonly used because it tends to keep the waiting times
+low while also encouraging fairness in serving all the passengers.
+
+Crites and Barto applied a version of one-step Q-learning augmented in
+several ways to take advantage of special features of the problem. The most
+important of these concerned the formulation of the actions. First, each ele-
+vator made its own decisions independently of the others. Second, a number
+of constraints were placed on the decisions. An elevator carrying passengers
+could not pass by a ﬂoor if any of its passengers wanted to get oﬀ there, nor
+
+elevatorgoing updropoffrequestpickuprequest(down)age ofrequestDUDUDUDUDUDUDUDUDUhallbuttons288
+
+CHAPTER 14. APPLICATIONS AND CASE STUDIES
+
+could it reverse direction until all of its passengers wanting to go in its current
+direction had reached their ﬂoors. In addition, a car was not allowed to stop
+at a ﬂoor unless someone wanted to get on or oﬀ there, and it could not stop to
+pick up passengers at a ﬂoor if another elevator was already stopped there. Fi-
+nally, given a choice between moving up or down, the elevator was constrained
+always to m

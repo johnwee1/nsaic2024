@@ -1,0 +1,682 @@
+tion values, qπ(s(cid:48), a(cid:48)),
+of possible successors to the state–action pair (s, a). As a hint, the backup
+diagram corresponding to this equation is given in Figure 3.4b. Show the
+sequence of equations analogous to (3.12), but for action values.
+
+Exercise 3.9 The Bellman equation (3.12) must hold for each state for the
+value function vπ shown in Figure 3.5b. As an example, show numerically that
+this equation holds for the center state, valued at +0.7, with respect to its four
+0.4, and +0.7. (These numbers are
+neighboring states, valued at +2.3, +0.4,
+accurate only to one decimal place.)
+
+−
+
+Exercise 3.10 In the gridworld example, rewards are positive for goals,
+negative for running into the edge of the world, and zero the rest of the time.
+Are the signs of these rewards important, or only the intervals between them?
+Prove, using (3.2), that adding a constant c to all the rewards adds a constant,
+vc, to the values of all states, and thus does not aﬀect the relative values of
+any states under any policies. What is vc in terms of c and γ?
+
+Exercise 3.11 Now consider adding a constant c to all the rewards in an
+episodic task, such as maze running. Would this have any eﬀect, or would it
+leave the task unchanged as in the continuing task above? Why or why not?
+Give an example.
+
+Exercise 3.12 The value of a state depends on the the values of the actions
+possible in that state and on how likely each action is to be taken under the
+current policy. We can think of this in terms of a small backup diagram rooted
+at the state and considering each possible action:
+
+Give the equation corresponding to this intuition and diagram for the value at
+the root node, vπ(s), in terms of the value at the expected leaf node, qπ(s, a),
+given St = s. This expectation depends on the policy, π. Then give a second
+equation in which the expected value is written out explicitly in terms of π(a
+s)
+|
+such that no expected value notation appears in the equation.
+
+Exercise 3.13 The value of an action, qπ(s, a), depends on the expected
+next reward and the expected sum of the remaining rewards. Again we can
+
+sa1a2a3V!(s)Q!(s,a)taken withprobability !(s,a)vπ(s)qπ(s,a)π(a|s)3.10. SUMMARY
+
+87
+
+think of this in terms of a small backup diagram, this one rooted at an action
+(state–action pair) and branching to the possible next states:
+
+Give the equation corresponding to this intuition and diagram for the action
+value, qπ(s, a), in terms of the expected next reward, Rt+1, and the expected
+next state value, vπ(St+1), given that St = s and At = a. Then give a second
+equation, writing out the expected value explicitly in terms of p(s(cid:48), r
+s, a)
+|
+deﬁned by (3.6), such that no expected value notation appears in the equation.
+
+Exercise 3.14 Draw or describe the optimal state-value function for the golf
+example.
+
+Exercise 3.15 Draw or describe the contours of the optimal action-value
+(s, putter), for the golf example.
+function for putting, q
+
+∗
+
+Exercise 3.16 Give the Bellman equation for q
+
+for the recycling robot.
+
+∗
+
+Exercise 3.17 Figure 3.8 gives the optimal value of the best state of the
+gridworld as 24.4, to one decimal place. Use your knowledge of the optimal
+policy and (3.2) to express this value symbolically, and then to compute it to
+three decimal places.
+
+Exercise 3.18 Give a deﬁnition of v
+∗
+
+Exercise 3.19 Give a deﬁnition of q
+
+∗
+Exercise 3.20 Give a deﬁnition of π
+
+∗
+
+Exercise 3.21 Give a deﬁnition of π
+
+∗
+
+.
+
+.
+
+in terms of q
+
+∗
+in terms of v
+∗
+in terms of q
+
+∗
+in terms of v
+∗
+
+.
+
+.
+
+s,aV!(s)Q!(s,a)s1's2s3r1r2r3''vπ(s)qπ(s,a)expectedrewards88
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+Chapter 4
+
+Dynamic Programming
+
+The term dynamic programming (DP) refers to a collection of algorithms that
+can be used to compute optimal policies given a perfect model of the envi-
+ronment as a Markov decision process (MDP). Classical DP algorithms are of
+limited utility in reinforcement learning both because of their assumption of
+a perfect model and because of their great computational expense, but they
+are still important theoretically. DP provides an essential foundation for the
+understanding of the methods presented in the rest of this book. In fact, all
+of these methods can be viewed as attempts to achieve much the same eﬀect
+as DP, only with less computation and without assuming a perfect model of
+the environment.
+
+∈
+s, a), for all s
+|
+
+Starting with this chapter, we usually assume that the environment is a
+ﬁnite MDP. That is, we assume that its state, action, and reward sets, S,
+S, are ﬁnite, and that its dynamics are given by a set of
+A(s), and R, for s
+S+ (S+ is S
+S, a
+probabilities p(s(cid:48), r
+plus a terminal state if the problem is episodic). Although DP ideas can be
+applied to problems with continuous state and action spaces, exact solutions
+are possible only in special cases. A common way of obtaining approximate
+solutions for tasks with continuous states and actions is to quantize the state
+and action spaces and then apply ﬁnite-state DP methods. The methods we
+explore in Chapter 9 are applicable to continuous problems and are a signiﬁcant
+extension of that approach.
+
+R, and s(cid:48)
+
+A(s), r
+
+∈
+
+∈
+
+∈
+
+∈
+
+The key idea of DP, and of reinforcement learning generally, is the use of
+value functions to organize and structure the search for good policies. In this
+chapter we show how DP can be used to compute the value functions deﬁned
+in Chapter 3. As discussed there, we can easily obtain optimal policies once
+we have found the optimal value functions, v
+, which satisfy the Bellman
+∗
+
+or q
+
+∗
+
+89
+
+90
+
+CHAPTER 4. DYNAMIC PROGRAMMING
+
+optimality equations:
+
+v
+∗
+
+(s) = max
+
+a
+
+E[Rt+1 + γv
+
+(St+1)
+
+∗
+
+|
+
+St = s, At = a]
+
+= max
+
+a
+
+p(s(cid:48), r
+
+s, a)
+|
+
+(cid:104)
+
+(cid:88)s(cid:48),r
+
+r + γv
+
+(s(cid:48))
+
+∗
+
+(cid:105)
+
+(4.1)
+
+or
+
+(s, a) = E
+
+q
+
+∗
+
+=
+
+Rt+1 + γ max
+(cid:104)
+
+a(cid:48)
+
+p(s(cid:48), r
+
+s, a)
+|
+
+(cid:104)
+
+(cid:88)s(cid:48),r
+
+(St+1, a(cid:48))
+
+St = s, At = a
+
+q
+
+∗
+
+r + γ max
+
+a(cid:48)
+
+(cid:12)
+(cid:12)
+(s(cid:48), a(cid:48))
+(cid:12)
+
+q
+
+∗
+
+,
+
+(cid:105)
+
+(cid:105)
+
+(4.2)
+
+S, a
+
+S+. As we shall see, DP algorithms are
+for all s
+obtained by turning Bellman equations such as these into assignments, that is,
+into update rules for improving approximations of the desired value functions.
+
+A(s), and s(cid:48)
+
+∈
+
+∈
+
+∈
+
+4.1 Policy Evaluation
+
+First we consider how to compute the state-value function vπ for an arbitrary
+policy π. This is called policy evaluation in the DP literature. We also refer
+to it as the prediction problem. Recall from Chapter 3 that, for all s
+
+S,
+
+∈
+
+vπ(s) = Eπ
+
+Rt+1 + γRt+2 + γ2Rt+3 +
+St = s]
+
+= Eπ[Rt+1 + γvπ(St+1)
+
+St = s
+
+· · ·
+
+(cid:2)
+
+=
+
+π(a
+
+s)
+|
+
+(cid:88)s(cid:48),r
+
+a
+(cid:88)
+
+p(s(cid:48), r
+
+|
+s, a)
+|
+
+(cid:104)
+
+(cid:12)
+(cid:12)
+
+r + γvπ(s(cid:48))
+
+(cid:3)
+
+,
+
+(cid:105)
+
+(4.3)
+
+(4.4)
+
+where π(a
+s) is the probability of taking action a in state s under policy π, and
+|
+the expectations are subscripted by π to indicate that they are conditional on
+π being followed. The existence and uniqueness of vπ are guaranteed as long
+as either γ < 1 or eventual termination is guaranteed from all states under the
+policy π.
+
+|
+
+simultaneous linear equations in
+
+If the environment’s dynamics are completely known, then (4.4) is a system
+S). In
+S
+S
+of
+|
+|
+principle, its solution is a straightforward, if tedious, computation. For our
+purposes, iterative solution methods are most suitable. Consider a sequence of
+approximate value functions v0, v1, v2, . . ., each mapping S+ to R. The initial
+approximation, v0, is chosen arbitrarily (except that the terminal state, if any,
+
+unknowns (the vπ(s), s
+
+∈
+
+|
+
+4.1. POLICY EVALUATION
+
+91
+
+must be given value 0), and each successive approximation is obtained by using
+the Bellman equation for vπ (3.12) as an update rule:
+
+vk+1(s) = Eπ[Rt+1 + γvk(St+1)
+
+St = s]
+
+s)
+|
+
+(cid:88)s(cid:48),r
+
+|
+s, a)
+|
+
+r + γvk(s(cid:48))
+(cid:105)
+
+=
+
+π(a
+
+p(s(cid:48), r
+
+,
+
+(4.5)
+
+a
+(cid:88)
+
+∈
+
+(cid:104)
+S. Clearly, vk = vπ is a ﬁxed point for this update rule because
+for all s
+the Bellman equation for vπ assures us of equality in this case. Indeed, the
+can be shown in general to converge to vπ as k
+vk}
+sequence
+under the
+same conditions that guarantee the existence of vπ. This algorithm is called
+iterative policy evaluation.
+
+→ ∞
+
+{
+
+To produce each successive approximation, vk+1 from vk, iterative policy
+evaluation applies the same operation to each state s: it replaces the old value
+of s with a new value obtained from the old values of the successor states
+of s, and the expected immediate rewards, along all the one-step transitions
+possible under the policy being evaluated. We call this kind of operation a
+full backup. Each iteration of iterative policy evaluation backs up the value of
+every state once to produce the new approximate value function vk+1. There
+are several diﬀerent kinds of full backups, depending on whether a state (as
+here) or a state–action pair is being backed up, and depending on the precise
+way the estimated values of the successor states are combined. All the backups
+done in DP algorithms are called full backups because they are based on all
+possible next states rather than on a sample next state. The nature of a
+backup can be expressed in an equation, as above, or in a backup diagram
+like those introduced in Chapter 3. For example, Figure 3.4a is the backup
+diagram corresponding to the full backup used in iterative policy evaluation.
+
+To write a sequential computer program to implement iterative policy eval-
+uation, as given by (4.5), you would have to use two arrays, one for the old
+values, vk(s), and one for the new values, vk+1(s). This way, the new values
+can be computed one by one from the old values without the old values being
+changed. Of course it is easier to use one array and update the values “in
+place,” that is, with each new backed-up value immediately overwriting the
+old one. Then, depending on the order in which the states are backed up,
+sometimes new values are used instead of old ones on the right-hand side of
+(4.5). This slightly diﬀerent algorithm also converges to vπ; in fact, it usually
+converges faster than the two-array version, as you might expect, since it uses
+new data as soon as they are available. We think of the backups as being done
+in a sweep through the state space. For the in-place algorithm, the order in
+which states are backed up during the sweep has a signiﬁcant inﬂuence on the
+rate of convergence. We usually have the in-place version in mind when we
+think of DP algorithms.
+
+92
+
+CHAPTER 4. DYNAMIC PROGRAMMING
+
+S+
+
+∈
+
+Input π, the policy to be evaluated
+Initialize an array V (s) = 0, for all s
+Repeat
+∆
+0
+For each s
+v
+←
+V (s)
+∆
+
+∈
+V (s)
+
+←
+
+S:
+
+←
+max(∆,
+(cid:80)
+
+a π(a
+v
+|
+
+s(cid:48),r p(s(cid:48), r
+)
+|
+
+V (s)
+(cid:80)
+
+s)
+|
+−
+
+until ∆ < θ (a small positive number)
+Output V
+
+←
+
+vπ
+
+≈
+
+s, a)
+|
+
+r + γV (s(cid:48))
+
+(cid:2)
+
+(cid:3)
+
+Figure 4.1: Iterative policy evaluation.
+
+Another implementation point concerns the termination of the algorithm.
+Formally, iterative policy evaluation converges only in the limit, but in practice
+it must be halted short of this. A typical stopping condition for iterative policy
+evaluation is to test the quantity maxs
+after each sweep and
+S
+∈
+stop when it is suﬃciently small. Figure 4.1 gives a complete algorithm for
+iterative policy evaluation with this stopping criterion.
+
+vk+1(s)
+|
+
+vk(s)
+|
+
+−
+
+Example 4.1 Consider the 4
+
+4 gridworld shown below.
+
+×
+
+{
+
+The nonterminal states are S =
+1, 2, . . . , 14
+. There are four actions pos-
+}
+{
+sible in each state, A =
+up, down, right, left
+, which deterministically
+}
+cause the corresponding state transitions, except that actions that would take
+the agent oﬀ the grid in fact leave the state unchanged. Thus, for instance,
+7, right) = 1. This is an undis-
+5, right) = 0, and p(7
+5, right) = 1, p(10
+p(6
+|
+|
+|
+counted, episodic task. The reward is
+1 on all transitions until the terminal
+−
+state is reached. The terminal state is shaded in the ﬁgure (although it is
+shown in two places, it is formally one state). The expected reward function is
+thus r(s, a, s(cid:48)) =
+1 for all states s, s(cid:48) and actions a. Suppose the agent follows
+the equiprobable random policy (all actions equally likely). The left side of
+computed by iterative
+Figure 4.2 shows the sequence of value functions
+policy evaluation. The ﬁnal estimate is in fact vπ, which in this case gives for
+each state the negation of the expected number of steps from that state until
+
+vk}
+
+−
+
+{
+
+actionsr  =  !1on all transitions1234567891011121314R4.1. POLICY EVALUATION
+
+93
+
+Figure 4.2: Convergence of iterative policy evaluation on a small gridworld.
+The left column is the sequence of approximations of the state-value function
+for the random policy (all actions equal). The right column is the sequence
+of greedy policies corresponding to the value function estimates (arrows are
+shown for all actions achieving the maximum). The last policy is guaranteed
+only to be an improvement over the random policy, but in this case it, and all
+policies after the third iteration, are optimal.
+
+ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0-1.0-1.0-1.0-1.0-1.0-1.0-1.0-1.0-1.0-1.0-1.0-1.0-1.0-1.0-1.7-2.0-2.0-1.7-2.0-2.0-2.0-2.0-2.0-2.0-1.7-2.0-2.0-1.7-2.4-2.9-3.0-2.4-2.9-3.0-2.9-2.9-3.0-2.9-2.4-3.0-2.9-2.4-6.1-8.4-9.0-6.1-7.7-8.4-8.4-8.4-8.4-7.7-6.1-9.0-8.4-6.1-14.-20.-22.-14.-18.-20.-20.-20.-20.-18.-14.-22.-20.-14.Vk  for theRandom PolicyGreedy Policyw.r.t. Vkk = 0k = 1k = 2k = 10k = !k = 3optimal policyrandom policy 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0vkvk94
+
+CHAPTER 4. DYNAMIC PROGRAMMING
+
+termination.
+
+4.2 Policy Improvement
+
+Our reason for computing the value function for a policy is to help ﬁnd better
+policies. Suppose we have determined the value function vπ for an arbitrary
+deterministic policy π. For some state s we would like to know whether or not
+= π(s).
+we should change the policy to deterministically choose an action a
+We know how good it is to follow the current policy from s—that is vπ(s)—but
+would it be better or worse to change to the new policy? One way to answer
+this question is to consider selecting a in s and thereafter following the existing
+policy, π. The value of this way of behaving is
+
+qπ(s, a) = Eπ[Rt+1 + γvπ(St+1)
+
+St = s, At = a]
+
+=
+
+p(s(cid:48), r
+
+(cid:88)s(cid:48),r
+
+s, a)
+|
+
+(cid:104)
+
+|
+r + γvπ(s(cid:48))
+(cid:105)
+
+.
+
+(4.6)
+
+The key criterion is whether this is greater than or less than vπ(s). If it is
+greater—that is, if it is better to select a once in s and thereafter follow π
+than it would be to follow π all the time—then one would expect it to be
+better still to select a every time s is encountered, and that the new policy
+would in fact be a better one overall.
+
+That this is true is a special case of a general result called the policy
+improvement theorem. Let π and π(cid:48) be any pair of deterministic policies such
+that, for all s
+
+S,
+
+∈
+qπ(s, π(cid:48)(s))
+
+vπ(s).
+
+≥
+
+(4.7)
+
+Then the policy π(cid:48) must be as good as, or better than, π. That is, it must
+obtain greater or equal expected return from all states s
+
+S:
+
+∈
+
+vπ(cid:48)(s)
+
+≥
+
+vπ(s).
+
+(4.8)
+
+Moreover, if there is strict inequality of (4.7) at any state, then there must be
+strict inequality of (4.8) at at least one state. This result applies in particular
+to the two policies that we considered in the previous paragraph, an original
+deterministic policy, π, and a changed policy, π(cid:48), that is

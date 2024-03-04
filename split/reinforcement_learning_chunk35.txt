@@ -1,0 +1,481 @@
+eatures,
+such as in tile coding and Kanerva coding. Both methods use an ε-greedy
+policy for action selection, and the Sarsa method uses it for GPI as well. Both
+compute the sets of present features, Fa, corresponding to the current state
+and all possible actions, a.
+If the value function for each action is a sepa-
+rate linear function of the same features (a common case), then the indices of
+the Fa for each action are essentially the same, simplifying the computation
+signiﬁcantly.
+
+9.4. CONTROL WITH FUNCTION APPROXIMATION
+
+243
+
+Let w and e be vectors with one component for each possible feature
+Let Fa, for every possible action a, be a set of feature indices, initially empty
+Initialize w as appropriate for the problem, e.g., w = 0
+Repeat (for each episode):
+
+initial state and action of episode
+
+(e.g., ε-greedy)
+
+set of features present in S, A
+
+e = 0
+S, A
+←
+FA ←
+Repeat (for each step of episode):
+FA:
+For all i
+∈
+ei + 1
+ei ←
+1
+or ei ←
+R
+
+(accumulating traces)
+(replacing traces)
+
+w + αδ e; go to next episode
+
+−
+
+FA
+
+←
+
+←
+
+wi
+
+A(S(cid:48)):
+set of features present in S(cid:48), a
+
+Take action A, observe reward, R, and next state, S(cid:48)
+δ
+i
+∈
+If S(cid:48) is terminal, then w
+(cid:80)
+For all a
+∈
+Fa ←
+Qa ←
+new action in S(cid:48) (e.g., ε-greedy)
+(cid:80)
+δ + γQA(cid:48)
+w + αδ e
+γλe
+S(cid:48)
+A(cid:48)
+
+A(cid:48) ←
+δ
+←
+w
+←
+e
+←
+S
+←
+A
+←
+
+wi
+
+Fa
+
+∈
+
+i
+
+Figure 9.8: Linear, gradient-descent Sarsa(λ) with binary features and ε-
+greedy policy. Updates for both accumulating and replacing traces are speci-
+ﬁed.
+
+244CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+Let w and e be vectors with one component for each possible feature
+Let Fa, for every possible action a, be a set of feature indices, initially empty
+Initialize w as appropriate for the problem, e.g., w = 0
+Repeat (for each episode):
+
+e = 0
+initial state of episode
+S
+Repeat (for each step of episode):
+
+←
+
+A(S)
+
+A(S):
+set of features present in S, a
+
+For all a
+∈
+Fa ←
+Qa ←
+Fa
+argmaxa Qa
+(cid:80)
+A∗ with prob. 1
+= A∗, then e = 0
+
+wi
+
+∈
+
+i
+
+∈
+
+R
+
+−
+
+←
+
+QA
+
+ε, else a random action
+
+A∗ ←
+A
+←
+If A
+Take action A, observe reward, R, and next state, S(cid:48)
+δ
+−
+FA:
+For all i
+∈
+ei ←
+ei + 1
+1
+or ei ←
+If S(cid:48) is terminal, then w
+For all a
+∈
+Fa ←
+Qa ←
+∈
+δ + γ maxa
+(cid:80)
+∈
+w + αδ e
+γλe
+S(cid:48)
+
+A(S(cid:48)):
+set of features present in S(cid:48), a
+
+(accumulating traces)
+(replacing traces)
+
+Fa wi
+A(S(cid:48)) Qa
+
+δ
+w
+e
+S
+
+←
+
+i
+
+←
+←
+←
+←
+
+w + αδ e; go to next episode
+
+Figure 9.9: A linear, gradient-descent version of Watkins’s Q(λ) with binary
+features and ε-greedy policy. Updates for both accumulating and replacing
+traces are speciﬁed.
+
+(cid:54)
+9.4. CONTROL WITH FUNCTION APPROXIMATION
+
+245
+
+All the methods we have discussed above have used accumulating eligibility
+traces. Although replacing traces (Section 7.8) are known to have advantages
+in tabular methods, replacing traces do not directly extend to the use of func-
+tion approximation. Recall that the idea of replacing traces is to reset a state’s
+trace to 1 each time it is visited instead of incrementing it by 1. But with func-
+tion approximation there is no single trace corresponding to a state, just a trace
+for each component of w, which corresponds to many states. One approach
+that seems to work well for linear, gradient-descent function approximation
+methods with binary features is to treat the features as if they were states for
+the purposes of replacing traces. That is, each time a state is encountered that
+has feature i, the trace for feature i is set to 1 rather than being incremented
+by 1, as it would be with accumulating traces.
+
+When working with state–action traces, it may also be useful to clear (set
+to zero) the traces of all nonselected actions in the states encountered (see
+Section 7.8). This idea can also be extended to the case of linear function
+approximation with binary features. For each state encountered, we ﬁrst clear
+the traces of all features for the state and the actions not selected, then we set
+to 1 the traces of the features for the state and the action that was selected.
+As we noted for the tabular case, this may or may not be the best way to
+proceed when using replacing traces. A procedural speciﬁcation of both kinds
+of traces, including the optional clearing for nonselected actions, is given for
+the Sarsa algorithm in Figure 9.8.
+
+Example 9.2: Mountain–Car Task Consider the task of driving an un-
+derpowered car up a steep mountain road, as suggested by the diagram in the
+upper left of Figure 9.10. The diﬃculty is that gravity is stronger than the
+car’s engine, and even at full throttle the car cannot accelerate up the steep
+slope. The only solution is to ﬁrst move away from the goal and up the op-
+posite slope on the left. Then, by applying full throttle the car can build up
+enough inertia to carry it up the steep slope even though it is slowing down
+the whole way. This is a simple example of a continuous control task where
+things have to get worse in a sense (farther from the goal) before they can get
+better. Many control methodologies have great diﬃculties with tasks of this
+kind unless explicitly aided by a human designer.
+
+The reward in this problem is
+
+1 on all time steps until the car moves past
+its goal position at the top of the mountain, which ends the episode. There are
+three possible actions: full throttle forward (+1), full throttle reverse (
+1),
+and zero throttle (0). The car moves according to a simpliﬁed physics. Its
+position, pt, and velocity, ˙pt, are updated by
+
+−
+
+−
+
+pt+1 = bound
+
+˙pt+1 = bound
+
+pt + ˙pt+1
+˙pt + 0.001At −
+(cid:3)
+(cid:2)
+(cid:2)
+
+0.0025 cos(3pt)
+
+,
+
+(cid:3)
+
+246CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+Figure 9.10: The mountain–car task (upper left panel) and the cost-to-go
+function (
+
+maxa ˆq(s, a,w)) learned during one run.
+
+−
+
+−
+
+˙pt+1 ≤
+pt+1 ≤
+where the bound operation enforces
+1.2
+≤
+˙pt+1 was reset to zero. When it
+0.07. When pt+1 reached the left bound,
+reached the right bound, the goal was reached and the episode was terminated.
+Each episode started from a random position and velocity uniformly chosen
+from these ranges. To convert the two continuous state variables to binary
+features, we used gridtilings as in Figure 9.5. We used ten 9
+9 tilings, each
+oﬀset by a random fraction of a tile width.
+
+0.5 and
+
+0.07
+
+≤
+
+−
+
+×
+
+The Sarsa algorithm in Figure 9.8 (using replace traces and the optional
+clearing) readily solved this task, learning a near optimal policy within 100
+episodes. Figure 9.10 shows the negative of the value function (the cost-to-
+go function) learned on one run, using the parameters λ = 0.9, ε = 0, and
+α = 0.05 (e.g., 0.5
+m ). The initial action values were all zero, which was optimistic
+(all true values are negative in this task), causing extensive exploration to
+occur even though the exploration parameter, ε, was 0. This can be seen in
+the middle-top panel of the ﬁgure, labeled “Step 428.” At this time not even
+one episode had been completed, but the car has oscillated back and forth in
+the valley, following circular trajectories in state space. All the states visited
+frequently are valued worse than unexplored states, because the actual rewards
+have been worse than what was (unrealistically) expected. This continually
+drives the agent away from wherever it has been, to explore new states, until
+a solution is found. Figure 9.11 shows the results of a detailed study of the
+
+!1.2Position0.6Step 428GoalPosition40!.07.07VelocityVelocityVelocityVelocityVelocityVelocityPositionPositionPosition02701200104046Episode 12Episode 104Episode 1000Episode 9000MOUNTAIN   CAR9.5. SHOULD WE BOOTSTRAP?
+
+247
+
+Figure 9.11: The eﬀect of α, λ, and the kind of traces on early performance
+on the mountain–car task. This study used ﬁve 9
+
+9 tilings.
+
+×
+
+eﬀect of the parameters α and λ, and of the kind of traces, on the rate of
+learning on this task.
+
+9.5 Should We Bootstrap?
+
+At this point you may be wondering why we bother with bootstrapping meth-
+ods at all. Nonbootstrapping methods can be used with function approxima-
+tion more reliably and over a broader range of conditions than bootstrapping
+methods. Nonbootstrapping methods achieve a lower asymptotic error than
+bootstrapping methods, even when backups are done according to the on-
+policy distribution. By using eligibility traces and λ = 1, it is even possible to
+implement nonbootstrapping methods on-line, in a step-by-step incremental
+manner. Despite all this, in practice bootstrapping methods are usually the
+methods of choice.
+
+In empirical comparisons, bootstrapping methods usually perform much
+better than nonbootstrapping methods. A convenient way to make such com-
+parisons is to use a TD method with eligibility traces and vary λ from 0 (pure
+bootstrapping) to 1 (pure nonbootstrapping). Figure 9.12 summarizes a col-
+In all cases, performance became much worse as λ
+lection of such results.
+approached 1, the nonbootstrapping case. The example in the upper right of
+the ﬁgure is particularly signiﬁcant in this regard. This is a policy evaluation
+(prediction) task and the performance measure used is RMSE (at the end of
+each episode, averaged over the ﬁrst 20 episodes). Asymptotically, the λ = 1
+case must be best according to this measure, but here, short of the asymptote,
+
+!=.940050060070080000.20.40.60.811.200.20.40.60.811.2" × 5REPLACE  TRACESACCUMULATE  TRACES!=1!=.99!=.95!=0!=.4!=.7!=.8!=.5!=0!=.3!=.6" × 5Steps per episodeaveraged overfirst 20 trialsand 30 runsﬁrst 20 episodes248CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+Figure 9.12: The eﬀect of λ on reinforcement learning performance.
+In all
+cases, the better the performance, the lower the curve. The two left panels
+are applications to simple continuous-state control tasks using the Sarsa(λ) al-
+gorithm and tile coding, with either replacing or accumulating traces (Sutton,
+1996). The upper-right panel is for policy evaluation on a random walk task
+using TD(λ) (Singh and Sutton, 1996). The lower right panel is unpublished
+data for the pole-balancing task (Example 3.4) from an earlier study (Sutton,
+1984).
+
+accumulatingtraces  0.20.30.40.500.20.40.60.81!RANDOM WALK50100150200250300Failures per100,000 steps00.20.40.60.81!CART AND POLE400450500550600650700 Steps perepisode00.20.40.60.81!MOUNTAIN CARreplacingtraces150160170180190200210220230240Cost perepisode00.20.40.60.81!PUDDLE WORLDreplacingtracesaccumulatingtraces replacingtracesaccumulatingtracesRMS error9.6. SUMMARY
+
+249
+
+we see it performing much worse.
+
+At this time it is unclear why methods that involve some bootstrapping
+perform so much better than pure nonbootstrapping methods.
+It could be
+that bootstrapping methods learn faster, or it could be that they actually
+learn something better than nonbootstrapping methods. The available results
+indicate that nonbootstrapping methods are better than bootstrapping meth-
+ods at reducing RMSE from the true value function, but reducing RMSE is
+not necessarily the most important goal. For example, if you add 1000 to the
+true action-value function at all state–action pairs, then it will have very poor
+RMSE, but you will still get the optimal policy. Nothing quite that simple is
+going on with bootstrapping methods, but they do seem to do something right.
+We expect the understanding of these issues to improve as research continues.
+
+9.6 Summary
+
+Reinforcement learning systems must be capable of generalization if they are to
+be applicable to artiﬁcial intelligence or to large engineering applications. To
+achieve this, any of a broad range of existing methods for supervised-learning
+function approximation can be used simply by treating each backup as a train-
+ing example. Gradient-descent methods, in particular, allow a natural exten-
+sion to function approximation of all the techniques developed in previous
+chapters, including eligibility traces. Linear gradient-descent methods are
+particularly appealing theoretically and work well in practice when provided
+with appropriate features. Choosing the features is one of the most important
+ways of adding prior domain knowledge to reinforcement learning systems.
+Linear methods include radial basis functions, tile coding, and Kanerva cod-
+ing. Backpropagation methods for multilayer neural networks are methods for
+nonlinear gradient-descent function approximation.
+
+For the most part, the extension of reinforcement learning prediction and
+control methods to gradient-descent forms is straightforward for the on-policy
+case. On-policy bootstrapping methods converge reliably with linear gradient-
+descent function approximation to a solution with mean-squared error bounded
+by 1
+times the minimum possible error. Bootstrapping methods are of
+−
+1
+−
+persistent interest in reinforcement learning, despite their limited theoretical
+guarantees, because in practice they usually work signiﬁcantly better than
+nonbootstrapping methods. The oﬀ-policy case involves considerably greater
+subtlety and is postponed to a later (future) chapter.
+
+γλ
+γ
+
+250CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+Bibliographical and Historical Remarks
+
+Despite our treatment of generalization and function approximation late in
+the book, they have always been an integral part of reinforcement learning. It
+is only in the last decade or less that the ﬁeld has focused on the tabular case,
+as we have here for the ﬁrst seven chapters. Bertsekas and Tsitsiklis (1996)
+present the state of the art in function approximation in reinforcement learn-
+ing, and the collection of papers by Boyan, Moore, and Sutton (1995) is also
+useful. Some of the early work with function approximation in reinforcement
+learning is discussed at the end of this section.
+
+9.2
+
+9.3
+
+Gradient-descent methods for the minimizing mean-squared error in su-
+pervised learning are well known. Widrow and Hoﬀ (1960) introduced
+the least-mean-square (LMS) algorithm, which is the prototypical in-
+cremental gradient-descent algorithm. Details of this and related al-
+gorithms are provided in many texts (e.g., Widrow and Stearns, 1985;
+Bishop, 1995; Duda and Hart, 1973).
+
+Gradient-descent analyses of TD learning date back at least to Sutton
+(1988). Methods more sophisticated than the simple gradient-descent
+methods covered in this section have also been studied in the context of
+reinforcement learning, such as quasi-Newton methods (Werbos, 1990)
+and recursive-least-squares methods (Bradtke, 1993, 1994; Bradtke and
+Barto, 1996; Bradtke, Ydstie, and Barto, 1994). Bertsekas and Tsit-
+siklis (1996) provide a good discussion of these methods.
+
+The earliest use of state aggregation in reinforcement learning may
+have been Michie and Chambers’s BOXES system (1968). The theory
+of state aggregation in reinforcement learning has been developed by
+Singh, Jaakkola, and Jordan (1995) and Tsitsiklis and Van Roy (1996).
+
+S
+
+∈
+
+x(s) : s
+{
+
+TD(λ) with linear gradient-descent function approximation was ﬁrst ex-
+plored by Sutton (1984, 1988), who proved convergence of TD(0) in the
+mean to the minimal RMSE solution for the case in which the feature
+vectors,
+, are linearly independent. Convergence with
+}
+probability 1 for general λ was proved by several researchers at about
+the same time (Peng, 1993; Dayan and Sejnowski, 1994; Tsitsiklis, 1994;
+Gurvits, Lin, and Hanson, 1994). In addition, Jaakkola, Jordan, and
+Singh (1994) proved convergence under on-line updating. All of these
+results assumed linearly independent feature vectors, which implies at
+least as many components to wt 

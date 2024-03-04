@@ -1,0 +1,330 @@
+imes, and predictions is
+
+146
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+Figure 6.3: Changes recommended by Monte Carlo methods in the driving
+home example.
+
+thus as follows:
+
+State
+leaving oﬃce, friday at 6
+reach car, raining
+exiting highway
+2ndary road, behind truck
+entering home street
+arrive home
+
+Elapsed Time
+(minutes)
+0
+5
+20
+30
+40
+43
+
+Predicted
+
+Predicted
+Time to Go Total Time
+
+30
+35
+15
+10
+3
+0
+
+30
+40
+35
+40
+43
+43
+
+The rewards in this example are the elapsed times on each leg of the journey.1
+We are not discounting (γ = 1), and thus the return for each state is the actual
+time to go from that state. The value of each state is the expected time to go.
+The second column of numbers gives the current estimated value for each state
+encountered.
+
+A simple way to view the operation of Monte Carlo methods is to plot the
+predicted total time (the last column) over the sequence, as in Figure 6.3. The
+arrows show the changes in predictions recommended by the constant-α MC
+method (6.1), for α = 1. These are exactly the errors between the estimated
+value (predicted time to go) in each state and the actual return (actual time
+to go). For example, when you exited the highway you thought it would take
+only 15 minutes more to get home, but in fact it took 23 minutes. Equation
+6.1 applies at this point and determines an increment in the estimate of time
+V (St), at this time is eight
+to go after exiting the highway. The error, Gt −
+
+1If this were a control problem with the objective of minimizing travel time, then we
+would of course make the rewards the negative of the elapsed time. But since we are
+concerned here only with prediction (policy evaluation), we can keep things simple by using
+positive numbers.
+
+road30354045Predictedtotaltraveltimeleavingofficeexitinghighway2ndaryhomearriveSituationactual outcomereachcarstreethome6.1. TD PREDICTION
+
+147
+
+Figure 6.4: Changes recommended by TD methods in the driving home ex-
+ample.
+
+minutes. Suppose the step-size parameter, α, is 1/2. Then the predicted time
+to go after exiting the highway would be revised upward by four minutes as a
+result of this experience. This is probably too large a change in this case; the
+truck was probably just an unlucky break. In any event, the change can only
+be made oﬀ-line, that is, after you have reached home. Only at this point do
+you know any of the actual returns.
+
+Is it necessary to wait until the ﬁnal outcome is known before learning can
+begin? Suppose on another day you again estimate when leaving your oﬃce
+that it will take 30 minutes to drive home, but then you become stuck in a
+massive traﬃc jam. Twenty-ﬁve minutes after leaving the oﬃce you are still
+bumper-to-bumper on the highway. You now estimate that it will take another
+25 minutes to get home, for a total of 50 minutes. As you wait in traﬃc, you
+already know that your initial estimate of 30 minutes was too optimistic. Must
+you wait until you get home before increasing your estimate for the initial
+state? According to the Monte Carlo approach you must, because you don’t
+yet know the true return.
+
+According to a TD approach, on the other hand, you would learn immedi-
+ately, shifting your initial estimate from 30 minutes toward 50. In fact, each
+estimate would be shifted toward the estimate that immediately follows it.
+Returning to our ﬁrst day of driving, Figure 6.4 shows the same predictions as
+Figure 6.3, except with the changes recommended by the TD rule (6.2) (these
+are the changes made by the rule if α = 1). Each error is proportional to
+the change over time of the prediction, that is, to the temporal diﬀerences in
+predictions.
+
+Besides giving you something to do while waiting in traﬃc, there are several
+computational reasons why it is advantageous to learn based on your current
+predictions rather than waiting until termination when you know the actual
+
+actualoutcomeSituation30354045Predictedtotaltraveltimeroadleavingofficeexitinghighway2ndaryhomearrivereachcarstreethome148
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+return. We brieﬂy discuss some of these next.
+
+6.2 Advantages of TD Prediction Methods
+
+TD methods learn their estimates in part on the basis of other estimates.
+They learn a guess from a guess—they bootstrap. Is this a good thing to do?
+What advantages do TD methods have over Monte Carlo and DP methods?
+Developing and answering such questions will take the rest of this book and
+more. In this section we brieﬂy anticipate some of the answers.
+
+Obviously, TD methods have an advantage over DP methods in that they
+do not require a model of the environment, of its reward and next-state prob-
+ability distributions.
+
+The next most obvious advantage of TD methods over Monte Carlo meth-
+ods is that they are naturally implemented in an on-line, fully incremental
+fashion. With Monte Carlo methods one must wait until the end of an episode,
+because only then is the return known, whereas with TD methods one need
+wait only one time step. Surprisingly often this turns out to be a critical
+consideration. Some applications have very long episodes, so that delaying all
+learning until an episode’s end is too slow. Other applications are continuing
+tasks and have no episodes at all. Finally, as we noted in the previous chap-
+ter, some Monte Carlo methods must ignore or discount episodes on which
+experimental actions are taken, which can greatly slow learning. TD meth-
+ods are much less susceptible to these problems because they learn from each
+transition regardless of what subsequent actions are taken.
+
+But are TD methods sound? Certainly it is convenient to learn one guess
+from the next, without waiting for an actual outcome, but can we still guar-
+antee convergence to the correct answer? Happily, the answer is yes. For any
+ﬁxed policy π, the TD algorithm described above has been proved to converge
+to vπ, in the mean for a constant step-size parameter if it is suﬃciently small,
+and with probability 1 if the step-size parameter decreases according to the
+usual stochastic approximation conditions (2.7). Most convergence proofs ap-
+ply only to the table-based case of the algorithm presented above (6.2), but
+some also apply to the case of general linear function approximation. These
+results are discussed in a more general setting in the next two chapters.
+
+If both TD and Monte Carlo methods converge asymptotically to the cor-
+rect predictions, then a natural next question is “Which gets there ﬁrst?” In
+other words, which method learns faster? Which makes the more eﬃcient use
+of limited data? At the current time this is an open question in the sense
+that no one has been able to prove mathematically that one method converges
+
+6.2. ADVANTAGES OF TD PREDICTION METHODS
+
+149
+
+Figure 6.5: A small Markov process for generating random walks.
+
+faster than the other. In fact, it is not even clear what is the most appro-
+priate formal way to phrase this question! In practice, however, TD methods
+have usually been found to converge faster than constant-α MC methods on
+stochastic tasks, as illustrated in the following example.
+
+Example 6.2: Random Walk In this example we empirically compare the
+prediction abilities of TD(0) and constant-α MC applied to the small Markov
+process shown in Figure 6.5. All episodes start in the center state, C, and
+proceed either left or right by one state on each step, with equal probabil-
+ity. This behavior is presumably due to the combined eﬀect of a ﬁxed policy
+and an environment’s state-transition probabilities, but we do not care which;
+we are concerned only with predicting returns however they are generated.
+Episodes terminate either on the extreme left or the extreme right. When an
+episode terminates on the right a reward of +1 occurs; all other rewards are
+zero. For example, a typical walk might consist of the following state-and-
+reward sequence: C, 0, B, 0, C, 0, D, 0, E, 1. Because this task is undiscounted
+and episodic, the true value of each state is the probability of terminating
+on the right if starting from that state. Thus, the true value of the cen-
+ter state is vπ(C) = 0.5. The true values of all the states, A through E, are
+6, 2
+1
+6. Figure 6.6 shows the values learned by TD(0) approaching the
+true values as more episodes are experienced. Averaging over many episode
+sequences, Figure 6.7 shows the average error in the predictions found by
+TD(0) and constant-α MC, for a variety of values of α, as a function of num-
+In all cases the approximate value function was initialized
+ber of episodes.
+to the intermediate value V (s) = 0.5, for all s. The TD method is consis-
+tently better than the MC method on this task over this number of episodes.
+
+6, and 5
+
+6, 4
+
+6, 3
+
+ABCDE100000start150
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+Figure 6.6: Values learned by TD(0) after various numbers of episodes. The
+ﬁnal estimate is about as close as the estimates ever get to the true values.
+With a constant step-size parameter (α = 0.1 in this example), the values
+ﬂuctuate indeﬁnitely in response to the outcomes of the most recent episodes.
+
+Figure 6.7: Learning curves for TD(0) and constant-α MC methods, for various
+values of α, on the prediction problem for the random walk. The performance
+measure shown is the root mean-squared (RMS) error between the value func-
+tion learned and the true value function, averaged over the ﬁve states. These
+data are averages over 100 diﬀerent sequences of episodes.
+
+0.800.20.40.6ABCDE0101100StateEstimatedvaluetrue values00.050.10.150.20.250255075100Walks / EpisodesTDMC!=.05!=.01!=.1!=.15!=.02!=.04!=.03RMS error,averagedover states6.3. OPTIMALITY OF TD(0)
+
+151
+
+6.3 Optimality of TD(0)
+
+Suppose there is available only a ﬁnite amount of experience, say 10 episodes
+or 100 time steps. In this case, a common approach with incremental learning
+methods is to present the experience repeatedly until the method converges
+upon an answer. Given an approximate value function, V , the increments
+speciﬁed by (6.1) or (6.2) are computed for every time step t at which a
+nonterminal state is visited, but the value function is changed only once, by
+the sum of all the increments. Then all the available experience is processed
+again with the new value function to produce a new overall increment, and
+so on, until the value function converges. We call this batch updating because
+updates are made only after processing each complete batch of training data.
+
+Under batch updating, TD(0) converges deterministically to a single an-
+swer independent of the step-size parameter, α, as long as α is chosen to be
+suﬃciently small. The constant-α MC method also converges deterministically
+under the same conditions, but to a diﬀerent answer. Understanding these two
+answers will help us understand the diﬀerence between the two methods. Un-
+der normal updating the methods do not move all the way to their respective
+batch answers, but in some sense they take steps in these directions. Before
+trying to understand the two answers in general, for all possible tasks, we ﬁrst
+look at a few examples.
+
+Example 6.3 Random walk under batch updating. Batch-updating versions
+of TD(0) and constant-α MC were applied as follows to the random walk pre-
+diction example (Example 6.2). After each new episode, all episodes seen so
+far were treated as a batch. They were repeatedly presented to the algorithm,
+either TD(0) or constant-α MC, with α suﬃciently small that the value func-
+tion converged. The resulting value function was then compared with vπ, and
+the average root mean-squared error across the ﬁve states (and across 100
+independent repetitions of the whole experiment) was plotted to obtain the
+learning curves shown in Figure 6.8. Note that the batch TD method was
+consistently better than the batch Monte Carlo method.
+
+Under batch training, constant-α MC converges to values, V (s), that are
+sample averages of the actual returns experienced after visiting each state s.
+These are optimal estimates in the sense that they minimize the mean-squared
+error from the actual returns in the training set. In this sense it is surprising
+that the batch TD method was able to perform better according to the root
+mean-squared error measure shown in Figure 6.8. How is it that batch TD
+was able to perform better than this optimal method? The answer is that the
+Monte Carlo method is optimal only in a limited way, and that TD is optimal
+in a way that is more relevant to predicting returns. But ﬁrst let’s develop our
+
+152
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+Figure 6.8: Performance of TD(0) and constant-α MC under batch training
+on the random walk task.
+
+intuitions about diﬀerent kinds of optimality through another example.
+
+Example 6.4: You are the Predictor Place yourself now in the role of
+the predictor of returns for an unknown Markov reward process. Suppose you
+observe the following eight episodes:
+
+A, 0, B, 0
+B, 1
+B, 1
+B, 1
+
+B, 1
+B, 1
+B, 1
+B, 0
+
+This means that the ﬁrst episode started in state A, transitioned to B with
+a reward of 0, and then terminated from B with a reward of 0. The other
+seven episodes were even shorter, starting from B and terminating immediately.
+Given this batch of data, what would you say are the optimal predictions, the
+best values for the estimates V (A) and V (B)? Everyone would probably agree
+that the optimal value for V (B) is 3
+4, because six out of the eight times in state
+B the process terminated immediately with a return of 1, and the other two
+times in B the process terminated immediately with a return of 0.
+
+But what is the optimal value for the estimate V (A) given this data? Here
+there are two reasonable answers. One is to observe that 100% of the times
+the process was in state A it traversed immediately to B (with a reward of 0);
+and since we have already decided that B has value 3
+4, therefore A must have
+value 3
+4 as well. One way of viewing this answer is that it is based on ﬁrst
+modeling the Markov process, in this case as
+
+.0.05.1.15.2.250255075100TDMCBATCH TRAININGWalks / EpisodesRMS error,averagedover states6.3. OPTIMALITY OF TD(0)
+
+153
+
+and then computing the correct estimates given the model, which indeed in
+this case gives V (A) = 3
+
+4. This is also the answer that batch TD(0) gives.
+
+The other reasonable answer is simply to observe that we have seen A once
+and the return that followed it was 0; we therefore estimate V (A) as 0. This
+is the answer that batch Monte Carlo methods give. Notice that it is also the
+answer that gives minimum squared error on the training data. In fact, it gives
+zero error on the data. But still we expect the ﬁrst answer to be better. If
+the process is Markov, we expect that the ﬁrst answer will produce lower error
+on future data, even though the Monte Carlo answer is better on the existing
+data.
+
+The above example illustrates a general diﬀerence between the estimates
+found by batch TD(0) and batch Monte Carlo methods. Batch Monte Carlo
+methods always ﬁnd the estimates that minimize mean-squared error on the
+training set, whereas batch TD(0) always ﬁnds the estimates that would be
+exactly correct for the maximum-likelihood model of the Markov process. In
+general, the maximum-likelihood estimate of a parameter is the parameter
+value whose probability of generating the data is greatest. In this case, the
+maximum-likelihood estimate is the model of the Markov process formed in the
+obvious way from the observed episodes: the estimated transition probability
+from i to j is the fraction of observed transitions from i that went to j

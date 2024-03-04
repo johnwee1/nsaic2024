@@ -1,0 +1,356 @@
+sions of variation
+among state-space planning methods. One of the most important of these is
+the distribution of backups, that is, of the focus of search. Prioritized sweep-
+ing focuses on the predecessors of states whose values have recently changed.
+Heuristic search applied to reinforcement learning focuses, inter alia, on the
+successors of the current state. Trajectory sampling is a convenient way of fo-
+cusing on the on-policy distribution. All of these approaches can signiﬁcantly
+speed planning and are current topics of research.
+
+Another interesting dimension of variation is the size of backups. The
+smaller the backups, the more incremental the planning methods can be.
+Among the smallest backups are one-step sample backups. We presented one
+study suggesting that one-step sample backups may be preferable on very large
+problems. A related issue is the depth of backups. In many cases deep backups
+can be implemented as sequences of shallow backups.
+
+8.9. SUMMARY
+
+221
+
+Bibliographical and Historical Remarks
+
+8.1
+
+The overall view of planning and learning presented here has devel-
+oped gradually over a number of years, in part by the authors (Sutton,
+1990, 1991a, 1991b; Barto, Bradtke, and Singh, 1991, 1995; Sutton and
+Pinette, 1985; Sutton and Barto, 1981b); it has been strongly inﬂu-
+enced by Agre and Chapman (1990; Agre 1988), Bertsekas and Tsit-
+siklis (1989), Singh (1993), and others. The authors were also strongly
+inﬂuenced by psychological studies of latent learning (Tolman, 1932)
+and by psychological views of the nature of thought (e.g., Galanter and
+Gerstenhaber, 1956; Craik, 1943; Campbell, 1960; Dennett, 1978).
+
+8.2–3 The terms direct and indirect, which we use to describe diﬀerent kinds
+of reinforcement learning, are from the adaptive control literature (e.g.,
+Goodwin and Sin, 1984), where they are used to make the same kind of
+distinction. The term system identiﬁcation is used in adaptive control
+for what we call model-learning (e.g., Goodwin and Sin, 1984; Ljung
+and S¨oderstrom, 1983; Young, 1984). The Dyna architecture is due to
+Sutton (1990), and the results in these sections are based on results
+reported there.
+
+8.4
+
+Prioritized sweeping was developed simultaneously and independently
+by Moore and Atkeson (1993) and Peng and Williams (1993). The
+results in Figure 8.10 are due to Peng and Williams (1993). The results
+in Figure 8.11 are due to Moore and Atkeson.
+
+8.5
+
+This section was strongly inﬂuenced by the experiments of Singh (1993).
+
+8.7
+
+For further reading on heuristic search, the reader is encouraged to
+consult texts and surveys such as those by Russell and Norvig (2009)
+and Korf (1988). Peng and Williams (1993) explored a forward focusing
+of backups much as is suggested in this section.
+
+Exercises
+
+Exercise 8.1 There is no Exercise 8.1.
+
+Exercise 8.2 Why did the Dyna agent with exploration bonus, Dyna-Q+,
+perform better in the ﬁrst phase as well as in the second phase of the blocking
+and shortcut experiments?
+
+222CHAPTER 8. PLANNING AND LEARNING WITH TABULAR METHODS
+
+Exercise 8.3 Careful inspection of Figure 8.8 reveals that the diﬀerence
+between Dyna-Q+ and Dyna-Q narrowed slightly over the ﬁrst part of the
+experiment. What is the reason for this?
+
+Exercise 8.4 (programming) The exploration bonus described above ac-
+tually changes the estimated values of states and actions. Is this necessary?
+Suppose the bonus κ√τ was used not in backups, but solely in action selection.
+That is, suppose the action selected was always that for which Q(S, a)+κ√τSa
+was maximal. Carry out a gridworld experiment that tests and illustrates the
+strengths and weaknesses of this alternate approach.
+
+Exercise 8.5 The analysis above assumed that all of the b possible next
+states were equally likely to occur. Suppose instead that the distribution was
+highly skewed, that some of the b states were much more likely to occur than
+most. Would this strengthen or weaken the case for sample backups over full
+backups? Support your answer.
+
+Exercise 8.6 Some of the graphs in Figure 8.14 seem to be scalloped in
+their early portions, particularly the upper graph for b = 1 and the uniform
+distribution. Why do you think this is? What aspects of the data shown
+support your hypothesis?
+
+Exercise 8.7 (programming)
+If you have access to a moderately large
+computer, try replicating the experiment whose results are shown in the lower
+part of Figure 8.14. Then try the same experiment but with b = 3. Discuss
+the meaning of your results.
+
+Part II
+
+Approximate Solution Methods
+
+223
+
+Chapter 9
+
+On-policy Approximation of
+Action Values
+
+We have so far assumed that our estimates of value functions are represented
+as a table with one entry for each state or for each state–action pair. This is
+a particularly clear and instructive case, but of course it is limited to tasks
+with small numbers of states and actions. The problem is not just the memory
+needed for large tables, but the time and data needed to ﬁll them accurately.
+In other words, the key issue is that of generalization. How can experience
+with a limited subset of the state space be usefully generalized to produce a
+good approximation over a much larger subset?
+
+This is a severe problem. In many tasks to which we would like to apply
+reinforcement learning, most states encountered will never have been expe-
+rienced exactly before. This will almost always be the case when the state
+or action spaces include continuous variables or complex sensations, such as
+a visual image. The only way to learn anything at all on these tasks is to
+generalize from previously experienced states to ones that have never been
+seen.
+
+Fortunately, generalization from examples has already been extensively
+studied, and we do not need to invent totally new methods for use in reinforce-
+ment learning. To a large extent we need only combine reinforcement learning
+methods with existing generalization methods. The kind of generalization we
+require is often called function approximation because it takes examples from a
+desired function (e.g., a value function) and attempts to generalize from them
+to construct an approximation of the entire function. Function approximation
+is an instance of supervised learning, the primary topic studied in machine
+learning, artiﬁcial neural networks, pattern recognition, and statistical curve
+ﬁtting. In principle, any of the methods studied in these ﬁelds can be used in
+
+225
+
+226CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+reinforcement learning as described in this chapter.
+
+9.1 Value Prediction with Function Approxi-
+
+mation
+
+≈
+
+As usual, we begin with the prediction problem of estimating the state-value
+function vπ from experience generated using policy π. The novelty in this
+chapter is that the approximate value function is represented not as a table
+Rn. We
+but as a parameterized functional form with parameter vector w
+vπ(s) for the approximated value of state s given weight
+will write ˆv(s,w)
+vector w. For example, ˆv might be the function computed by an artiﬁcial
+neural network, with w the vector of connection weights. By adjusting the
+weights, any of a wide range of diﬀerent functions ˆv can be implemented by
+the network. Or ˆv might be the function computed by a decision tree, where
+w is all the parameters deﬁning the split points and leaf values of the tree.
+Typically, the number of parameters n (the number of components of w) is
+much less than the number of states, and changing one parameter changes the
+estimated value of many states. Consequently, when a single state is backed
+up, the change generalizes from that state to aﬀect the values of many other
+states.
+
+∈
+
+All of the prediction methods covered in this book have been described
+as backups, that is, as updates to an estimated value function that shift its
+value at particular states toward a “backed-up value” for that state. Let us
+refer to an individual backup by the notation s
+v, where s is the state
+backed up and v is the backed-up value, or target, that s’s estimated value
+is shifted toward. For example, the Monte Carlo backup for value predic-
+Rt+1 + γˆv(St+1,wt), and the
+tion is St
+general TD(λ) backup is St
+In the DP policy evaluation backup
+(cid:55)→
+Eπ[Rt+1 + γˆv(St+1,wt)
+s
+St = s], an arbitrary state s is backed up, whereas
+in the the other cases the state, St, encountered in (possibly simulated) expe-
+rience is backed up.
+
+Gt, the TD(0) backup is St
+
+Gλ
+t .
+
+(cid:55)→
+
+(cid:55)→
+
+(cid:55)→
+
+(cid:55)→
+
+|
+
+(cid:55)→
+
+It is natural to interpret each backup as specifying an example of the
+desired input–output behavior of the estimated value function. In a sense, the
+backup s
+v means that the estimated value for state s should be more like
+v. Up to now, the actual update implementing the backup has been trivial:
+the table entry for s’s estimated value has simply been shifted a fraction of the
+way toward v. Now we permit arbitrarily complex and sophisticated function
+approximation methods to implement the backup. The normal inputs to these
+methods are examples of the desired input–output behavior of the function
+
+9.1. VALUE PREDICTION WITH FUNCTION APPROXIMATION 227
+
+they are trying to approximate. We use these methods for value prediction
+v of each backup as a training example. We
+simply by passing to them the s
+then interpret the approximate function they produce as an estimated value
+function.
+
+(cid:55)→
+
+Viewing each backup as a conventional training example in this way enables
+us to use any of a wide range of existing function approximation methods for
+value prediction. In principle, we can use any method for supervised learning
+from examples, including artiﬁcial neural networks, decision trees, and vari-
+ous kinds of multivariate regression. However, not all function approximation
+methods are equally well suited for use in reinforcement learning. The most so-
+phisticated neural network and statistical methods all assume a static training
+set over which multiple passes are made. In reinforcement learning, however,
+it is important that learning be able to occur on-line, while interacting with
+the environment or with a model of the environment. To do this requires
+methods that are able to learn eﬃciently from incrementally acquired data.
+In addition, reinforcement learning generally requires function approximation
+methods able to handle nonstationary target functions (target functions that
+change over time). For example, in GPI control methods we often seek to
+learn qπ while π changes. Even if the policy remains the same, the target
+values of training examples are nonstationary if they are generated by boot-
+strapping methods (DP and TD). Methods that cannot easily handle such
+nonstationarity are less suitable for reinforcement learning.
+
+What performance measures are appropriate for evaluating function ap-
+proximation methods? Most supervised learning methods seek to minimize
+the root-mean-squared error (RMSE) over some distribution over the inputs.
+In our value prediction problem, the inputs are states and the target function is
+the true value function vπ, so RMSE for an approximation ˆv, using parameter
+w, is
+
+RMSE(w) =
+
+d(s)
+
+vπ(s)
+S
+(cid:88)s
+(cid:104)
+∈
+[0, 1], such that
+
+(cid:115)
+
+ˆv(s,w)
+
+2
+
+,
+
+(cid:105)
+
+−
+
+(9.1)
+
+→
+
+where d : S
+s d(s) = 1, is a distribution over the states
+specifying the relative importance of errors in diﬀerent states. This distri-
+bution is important because it is usually not possible to reduce the error to
+zero at all states. After all, there are generally far more states than there
+are components to w. The ﬂexibility of the function approximator is thus a
+scarce resource. Better approximation at some states can be gained, generally,
+only at the expense of worse approximation at other states. The distribution
+speciﬁes how these trade-oﬀs should be made.
+
+(cid:80)
+
+The distribution d is also usually the distribution from which the states in
+the training examples are drawn, and thus the distribution of states at which
+
+228CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+backups are done. If we wish to minimize error over a certain distribution of
+states, then it makes sense to train the function approximator with examples
+from that same distribution. For example, if you want a uniform level of error
+over the entire state set, then it makes sense to train with backups distributed
+uniformly over the entire state set, such as in the exhaustive sweeps of some
+DP methods. Henceforth, let us assume that the distribution of states at which
+backups are done and the distribution that weights errors, d, are the same.
+
+A distribution of particular interest is the one describing the frequency with
+which states are encountered while the agent is interacting with the environ-
+ment and selecting actions according to π, the policy whose value function we
+are approximating. We call this the on-policy distribution, in part because it
+is the distribution of backups in on-policy control methods. Minimizing error
+over the on-policy distribution focuses function approximation resources on
+the states that actually occur while following the policy, ignoring those that
+never occur. The on-policy distribution is also the one for which it is easiest to
+get training examples using Monte Carlo or TD methods. These methods gen-
+erate backups from sample experience using the policy π. Because a backup
+is generated for each state encountered in the experience, the training exam-
+ples available are naturally distributed according to the on-policy distribution.
+Stronger convergence results are available for the on-policy distribution than
+for other distributions, as we discuss later.
+
+It is not completely clear that we should care about minimizing the RMSE.
+Our goal in value prediction is potentially diﬀerent because our ultimate pur-
+pose is to use the predictions to aid in ﬁnding a better policy. The best pre-
+dictions for that purpose are not necessarily the best for minimizing RMSE.
+However, it is not yet clear what a more useful alternative goal for value pre-
+diction might be. For now, we continue to focus on RMSE.
+
+≤
+
+An ideal goal in terms of RMSE would be to ﬁnd a global optimum, a
+RMSE(w) for all possible w.
+parameter vector w∗ for which RMSE(w∗)
+Reaching this goal is sometimes possible for simple function approximators
+such as linear ones, but is rarely possible for complex function approximators
+such as artiﬁcial neural networks and decision trees. Short of this, complex
+function approximators may seek to converge instead to a local optimum, a
+parameter vector w∗ for which RMSE(w∗)
+RMSE(w) for all w in some
+neighborhood of w∗. Although this guarantee is only slightly reassuring, it is
+typically the best that can be said for nonlinear function approximators. For
+many cases of interest in reinforcement learning, convergence to an optimum,
+or even all bound of an optimum may still be achieved with some methods.
+Other methods may in fact diverge, with their RMSE approaching inﬁnity in
+the limit.
+
+≤
+
+9.2. GRADIENT-DESCENT METHODS
+
+229
+
+In this section we have outlined a framework for combining a wide range
+of reinforcement learning methods for value prediction with a wide range of
+function approximation methods, using the backups of the former to generate
+training examples for the latter. We have also outlined a range of RMSE per-
+formance measures to which these methods may aspire. The range of possible
+methods is far too large to cover all, and anyway too little is known about
+most of t

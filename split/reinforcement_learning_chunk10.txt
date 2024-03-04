@@ -1,0 +1,463 @@
+ended to include continuous states and rewards.
+Consider how a general environment might respond at time t + 1 to the action
+taken at time t. In the most general, causal case this response may depend
+on everything that has happened earlier. In this case the dynamics can be
+deﬁned only by specifying the complete probability distribution:
+
+Rt+1 = r, St+1 = s(cid:48)
+Pr
+{
+
+|
+
+S0, A0, R1, . . . , St
+
+−
+
+1, At
+
+−
+
+1, Rt, St, At}
+
+,
+
+(3.4)
+
+−
+
+1, Rt, St, At.
+
+for all r, s(cid:48), and all possible values of the past events: S0, A0, R1, ..., St
+1,
+At
+If the state signal has the Markov property, on the other
+hand, then the environment’s response at t + 1 depends only on the state and
+action representations at t, in which case the environment’s dynamics can be
+deﬁned by specifying only
+
+−
+
+p(s(cid:48), r
+
+s, a) = Pr
+|
+
+Rt+1 = r, St+1 = s(cid:48)
+{
+
+St, At}
+
+,
+
+|
+
+(3.5)
+
+for all r, s(cid:48), St, and At. In other words, a state signal has the Markov property,
+and is a Markov state, if and only if (3.5) is equal to (3.4) for all s(cid:48), r, and
+1, Rt, St, At. In this case, the environment
+1, At
+histories, S0, A0, R1, ..., St
+and task as a whole are also said to have the Markov property.
+
+−
+
+−
+
+If an environment has the Markov property, then its one-step dynamics
+(3.5) enable us to predict the next state and expected next reward given the
+current state and action. One can show that, by iterating this equation, one
+can predict all future states and expected rewards from knowledge only of the
+current state as well as would be possible given the complete history up to the
+current time. It also follows that Markov states provide the best possible basis
+for choosing actions. That is, the best policy for choosing actions as a function
+of a Markov state is just as good as the best policy for choosing actions as a
+function of complete histories.
+
+Even when the state signal is non-Markov, it is still appropriate to think
+of the state in reinforcement learning as an approximation to a Markov state.
+
+∗3.5. THE MARKOV PROPERTY
+
+65
+
+In particular, we always want the state to be a good basis for predicting
+In cases in which a model of the
+future rewards and for selecting actions.
+environment is learned (see Chapter 8), we also want the state to be a good
+basis for predicting subsequent states. Markov states provide an unsurpassed
+basis for doing all of these things. To the extent that the state approaches the
+ability of Markov states in these ways, one will obtain better performance from
+reinforcement learning systems. For all of these reasons, it is useful to think of
+the state at each time step as an approximation to a Markov state, although
+one should remember that it may not fully satisfy the Markov property.
+
+The Markov property is important in reinforcement learning because de-
+cisions and values are assumed to be a function only of the current state. In
+order for these to be eﬀective and informative, the state representation must
+be informative. All of the theory presented in this book assumes Markov state
+signals. This means that not all the theory strictly applies to cases in which
+the Markov property does not strictly apply. However, the theory developed
+for the Markov case still helps us to understand the behavior of the algorithms,
+and the algorithms can be successfully applied to many tasks with states that
+are not strictly Markov. A full understanding of the theory of the Markov
+case is an essential foundation for extending it to the more complex and real-
+istic non-Markov case. Finally, we note that the assumption of Markov state
+representations is not unique to reinforcement learning but is also present in
+most if not all other approaches to artiﬁcial intelligence.
+
+Example 3.5: Pole-Balancing State
+In the pole-balancing task intro-
+duced earlier, a state signal would be Markov if it speciﬁed exactly, or made
+it possible to reconstruct exactly, the position and velocity of the cart along
+the track, the angle between the cart and the pole, and the rate at which this
+angle is changing (the angular velocity). In an idealized cart–pole system, this
+information would be suﬃcient to exactly predict the future behavior of the
+cart and pole, given the actions taken by the controller. In practice, however,
+it is never possible to know this information exactly because any real sensor
+would introduce some distortion and delay in its measurements. Furthermore,
+in any real cart–pole system there are always other eﬀects, such as the bend-
+ing of the pole, the temperatures of the wheel and pole bearings, and various
+forms of backlash, that slightly aﬀect the behavior of the system. These factors
+would cause violations of the Markov property if the state signal were only the
+positions and velocities of the cart and the pole.
+
+However, often the positions and velocities serve quite well as states. Some
+early studies of learning to solve the pole-balancing task used a coarse state
+signal that divided cart positions into three regions: right, left, and middle
+(and similar rough quantizations of the other three intrinsic state variables).
+This distinctly non-Markov state was suﬃcient to allow the task to be solved
+
+66
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+easily by reinforcement learning methods. In fact, this coarse representation
+may have facilitated rapid learning by forcing the learning agent to ignore ﬁne
+distinctions that would not have been useful in solving the task.
+
+Example 3.6: Draw Poker
+In draw poker, each player is dealt a hand of
+ﬁve cards. There is a round of betting, in which each player exchanges some
+of his cards for new ones, and then there is a ﬁnal round of betting. At each
+round, each player must match or exceed the highest bets of the other players,
+or else drop out (fold). After the second round of betting, the player with the
+best hand who has not folded is the winner and collects all the bets.
+
+The state signal in draw poker is diﬀerent for each player. Each player
+knows the cards in his own hand, but can only guess at those in the other
+players’ hands. A common mistake is to think that a Markov state signal
+should include the contents of all the players’ hands and the cards remaining
+in the deck. In a fair game, however, we assume that the players are in principle
+unable to determine these things from their past observations. If a player did
+know them, then she could predict some future events (such as the cards one
+could exchange for) better than by remembering all past observations.
+
+In addition to knowledge of one’s own cards, the state in draw poker should
+include the bets and the numbers of cards drawn by the other players. For
+example, if one of the other players drew three new cards, you may suspect he
+retained a pair and adjust your guess of the strength of his hand accordingly.
+The players’ bets also inﬂuence your assessment of their hands. In fact, much
+of your past history with these particular players is part of the Markov state.
+Does Ellen like to bluﬀ, or does she play conservatively? Does her face or
+demeanor provide clues to the strength of her hand? How does Joe’s play
+change when it is late at night, or when he has already won a lot of money?
+
+Although everything ever observed about the other players may have an
+eﬀect on the probabilities that they are holding various kinds of hands, in
+practice this is far too much to remember and analyze, and most of it will have
+no clear eﬀect on one’s predictions and decisions. Very good poker players are
+adept at remembering just the key clues, and at sizing up new players quickly,
+but no one remembers everything that is relevant. As a result, the state
+representations people use to make their poker decisions are undoubtedly non-
+Markov, and the decisions themselves are presumably imperfect. Nevertheless,
+people still make very good decisions in such tasks. We conclude that the
+inability to have access to a perfect Markov state representation is probably
+not a severe problem for a reinforcement learning agent.
+
+3.6. MARKOV DECISION PROCESSES
+
+67
+
+3.6 Markov Decision Processes
+
+A reinforcement learning task that satisﬁes the Markov property is called a
+Markov decision process, or MDP. If the state and action spaces are ﬁnite,
+then it is called a ﬁnite Markov decision process (ﬁnite MDP). Finite MDPs
+are particularly important to the theory of reinforcement learning. We treat
+them extensively throughout this book; they are all you need to understand
+90% of modern reinforcement learning.
+
+A particular ﬁnite MDP is deﬁned by its state and action sets and by the
+one-step dynamics of the environment. Given any state and action s and a,
+the probability of each possible pair of next state and reward, s(cid:48), r, is denoted
+
+p(s(cid:48), r
+
+s, a) = Pr
+|
+
+St+1 = s(cid:48), Rt+1 = r
+{
+
+|
+
+St = s, At = a
+
+.
+}
+
+(3.6)
+
+These quantities completely specify the dynamics of a ﬁnite MDP. Most of the
+theory we present in the rest of this book implicitly assumes the environment
+is a ﬁnite MDP.
+
+Given the dynamics as speciﬁed by (3.6), one can compute anything else
+one might want to know about the environment, such as the expected rewards
+for state–action pairs,
+
+r(s, a) = E[Rt+1 |
+
+St = s, At = a] =
+
+r
+
+R
+(cid:88)r
+∈
+
+the state-transition probabilities,
+
+S
+
+(cid:88)s(cid:48)
+
+∈
+
+p(s(cid:48), r
+
+s, a),
+|
+
+p(s(cid:48)
+
+s, a) = Pr
+|
+
+{
+
+St+1 = s(cid:48)
+
+St = s, At = a
+}
+
+|
+
+=
+
+p(s(cid:48), r
+
+s, a),
+|
+
+R
+(cid:88)r
+∈
+
+and the expected rewards for state–action–next-state triples,
+
+(3.7)
+
+(3.8)
+
+r(s, a, s(cid:48)) = E[Rt+1 |
+
+St = s, At = a, St+1 = s(cid:48)] =
+
+r
+
+∈
+
+R r p(s(cid:48), r
+s, a)
+|
+s, a)
+p(s(cid:48)|
+
+(cid:80)
+
+. (3.9)
+
+In the ﬁrst edition of this book, the dynamics were expressed exclusively in
+terms of the latter two quantities, which were denote Pa
+ss(cid:48) respectively.
+One weakness of that notation is that it still did not fully characterize the
+dynamics of the rewards, giving only their expectations. Another weakness is
+the excess of subscripts and superscripts. In this edition we will predominantly
+use the explicit notation of (3.6), while sometimes referring directly to the
+transition probabilities (3.8).
+
+ss(cid:48) and Ra
+
+Example 3.7: Recycling Robot MDP The recycling robot (Example
+3.3) can be turned into a simple example of an MDP by simplifying it and
+
+68
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+providing some more details. (Our aim is to produce a simple example, not
+a particularly realistic one.) Recall that the agent makes a decision at times
+determined by external events (or by other parts of the robot’s control system).
+At each such time the robot decides whether it should (1) actively search for
+a can, (2) remain stationary and wait for someone to bring it a can, or (3) go
+back to home base to recharge its battery. Suppose the environment works
+as follows. The best way to ﬁnd cans is to actively search for them, but this
+runs down the robot’s battery, whereas waiting does not. Whenever the robot
+is searching, the possibility exists that its battery will become depleted. In
+this case the robot must shut down and wait to be rescued (producing a low
+reward).
+
+The agent makes its decisions solely as a function of the energy level of
+the battery. It can distinguish two levels, high and low, so that the state set
+is S =
+. Let us call the possible decisions—the agent’s actions—
+wait, search, and recharge. When the energy level is high, recharging would
+always be foolish, so we do not include it in the action set for this state. The
+agent’s action sets are
+
+high, low
+}
+{
+
+A(high) =
+A(low) =
+
+search, wait
+}
+search, wait, recharge
+}
+
+{
+{
+
+.
+
+−
+
+If the energy level is high, then a period of active search can always be
+completed without risk of depleting the battery. A period of searching that
+begins with a high energy level leaves the energy level high with probability
+α and reduces it to low with probability 1
+α. On the other hand, a period of
+searching undertaken when the energy level is low leaves it low with probability
+β and depletes the battery with probability 1
+β. In the latter case, the robot
+must be rescued, and the battery is then recharged back to high. Each can
+3 results
+collected by the robot counts as a unit reward, whereas a reward of
+whenever the robot has to be rescued. Let rsearch and rwait, with rsearch > rwait,
+respectively denote the expected number of cans the robot will collect (and
+hence the expected reward) while searching and while waiting. Finally, to keep
+things simple, suppose that no cans can be collected during a run home for
+recharging, and that no cans can be collected on a step in which the battery
+is depleted. This system is then a ﬁnite MDP, and we can write down the
+transition probabilities and the expected rewards, as in Table 3.1.
+
+−
+
+−
+
+A transition graph is a useful way to summarize the dynamics of a ﬁnite
+MDP. Figure 3.3 shows the transition graph for the recycling robot example.
+There are two kinds of nodes: state nodes and action nodes. There is a state
+node for each possible state (a large open circle labeled by the name of the
+state), and an action node for each state–action pair (a small solid circle labeled
+
+3.6. MARKOV DECISION PROCESSES
+
+69
+
+a
+
+s(cid:48)
+
+−
+−
+
+p(s(cid:48)
+s
+high high search
+α
+high low
+search
+1
+high search
+low
+1
+low
+search
+low
+β
+high high wait
+1
+high low
+wait
+0
+high wait
+low
+0
+wait
+low
+low
+1
+high recharge 1
+low
+recharge 0
+low
+low
+
+s, a)
+|
+
+α
+β
+
+r(s, a, s(cid:48))
+rsearch
+rsearch
+3
+−
+rsearch
+rwait
+rwait
+rwait
+rwait
+0
+0.
+
+Table 3.1: Transition probabilities and expected rewards for the ﬁnite MDP
+of the recycling robot example. There is a row for each possible combination
+of current state, s, next state, s(cid:48), and action possible in the current state,
+a
+
+A(s).
+
+∈
+
+by the name of the action and connected by a line to the state node). Starting
+in state s and taking action a moves you along the line from state node s to
+action node (s, a). Then the environment responds with a transition to the
+next state’s node via one of the arrows leaving action node (s, a). Each arrow
+corresponds to a triple (s, s(cid:48), a), where s(cid:48) is the next state, and we label the
+arrow with the transition probability, p(s(cid:48)
+s, a), and the expected reward for
+|
+that transition, r(s, a, s(cid:48)). Note that the transition probabilities labeling the
+arrows leaving an action node always sum to 1.
+
+Figure 3.3: Transition graph for the recycling robot example.
+
+searchhighlow1,  0 1–! ,   –3searchrechargewaitwaitsearch1–" ,  R! ,  R search", Rsearch1,  R wait1,  R wait3.6.MARKOVDECISIONPROCESSES59ss0ap(s0|s,a)r(s,a,s0)highhighsearch↵rsearchhighlowsearch1 ↵rsearchlowhighsearch1   3lowlowsearch rsearchhighhighwait1rwaithighlowwait0rwaitlowhighwait0rwaitlowlowwait1rwaitlowhighrecharge10lowlowrecharge00.Table3.1:TransitionprobabilitiesandexpectedrewardsfortheﬁniteMDPoftherecyclingrobotexample.Thereisarowforeachpossiblecombinationofcurrentstate,s,nextstate,s0,andactionpossibleinthecurrentstate,a2A(s).isS={high,low}.Letuscallthepossibledecisions—theagent’sactions—wait,search,andrecharge.Whentheenergylevelishigh,rechargingwouldalwaysbefoolish,sowedonotincludeitintheactionsetforthisstate.Theagent’sactionsetsareA(high)={search,wait}A(low)={search,wait,recharge}.Iftheenergylevelishigh,thenaperiodofactivesearchcanalwaysbecompletedwithoutriskofdepletingthebattery.Aperiodofsearchingthatbeginswithahighenergylevelleavestheenergylevelhighwithprobability↵andreducesittolowwithprobability1 ↵.Ontheotherhan

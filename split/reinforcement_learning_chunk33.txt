@@ -1,0 +1,462 @@
+hem to make a reliable evaluation or recommendation. Of necessity,
+we consider only a few possibilities. In the rest of this chapter we focus on
+function approximation methods based on gradient principles, and on linear
+gradient-descent methods in particular. We focus on these methods in part
+because we consider them to be particularly promising and because they re-
+veal key theoretical issues, but also because they are simple and our space
+is limited. If we had another chapter devoted to function approximation, we
+would also cover at least memory-based and decision-tree methods.
+
+9.2 Gradient-Descent Methods
+
+We now develop in detail one class of learning methods for function approxi-
+mation in value prediction, those based on gradient descent. Gradient-descent
+methods are among the most widely used of all function approximation meth-
+ods and are particularly well suited to online reinforcement learning.
+
+In gradient-descent methods, the parameter vector is a column vector with
+a ﬁxed number of real valued components, w = (w1, w2, . . . , wn)(cid:62) (the (cid:62) here
+denotes transpose), and the approximate value function ˆv(s,w) is a smooth
+S. We will be updating w at each of
+diﬀerentiable function of w for all s
+∈
+a series of discrete time steps, t = 1, 2, 3, . . ., so we will need a notation wt
+for the weight vector at each step. For now, let us assume that, on each step,
+vπ(St) consisting of a (possibly randomly
+we observe a new example St (cid:55)→
+selected) state St and its true value under the policy. These states might be
+successive states from an interaction with the environment, but for now we do
+not assume so. Even though we are given the exact, correct values, vπ(St) for
+each St, there is still a diﬃcult problem because our function approximator has
+limited resources and thus limited resolution. In particular, there is generally
+no w that gets all the states, or even all the examples, exactly correct. In
+addition, we must generalize to all the other states that have not appeared in
+examples.
+
+We assume that states appear in examples with the same distribution, d,
+over which we are trying to minimize the RMSE as given by (9.1). A good
+strategy in this case is to try to minimize error on the observed examples.
+Gradient-descent methods do this by adjusting the parameter vector after
+
+230CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+each example by a small amount in the direction that would most reduce the
+error on that example:
+
+α
+
+vπ(St)
+
+ˆv(St,wt)
+
+2
+
+1
+wt+1 = wt −
+2
+= wt + α
+
+−
+
+∇
+(cid:104)
+vπ(St)
+(cid:104)
+where α is a positive step-size parameter, and
+f (wt), for any expression
+f (wt), denotes the vector of partial derivatives with respect to the components
+of the weight vector:
+
+ˆv(St,wt)
+(cid:105)
+
+(cid:105)
+ˆv(St,wt),
+
+(9.2)
+
+∇
+
+∇
+
+−
+
+∂f (wt)
+∂wt,1
+
+,
+
+∂f (wt)
+∂wt,2
+
+, . . . ,
+
+(cid:62)
+
+∂f (wt)
+∂wt,n (cid:19)
+
+.
+
+(cid:18)
+
+This derivative vector is the gradient of f with respect to wt. This kind of
+method is called gradient descent because the overall step in wt is proportional
+to the negative gradient of the example’s squared error. This is the direction
+in which the error falls most rapidly.
+
+It may not be immediately apparent why only a small step is taken in the
+direction of the gradient. Could we not move all the way in this direction
+and completely eliminate the error on the example? In many cases this could
+be done, but usually it is not desirable. Remember that we do not seek or
+expect to ﬁnd a value function that has zero error on all states, but only an
+approximation that balances the errors in diﬀerent states. If we completely
+corrected each example in one step, then we would not ﬁnd such a balance. In
+fact, the convergence results for gradient methods assume that the step-size
+parameter decreases over time. If it decreases in such a way as to satisfy the
+standard stochastic approximation conditions (2.7), then the gradient-descent
+method (9.2) is guaranteed to converge to a local optimum.
+
+We turn now to the case in which the target output, Vt, of the tth training
+Vt, is not the true value, vπ(St), but some, possibly random,
+example, St (cid:55)→
+approximation of it. For example, Vt might be a noise-corrupted version of
+vπ(St), or it might be one of the backed-up values using ˆv mentioned in the
+previous section.
+In such cases we cannot perform the exact update (9.2)
+because vπ(St) is unknown, but we can approximate it by substituting Vt in
+place of vπ(St). This yields the general gradient-descent method for state-value
+prediction:
+
+wt+1 = wt + α
+
+Vt −
+
+ˆv(St,wt)
+
+∇
+(cid:105)
+
+(cid:104)
+
+If Vt is an unbiased estimate, that is, if E[Vt] = vπ(St), for each t, then wt is
+guaranteed to converge to a local optimum under the usual stochastic approx-
+imation conditions (2.7) for decreasing the step-size parameter α.
+
+ˆv(St,wt).
+
+(9.3)
+
+9.2. GRADIENT-DESCENT METHODS
+
+231
+
+For example, suppose the states in the examples are the states generated
+by interaction (or simulated interaction) with the environment using policy
+π. Let Gt denote the return following each state, St. Because the true value
+of a state is the expected value of the return following it, the Monte Carlo
+target Vt = Gt is by deﬁnition an unbiased estimate of vπ(St). With this
+choice, the general gradient-descent method (9.3) converges to a locally op-
+timal approximation to vπ(St). Thus, the gradient-descent version of Monte
+Carlo state-value prediction is guaranteed to ﬁnd a locally optimal solution.
+
+Similarly, we can use n-step TD returns and their averages for Vt. For
+t , as
+
+example, the gradient-descent form of TD(λ) uses the λ-return, Vt = Gλ
+its approximation to vπ(St), yielding the forward-view update:
+
+Gλ
+
+t −
+
+(cid:104)
+
+∇
+(cid:105)
+
+wt+1 = wt + α
+
+ˆv(St,wt)
+
+ˆv(St,wt).
+
+(9.4)
+
+Unfortunately, for λ < 1, Gλ
+is not an unbiased estimate of vπ(St), and thus
+t
+this method does not converge to a local optimum. The situation is the same
+when DP targets are used such as Vt = Eπ[Rt+1 + γˆv(St+1,wt)
+St]. Never-
+theless, such bootstrapping methods can be quite eﬀective, and other perfor-
+mance guarantees are available for important special cases, as we discuss later
+in this chapter. For now we emphasize the relationship of these methods to
+the general gradient-descent form (9.3). Although increments as in (9.4) are
+not themselves gradients, it is useful to view this method as a gradient-descent
+method (9.3) with a bootstrapping approximation in place of the desired out-
+put, vπ(St).
+
+|
+
+As (9.4) provides the forward view of gradient-descent TD(λ), so the back-
+
+ward view is provided by
+
+wt+1 = wt + αδt et,
+
+where δt is the usual TD error, now using ˆv,
+
+δt = Rt+1 + γˆv(St+1,wt)
+
+ˆv(St,wt),
+
+−
+
+(9.5)
+
+(9.6)
+
+and et = (et,1, et,2, . . . , et,n)(cid:62) is a column vector of eligibility traces, one for
+each component of wt, updated by
+
+et = γλet
+
+1 +
+
+−
+
+∇
+
+ˆv(St,wt),
+
+(9.7)
+
+with e0 = 0. A complete algorithm for on-line gradient-descent TD(λ) is given
+in Figure 9.1.
+
+Two methods for gradient-based function approximation have been used
+widely in reinforcement learning. One is multilayer artiﬁcial neural networks
+using the error backpropagation algorithm. This maps immediately onto the
+equations and algorithms just given, where the backpropagation process is the
+way of computing the gradients. The second popular form is the linear form,
+which we discuss extensively in the next section.
+
+232CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+Initialize w as appropriate for the problem, e.g., w = 0
+Repeat (for each episode):
+
+e = 0
+S
+initial state of episode
+Repeat (for each step of episode):
+
+←
+
+←
+
+action given by π for S
+
+A
+Take action A, observe reward, R, and next state, S(cid:48)
+δ
+e
+w
+S
+
+R + γˆv(S(cid:48),w)
+γλe +
+∇
+w + αδ e
+S(cid:48)
+until S(cid:48) is terminal
+
+←
+←
+←
+←
+
+−
+ˆv(S,w)
+
+ˆv(S,w)
+
+Figure 9.1: On-line gradient-descent TD(λ) for estimating vπ.
+
+9.3 Linear Methods
+
+One of the most important special cases of gradient-descent function approxi-
+mation is that in which the approximate function, ˆv, is a linear function of the
+parameter vector, w. Corresponding to every state s, there is a vector of fea-
+tures x(s) = (x1(s), x2(s), . . . , xn(s))(cid:62), with the same number of components
+as w. The features may be constructed from the states in many diﬀerent ways;
+we cover a few possibilities below. However the features are constructed, the
+approximate state-value function is given by
+
+ˆv(s,w) = w(cid:62)x(s) =
+
+wixi(s).
+
+n
+
+i=1
+(cid:88)
+
+(9.8)
+
+In this case the approximate value function is said to be linear in the param-
+eters, or simply linear.
+
+It is natural to use gradient-descent updates with linear function approxi-
+mation. The gradient of the approximate value function with respect to w in
+this case is
+
+ˆv(s,w) = x(s).
+
+∇
+
+Thus, the general gradient-descent update (9.3) reduces to a particularly sim-
+ple form in the linear case. In addition, in the linear case there is only one
+optimum w∗ (or, in degenerate cases, one set of equally good optima). Thus,
+any method guaranteed to converge to or near a local optimum is automat-
+ically guaranteed to converge to or near the global optimum. Because it is
+simple in these ways, the linear, gradient-descent case is one of the most fa-
+vorable for mathematical analysis. Almost all useful convergence results for
+
+9.3. LINEAR METHODS
+
+233
+
+learning systems of all kinds are for linear (or simpler) function approximation
+methods.
+
+In particular, the gradient-descent TD(λ) algorithm discussed in the pre-
+vious section (Figure 9.1) has been proved to converge in the linear case if
+the step-size parameter is reduced over time according to the usual conditions
+(2.7). Convergence is not to the minimum-error parameter vector, w∗, but to
+a nearby parameter vector, w
+
+, whose error is bounded according to
+
+RMSE(w
+
+)
+
+∞
+
+≤
+
+RMSE(w∗).
+
+∞
+γλ
+γ
+
+1
+−
+1
+−
+
+(9.9)
+
+That is, the asymptotic error is no more than 1
+γλ
+γ times the smallest possible
+−
+1
+−
+error. As λ approaches 1, the bound approaches the minimum error. An anal-
+ogous bound applies to other on-policy bootstrapping methods. For example,
+linear gradient-descent DP backups (9.3), with the on-policy distribution, will
+converge to the same result as TD(0). Technically, this bound applies only to
+discounted continuing tasks, but a related result presumably holds for episodic
+tasks. There are also a few technical conditions on the rewards, features, and
+decrease in the step-size parameter, which we are omitting here. The full
+details can be found in the original paper (Tsitsiklis and Van Roy, 1997).
+
+Critical to the above result is that states are backed up according to the
+on-policy distribution. For other backup distributions, bootstrapping methods
+using function approximation may actually diverge to inﬁnity. Examples of
+this and a discussion of possible solution methods are given in Chapter 10.
+
+Beyond these theoretical results, linear learning methods are also of inter-
+est because in practice they can be very eﬃcient in terms of both data and
+computation. Whether or not this is so depends critically on how the states
+are represented in terms of the features. Choosing features appropriate to the
+task is an important way of adding prior domain knowledge to reinforcement
+learning systems. Intuitively, the features should correspond to the natural
+features of the task, those along which generalization is most appropriate. If
+we are valuing geometric objects, for example, we might want to have features
+for each possible shape, color, size, or function. If we are valuing states of a
+mobile robot, then we might want to have features for locations, degrees of
+remaining battery power, recent sonar readings, and so on.
+
+In general, we also need features for combinations of these natural qualities.
+This is because the linear form prohibits the representation of interactions
+between features, such as the presence of feature i being good only in the
+absence of feature j. For example, in the pole-balancing task (Example 3.4),
+a high angular velocity may be either good or bad depending on the angular
+position. If the angle is high, then high angular velocity means an imminent
+danger of falling, a bad state, whereas if the angle is low, then high angular
+
+234CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+Figure 9.2: Coarse coding. Generalization from state X to state Y depends
+on the number of their features whose receptive ﬁelds (in this case, circles)
+overlap. These states have one feature in common, so there will be slight
+generalization between them.
+
+velocity means the pole is righting itself, a good state.
+In cases with such
+interactions one needs to introduce features for conjunctions of feature values
+when using linear function approximation methods. We next consider some
+general ways of doing this.
+
+Coarse Coding
+
+Consider a task in which the state set is continuous and two-dimensional. A
+state in this case is a point in 2-space, a vector with two real components. One
+kind of feature for this case is those corresponding to circles in state space,
+as shown in Figure 9.2. If the state is inside a circle, then the corresponding
+feature has the value 1 and is said to be present; otherwise the feature is 0 and
+is said to be absent. This kind of 1–0-valued feature is called a binary feature.
+Given a state, which binary features are present indicate within which circles
+the state lies, and thus coarsely code for its location. Representing a state
+with features that overlap in this way (although they need not be circles or
+binary) is known as coarse coding.
+
+Assuming linear gradient-descent function approximation, consider the ef-
+fect of the size and density of the circles. Corresponding to each circle is a
+single parameter (a component of w) that is aﬀected by learning. If we train
+at one point (state) X, then the parameters of all circles intersecting X will be
+aﬀected. Thus, by (9.8), the approximate value function will be aﬀected at all
+points within the union of the circles, with a greater eﬀect the more circles a
+point has “in common” with X, as shown in Figure 9.2. If the circles are small,
+then the generalization will be over a short distance, as in Figure 9.3a, whereas
+
+9.3. LINEAR METHODS
+
+235
+
+Figure 9.3: Generalization in linear function approximation methods is deter-
+mined by the sizes and shapes of the features’ receptive ﬁelds. All three of
+these cases have roughly the same number and density of features.
+
+if they are large, it will be over a large distance, as in Figure 9.3b. Moreover,
+the shape of the features will determine the nature of the generalization. For
+example, if they are not strictly circular, but are elongated in one direction,
+then generalization will be similarly aﬀected, as in Figure 9.3c.
+
+Features with large receptive ﬁelds give broad generalization, but might
+also seem to limit the learned function to a coarse approximation, unable
+to make discriminations much ﬁner than the width of the receptive ﬁelds.
+Happily, this is not the case. Initial generalization from one point to another
+is indeed controlled by the size and shape of the receptive ﬁelds, but acuity,
+the ﬁnest discrimination ultimately possible, is controlled more by the total
+number of features.
+
+Example 9.1: Coarseness of Coarse Coding This example illustrates
+the eﬀect on learning of the size of the receptive ﬁelds in coarse coding. Linear
+function approximation based on coarse coding and (9.3) was used to learn a
+one-dimensi

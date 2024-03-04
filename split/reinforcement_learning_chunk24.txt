@@ -1,0 +1,364 @@
+roximate
+policy and value functions should interact in such a way that they both move
+toward their optimal values.
+
+One of the two processes making up GPI drives the value function to accu-
+rately predict returns for the current policy; this is the prediction problem. The
+other process drives the policy to improve locally (e.g., to be ε-greedy) with
+respect to the current value function. When the ﬁrst process is based on expe-
+rience, a complication arises concerning maintaining suﬃcient exploration. We
+have grouped the TD control methods according to whether they deal with
+this complication by using an on-policy or oﬀ-policy approach. Sarsa and
+actor–critic methods are on-policy methods, and Q-learning and R-learning
+
+162
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+are oﬀ-policy methods.
+
+The methods presented in this chapter are today the most widely used re-
+inforcement learning methods. This is probably due to their great simplicity:
+they can be applied on-line, with a minimal amount of computation, to expe-
+rience generated from interaction with an environment; they can be expressed
+nearly completely by single equations that can be implemented with small
+computer programs.
+In the next few chapters we extend these algorithms,
+making them slightly more complicated and signiﬁcantly more powerful. All
+the new algorithms will retain the essence of those introduced here: they will
+be able to process experience on-line, with relatively little computation, and
+they will be driven by TD errors. The special cases of TD methods introduced
+in the present chapter should rightly be called one-step, tabular, modelfree TD
+methods. In the next three chapters we extend them to multistep forms (a
+link to Monte Carlo methods), forms using function approximation rather than
+tables (a link to artiﬁcial neural networks), and forms that include a model of
+the environment (a link to planning and dynamic programming).
+
+Finally, in this chapter we have discussed TD methods entirely within
+the context of reinforcement learning problems, but TD methods are actually
+more general than this. They are general methods for learning to make long-
+term predictions about dynamical systems. For example, TD methods may
+be relevant to predicting ﬁnancial data, life spans, election outcomes, weather
+patterns, animal behavior, demands on power stations, or customer purchases.
+It was only when TD methods were analyzed as pure prediction methods, inde-
+pendent of their use in reinforcement learning, that their theoretical properties
+ﬁrst came to be well understood. Even so, these other potential applications
+of TD learning methods have not yet been extensively explored.
+
+Bibliographical and Historical Remarks
+
+As we outlined in Chapter 1, the idea of TD learning has its early roots in
+animal learning psychology and artiﬁcial intelligence, most notably the work
+of Samuel (1959) and Klopf (1972). Samuel’s work is described as a case
+study in Section 15.2. Also related to TD learning are Holland’s (1975, 1976)
+early ideas about consistency among value predictions. These inﬂuenced one
+of the authors (Barto), who was a graduate student from 1970 to 1975 at the
+University of Michigan, where Holland was teaching. Holland’s ideas led to a
+number of TD-related systems, including the work of Booker (1982) and the
+bucket brigade of Holland (1986), which is related to Sarsa as discussed below.
+
+6.1–2 Most of the speciﬁc material from these sections is from Sutton (1988),
+
+6.7. SUMMARY
+
+163
+
+6.3
+
+6.4
+
+including the TD(0) algorithm, the random walk example, and the term
+“temporal-diﬀerence learning.” The characterization of the relationship
+to dynamic programming and Monte Carlo methods was inﬂuenced
+by Watkins (1989), Werbos (1987), and others. The use of backup
+diagrams here and in other chapters is new to this book. Example 6.4
+is due to Sutton, but has not been published before.
+
+Tabular TD(0) was proved to converge in the mean by Sutton (1988)
+and with probability 1 by Dayan (1992), based on the work of Watkins
+and Dayan (1992). These results were extended and strengthened by
+Jaakkola, Jordan, and Singh (1994) and Tsitsiklis (1994) by using ex-
+tensions of the powerful existing theory of stochastic approximation.
+Other extensions and generalizations are covered in the next two chap-
+ters.
+
+The optimality of the TD algorithm under batch training was estab-
+lished by Sutton (1988). The term certainty equivalence is from the
+adaptive control literature (e.g., Goodwin and Sin, 1984). Illuminating
+this result is Barnard’s (1993) derivation of the TD algorithm as a com-
+bination of one step of an incremental method for learning a model of
+the Markov chain and one step of a method for computing predictions
+from the model.
+
+The Sarsa algorithm was ﬁrst explored by Rummery and Niranjan
+(1994), who called it modiﬁed Q-learning. The name “Sarsa” was in-
+troduced by Sutton (1996). The convergence of one-step tabular Sarsa
+(the form treated in this chapter) has been proved by Satinder Singh
+(personal communication). The “windy gridworld” example was sug-
+gested by Tom Kalt.
+
+Holland’s (1986) bucket brigade idea evolved into an algorithm closely
+related to Sarsa. The original idea of the bucket brigade involved chains
+of rules triggering each other; it focused on passing credit back from
+the current rule to the rules that triggered it. Over time, the bucket
+brigade came to be more like TD learning in passing credit back to
+any temporally preceding rule, not just to the ones that triggered the
+current rule. The modern form of the bucket brigade, when simpliﬁed
+in various natural ways, is nearly identical to one-step Sarsa, as detailed
+by Wilson (1994).
+
+6.5
+
+Q-learning was introduced by Watkins (1989), whose outline of a con-
+vergence proof was later made rigorous by Watkins and Dayan (1992).
+More general convergence results were proved by Jaakkola, Jordan, and
+Singh (1994) and Tsitsiklis (1994).
+
+164
+
+6.6
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+R-learning is due to Schwartz (1993). Mahadevan (1996), Tadepalli
+and Ok (1994), and Bertsekas and Tsitsiklis (1996) have studied rein-
+forcement learning for undiscounted continuing tasks. In the literature,
+the undiscounted continuing case is often called the case of maximiz-
+ing “average reward per time step” or the “average-reward case.” The
+name R-learning was probably meant to be the alphabetic successor to
+Q-learning, but we prefer to think of it as a reference to the learning of
+relative values. The access-control queuing example was suggested by
+the work of Carlstr¨om and Nordstr¨om (1997).
+
+Exercises
+
+Exercise 6.1 This is an exercise to help develop your intuition about why
+TD methods are often more eﬃcient than Monte Carlo methods. Consider
+the driving home example and how it is addressed by TD and Monte Carlo
+methods. Can you imagine a scenario in which a TD update would be better on
+average than an Monte Carlo update? Give an example scenario—a description
+of past experience and a current state—in which you would expect the TD
+update to be better. Here’s a hint: Suppose you have lots of experience
+driving home from work. Then you move to a new building and a new parking
+lot (but you still enter the highway at the same place). Now you are starting
+to learn predictions for the new building. Can you see why TD updates are
+likely to be much better, at least initially, in this case? Might the same sort
+of thing happen in the original task?
+
+Exercise 6.2 From Figure 6.6, it appears that the ﬁrst episode results in a
+change in only V (A). What does this tell you about what happened on the
+ﬁrst episode? Why was only the estimate for this one state changed? By
+exactly how much was it changed?
+
+Exercise 6.3 The speciﬁc results shown in Figure 6.7 are dependent on the
+value of the step-size parameter, α. Do you think the conclusions about which
+algorithm is better would be aﬀected if a wider range of α values were used?
+Is there a diﬀerent, ﬁxed value of α at which either algorithm would have
+performed signiﬁcantly better than shown? Why or why not?
+
+Exercise 6.4 In Figure 6.7, the RMS error of the TD method seems to go
+down and then up again, particularly at high α’s. What could have caused
+this? Do you think this always occurs, or might it be a function of how the
+approximate value function was initialized?
+
+Exercise 6.5 Above we stated that the true values for the random walk task
+
+6.7. SUMMARY
+
+165
+
+6, 3
+
+6, 2
+
+6, 4
+
+6, and 5
+
+are 1
+6, for states A through E. Describe at least two diﬀerent
+ways that these could have been computed. Which would you guess we actually
+used? Why?
+
+Exercise 6.6: Windy Gridworld with King’s Moves
+Re-solve the
+windy gridworld task assuming eight possible actions, including the diagonal
+moves, rather than the usual four. How much better can you do with the extra
+actions? Can you do even better by including a ninth action that causes no
+movement at all other than that caused by the wind?
+
+Exercise 6.7: Stochastic Wind Resolve the windy gridworld task with
+King’s moves, assuming that the eﬀect of the wind, if there is any, is stochastic,
+sometimes varying by 1 from the mean values given for each column. That
+is, a third of the time you move exactly according to these values, as in the
+previous exercise, but also a third of the time you move one cell above that,
+and another third of the time you move one cell below that. For example, if
+you are one cell to the right of the goal and you move left, then one-third
+of the time you move one cell above the goal, one-third of the time you move
+two cells above the goal, and one-third of the time you move to the goal.
+
+Exercise 6.8 What is the backup diagram for Sarsa?
+
+Exercise 6.9 Why is Q-learning considered an oﬀ-policy control method?
+
+Exercise 6.10 Consider the learning algorithm that is just like Q-learning
+except that instead of the maximum over next state–action pairs it uses the
+expected value, taking into account how likely each action is under the current
+policy. That is, consider the algorithm otherwise like Q-learning except with
+the update rule
+
+Q(St, At)
+
+Q(St, At) + α
+
+Q(St, At) + α
+
+←
+
+←
+
+Rt+1 + γ E[Q(St+1, At+1)
+(cid:104)
+Rt+1 + γ
+
+π(a
+
+|
+St+1)Q(St+1, a)
+|
+
+St+1]
+
+−
+
+−
+
+Q(St, At)
+(cid:105)
+Q(St, At)
+
+(cid:104)
+
+a
+(cid:88)
+
+.
+
+(cid:105)
+
+Is this new method an on-policy or oﬀ-policy method? What is the backup
+diagram for this algorithm? Given the same amount of experience, would
+you expect this method to work better or worse than Sarsa? What other
+considerations might impact the comparison of this method with Sarsa?
+
+Exercise 6.11 Describe how the task of Jack’s Car Rental (Example 4.2)
+could be reformulated in terms of afterstates. Why, in terms of this speciﬁc
+task, would such a reformulation be likely to speed convergence?
+
+166
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+Chapter 7
+
+Eligibility Traces
+
+Eligibility traces are one of the basic mechanisms of reinforcement learning.
+For example, in the popular TD(λ) algorithm, the λ refers to the use of an
+eligibility trace. Almost any temporal-diﬀerence (TD) method, such as Q-
+learning or Sarsa, can be combined with eligibility traces to obtain a more
+general method that may learn more eﬃciently.
+
+There are two ways to view eligibility traces. The more theoretical view,
+which we emphasize here, is that they are a bridge from TD to Monte Carlo
+methods. When TD methods are augmented with eligibility traces, they pro-
+duce a family of methods spanning a spectrum that has Monte Carlo methods
+at one end and one-step TD methods at the other. In between are intermediate
+methods that are often better than either extreme method. In this sense eli-
+gibility traces unify TD and Monte Carlo methods in a valuable and revealing
+way.
+
+The other way to view eligibility traces is more mechanistic. From this
+perspective, an eligibility trace is a temporary record of the occurrence of an
+event, such as the visiting of a state or the taking of an action. The trace
+marks the memory parameters associated with the event as eligible for un-
+dergoing learning changes. When a TD error occurs, only the eligible states
+or actions are assigned credit or blame for the error. Thus, eligibility traces
+help bridge the gap between events and training information. Like TD meth-
+ods themselves, eligibility traces are a basic mechanism for temporal credit
+assignment.
+
+For reasons that will become apparent shortly, the more theoretical view of
+eligibility traces is called the forward view, and the more mechanistic view is
+called the backward view. The forward view is most useful for understanding
+what is computed by methods using eligibility traces, whereas the backward
+view is more appropriate for developing intuition about the algorithms them-
+
+167
+
+168
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+selves.
+In this chapter we present both views and then establish senses in
+which they are equivalent, that is, in which they describe the same algorithms
+from two points of view. As usual, we ﬁrst consider the prediction problem
+and then the control problem. That is, we ﬁrst consider how eligibility traces
+are used to help in predicting returns as a function of state for a ﬁxed pol-
+icy (i.e., in estimating vπ). Only after exploring the two views of eligibility
+traces within this prediction setting do we extend the ideas to action values
+and control methods.
+
+7.1 n-Step TD Prediction
+
+What is the space of methods lying between Monte Carlo and TD methods?
+Consider estimating vπ from sample episodes generated using π. Monte Carlo
+methods perform a backup for each state based on the entire sequence of
+observed rewards from that state until the end of the episode. The backup of
+simple TD methods, on the other hand, is based on just the one next reward,
+using the value of the state one step later as a proxy for the remaining rewards.
+One kind of intermediate method, then, would perform a backup based on an
+intermediate number of rewards: more than one, but less than all of them
+until termination. For example, a two-step backup would be based on the ﬁrst
+two rewards and the estimated value of the state two steps later. Similarly,
+we could have three-step backups, four-step backups, and so on. Figure 7.1
+diagrams the spectrum of n-step backups for vπ, with the one-step, simple TD
+backup on the left and the up-until-termination Monte Carlo backup on the
+right.
+
+The methods that use n-step backups are still TD methods because they
+still change an earlier estimate based on how it diﬀers from a later estimate.
+Now the later estimate is not one step later, but n steps later. Methods
+in which the temporal diﬀerence extends over n steps are called n-step TD
+methods. The TD methods introduced in the previous chapter all use one-step
+backups, and henceforth we call them one-step TD methods.
+
+More formally, consider the backup applied to state St as a result of the
+state–reward sequence, St, Rt+1, St+1, Rt+2, . . . , RT , ST (omitting the actions
+for simplicity). We know that in Monte Carlo backups the estimate of vπ(St)
+is updated in the direction of the complete return:
+
+Gt = Rt+1 + γRt+2 + γ2Rt+3 +
+
++ γT
+
+t
+−
+−
+
+1RT ,
+
+· · ·
+
+where T is the last time step of the episode. Let us call this quantity the target
+of the backup. Whereas in Monte Carlo backups the target is the return, in
+
+7.1. N -STEP TD PREDICTION
+
+169
+
+Figure 7.1: The spectrum ranging from the one-step backups of simple TD
+In
+methods to the up-until-termination backups of Monte Carlo methods.
+betw

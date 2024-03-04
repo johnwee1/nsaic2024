@@ -1,0 +1,286 @@
+n the esti-
+mate Qk is a weighted average of previously received rewards with a weighting
+diﬀerent from that given by (2.6). What is the weighting on each prior reward
+for the general case, analogous to (2.6), in terms of αk?
+
+Exercise 2.4 (programming) Design and conduct an experiment to demon-
+strate the diﬃculties that sample-average methods have for nonstationary
+problems. Use a modiﬁed version of the 10-armed testbed in which all the
+q(a) start out equal and then take independent random walks. Prepare plots
+like Figure 2.1 for an action-value method using sample averages, incremen-
+tally computed by α = 1
+k , and another action-value method using a constant
+step-size parameter, α = 0.1. Use ε = 0.1 and, if necessary, runs longer than
+1000 plays.
+
+Exercise 2.5 The results shown in Figure 2.2 should be quite reliable be-
+cause they are averages over 2000 individual, randomly chosen 10-armed ban-
+dit tasks. Why, then, are there oscillations and spikes in the early part of
+the curve for the optimistic method? What might make this method perform
+particularly better or worse, on average, on particular early plays?
+
+Exercise 2.6 Suppose you face a binary bandit task whose true action values
+change randomly from play to play. Speciﬁcally, suppose that for any play the
+true values of actions 1 and 2 are respectively 0.1 and 0.2 with probability 0.5
+(case A), and 0.9 and 0.8 with probability 0.5 (case B). If you are not able to
+tell which case you face at any play, what is the best expectation of success
+you can achieve and how should you behave to achieve it? Now suppose that
+on each play you are told if you are facing case A or case B (although you still
+don’t know the true action values). This is an associative search task. What
+is the best expectation of success you can achieve in this task, and how should
+you behave to achieve it?
+
+Chapter 3
+
+Finite Markov Decision
+Processes
+
+In this chapter we introduce the problem that we try to solve in the rest of
+the book. For us, this problem deﬁnes the ﬁeld of reinforcement learning: any
+method that is suited to solving this problem we consider to be a reinforcement
+learning method.
+
+Our objective in this chapter is to describe the reinforcement learning prob-
+lem in a broad sense. We try to convey the wide range of possible applications
+that can be framed as reinforcement learning tasks. We also describe math-
+ematically idealized forms of the reinforcement learning problem for which
+precise theoretical statements can be made. We introduce key elements of the
+problem’s mathematical structure, such as value functions and Bellman equa-
+tions. As in all of artiﬁcial intelligence, there is a tension between breadth of
+applicability and mathematical tractability. In this chapter we introduce this
+tension and discuss some of the trade-oﬀs and challenges that it implies.
+
+3.1 The Agent–Environment Interface
+
+The reinforcement learning problem is meant to be a straightforward framing
+of the problem of learning from interaction to achieve a goal. The learner and
+decision-maker is called the agent. The thing it interacts with, comprising
+everything outside the agent, is called the environment. These interact con-
+tinually, the agent selecting actions and the environment responding to those
+actions and presenting new situations to the agent.1 The environment also
+
+1We use the terms agent, environment, and action instead of the engineers’ terms con-
+troller, controlled system (or plant), and control signal because they are meaningful to a
+
+53
+
+54
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+Figure 3.1: The agent–environment interaction in reinforcement learning.
+
+gives rise to rewards, special numerical values that the agent tries to maximize
+over time. A complete speciﬁcation of an environment deﬁnes a task , one
+instance of the reinforcement learning problem.
+
+More speciﬁcally, the agent and environment interact at each of a sequence
+of discrete time steps, t = 0, 1, 2, 3, . . ..2 At each time step t, the agent receives
+S, where S is the set of
+some representation of the environment’s state, St ∈
+A(St), where A(St)
+possible states, and on that basis selects an action, At ∈
+is the set of actions available in state St. One time step later, in part as
+a consequence of its action, the agent receives a numerical reward , Rt+1 ∈
+R, and ﬁnds itself in a new state, St+1.3 Figure 3.1 diagrams the agent–
+R
+environment interaction.
+
+⊂
+
+At each time step, the agent implements a mapping from states to prob-
+abilities of selecting each possible action. This mapping is called the agent’s
+policy and is denoted πt, where πt(a
+s) is the probability that At = a if St = s.
+|
+Reinforcement learning methods specify how the agent changes its policy as
+a result of its experience. The agent’s goal, roughly speaking, is to maximize
+the total amount of reward it receives over the long run.
+
+This framework is abstract and ﬂexible and can be applied to many diﬀerent
+problems in many diﬀerent ways. For example, the time steps need not refer
+to ﬁxed intervals of real time; they can refer to arbitrary successive stages of
+decision-making and acting. The actions can be low-level controls, such as the
+voltages applied to the motors of a robot arm, or high-level decisions, such
+as whether or not to have lunch or to go to graduate school. Similarly, the
+states can take a wide variety of forms. They can be completely determined
+by low-level sensations, such as direct sensor readings, or they can be more
+
+wider audience.
+
+2We restrict attention to discrete time to keep things as simple as possible, even though
+many of the ideas can be extended to the continuous-time case (e.g., see Bertsekas and
+Tsitsiklis, 1996; Werbos, 1992; Doya, 1996).
+
+3We use Rt+1 instead of Rt to denote the reward due to At because it emphasizes that
+
+the next reward and next state, Rt+1 and St+1, are jointly determined.
+
+AgentEnvironmentactionAtrewardRtstateStRt+1St+13.1. THE AGENT–ENVIRONMENT INTERFACE
+
+55
+
+high-level and abstract, such as symbolic descriptions of objects in a room.
+Some of what makes up a state could be based on memory of past sensations
+or even be entirely mental or subjective. For example, an agent could be in
+the state of not being sure where an object is, or of having just been surprised
+in some clearly deﬁned sense. Similarly, some actions might be totally mental
+or computational. For example, some actions might control what an agent
+chooses to think about, or where it focuses its attention. In general, actions
+can be any decisions we want to learn how to make, and the states can be
+anything we can know that might be useful in making them.
+
+In particular, the boundary between agent and environment is not often
+the same as the physical boundary of a robot’s or animal’s body. Usually, the
+boundary is drawn closer to the agent than that. For example, the motors
+and mechanical linkages of a robot and its sensing hardware should usually be
+considered parts of the environment rather than parts of the agent. Similarly,
+if we apply the framework to a person or animal, the muscles, skeleton, and
+sensory organs should be considered part of the environment. Rewards, too,
+presumably are computed inside the physical bodies of natural and artiﬁcial
+learning systems, but are considered external to the agent.
+
+The general rule we follow is that anything that cannot be changed ar-
+bitrarily by the agent is considered to be outside of it and thus part of its
+environment. We do not assume that everything in the environment is un-
+known to the agent. For example, the agent often knows quite a bit about
+how its rewards are computed as a function of its actions and the states in
+which they are taken. But we always consider the reward computation to be
+external to the agent because it deﬁnes the task facing the agent and thus
+must be beyond its ability to change arbitrarily. In fact, in some cases the
+agent may know everything about how its environment works and still face
+a diﬃcult reinforcement learning task, just as we may know exactly how a
+puzzle like Rubik’s cube works, but still be unable to solve it. The agent–
+environment boundary represents the limit of the agent’s absolute control, not
+of its knowledge.
+
+The agent–environment boundary can be located at diﬀerent places for
+diﬀerent purposes. In a complicated robot, many diﬀerent agents may be op-
+erating at once, each with its own boundary. For example, one agent may make
+high-level decisions which form part of the states faced by a lower-level agent
+that implements the high-level decisions. In practice, the agent–environment
+boundary is determined once one has selected particular states, actions, and
+rewards, and thus has identiﬁed a speciﬁc decision-making task of interest.
+
+The reinforcement learning framework is a considerable abstraction of the
+problem of goal-directed learning from interaction. It proposes that whatever
+
+56
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+the details of the sensory, memory, and control apparatus, and whatever ob-
+jective one is trying to achieve, any problem of learning goal-directed behavior
+can be reduced to three signals passing back and forth between an agent and
+its environment: one signal to represent the choices made by the agent (the
+actions), one signal to represent the basis on which the choices are made (the
+states), and one signal to deﬁne the agent’s goal (the rewards). This frame-
+work may not be suﬃcient to represent all decision-learning problems usefully,
+but it has proved to be widely useful and applicable.
+
+Of course, the particular states and actions vary greatly from task to task,
+and how they are represented can strongly aﬀect performance. In reinforce-
+ment learning, as in other kinds of learning, such representational choices are at
+present more art than science. In this book we oﬀer some advice and examples
+regarding good ways of representing states and actions, but our primary focus
+is on general principles for learning how to behave once the representations
+have been selected.
+
+Example 3.1: Bioreactor Suppose reinforcement learning is being applied
+to determine moment-by-moment temperatures and stirring rates for a biore-
+actor (a large vat of nutrients and bacteria used to produce useful chemicals).
+The actions in such an application might be target temperatures and target
+stirring rates that are passed to lower-level control systems that, in turn, di-
+rectly activate heating elements and motors to attain the targets. The states
+are likely to be thermocouple and other sensory readings, perhaps ﬁltered and
+delayed, plus symbolic inputs representing the ingredients in the vat and the
+target chemical. The rewards might be moment-by-moment measures of the
+rate at which the useful chemical is produced by the bioreactor. Notice that
+here each state is a list, or vector, of sensor readings and symbolic inputs,
+and each action is a vector consisting of a target temperature and a stirring
+rate. It is typical of reinforcement learning tasks to have states and actions
+with such structured representations. Rewards, on the other hand, are always
+single numbers.
+
+Example 3.2: Pick-and-Place Robot Consider using reinforcement learn-
+ing to control the motion of a robot arm in a repetitive pick-and-place task. If
+we want to learn movements that are fast and smooth, the learning agent will
+have to control the motors directly and have low-latency information about
+the current positions and velocities of the mechanical linkages. The actions
+in this case might be the voltages applied to each motor at each joint, and
+the states might be the latest readings of joint angles and velocities. The
+reward might be +1 for each object successfully picked up and placed. To
+encourage smooth movements, on each time step a small, negative reward can
+be given as a function of the moment-to-moment “jerkiness” of the motion.
+
+3.2. GOALS AND REWARDS
+
+57
+
+Example 3.3: Recycling Robot A mobile robot has the job of collecting
+empty soda cans in an oﬃce environment. It has sensors for detecting cans, and
+an arm and gripper that can pick them up and place them in an onboard bin; it
+runs on a rechargeable battery. The robot’s control system has components for
+interpreting sensory information, for navigating, and for controlling the arm
+and gripper. High-level decisions about how to search for cans are made by a
+reinforcement learning agent based on the current charge level of the battery.
+This agent has to decide whether the robot should (1) actively search for a
+can for a certain period of time, (2) remain stationary and wait for someone
+to bring it a can, or (3) head back to its home base to recharge its battery.
+This decision has to be made either periodically or whenever certain events
+occur, such as ﬁnding an empty can. The agent therefore has three actions,
+and its state is determined by the state of the battery. The rewards might be
+zero most of the time, but then become positive when the robot secures an
+empty can, or large and negative if the battery runs all the way down. In this
+example, the reinforcement learning agent is not the entire robot. The states
+it monitors describe conditions within the robot itself, not conditions of the
+robot’s external environment. The agent’s environment therefore includes the
+rest of the robot, which might contain other complex decision-making systems,
+as well as the robot’s external environment.
+
+3.2 Goals and Rewards
+
+In reinforcement learning, the purpose or goal of the agent is formalized in
+terms of a special reward signal passing from the environment to the agent.
+R. Informally, the
+At each time step, the reward is a simple number, Rt ∈
+agent’s goal is to maximize the total amount of reward it receives. This means
+maximizing not immediate reward, but cumulative reward in the long run. We
+can clearly state this informal idea as the reward hypothesis:
+
+That all of what we mean by goals and purposes can be well
+thought of as the maximization of the expected value of the cu-
+mulative sum of a received scalar signal (called reward).
+
+The use of a reward signal to formalize the idea of a goal is one of the most
+distinctive features of reinforcement learning.
+
+Although formulating goals in terms of reward signals might at ﬁrst appear
+limiting, in practice it has proved to be ﬂexible and widely applicable. The best
+way to see this is to consider examples of how it has been, or could be, used.
+For example, to make a robot learn to walk, researchers have provided reward
+
+58
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+on each time step proportional to the robot’s forward motion. In making a
+1 for every time
+robot learn how to escape from a maze, the reward is often
+step that passes prior to escape; this encourages the agent to escape as quickly
+as possible. To make a robot learn to ﬁnd and collect empty soda cans for
+recycling, one might give it a reward of zero most of the time, and then a
+reward of +1 for each can collected. One might also want to give the robot
+negative rewards when it bumps into things or when somebody yells at it. For
+an agent to learn to play checkers or chess, the natural rewards are +1 for
+winning,
+
+1 for losing, and 0 for drawing and for all nonterminal positions.
+
+−
+
+−
+
+You can see what is happening in all of these examples. The agent always
+learns to maximize its reward. If we want it to do something for us, we must
+provide rewards to it in such a way that in maximizing them the agent

@@ -1,0 +1,252 @@
+c programming has been extensively developed since the
+late 1950s, including extensions to partially observable MDPs (surveyed by
+Lovejoy, 1991), many applications (surveyed by White, 1985, 1988, 1993), ap-
+proximation methods (surveyed by Rust, 1996), and asynchronous methods
+(Bertsekas, 1982, 1983). Many excellent modern treatments of dynamic pro-
+gramming are available (e.g., Bertsekas, 1995; Puterman, 1994; Ross, 1983;
+and Whittle, 1982, 1983). Bryson (1996) provides an authoritative history of
+optimal control.
+
+Connections between optimal control and dynamic programming, on the
+one hand, and learning, on the other, were slow to be recognized. We can-
+not be sure about what accounted for this separation, but its main cause was
+likely the separation between the disciplines involved and their diﬀerent goals.
+Also contributing may have been the prevalent view of dynamic programming
+as an oﬀ-line computation depending essentially on accurate system models
+and analytic solutions to the Bellman equation. Further, the simplest form
+of dynamic programming is a computation that proceeds backwards in time,
+making it diﬃcult to see how it could be involved in a learning process that
+must proceed in a forward direction. Perhaps the ﬁrst to connect optimal con-
+trol and dynamic programming with learning was Paul Werbos (1977), who
+proposed an approximate approach to dynamic programming that he called
+“heuristic dynamic programming.” He later argued for the need for greater
+interrelation of dynamic programming and learning methods and its relevance
+to understanding neural and cognitive mechanisms (Werbos, 1987). For us
+the full integration of dynamic programming methods with on-line learning
+did not occur until the work of Chris Watkins in 1989, whose treatment of
+reinforcement learning using the MDP formalism has been widely adopted
+(Watkins, 1989). Since then these relationships have been extensively devel-
+oped by many researchers, most particularly by Dimitri Bertsekas and John
+Tsitsiklis (1996), who coined the term “neurodynamic programming” to refer
+
+18
+
+CHAPTER 1. THE REINFORCEMENT LEARNING PROBLEM
+
+to the combination of dynamic programming and neural networks. Another
+term currently in use is “approximate dynamic programming.” These various
+approaches emphasize diﬀerent aspects of the subject, but they all share with
+reinforcement learning an interest in circumventing the classical shortcomings
+of dynamic programming.
+
+In this book, we consider all of the work in optimal control also to be,
+in a sense, work in reinforcement learning. We deﬁne a reinforcement learn-
+ing method as any eﬀective way of solving reinforcement learning problems,
+and it is now clear that these problems are closely related to optimal con-
+trol problems, particularly stochastic optimal control problems such as those
+formulated as MDPs. Accordingly, we must consider the solution methods
+of optimal control, such as dynamic programming, also to be reinforcement
+learning methods. Because almost all of the conventional methods require
+complete knowledge of the system to be controlled, it feels a little unnatural
+to say that they are part of reinforcement learning. On the other hand, many
+dynamic programming algorithms are incremental and iterative. Like learning
+methods, they gradually reach the correct answer through successive approx-
+imations. As we show in the rest of this book, these similarities are far more
+than superﬁcial. The theories and solution methods for the cases of complete
+and incomplete knowledge are so closely related that we feel they must be
+considered together as part of the same subject matter.
+
+Let us return now to the other major thread leading to the modern ﬁeld of
+reinforcement learning, that centered on the idea of trial-and-error learning.
+We only touch on the major points of contact here, taking up this topic in more
+detail in Chapter ??. According to American psychologist R. S. Woodworth
+the idea of trial-and-error learning goes as far back as the 1850s to Alexander
+Bain’s discussion of learning by “groping and experiment” and more explicitly
+to the British ethologist and psychologist Conway Lloyd Morgan’s 1894 use of
+the term to describe his observations of animal behavior (Woodworth, 1938).
+Perhaps the ﬁrst to succinctly express the essence of trial-and-error learning
+as a principle of learning was Edward Thorndike:
+
+Of several responses made to the same situation, those which are
+accompanied or closely followed by satisfaction to the animal will,
+other things being equal, be more ﬁrmly connected with the sit-
+uation, so that, when it recurs, they will be more likely to recur;
+those which are accompanied or closely followed by discomfort to
+the animal will, other things being equal, have their connections
+with that situation weakened, so that, when it recurs, they will be
+less likely to occur. The greater the satisfaction or discomfort, the
+greater the strengthening or weakening of the bond. (Thorndike,
+1911, p. 244)
+
+1.7. HISTORY OF REINFORCEMENT LEARNING
+
+19
+
+Thorndike called this the “Law of Eﬀect” because it describes the eﬀect of
+reinforcing events on the tendency to select actions. Thorndike later modiﬁed
+the law to better account for accumulating data on animal learning (such as
+diﬀerences between the eﬀects of reward and punishment), and the law in its
+various forms has generated considerable controversy among learning theorists
+(e.g., see Gallistel, 2005; Herrnstein, 1970; Kimble, 1961, 1967; Mazur, 1994).
+Despite this, the Law of Eﬀect—in one form or another—is widely regarded
+as a basic principle underlying much behavior (e.g., Hilgard and Bower, 1975;
+Dennett, 1978; Campbell, 1960; Cziko, 1995). It is the basis of the inﬂuential
+learning theories of Clark Hull and experimental methods of B. F. Skinner
+(e.g., Hull, 1943; Skinner, 1938).
+
+The term “reinforcement” in the context of animal learning came into use
+well after Thorndike’s expression of the Law of Eﬀect, to the best of our knowl-
+edge ﬁrst appearing in this context in the 1927 English translation of Pavlov’s
+monograph on conditioned reﬂexes. Reinforcement is the strengthening of a
+pattern of behavior as a result of an animal receiving a stimulus—a reinforcer—
+in an appropriate temporal relationship with another stimulus or with a re-
+sponse. Some psychologists extended its meaning to include the process of
+weakening in addition to strengthening, as well applying when the omission or
+termination of an event changes behavior. Reinforcement produces changes in
+behavior that persist after the reinforcer is withdrawn, so that a stimulus that
+attracts an animal’s attention or that energizes its behavior without producing
+lasting changes is not considered to be a reinforcer.
+
+The idea of implementing trial-and-error learning in a computer appeared
+among the earliest thoughts about the possibility of artiﬁcial intelligence. In a
+1948 report, Alan Turing described a design for a “pleasure-pain system” that
+worked along the lines of the Law of Eﬀect:
+
+When a conﬁguration is reached for which the action is undeter-
+mined, a random choice for the missing data is made and the appro-
+priate entry is made in the description, tentatively, and is applied.
+When a pain stimulus occurs all tentative entries are cancelled,
+and when a pleasure stimulus occurs they are all made permanent.
+(Turing, 1948)
+
+In 1952 Claude Shannon demonstrated a maze-running mouse named Theseus
+that used trial and error to ﬁnd its way to a goal location in a maze, with
+the maze itself remembering the successful directions via magnets and relays
+under its ﬂoor (Shannon, 1952). Other early computational investigations of
+trial-and-error learning were those of Minsky and of Farley and Clark, both
+in 1954. In his Ph.D. dissertation, Minsky discussed computational models of
+reinforcement learning and described his construction of an analog machine
+
+20
+
+CHAPTER 1. THE REINFORCEMENT LEARNING PROBLEM
+
+composed of components he called SNARCs (Stochastic Neural-Analog Rein-
+forcement Calculators). Farley and Clark described another neural-network
+learning machine designed to learn by trial and error. In the 1960s the terms
+“reinforcement” and “reinforcement learning” were used in the engineering lit-
+erature for the ﬁrst time (e.g., Waltz and Fu, 1965; Mendel, 1966; Fu, 1970;
+Mendel and McClaren, 1970). Particularly inﬂuential was Minsky’s paper
+“Steps Toward Artiﬁcial Intelligence” (Minsky, 1961), which discussed several
+issues relevant to reinforcement learning, including what he called the credit
+assignment problem: How do you distribute credit for success among the many
+decisions that may have been involved in producing it? All of the methods we
+discuss in this book are, in a sense, directed toward solving this problem.
+
+The interests of Farley and Clark (1954; Clark and Farley, 1955) shifted
+from trial-and-error learning to generalization and pattern recognition, that
+is, from reinforcement learning to supervised learning. This began a pattern
+of confusion about the relationship between these types of learning. Many
+researchers seemed to believe that they were studying reinforcement learning
+when they were actually studying supervised learning. For example, neural
+network pioneers such as Rosenblatt (1962) and Widrow and Hoﬀ (1960) were
+clearly motivated by reinforcement learning—they used the language of re-
+wards and punishments—but the systems they studied were supervised learn-
+ing systems suitable for pattern recognition and perceptual learning. Even to-
+day, some researchers and textbooks minimize or blur the distinction between
+these types of learning. For example, some neural-network textbooks have
+used the term “trial-and-error” to describe networks that learn from training
+examples. This is an understandable confusion because these networks use
+error information to update connection weights, but this substantially misses
+the essential selectional character of trial-and-error learning.
+
+Partly as a result of these confusions, research into genuine trial-and-error
+learning became rare in the the 1960s and 1970s. In the next few paragraphs
+we discuss some of the exceptions and partial exceptions to this trend.
+
+One of these was the work by a New Zealand researcher named John An-
+dreae. Andreae (1963) developed a system called STeLLA that learned by trial
+and error in interaction with its environment. This system included an internal
+model of the world and, later, an “internal monologue” to deal with problems
+of hidden state (Andreae, 1969a). Andreae’s later work (1977) placed more
+emphasis on learning from a teacher, but still included trial and error. Un-
+fortunately, his pioneering research was not well known, and did not greatly
+impact subsequent reinforcement learning research.
+
+More inﬂuential was the work of Donald Michie.
+
+In 1961 and 1963 he
+described a simple trial-and-error learning system for learning how to play
+
+1.7. HISTORY OF REINFORCEMENT LEARNING
+
+21
+
+tic-tac-toe (or naughts and crosses) called MENACE (for Matchbox Educable
+Naughts and Crosses Engine). It consisted of a matchbox for each possible
+game position, each matchbox containing a number of colored beads, a dif-
+ferent color for each possible move from that position. By drawing a bead at
+random from the matchbox corresponding to the current game position, one
+could determine MENACE’s move. When a game was over, beads were added
+to or removed from the boxes used during play to reinforce or punish MEN-
+ACE’s decisions. Michie and Chambers (1968) described another tic-tac-toe
+reinforcement learner called GLEE (Game Learning Expectimaxing Engine)
+and a reinforcement learning controller called BOXES. They applied BOXES
+to the task of learning to balance a pole hinged to a movable cart on the basis
+of a failure signal occurring only when the pole fell or the cart reached the end
+of a track. This task was adapted from the earlier work of Widrow and Smith
+(1964), who used supervised learning methods, assuming instruction from a
+teacher already able to balance the pole. Michie and Chambers’s version of
+pole-balancing is one of the best early examples of a reinforcement learning
+task under conditions of incomplete knowledge. It inﬂuenced much later work
+in reinforcement learning, beginning with some of our own studies (Barto,
+Sutton, and Anderson, 1983; Sutton, 1984). Michie has consistently empha-
+sized the role of trial and error and learning as essential aspects of artiﬁcial
+intelligence (Michie, 1974).
+
+Widrow, Gupta, and Maitra (1973) modiﬁed the Least-Mean-Square (LMS)
+algorithm of Widrow and Hoﬀ (1960) to produce a reinforcement learning rule
+that could learn from success and failure signals instead of from training exam-
+ples. They called this form of learning “selective bootstrap adaptation” and
+described it as “learning with a critic” instead of “learning with a teacher.”
+They analyzed this rule and showed how it could learn to play blackjack. This
+was an isolated foray into reinforcement learning by Widrow, whose contribu-
+tions to supervised learning were much more inﬂuential. Our use of the term
+“critic” is derived from Widrow, Gupta, and Maitra’s paper.
+
+Research on learning automata had a more direct inﬂuence on the trial-
+and-error thread leading to modern reinforcement learning research. These
+are methods for solving a nonassociative, purely selectional learning problem
+known as the n-armed bandit by analogy to a slot machine, or “one-armed
+bandit,” except with n levers (see Chapter 2). Learning automata are simple,
+low-memory machines for improving the probability of reward in these prob-
+lems. Learning automata originated with work in the 1960s of the Russian
+mathematician and physicist M. L. Tsetlin and colleagues (published posthu-
+mously in Tsetlin, 1973) and has been extensively developed since then within
+engineering (see Narendra and Thathachar, 1974, 1989). These developments
+included the study of stochastic learning automata, which are methods for up-
+
+22
+
+CHAPTER 1. THE REINFORCEMENT LEARNING PROBLEM
+
+dating action probabilities on the basis of reward signals. Stochastic learning
+automata were foreshadowed by earlier work in psychology, beginning with
+William Estes’ 1950 eﬀort toward a statistical theory of learning (Estes, 1950)
+and further developed by others, most famously by psychologist Robert Bush
+and statistician Frederick Mosteller (Bush and Mosteller, 1955).
+
+The statistical learning theories developed in psychology were adopted by
+researchers in economics, leading to a thread of research in that ﬁeld devoted to
+reinforcement learning. This work began in 1973 with the application of Bush
+and Mosteller’s learning theory to a collection of classical economic models
+(Cross, 1973). One goal of this research was to study artiﬁcial agents that act
+more like real people than do traditional idealized economic agents (Arthur,
+1991). This approach expanded to the study of reinforcement learning in the
+context of game theory. Although reinforcement learning in economics de-
+veloped largely independently of the early work in artiﬁcial intelligence, rein-
+forcement learning and game theory is a topic of current interest in both ﬁelds,
+but one that is beyond the scope of this book. Camerer (2003) discusses the
+reinforcement learning tradition in economics, and Now´e et al. (2012) provide
+an overview of the subject from the point of view of multi-agent extensions
+to the approach that we intr

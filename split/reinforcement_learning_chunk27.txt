@@ -1,0 +1,611 @@
+ng the state–action pair (here given using the
+identity-indicator notation):
+
+Et(s, a) = γλEt
+Et(s, a) = (1
+Et(s, a) = (1
+
+1(s, a) + IsStIaAt
+−
+α)γλEt
+IsStIaAt)γλEt
+−
+
+1(s, a) + IsStIaAt
+−
+
+−
+−
+A. Otherwise Sarsa(λ) is just like TD(λ), substituting
+
+1(s, a) + IsStIaAt
+
+(accumulating)
+(dutch)
+(replacing)
+
+for all s
+
+S, a
+
+∈
+
+∈
+
+184
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+Figure 7.11: Sarsa(λ)’s backup diagram.
+
+state–action variables for state variables—Qt(s, a) for Vt(s) and Et(s, a) for
+Et(s):
+
+Qt+1(s, a) = Qt(s, a) + αδt Et(s, a),
+
+for all s, a
+
+where
+
+δt = Rt+1 + γQt(St+1, At+1)
+
+Qt(St, At).
+
+−
+
+Figure 7.11 shows the backup diagram for Sarsa(λ). Notice the similarity to
+the diagram of the TD(λ) algorithm (Figure 7.3). The ﬁrst backup looks ahead
+one full step, to the next state–action pair, the second looks ahead two steps,
+and so on. A ﬁnal backup is based on the complete return. The weighting of
+each backup is just as in TD(λ) and the λ-return algorithm.
+
+One-step Sarsa and Sarsa(λ) are on-policy algorithms, meaning that they
+approximate qπ(s, a), the action values for the current policy, π, then improve
+the policy gradually based on the approximate values for the current policy.
+The policy improvement can be done in many diﬀerent ways, as we have seen
+throughout this book. For example, the simplest approach is to use the ε-
+greedy policy with respect to the current action-value estimates. Figure 7.12
+shows the complete Sarsa(λ) algorithm for this case.
+
+Example 7.2: Traces in Gridworld The use of eligibility traces can
+substantially increase the eﬃciency of control algorithms. The reason for this
+
+λT-t-1s, at1−λ(1−λ) λ(1−λ) λ2Σ= 1tsTSarsa(λ)StST, At7.5. SARSA(λ)
+
+185
+
+S, a
+
+A(s)
+
+∈
+
+∈
+
+∈
+
+∈
+
+S, a
+
+A(s)
+
+Initialize Q(s, a) arbitrarily, for all s
+Repeat (for each episode):
+E(s, a) = 0, for all s
+Initialize S, A
+Repeat (for each step of episode):
+Take action A, observe R, S(cid:48)
+Choose A(cid:48) from S(cid:48) using policy derived from Q (e.g., ε-greedy)
+δ
+←
+E(S, A)
+←
+or E(S, A)
+or E(S, A)
+For all s
+
+(accumulating traces)
+(dutch traces)
+(replacing traces)
+
+−
+E(S, A) + 1
+
+(1
+←
+1
+←
+S, a
+
+R + γQ(S(cid:48), A(cid:48))
+
+α)E(S, A) + 1
+
+Q(S, A)
+
+A(s):
+
+−
+
+∈
+
+∈
+Q(s, a)
+E(s, a)
+S(cid:48); A
+
+Q(s, a) + αδ E(s, a)
+γ λE(s, a)
+A(cid:48)
+until S is terminal
+
+←
+←
+←
+
+←
+
+S
+
+Figure 7.12: Tabular Sarsa(λ).
+
+Figure 7.13: Gridworld example of the speedup of policy learning due to the
+use of eligibility traces.
+
+Path takenAction values increasedby one-step SarsaAction values increasedby Sarsa(!) with !=0.9186
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+is illustrated by the gridworld example in Figure 7.13. The ﬁrst panel shows
+the path taken by an agent in a single episode, ending at a location of high
+reward, marked by the *. In this example the values were all initially 0, and
+all rewards were zero except for a positive reward at the * location. The
+arrows in the other two panels show which action values were strengthened as
+a result of this path by one-step Sarsa and Sarsa(λ) methods. The one-step
+method strengthens only the last action of the sequence of actions that led to
+the high reward, whereas the trace method strengthens many actions of the
+sequence. The degree of strengthening (indicated by the size of the arrows)
+falls oﬀ (according to γλ or (1
+α)γλ) with steps from the reward. In this
+example, the fall oﬀ is 0.9 per step.
+
+−
+
+7.6 Watkins’s Q(λ)
+
+When Chris Watkins (1989) ﬁrst proposed Q-learning, he also proposed a
+simple way to combine it with eligibility traces. Recall that Q-learning is an
+oﬀ-policy method, meaning that the policy learned about need not be the same
+as the one used to select actions. In particular, Q-learning learns about the
+greedy policy while it typically follows a policy involving exploratory actions—
+occasional selections of actions that are suboptimal according to Q. Because
+of this, special care is required when introducing eligibility traces.
+
+Suppose we are backing up the state–action pair St, At at time t. Suppose
+that on the next two time steps the agent selects the greedy action, but on
+the third, at time t + 3, the agent selects an exploratory, nongreedy action. In
+learning about the value of the greedy policy at St, At we can use subsequent
+experience only as long as the greedy policy is being followed. Thus, we can use
+the one-step and two-step returns, but not, in this case, the three-step return.
+The n-step returns for all n
+3 no longer have any necessary relationship to
+the greedy policy.
+
+≥
+
+Thus, unlike TD(λ) or Sarsa(λ), Watkins’s Q(λ) does not look ahead all
+the way to the end of the episode in its backup. It only looks ahead as far
+as the next exploratory action. Aside from this diﬀerence, however, Watkins’s
+Q(λ) is much like TD(λ) and Sarsa(λ). Their lookahead stops at episode’s end,
+whereas Q(λ)’s lookahead stops at the ﬁrst exploratory action, or at episode’s
+end if there are no exploratory actions before that. Actually, to be more
+precise, one-step Q-learning and Watkins’s Q(λ) both look one action past the
+ﬁrst exploration, using their knowledge of the action values. For example,
+suppose the ﬁrst action, At+1, is exploratory. Watkins’s Q(λ) would still do
+the one-step update of Qt(St, At) toward Rt+1 +γ maxa Qt(St+1, a). In general,
+
+7.6. WATKINS’S Q(λ)
+
+187
+
+Figure 7.14: The backup diagram for Watkins’s Q(λ). The series of component
+backups ends either with the end of the episode or with the ﬁrst nongreedy
+action, whichever comes ﬁrst.
+
+if At+n is the ﬁrst exploratory action, then the longest backup is toward
+
+Rt+1 + γRt+2 +
+
++ γn
+−
+
+1Rt+n + γn max
+
+a
+
+· · ·
+
+Qt(St+n, a),
+
+where we assume oﬀ-line updating. The backup diagram in Figure 7.14 illus-
+trates the forward view of Watkins’s Q(λ), showing all the component backups.
+
+The mechanistic or backward view of Watkins’s Q(λ) is also very simple.
+Eligibility traces are used just as in Sarsa(λ), except that they are set to zero
+whenever an exploratory (nongreedy) action is taken. The trace update is
+best thought of as occurring in two steps. First, the traces for all state–action
+pairs are either decayed by γλ or, if an exploratory action was taken, set to 0.
+Second, the trace corresponding to the current state and action is incremented
+by 1. The overall result is
+
+Et(s, a) =
+
+γλEt
+IsSt ·
+
+1(s, a) + IsSt ·
+−
+IaAt
+
+(cid:26)
+
+IaAt
+
+if Qt
+−
+otherwise.
+
+1(St, At) = maxa Qt
+
+1(St, a);
+
+−
+
+One could also use analogous dutch or replacing traces here. The rest of the
+algorithm is deﬁned by
+
+Qt+1(s, a) = Qt(s, a) + αδt Et(s, a),
+
+S, a
+
+s
+∀
+
+∈
+
+∈
+
+A(s)
+
+1!"(1!") "(1!") "2Watkins's Q(")ORfirstnon-greedyaction"n!1s, attst+n"T-t-1StSt-n, At188
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+S, a
+
+A(s)
+
+∈
+
+∈
+
+∈
+
+∈
+
+S, a
+
+A(s)
+
+Initialize Q(s, a) arbitrarily, for all s
+Repeat (for each episode):
+E(s, a) = 0, for all s
+Initialize S, A
+Repeat (for each step of episode):
+Take action A, observe R, S(cid:48)
+Choose A(cid:48) from S(cid:48) using policy derived from Q (e.g., ε-greedy)
+A(cid:48))
+argmaxa Q(S(cid:48), a) (if A(cid:48) ties for the max, then A∗ ←
+A∗ ←
+δ
+R + γQ(S(cid:48), A∗)
+←
+(accumulating traces)
+E(S, A)
+←
+(dutch traces)
+or E(S, A)
+or E(S, A)
+(replacing traces)
+For all s
+
+−
+E(S, A) + 1
+
+(1
+←
+1
+←
+S, a
+
+α)E(S, A) + 1
+
+Q(S, A)
+
+A(s):
+
+−
+
+Q(s, a) + αδ E(s, a)
+
+∈
+
+←
+
+∈
+Q(s, a)
+If A(cid:48) = A∗, then E(s, a)
+else E(s, a)
+A(cid:48)
+until S is terminal
+
+S(cid:48); A
+
+←
+
+←
+
+S
+
+γ λE(s, a)
+←
+0
+←
+
+Figure 7.15: Tabular version of Watkins’s Q(λ) algorithm.
+
+where
+
+δt = Rt+1 + γ max
+
+a(cid:48)
+
+Qt(St+1, a(cid:48))
+
+−
+
+Qt(St, At).
+
+Figure 7.15 shows the complete algorithm in pseudocode.
+
+Unfortunately, cutting oﬀ traces every time an exploratory action is taken
+loses much of the advantage of using eligibility traces. If exploratory actions
+are frequent, as they often are early in learning, then only rarely will backups
+of more than one or two steps be done, and learning may be little faster than
+one-step Q-learning.
+
+7.7 Oﬀ-policy Eligibility Traces using Impor-
+
+tance Sampling
+
+The eligibility traces in Watkins’s Q(λ) are a crude way to deal with oﬀ-
+policy training. First, they treat the oﬀ-policy aspect as binary; either the
+target policy is followed and traces continue normally, or it is deviated from
+and traces are cut oﬀ completely; there is nothing inbetween. But the target
+policy may take diﬀerent actions with diﬀerent positive probabilities, as may
+the behavior policy, in which case following and deviating will be a matter of
+
+7.8.
+
+IMPLEMENTATION ISSUES
+
+189
+
+degree. In Chapter 5 we saw how to use the ratio of the two probabilities of
+taking the action to more precisely assign credit to a single action, and the
+product of ratios to assign credit to a sequence.
+
+Second, Watkins’s Q(λ) confounds bootstrapping and oﬀ-policy deviation.
+Bootstrapping refers to the degree to which an algorithm builds its estimates
+from other estimates, like TD and DP, or does not, like MC methods.
+In
+TD(λ) and Sarsa(λ), the λ parameter controls the degree of bootstrapping,
+with the value λ = 1 denoting no bootstrapping, turning these TD methods
+into MC methods. But the same cannot be said for Q(λ). As soon as there is a
+deviation from the target policy Q(λ) cuts the trace and uses its value estimate
+rather than waiting for the actual rewards—it bootstraps even if λ = 1. Ideally
+we would like to totally de-couple bootstrapping from the oﬀ-policy aspect, to
+use λ to specify the degree of bootstrapping while using importance sampling
+to correct independently for the degree of oﬀ-policy deviation.
+
+7.8
+
+Implementation Issues
+
+It might at ﬁrst appear that methods using eligibility traces are much more
+complex than one-step methods. A naive implementation would require every
+state (or state–action pair) to update both its value estimate and its eligibility
+trace on every time step. This would not be a problem for implementations
+on single-instruction, multiple-data parallel computers or in plausible neural
+implementations, but it is a problem for implementations on conventional serial
+computers. Fortunately, for typical values of λ and γ the eligibility traces of
+almost all states are almost always nearly zero; only those that have recently
+been visited will have traces signiﬁcantly greater than zero. Only these few
+states really need to be updated because the updates at the others will have
+essentially no eﬀect.
+
+In practice, then, implementations on conventional computers keep track
+of and update only the few states with nonzero traces. Using this trick, the
+computational expense of using traces is typically a few times that of a one-
+step method. The exact multiple of course depends on λ and γ and on the
+expense of the other computations. Cichosz (1995) has demonstrated a fur-
+ther implementation technique that further reduces complexity to a constant
+independent of λ and γ. Finally, it should be noted that the tabular case is
+in some sense a worst case for the computational complexity of traces. When
+function approximation is used (Chapter 9), the computational advantages of
+not using traces generally decrease. For example, if artiﬁcial neural networks
+and backpropagation are used, then traces generally cause only a doubling of
+the required memory and computation per step.
+
+190
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+∗7.9 Variable λ
+
+The λ-return can be signiﬁcantly generalized beyond what we have described
+so far by allowing λ to vary from step to step, that is, by redeﬁning the trace
+update as
+
+Et(s) =
+
+(cid:26)
+
+γ λt Et
+γ λt Et
+
+1(s)
+= St;
+1(s) + 1 if s = St,
+
+if s
+
+−
+
+−
+
+where λt denotes the value of λ at time t. This is an advanced topic because
+the added generality has never been used in practical applications, but it is
+interesting theoretically and may yet prove useful. For example, one idea is to
+vary λ as a function of state: λt = λ(St). If a state’s value estimate is believed
+to be known with high certainty, then it makes sense to use that estimate fully,
+ignoring whatever states and rewards are received after it. This corresponds to
+cutting oﬀ all the traces once this state has been reached, that is, to choosing
+the λ for the certain state to be zero or very small. Similarly, states whose
+value estimates are highly uncertain, perhaps because even the state estimate
+is unreliable, can be given λs near 1. This causes their estimated values to
+have little eﬀect on any updates. They are “skipped over” until a state that is
+known better is encountered. Some of these ideas were explored formally by
+Sutton and Singh (1994).
+
+The eligibility trace equation above is the backward view of variable λs.
+The corresponding forward view is a more general deﬁnition of the λ-return:
+
+Gλ
+
+t =
+
+∞
+
+G(n)
+t
+
+(1
+
+λt+n)
+
+−
+
+=
+
+n=1
+(cid:88)
+1
+T
+−
+
+(cid:88)k=t+1
+
+t)
+
+G(k
+t
+
+−
+
+(1
+
+−
+
+λk)
+
+λi + Gt
+
+T
+
+1
+
+−
+
+λi.
+
+i=t+1
+(cid:89)
+
+t+n
+
+1
+
+−
+
+λi
+
+i=t+1
+(cid:89)
+k
+−
+
+1
+
+i=t+1
+(cid:89)
+
+7.10 Conclusions
+
+Eligibility traces in conjunction with TD errors provide an eﬃcient, incremen-
+tal way of shifting and choosing between Monte Carlo and TD methods. Traces
+can be used without TD errors to achieve a similar eﬀect, but only awkwardly.
+A method such as TD(λ) enables this to be done from partial experiences and
+with little memory and little nonmeaningful variation in predictions.
+
+As we mentioned in Chapter 5, Monte Carlo methods may have advan-
+tages in non-Markov tasks because they do not bootstrap. Because eligibility
+
+(cid:54)
+7.10. CONCLUSIONS
+
+191
+
+traces make TD methods more like Monte Carlo methods, they also can have
+advantages in these cases. If one wants to use TD methods because of their
+other advantages, but the task is at least partially non-Markov, then the use
+of an eligibility trace method is indicated. Eligibility traces are the ﬁrst line
+of defense against both long-delayed rewards and non-Markov tasks.
+
+By adjusting λ, we can place eligibility trace methods anywhere along
+a continuum from Monte Carlo to one-step TD methods. Where shall we
+place them? We do not yet have a good theoretical answer to this question,
+but a clear empirical answer appears to be emerging. On tasks with many
+steps per episode, or many steps within the half-life of discounting, it appears
+signiﬁcantly better to use eligibility traces than not to (e.g., see Figure 9.12).
+On the other hand, if the traces are so long as to produce a pure Monte Carlo
+method, or nearly so, then performance degrades sharply. An intermediate
+mixture appears to be the best choice. Eligibility traces should be used to
+bring us toward Monte Carlo methods, but not all the way there.
+In the
+future it may be possible to vary the trade-oﬀ between TD and Monte Carlo
+methods more ﬁnely by using variable λ, but at present it is not clear how this
+can be done reliably and usefully.
+
+Methods using eligibility traces require more computation than one-step
+methods, but in return they oﬀer signiﬁcantly faster learning, particularly
+when rewards are delayed by many steps. Thus it often makes sense to use
+eligibility traces when data are scarce and cannot be repeatedly processed, as
+is often the case in on-line applications. On the other hand, in oﬀ-line appli-
+cations in which data can be generated cheaply, perhaps from an inexpensive
+simulation, then it often does not pay to use eligibility traces. In these cases
+the objective is not to get more out of a limited amount of data, but simply
+to process as much data as possible as quickly as possible. In these cases the
+speedup per datum due to traces is typically not worth their computational
+cost, and one-ste

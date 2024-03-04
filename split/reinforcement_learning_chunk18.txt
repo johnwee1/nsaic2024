@@ -1,0 +1,399 @@
+ransition probabilities must be computed before DP
+can be applied, and such computations are often complex and error-prone. In
+contrast, generating the sample games required by Monte Carlo methods is
+easy. This is the case surprisingly often; the ability of Monte Carlo methods
+to work with sample episodes alone can be a signiﬁcant advantage even when
+one has complete knowledge of the environment’s dynamics.
+
+Can we generalize the idea of backup diagrams to Monte Carlo algorithms?
+The general idea of a backup diagram is to show at the top the root node to be
+updated and to show below all the transitions and leaf nodes whose rewards
+and estimated values contribute to the update. For Monte Carlo estimation of
+vπ, the root is a state node, and below it is the entire trajectory of transitions
+along a particular single episode, ending at the terminal state, as in Figure 5.3.
+Whereas the DP diagram (Figure 3.4a) shows all possible transitions, the
+Monte Carlo diagram shows only those sampled on the one episode. Whereas
+the DP diagram includes only one-step transitions, the Monte Carlo diagram
+goes all the way to the end of the episode. These diﬀerences in the diagrams
+accurately reﬂect the fundamental diﬀerences between the algorithms.
+
+An important fact about Monte Carlo methods is that the estimates for
+each state are independent. The estimate for one state does not build upon
+the estimate of any other state, as is the case in DP. In other words, Monte
+Carlo methods do not bootstrap as we deﬁned it in the previous chapter.
+
+In particular, note that the computational expense of estimating the value
+of a single state is independent of the number of states. This can make Monte
+Carlo methods particularly attractive when one requires the value of only one
+or a subset of states. One can generate many sample episodes starting from
+the states of interest, averaging returns from only these states ignoring all
+others. This is a third advantage Monte Carlo methods can have over DP
+methods (after the ability to learn from actual experience and from simulated
+experience).
+
+118
+
+CHAPTER 5. MONTE CARLO METHODS
+
+Figure 5.3: The backup diagram for Monte Carlo estimation of vπ.
+
+Example 5.2: Soap Bubble
+Suppose a wire frame forming a closed
+loop is dunked in soapy water to form a
+soap surface or bubble conforming at its
+edges to the wire frame. If the geometry of
+the wire frame is irregular but known, how
+can you compute the shape of the surface?
+The shape has the property that the total
+force on each point exerted by neighbor-
+ing points is zero (or else the shape would
+change). This means that the surface’s
+height at any point is the average of its heights at points in a small circle
+around that point. In addition, the surface must meet at its boundaries with
+the wire frame. The usual approach to problems of this kind is to put a grid
+over the area covered by the surface and solve for its height at the grid points
+by an iterative computation. Grid points at the boundary are forced to the
+wire frame, and all others are adjusted toward the average of the heights of
+their four nearest neighbors. This process then iterates, much like DP’s iter-
+ative policy evaluation, and ultimately converges to a close approximation to
+the desired surface.
+
+A bubble on a wire loop
+
+This is similar to the kind of problem for which Monte Carlo methods
+were originally designed. Instead of the iterative computation described above,
+imagine standing on the surface and taking a random walk, stepping randomly
+from grid point to neighboring grid point, with equal probability, until you
+
+terminal state5.2. MONTE CARLO ESTIMATION OF ACTION VALUES
+
+119
+
+reach the boundary. It turns out that the expected value of the height at the
+boundary is a close approximation to the height of the desired surface at the
+starting point (in fact, it is exactly the value computed by the iterative method
+described above). Thus, one can closely approximate the height of the surface
+at a point by simply averaging the boundary heights of many walks started at
+the point. If one is interested in only the value at one point, or any ﬁxed small
+set of points, then this Monte Carlo method can be far more eﬃcient than the
+iterative method based on local consistency.
+
+5.2 Monte Carlo Estimation of Action Values
+
+If a model is not available, then it is particularly useful to estimate action
+values (the values of state–action pairs) rather than state values. With a
+model, state values alone are suﬃcient to determine a policy; one simply looks
+ahead one step and chooses whichever action leads to the best combination
+of reward and next state, as we did in the chapter on DP. Without a model,
+however, state values alone are not suﬃcient. One must explicitly estimate the
+value of each action in order for the values to be useful in suggesting a policy.
+Thus, one of our primary goals for Monte Carlo methods is to estimate q
+. To
+achieve this, we ﬁrst consider the policy evaluation problem for action values.
+
+∗
+
+The policy evaluation problem for action values is to estimate qπ(s, a),
+the expected return when starting in state s, taking action a, and thereafter
+following policy π. The Monte Carlo methods for this are essentially the same
+as just presented for state values, except now we talk about visits to a state–
+action pair rather than to a state. A state–action pair s, a is said to be visited
+in an episode if ever the state s is visited and action a is taken in it. The every-
+visit MC method estimates the value of a state–action pair as the average of the
+returns that have followed visits all the visits to it. The ﬁrst-visit MC method
+averages the returns following the ﬁrst time in each episode that the state was
+visited and the action was selected. These methods converge quadratically, as
+before, to the true expected values as the number of visits to each state–action
+pair approaches inﬁnity.
+
+The only complication is that many state–action pairs may never be visited.
+If π is a deterministic policy, then in following π one will observe returns only
+for one of the actions from each state. With no returns to average, the Monte
+Carlo estimates of the other actions will not improve with experience. This is
+a serious problem because the purpose of learning action values is to help in
+choosing among the actions available in each state. To compare alternatives
+we need to estimate the value of all the actions from each state, not just the
+one we currently favor.
+
+120
+
+CHAPTER 5. MONTE CARLO METHODS
+
+This is the general problem of maintaining exploration, as discussed in the
+context of the n-armed bandit problem in Chapter 2. For policy evaluation
+to work for action values, we must assure continual exploration. One way
+to do this is by specifying that the episodes start in a state–action pair, and
+that every pair has a nonzero probability of being selected as the start. This
+guarantees that all state–action pairs will be visited an inﬁnite number of times
+in the limit of an inﬁnite number of episodes. We call this the assumption of
+exploring starts.
+
+The assumption of exploring starts is sometimes useful, but of course it
+cannot be relied upon in general, particularly when learning directly from
+actual interaction with an environment. In that case the starting conditions are
+unlikely to be so helpful. The most common alternative approach to assuring
+that all state–action pairs are encountered is to consider only policies that are
+stochastic with a nonzero probability of selecting all actions in each state. We
+discuss two important variants of this approach in later sections. For now, we
+retain the assumption of exploring starts and complete the presentation of a
+full Monte Carlo control method.
+
+5.3 Monte Carlo Control
+
+We are now ready to consider how Monte Carlo estimation can be used in
+control, that is, to approximate optimal policies. The overall idea is to pro-
+ceed according to the same pattern as in the DP chapter, that is, according to
+the idea of generalized policy iteration (GPI). In GPI one maintains both an
+approximate policy and an approximate value function. The value function is
+repeatedly altered to more closely approximate the value function for the cur-
+rent policy, and the policy is repeatedly improved with respect to the current
+value function:
+
+These two kinds of changes work against each other to some extent, as each
+creates a moving target for the other, but together they cause both policy and
+
+πqevaluationq → qπimprovementπ→greedy(q)5.3. MONTE CARLO CONTROL
+
+121
+
+value function to approach optimality.
+
+To begin, let us consider a Monte Carlo version of classical policy iteration.
+In this method, we perform alternating complete steps of policy evaluation and
+policy improvement, beginning with an arbitrary policy π0 and ending with
+the optimal policy and optimal action-value function:
+
+q
+
+,
+
+∗
+
+E
+−→
+I
+−→
+
+π0
+
+E
+−→
+E
+−→
+
+π1
+
+qπ0
+
+I
+−→
+
+I
+−→
+denotes a complete policy evaluation and
+
+−→ · · ·
+
+I
+−→
+
+E
+−→
+
+qπ1
+
+π2
+
+π
+
+E
+
+∗
+
+denotes a complete
+where
+policy improvement. Policy evaluation is done exactly as described in the pre-
+ceding section. Many episodes are experienced, with the approximate action-
+value function approaching the true function asymptotically. For the moment,
+let us assume that we do indeed observe an inﬁnite number of episodes and
+that, in addition, the episodes are generated with exploring starts. Under
+these assumptions, the Monte Carlo methods will compute each qπk exactly,
+for arbitrary πk.
+
+Policy improvement is done by making the policy greedy with respect to
+the current value function. In this case we have an action-value function, and
+therefore no model is needed to construct the greedy policy. For any action-
+value function q, the corresponding greedy policy is the one that, for each
+s
+
+S, deterministically chooses an action with maximal action-value:
+
+∈
+
+π(s) = arg max
+
+a
+
+q(s, a).
+
+(5.1)
+
+Policy improvement then can be done by constructing each πk+1 as the greedy
+policy with respect to qπk. The policy improvement theorem (Section 4.2) then
+applies to πk and πk+1 because, for all s
+
+S,
+
+∈
+
+qπk(s, πk+1(s)) = qπk(s, argmax
+
+qπk(s, a))
+
+a
+qπk(s, a)
+
+= max
+
+a
+
+qπk(s, πk(s))
+
+≥
+= vπk(s).
+
+As we discussed in the previous chapter, the theorem assures us that each πk+1
+is uniformly better than πk, or just as good as πk, in which case they are both
+optimal policies. This in turn assures us that the overall process converges
+to the optimal policy and optimal value function. In this way Monte Carlo
+methods can be used to ﬁnd optimal policies given only sample episodes and
+no other knowledge of the environment’s dynamics.
+
+We made two unlikely assumptions above in order to easily obtain this
+guarantee of convergence for the Monte Carlo method. One was that the
+
+122
+
+CHAPTER 5. MONTE CARLO METHODS
+
+episodes have exploring starts, and the other was that policy evaluation could
+be done with an inﬁnite number of episodes. To obtain a practical algorithm
+we will have to remove both assumptions. We postpone consideration of the
+ﬁrst assumption until later in this chapter.
+
+For now we focus on the assumption that policy evaluation operates on an
+inﬁnite number of episodes. This assumption is relatively easy to remove. In
+fact, the same issue arises even in classical DP methods such as iterative policy
+evaluation, which also converge only asymptotically to the true value function.
+In both DP and Monte Carlo cases there are two ways to solve the problem.
+One is to hold ﬁrm to the idea of approximating qπk in each policy evaluation.
+Measurements and assumptions are made to obtain bounds on the magnitude
+and probability of error in the estimates, and then suﬃcient steps are taken
+during each policy evaluation to assure that these bounds are suﬃciently small.
+This approach can probably be made completely satisfactory in the sense of
+guaranteeing correct convergence up to some level of approximation. However,
+it is also likely to require far too many episodes to be useful in practice on any
+but the smallest problems.
+
+The second approach to avoiding the inﬁnite number of episodes nominally
+required for policy evaluation is to forgo trying to complete policy evaluation
+before returning to policy improvement. On each evaluation step we move the
+value function toward qπk, but we do not expect to actually get close except
+over many steps. We used this idea when we ﬁrst introduced the idea of GPI in
+Section 4.6. One extreme form of the idea is value iteration, in which only one
+iteration of iterative policy evaluation is performed between each step of policy
+improvement. The in-place version of value iteration is even more extreme;
+there we alternate between improvement and evaluation steps for single states.
+
+For Monte Carlo policy evaluation it is natural to alternate between eval-
+uation and improvement on an episode-by-episode basis. After each episode,
+the observed returns are used for policy evaluation, and then the policy is
+improved at all the states visited in the episode. A complete simple algorithm
+along these lines is given in Figure 5.4. We call this algorithm Monte Carlo
+ES, for Monte Carlo with Exploring Starts.
+
+In Monte Carlo ES, all the returns for each state–action pair are accumu-
+lated and averaged, irrespective of what policy was in force when they were
+observed. It is easy to see that Monte Carlo ES cannot converge to any sub-
+optimal policy. If it did, then the value function would eventually converge to
+the value function for that policy, and that in turn would cause the policy to
+change. Stability is achieved only when both the policy and the value func-
+tion are optimal. Convergence to this optimal ﬁxed point seems inevitable as
+the changes to the action-value function decrease over time, but has not yet
+
+5.3. MONTE CARLO CONTROL
+
+123
+
+S, a
+
+A(s):
+
+∈
+
+Initialize, for all s
+
+∈
+arbitrary
+
+Q(s, a)
+π(s)
+←
+Returns(s, a)
+
+←
+arbitrary
+
+empty list
+
+←
+
+Repeat forever:
+Choose S0 ∈
+Generate an episode starting from S0, A0, following π
+For each pair s, a appearing in the episode:
+
+S and A0 ∈
+
+A(S0) s.t. all pairs have probability > 0
+
+return following the ﬁrst occurrence of s, a
+
+←
+
+G
+Append G to Returns(s, a)
+Q(s, a)
+
+average(Returns(s, a))
+
+←
+For each s in the episode:
+
+π(s)
+
+←
+
+argmaxa Q(s, a)
+
+Figure 5.4: Monte Carlo ES: A Monte Carlo control algorithm assuming ex-
+ploring starts and that episodes always terminate for all policies.
+
+been formally proved.
+In our opinion, this is one of the most fundamental
+open theoretical questions in reinforcement learning (for a partial solution, see
+Tsitsiklis, 2002).
+
+It is straightforward to apply Monte
+Example 5.3: Solving Blackjack
+Carlo ES to blackjack. Since the episodes are all simulated games, it is easy
+to arrange for exploring starts that include all possibilities. In this case one
+simply picks the dealer’s cards, the player’s sum, and whether or not the
+player has a usable ace, all at random with equal probability. As the initial
+policy we use the policy evaluated in the previous blackjack example, that
+which sticks only on 20 or 21. The initial action-value function can be zero
+for all state–action pairs. Figure 5.5 shows the optimal policy for blackjack
+found by Monte Carlo ES. This policy is the same as the “basic” strategy
+of Thorp (1966) with the sole exception of the leftmost notch in the policy
+for a usable ace, which is not present in Thorp’s strategy. We are uncertain
+of the reason for this discrepancy, 

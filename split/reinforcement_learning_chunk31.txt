@@ -1,0 +1,264 @@
+d in the limit an inﬁnite number of times),
+but in practice exhaustive sweeps are often used.
+
+The second approach is to sample from the state or state–action space ac-
+cording to some distribution. One could sample uniformly, as in the Dyna-Q
+agent, but this would suﬀer from some of the same problems as exhaustive
+sweeps. More appealing is to distribute backups according to the on-policy
+distribution, that is, according to the distribution observed when following the
+current policy. One advantage of this distribution is that it is easily gener-
+ated; one simply interacts with the model, following the current policy. In an
+episodic task, one starts in the start state (or according to the starting-state
+distribution) and simulates until the terminal state. In a continuing task, one
+starts anywhere and just keeps simulating. In either case, sample state tran-
+sitions and rewards are given by the model, and sample actions are given by
+the current policy. In other words, one simulates explicit individual trajecto-
+ries and performs backups at the state or state–action pairs encountered along
+the way. We call this way of generating experience and backups trajectory
+sampling.
+
+It is hard to imagine any eﬃcient way of distributing backups according
+to the on-policy distribution other than by trajectory sampling. If one had
+an explicit representation of the on-policy distribution, then one could sweep
+through all states, weighting the backup of each according to the on-policy dis-
+tribution, but this leaves us again with all the computational costs of exhaus-
+tive sweeps. Possibly one could sample and update individual state–action
+pairs from the distribution, but even if this could be done eﬃciently, what
+beneﬁt would this provide over simulating trajectories? Even knowing the
+on-policy distribution in an explicit form is unlikely. The distribution changes
+whenever the policy changes, and computing the distribution requires com-
+putation comparable to a complete policy evaluation. Consideration of such
+other possibilities makes trajectory sampling seem both eﬃcient and elegant.
+
+Is the on-policy distribution of backups a good one? Intuitively it seems
+like a good choice, at least better than the uniform distribution. For example,
+if you are learning to play chess, you study positions that might arise in real
+games, not random positions of chess pieces. The latter may be valid states,
+but to be able to accurately value them is a diﬀerent skill from evaluating
+positions in real games. We will also see in Chapter 9 that the on-policy
+distribution has signiﬁcant advantages when function approximation is used.
+Whether or not function approximation is used, one might expect on-policy
+
+8.6. TRAJECTORY SAMPLING
+
+215
+
+focusing to signiﬁcantly improve the speed of planning.
+
+Focusing on the on-policy distribution could be beneﬁcial because it causes
+vast, uninteresting parts of the space to be ignored, or it could be detrimental
+because it causes the same old parts of the space to be backed up over and
+over. We conducted a small experiment to assess the eﬀect empirically. To
+isolate the eﬀect of the backup distribution, we used entirely one-step full
+tabular backups, as deﬁned by (8.1). In the uniform case, we cycled through
+all state–action pairs, backing up each in place, and in the on-policy case we
+simulated episodes, backing up each state–action pair that occurred under
+the current (cid:15)-greedy policy ((cid:15) = 0.1). The tasks were undiscounted episodic
+tasks, generated randomly as follows. From each of the
+states, two actions
+were possible, each of which resulted in one of b next states, all equally likely,
+with a diﬀerent random selection of b states for each state–action pair. The
+branching factor, b, was the same for all state–action pairs. In addition, on
+all transitions there was a 0.1 probability of transition to the terminal state,
+ending the episode. We used episodic tasks to get a clear measure of the quality
+of the current policy. At any point in the planning process one can stop and
+exhaustively compute v˜π(s0), the true value of the start state under the greedy
+policy, ˜π, given the current action-value function Q, as an indication of how
+well the agent would do on a new episode on which it acted greedily (all the
+while assuming the model is correct).
+
+S
+|
+
+|
+
+The upper part of Figure 8.14 shows results averaged over 200 sample
+tasks with 1000 states and branching factors of 1, 3, and 10. The quality
+of the policies found is plotted as a function of the number of full backups
+completed. In all cases, sampling according to the on-policy distribution re-
+sulted in faster planning initially and retarded planning in the long run. The
+eﬀect was stronger, and the initial period of faster planning was longer, at
+smaller branching factors. In other experiments, we found that these eﬀects
+also became stronger as the number of states increased. For example, the
+lower part of Figure 8.14 shows results for a branching factor of 1 for tasks
+with 10,000 states. In this case the advantage of on-policy focusing is large
+and long-lasting.
+
+All of these results make sense. In the short term, sampling according to the
+on-policy distribution helps by focusing on states that are near descendants
+If there are many states and a small branching factor,
+of the start state.
+this eﬀect will be large and long-lasting.
+In the long run, focusing on the
+on-policy distribution may hurt because the commonly occurring states all
+already have their correct values. Sampling them is useless, whereas sampling
+other states may actually perform some useful work. This presumably is why
+the exhaustive, unfocused approach does better in the long run, at least for
+small problems. These results are not conclusive because they are only for
+
+216CHAPTER 8. PLANNING AND LEARNING WITH TABULAR METHODS
+
+Figure 8.14: Relative eﬃciency of backups distributed uniformly across the
+state space versus focused on simulated on-policy trajectories. Results are for
+randomly generated tasks of two sizes and various branching factors, b.
+
+b=10b=3b=1on-policyuniform1000 STATES0123Value ofstart stateundergreedypolicy05,00010,00015,00020,000Computation time, in full backups0123Value ofstart stateundergreedypolicy050,000100,000150,000200,000Computation time, in full backupsb=110,000 STATESuniformon-policyuniformon-policyon-policyuniform8.7. HEURISTIC SEARCH
+
+217
+
+problems generated in a particular, random way, but they do suggest that
+sampling according to the on-policy distribution can be a great advantage
+for large problems, in particular for problems in which a small subset of the
+state–action space is visited under the on-policy distribution.
+
+8.7 Heuristic Search
+
+The predominant state-space planning methods in artiﬁcial intelligence are
+collectively known as heuristic search. Although superﬁcially diﬀerent from
+the planning methods we have discussed so far in this chapter, heuristic search
+and some of its component ideas can be combined with these methods in
+useful ways. Unlike these methods, heuristic search is not concerned with
+changing the approximate, or “heuristic,” value function, but only with making
+improved action selections given the current value function. In other words,
+heuristic search is planning as part of a policy computation.
+
+In heuristic search, for each state encountered, a large tree of possible
+continuations is considered. The approximate value function is applied to the
+leaf nodes and then backed up toward the current state at the root. The
+backing up within the search tree is just the same as in the max-backups
+(those for v
+) discussed throughout this book. The backing up stops
+∗
+at the state–action nodes for the current state. Once the backed-up values of
+these nodes are computed, the best of them is chosen as the current action,
+and then all backed-up values are discarded.
+
+and q
+
+∗
+
+In conventional heuristic search no eﬀort is made to save the backed-up
+values by changing the approximate value function. In fact, the value func-
+tion is generally designed by people and never changed as a result of search.
+However, it is natural to consider allowing the value function to be improved
+over time, using either the backed-up values computed during heuristic search
+or any of the other methods presented throughout this book. In a sense we
+have taken this approach all along. Our greedy and ε-greedy action-selection
+methods are not unlike heuristic search, albeit on a smaller scale. For exam-
+ple, to compute the greedy action given a model and a state-value function, we
+must look ahead from each possible action to each possible next state, backup
+the rewards and estimated values, and then pick the best action. Just as in
+conventional heuristic search, this process computes backed-up values of the
+possible actions, but does not attempt to save them. Thus, heuristic search
+can be viewed as an extension of the idea of a greedy policy beyond a single
+step.
+
+The point of searching deeper than one step is to obtain better action
+
+218CHAPTER 8. PLANNING AND LEARNING WITH TABULAR METHODS
+
+selections. If one has a perfect model and an imperfect action-value function,
+then in fact deeper search will usually yield better policies.2 Certainly, if the
+search is all the way to the end of the episode, then the eﬀect of the imperfect
+value function is eliminated, and the action determined in this way must be
+optimal. If the search is of suﬃcient depth k such that γk is very small, then the
+actions will be correspondingly near optimal. On the other hand, the deeper
+the search, the more computation is required, usually resulting in a slower
+response time. A good example is provided by Tesauro’s grandmaster-level
+backgammon player, TD-Gammon (Section 15.1). This system used TD(λ)
+to learn an afterstate value function through many games of self-play, using a
+form of heuristic search to make its moves. As a model, TD-Gammon used a
+priori knowledge of the probabilities of dice rolls and the assumption that the
+opponent always selected the actions that TD-Gammon rated as best for it.
+Tesauro found that the deeper the heuristic search, the better the moves made
+by TD-Gammon, but the longer it took to make each move. Backgammon
+has a large branching factor, yet moves must be made within a few seconds.
+It was only feasible to search ahead selectively a few steps, but even so the
+search resulted in signiﬁcantly better action selections.
+
+So far we have emphasized heuristic search as an action-selection technique,
+but this may not be its most important aspect. Heuristic search also suggests
+ways of selectively distributing backups that may lead to better and faster
+approximation of the optimal value function. A great deal of research on
+heuristic search has been devoted to making the search as eﬃcient as possible.
+The search tree is grown selectively, deeper along some lines and shallower
+along others. For example, the search tree is often deeper for the actions
+that seem most likely to be best, and shallower for those that the agent will
+probably not want to take anyway. Can we use a similar idea to improve the
+distribution of backups? Perhaps it can be done by preferentially updating
+state–action pairs whose values appear to be close to the maximum available
+from the state. To our knowledge, this and other possibilities for distributing
+backups based on ideas borrowed from heuristic search have not yet been
+explored.
+
+We should not overlook the most obvious way in which heuristic search
+focuses backups: on the current state. Much of the eﬀectiveness of heuristic
+search is due to its search tree being tightly focused on the states and actions
+that might immediately follow the current state. You may spend more of
+your life playing chess than checkers, but when you play checkers, it pays to
+think about checkers and about your particular checkers position, your likely
+next moves, and successor positions. However you select actions, it is these
+states and actions that are of highest priority for backups and where you
+
+2There are interesting exceptions to this. See, e.g., Pearl (1984).
+
+8.7. HEURISTIC SEARCH
+
+219
+
+Figure 8.15: The deep backups of heuristic search can be implemented as a
+sequence of one-step backups (shown here outlined). The ordering shown is
+for a selective depth-ﬁrst search.
+
+most urgently want your approximate value function to be accurate. Not only
+should your computation be preferentially devoted to imminent events, but so
+should your limited memory resources. In chess, for example, there are far too
+many possible positions to store distinct value estimates for each of them, but
+chess programs based on heuristic search can easily store distinct estimates for
+the millions of positions they encounter looking ahead from a single position.
+This great focusing of memory and computational resources on the current
+decision is presumably the reason why heuristic search can be so eﬀective.
+
+The distribution of backups can be altered in similar ways to focus on the
+current state and its likely successors. As a limiting case we might use exactly
+the methods of heuristic search to construct a search tree, and then perform the
+individual, one-step backups from bottom up, as suggested by Figure 8.15. If
+the backups are ordered in this way and a table-lookup representation is used,
+then exactly the same backup would be achieved as in heuristic search. Any
+state-space search can be viewed in this way as the piecing together of a large
+number of individual one-step backups. Thus, the performance improvement
+observed with deeper searches is not due to the use of multistep backups as
+such. Instead, it is due to the focus and concentration of backups on states
+and actions immediately downstream from the current state. By devoting a
+large amount of computation speciﬁcally relevant to the candidate actions, a
+much better decision can be made than by relying on unfocused backups.
+
+12345678910220CHAPTER 8. PLANNING AND LEARNING WITH TABULAR METHODS
+
+8.8 Monte Carlo Tree Search
+
+8.9 Summary
+
+We have presented a perspective emphasizing the surprisingly close relation-
+ships between planning optimal behavior and learning optimal behavior. Both
+involve estimating the same value functions, and in both cases it is natural
+to update the estimates incrementally, in a long series of small backup op-
+erations. This makes it straightforward to integrate learning and planning
+processes simply by allowing both to update the same estimated value func-
+tion. In addition, any of the learning methods can be converted into planning
+methods simply by applying them to simulated (model-generated) experience
+rather than to real experience. In this case learning and planning become even
+more similar; they are possibly identical algorithms operating on two diﬀerent
+sources of experience.
+
+It is straightforward to integrate incremental planning methods with acting
+and model-learning. Planning, acting, and model-learning interact in a circular
+fashion (Figure 8.2), each producing what the other needs to improve; no other
+interaction among them is either required or prohibited. The most natural
+approach is for all processes to proceed asynchronously and in parallel.
+If
+the processes must share computational resources, then the division can be
+handled almost arbitrarily—by whatever organization is most convenient and
+eﬃcient for the task at hand.
+
+In this chapter we have touched upon a number of dimen

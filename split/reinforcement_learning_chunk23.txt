@@ -1,0 +1,410 @@
+, and
+the associated expected reward is the average of the rewards observed on
+those transitions. Given this model, we can compute the estimate of the value
+function that would be exactly correct if the model were exactly correct. This
+is called the certainty-equivalence estimate because it is equivalent to assuming
+that the estimate of the underlying process was known with certainty rather
+than being approximated. In general, batch TD(0) converges to the certainty-
+equivalence estimate.
+
+This helps explain why TD methods converge more quickly than Monte
+Carlo methods.
+In batch form, TD(0) is faster than Monte Carlo methods
+because it computes the true certainty-equivalence estimate. This explains
+the advantage of TD(0) shown in the batch results on the random walk task
+(Figure 6.8). The relationship to the certainty-equivalence estimate may also
+explain in part the speed advantage of nonbatch TD(0) (e.g., Figure 6.7). Al-
+though the nonbatch methods do not achieve either the certainty-equivalence
+
+ABr = 1100%75%25%r = 0r = 0154
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+or the minimum squared-error estimates, they can be understood as moving
+roughly in these directions. Nonbatch TD(0) may be faster than constant-α
+MC because it is moving toward a better estimate, even though it is not get-
+ting all the way there. At the current time nothing more deﬁnite can be said
+about the relative eﬃciency of on-line TD and Monte Carlo methods.
+
+Finally, it is worth noting that although the certainty-equivalence estimate
+is in some sense an optimal solution, it is almost never feasible to compute
+If N is the number of states, then just forming the maximum-
+it directly.
+likelihood estimate of the process may require N 2 memory, and computing the
+corresponding value function requires on the order of N 3 computational steps
+if done conventionally. In these terms it is indeed striking that TD methods
+can approximate the same solution using memory no more than N and re-
+peated computations over the training set. On tasks with large state spaces,
+TD methods may be the only feasible way of approximating the certainty-
+equivalence solution.
+
+6.4 Sarsa: On-Policy TD Control
+
+We turn now to the use of TD prediction methods for the control problem.
+As usual, we follow the pattern of generalized policy iteration (GPI), only this
+time using TD methods for the evaluation or prediction part. As with Monte
+Carlo methods, we face the need to trade oﬀ exploration and exploitation, and
+again approaches fall into two main classes: on-policy and oﬀ-policy. In this
+section we present an on-policy TD control method.
+
+The ﬁrst step is to learn an action-value function rather than a state-value
+function. In particular, for an on-policy method we must estimate qπ(s, a) for
+the current behavior policy π and for all states s and actions a. This can
+be done using essentially the same TD method described above for learning
+vπ. Recall that an episode consists of an alternating sequence of states and
+state–action pairs:
+
+In the previous section we considered transitions from state to state and
+learned the values of states. Now we consider transitions from state–action
+pair to state–action pair, and learn the value of state–action pairs. Formally
+these cases are identical: they are both Markov chains with a reward process.
+The theorems assuring the convergence of state values under TD(0) also apply
+
+AtRt+1StAt+1Rt+2St+1At+2Rt+3St+2At+3St+3. . .. . .6.4. SARSA: ON-POLICY TD CONTROL
+
+155
+
+S, a
+Initialize Q(s, a),
+Repeat (for each episode):
+
+s
+∀
+
+∈
+
+A(s), arbitrarily, and Q(terminal-state,
+
+) = 0
+·
+
+∈
+
+Initialize S
+Choose A from S using policy derived from Q (e.g., (cid:15)-greedy)
+Repeat (for each step of episode):
+Take action A, observe R, S(cid:48)
+Choose A(cid:48) from S(cid:48) using policy derived from Q (e.g., (cid:15)-greedy)
+Q(S, A)
+R + γQ(S(cid:48), A(cid:48))
+S
+
+Q(S, A) + α
+
+Q(S, A)
+
+←
+S(cid:48); A
+
+A(cid:48);
+
+−
+
+←
+
+←
+
+until S is terminal
+
+(cid:2)
+
+(cid:3)
+
+Figure 6.9: Sarsa: An on-policy TD control algorithm.
+
+to the corresponding algorithm for action values:
+
+Q(St, At)
+
+←
+
+Q(St, At) + α
+
+Rt+1 + γQ(St+1, At+1)
+(cid:104)
+
+−
+
+(cid:105)
+
+Q(St, At)
+
+.
+
+(6.5)
+
+This update is done after every transition from a nonterminal state St. If St+1
+is terminal, then Q(St+1, At+1) is deﬁned as zero. This rule uses every element
+of the quintuple of events, (St, At, Rt+1, St+1, At+1), that make up a transition
+from one state–action pair to the next. This quintuple gives rise to the name
+Sarsa for the algorithm.
+
+It is straightforward to design an on-policy control algorithm based on the
+Sarsa prediction method. As in all on-policy methods, we continually estimate
+qπ for the behavior policy π, and at the same time change π toward greediness
+with respect to qπ. The general form of the Sarsa control algorithm is given
+in Figure 6.9.
+
+The convergence properties of the Sarsa algorithm depend on the nature
+of the policy’s dependence on q. For example, one could use ε-greedy or ε-
+soft policies. According to Satinder Singh (personal communication), Sarsa
+converges with probability 1 to an optimal policy and action-value function as
+long as all state–action pairs are visited an inﬁnite number of times and the
+policy converges in the limit to the greedy policy (which can be arranged, for
+example, with ε-greedy policies by setting ε = 1/t), but this result has not yet
+been published in the literature.
+
+Example 6.5: Windy Gridworld Figure 6.10 shows a standard gridworld,
+with start and goal states, but with one diﬀerence: there is a crosswind upward
+through the middle of the grid. The actions are the standard four—up, down,
+right, and left—but in the middle region the resultant next states are shifted
+upward by a “wind,” the strength of which varies from column to column. The
+strength of the wind is given below each column, in number of cells shifted
+
+156
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+Figure 6.10: Gridworld in which movement is altered by a location-dependent,
+upward “wind.”
+
+Figure 6.11: Results of Sarsa applied to the windy gridworld.
+
+SG0000111122standardmovesking'smoves010002000300040005000600070008000050100150170EpisodesTime stepsSG00001111226.5. Q-LEARNING: OFF-POLICY TD CONTROL
+
+157
+
+−
+
+upward. For example, if you are one cell to the right of the goal, then the
+action left takes you to the cell just above the goal. Let us treat this as an
+undiscounted episodic task, with constant rewards of
+1 until the goal state
+is reached. Figure 6.11 shows the result of applying ε-greedy Sarsa to this
+task, with ε = 0.1, α = 0.5, and the initial values Q(s, a) = 0 for all s, a. The
+increasing slope of the graph shows that the goal is reached more and more
+quickly over time. By 8000 time steps, the greedy policy (shown inset) was
+long since optimal; continued ε-greedy exploration kept the average episode
+length at about 17 steps, two more than the minimum of 15. Note that Monte
+Carlo methods cannot easily be used on this task because termination is not
+guaranteed for all policies. If a policy was ever found that caused the agent to
+stay in the same state, then the next episode would never end. Step-by-step
+learning methods such as Sarsa do not have this problem because they quickly
+learn during the episode that such policies are poor, and switch to something
+else.
+
+6.5 Q-Learning: Oﬀ-Policy TD Control
+
+One of the most important breakthroughs in reinforcement learning was the de-
+velopment of an oﬀ-policy TD control algorithm known as Q-learning (Watkins,
+1989). Its simplest form, one-step Q-learning, is deﬁned by
+
+Q(St, At)
+
+←
+
+Q(St, At) + α
+
+Rt+1 + γ max
+
+a
+
+Q(St+1, a)
+
+−
+
+Q(St, At)
+
+.
+
+(6.6)
+
+(cid:104)
+
+(cid:105)
+
+In this case, the learned action-value function, Q, directly approximates q
+,
+∗
+the optimal action-value function, independent of the policy being followed.
+This dramatically simpliﬁes the analysis of the algorithm and enabled early
+convergence proofs. The policy still has an eﬀect in that it determines which
+state–action pairs are visited and updated. However, all that is required for
+correct convergence is that all pairs continue to be updated. As we observed
+in Chapter 5, this is a minimal requirement in the sense that any method
+guaranteed to ﬁnd optimal behavior in the general case must require it. Under
+this assumption and a variant of the usual stochastic approximation conditions
+on the sequence of step-size parameters, Q has been shown to converge with
+probability 1 to q
+. The Q-learning algorithm is shown in procedural form in
+Figure 6.12.
+
+∗
+
+What is the backup diagram for Q-learning? The rule (6.6) updates a
+state–action pair, so the top node, the root of the backup, must be a small,
+ﬁlled action node. The backup is also from action nodes, maximizing over all
+those actions possible in the next state. Thus the bottom nodes of the backup
+diagram should be all these action nodes. Finally, remember that we indicate
+
+158
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+S, a
+Initialize Q(s, a),
+Repeat (for each episode):
+
+s
+∀
+
+∈
+
+A(s), arbitrarily, and Q(terminal-state,
+
+) = 0
+·
+
+∈
+
+Initialize S
+Repeat (for each step of episode):
+
+Choose A from S using policy derived from Q (e.g., (cid:15)-greedy)
+Take action A, observe R, S(cid:48)
+Q(S, A)
+S(cid:48);
+S
+until S is terminal
+
+R + γ maxa Q(S(cid:48), a)
+
+Q(S, A) + α
+
+Q(S, A)
+
+←
+
+←
+
+−
+
+(cid:2)
+
+(cid:3)
+
+Figure 6.12: Q-learning: An oﬀ-policy TD control algorithm.
+
+taking the maximum of these “next action” nodes with an arc across them
+(Figure 3.7). Can you guess now what the diagram is? If so, please do make
+a guess before turning to the answer in Figure 6.14.
+
+−
+
+Example 6.6: Cliﬀ Walking
+This gridworld example compares Sarsa
+and Q-learning, highlighting the diﬀerence between on-policy (Sarsa) and oﬀ-
+policy (Q-learning) methods. Consider the gridworld shown in the upper part
+of Figure 6.13. This is a standard undiscounted, episodic task, with start and
+goal states, and the usual actions causing movement up, down, right, and left.
+Reward is
+1 on all transitions except those into the the region marked “The
+100 and sends the agent
+Cliﬀ.” Stepping into this region incurs a reward of
+instantly back to the start. The lower part of the ﬁgure shows the performance
+of the Sarsa and Q-learning methods with ε-greedy action selection, ε = 0.1.
+After an initial transient, Q-learning learns values for the optimal policy, that
+which travels right along the edge of the cliﬀ. Unfortunately, this results in
+its occasionally falling oﬀ the cliﬀ because of the ε-greedy action selection.
+Sarsa, on the other hand, takes the action selection into account and learns
+the longer but safer path through the upper part of the grid. Although Q-
+learning actually learns the values of the optimal policy, its on-line performance
+is worse than that of Sarsa, which learns the roundabout policy. Of course, if
+ε were gradually reduced, then both methods would asymptotically converge
+to the optimal policy.
+
+−
+
+6.5. Q-LEARNING: OFF-POLICY TD CONTROL
+
+159
+
+Figure 6.13: The cliﬀ-walking task. The results are from a single run, but
+smoothed.
+
+Figure 6.14: The backup diagram for Q-learning.
+
+Rewardperepsiode!100!75!50!250100200300400500EpisodesSarsaQ-learningSGr = !100The Cliffr = !1safe pathoptimal pathRR160
+
+CHAPTER 6. TEMPORAL-DIFFERENCE LEARNING
+
+6.6 Games, Afterstates, and Other Special Cases
+
+In this book we try to present a uniform approach to a wide class of tasks,
+but of course there are always exceptional tasks that are better treated in a
+specialized way. For example, our general approach involves learning an ac-
+tion-value function, but in Chapter 1 we presented a TD method for learning
+to play tic-tac-toe that learned something much more like a state-value func-
+tion. If we look closely at that example, it becomes apparent that the function
+learned there is neither an action-value function nor a state-value function in
+the usual sense. A conventional state-value function evaluates states in which
+the agent has the option of selecting an action, but the state-value function
+used in tic-tac-toe evaluates board positions after the agent has made its move.
+Let us call these afterstates, and value functions over these, afterstate value
+functions. Afterstates are useful when we have knowledge of an initial part
+of the environment’s dynamics but not necessarily of the full dynamics. For
+example, in games we typically know the immediate eﬀects of our moves. We
+know for each possible chess move what the resulting position will be, but not
+how our opponent will reply. Afterstate value functions are a natural way to
+take advantage of this kind of knowledge and thereby produce a more eﬃcient
+learning method.
+
+The reason it is more eﬃcient to design algorithms in terms of afterstates is
+apparent from the tic-tac-toe example. A conventional action-value function
+would map from positions and moves to an estimate of the value. But many
+position–move pairs produce the same resulting position, as in this example:
+
+In such cases the position–move pairs are diﬀerent but produce the same “af-
+terposition,” and thus must have the same value. A conventional action-value
+function would have to separately assess both pairs, whereas an afterstate
+value function would immediately assess both equally. Any learning about the
+position–move pair on the left would immediately transfer to the pair on the
+right.
+
+Afterstates arise in many tasks, not just games. For example, in queuing
+
+XOXXO+XO+XX6.7. SUMMARY
+
+161
+
+tasks there are actions such as assigning customers to servers, rejecting cus-
+tomers, or discarding information. In such cases the actions are in fact deﬁned
+in terms of their immediate eﬀects, which are completely known. For exam-
+ple, in the access-control queuing example described in the previous section,
+a more eﬃcient learning method could be obtained by breaking the environ-
+ment’s dynamics into the immediate eﬀect of the action, which is deterministic
+and completely known, and the unknown random processes having to do with
+the arrival and departure of customers. The afterstates would be the number
+of free servers after the action but before the random processes had produced
+the next conventional state. Learning an afterstate value function over the
+afterstates would enable all actions that produced the same number of free
+servers to share experience. This should result in a signiﬁcant reduction in
+learning time.
+
+It is impossible to describe all the possible kinds of specialized problems
+and corresponding specialized learning algorithms. However, the principles
+developed in this book should apply widely. For example, afterstate methods
+are still aptly described in terms of generalized policy iteration, with a policy
+and (afterstate) value function interacting in essentially the same way. In many
+cases one will still face the choice between on-policy and oﬀ-policy methods
+for managing the need for persistent exploration.
+
+6.7 Summary
+
+In this chapter we introduced a new kind of learning method, temporal-
+diﬀerence (TD) learning, and showed how it can be applied to the reinforce-
+ment learning problem. As usual, we divided the overall problem into a pre-
+diction problem and a control problem. TD methods are alternatives to Monte
+Carlo methods for solving the prediction problem. In both cases, the extension
+to the control problem is via the idea of generalized policy iteration (GPI) that
+we abstracted from dynamic programming. This is the idea that app

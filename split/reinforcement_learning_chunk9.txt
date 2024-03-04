@@ -1,0 +1,332 @@
+ will
+also achieve our goals.
+It is thus critical that the rewards we set up truly
+indicate what we want accomplished. In particular, the reward signal is not
+the place to impart to the agent prior knowledge about how to achieve what we
+want it to do.4 For example, a chess-playing agent should be rewarded only
+for actually winning, not for achieving subgoals such taking its opponent’s
+pieces or gaining control of the center of the board. If achieving these sorts
+of subgoals were rewarded, then the agent might ﬁnd a way to achieve them
+without achieving the real goal. For example, it might ﬁnd a way to take the
+opponent’s pieces even at the cost of losing the game. The reward signal is
+your way of communicating to the robot what you want it to achieve, not how
+you want it achieved.
+
+Newcomers to reinforcement learning are sometimes surprised that the
+rewards—which deﬁne of the goal of learning—are computed in the environ-
+ment rather than in the agent. Certainly most ultimate goals for animals
+are recognized by computations occurring inside their bodies, for example, by
+sensors for recognizing food, hunger, pain, and pleasure. Nevertheless, as we
+discussed in the previous section, one can redraw the agent–environment in-
+terface in such a way that these parts of the body are considered to be outside
+of the agent (and thus part of the agent’s environment). For example, if the
+goal concerns a robot’s internal energy reservoirs, then these are considered to
+be part of the environment; if the goal concerns the positions of the robot’s
+limbs, then these too are considered to be part of the environment—that is,
+the agent’s boundary is drawn at the interface between the limbs and their
+control systems. These things are considered internal to the robot but external
+to the learning agent. For our purposes, it is convenient to place the boundary
+of the learning agent not at the limit of its physical body, but at the limit of
+
+4Better places for imparting this kind of prior knowledge are the initial policy or value
+function, or in inﬂuences on these. See Lin (1992), Maclin and Shavlik (1994), and Clouse
+(1996).
+
+3.3. RETURNS
+
+its control.
+
+59
+
+The reason we do this is that the agent’s ultimate goal should be something
+over which it has imperfect control:
+it should not be able, for example, to
+simply decree that the reward has been received in the same way that it might
+arbitrarily change its actions. Therefore, we place the reward source outside
+of the agent. This does not preclude the agent from deﬁning for itself a kind
+of internal reward, or a sequence of internal rewards. Indeed, this is exactly
+what many reinforcement learning methods do.
+
+3.3 Returns
+
+So far we have discussed the objective of learning informally. We have said that
+the agent’s goal is to maximize the cumulative reward it receives in the long
+run. How might this be deﬁned formally? If the sequence of rewards received
+after time step t is denoted Rt+1, Rt+2, Rt+3, . . ., then what precise aspect of
+this sequence do we wish to maximize? In general, we seek to maximize the
+expected return, where the return Gt is deﬁned as some speciﬁc function of the
+reward sequence. In the simplest case the return is the sum of the rewards:
+
+Gt = Rt+1 + Rt+2 + Rt+3 +
+
++ RT ,
+
+· · ·
+
+(3.1)
+
+where T is a ﬁnal time step. This approach makes sense in applications in
+which there is a natural notion of ﬁnal time step, that is, when the agent–
+environment interaction breaks naturally into subsequences, which we call
+episodes,5 such as plays of a game, trips through a maze, or any sort of re-
+peated interactions. Each episode ends in a special state called the terminal
+state, followed by a reset to a standard starting state or to a sample from a
+standard distribution of starting states. Tasks with episodes of this kind are
+called episodic tasks. In episodic tasks we sometimes need to distinguish the
+set of all nonterminal states, denoted S, from the set of all states plus the
+terminal state, denoted S+.
+
+On the other hand, in many cases the agent–environment interaction does
+not break naturally into identiﬁable episodes, but goes on continually without
+limit. For example, this would be the natural way to formulate a continual
+process-control task, or an application to a robot with a long life span. We
+call these continuing tasks. The return formulation (3.1) is problematic for
+continuing tasks because the ﬁnal time step would be T =
+, and the return,
+which is what we are trying to maximize, could itself easily be inﬁnite. (For
+example, suppose the agent receives a reward of +1 at each time step.) Thus,
+
+∞
+
+5Episodes are sometimes called “trials” in the literature.
+
+60
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+Figure 3.2: The pole-balancing task.
+
+in this book we usually use a deﬁnition of return that is slightly more complex
+conceptually but much simpler mathematically.
+
+The additional concept that we need is that of discounting. According to
+this approach, the agent tries to select actions so that the sum of the discounted
+rewards it receives over the future is maximized. In particular, it chooses At
+to maximize the expected discounted return:
+
+Gt = Rt+1 + γRt+2 + γ2Rt+3 +
+
+=
+
+· · ·
+
+∞
+
+(cid:88)k=0
+
+γkRt+k+1,
+
+(3.2)
+
+where γ is a parameter, 0
+
+γ
+
+1, called the discount rate.
+
+≤
+
+≤
+
+The discount rate determines the present value of future rewards: a reward
+received k time steps in the future is worth only γk
+1 times what it would be
+−
+worth if it were received immediately. If γ < 1, the inﬁnite sum has a ﬁnite
+is bounded. If γ = 0, the agent
+Rk}
+value as long as the reward sequence
+{
+is “myopic” in being concerned only with maximizing immediate rewards: its
+objective in this case is to learn how to choose At so as to maximize only
+Rt+1. If each of the agent’s actions happened to inﬂuence only the immediate
+reward, not future rewards as well, then a myopic agent could maximize (3.2)
+by separately maximizing each immediate reward. But in general, acting to
+maximize immediate reward can reduce access to future rewards so that the
+return may actually be reduced. As γ approaches 1, the objective takes future
+rewards into account more strongly: the agent becomes more farsighted.
+
+Example 3.4: Pole-Balancing Figure 3.2 shows a task that served as an
+early illustration of reinforcement learning. The objective here is to apply
+forces to a cart moving along a track so as to keep a pole hinged to the cart
+from falling over. A failure is said to occur if the pole falls past a given angle
+from vertical or if the cart runs oﬀ the track. The pole is reset to vertical
+after each failure. This task could be treated as episodic, where the natural
+episodes are the repeated attempts to balance the pole. The reward in this
+
+3.4. UNIFIED NOTATION FOR EPISODIC AND CONTINUING TASKS61
+
+case could be +1 for every time step on which failure did not occur, so that the
+return at each time would be the number of steps until failure. Alternatively,
+we could treat pole-balancing as a continuing task, using discounting. In this
+1 on each failure and zero at all other times. The
+case the reward would be
+γK, where K is the number of
+return at each time would then be related to
+time steps before failure. In either case, the return is maximized by keeping
+the pole balanced for as long as possible.
+
+−
+
+−
+
+3.4 Uniﬁed Notation for Episodic and Contin-
+
+uing Tasks
+
+In the preceding section we described two kinds of reinforcement learning tasks,
+one in which the agent–environment interaction naturally breaks down into a
+sequence of separate episodes (episodic tasks), and one in which it does not
+(continuing tasks). The former case is mathematically easier because each
+action aﬀects only the ﬁnite number of rewards subsequently received during
+the episode.
+In this book we consider sometimes one kind of problem and
+sometimes the other, but often both. It is therefore useful to establish one
+notation that enables us to talk precisely about both cases simultaneously.
+
+To be precise about episodic tasks requires some additional notation. Rather
+than one long sequence of time steps, we need to consider a series of episodes,
+each of which consists of a ﬁnite sequence of time steps. We number the time
+steps of each episode starting anew from zero. Therefore, we have to refer not
+just to St, the state representation at time t, but to St,i, the state representa-
+tion at time t of episode i (and similarly for At,i, Rt,i, πt,i, Ti, etc.). However,
+it turns out that, when we discuss episodic tasks we will almost never have to
+distinguish between diﬀerent episodes. We will almost always be considering
+a particular single episode, or stating something that is true for all episodes.
+Accordingly, in practice we will almost always abuse notation slightly by drop-
+ping the explicit reference to episode number. That is, we will write St to refer
+to St,i, and so on.
+
+We need one other convention to obtain a single notation that covers both
+episodic and continuing tasks. We have deﬁned the return as a sum over a ﬁnite
+number of terms in one case (3.1) and as a sum over an inﬁnite number of terms
+in the other (3.2). These can be uniﬁed by considering episode termination to
+be the entering of a special absorbing state that transitions only to itself and
+that generates only rewards of zero. For example, consider the state transition
+
+62
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+diagram
+
+Here the solid square represents the special absorbing state corresponding
+to the end of an episode. Starting from S0, we get the reward sequence
++1, +1, +1, 0, 0, 0, . . .. Summing these, we get the same return whether we
+sum over the ﬁrst T rewards (here T = 3) or over the full inﬁnite sequence.
+This remains true even if we introduce discounting. Thus, we can deﬁne the
+return, in general, according to (3.2), using the convention of omitting episode
+numbers when they are not needed, and including the possibility that γ = 1 if
+the sum remains deﬁned (e.g., because all episodes terminate). Alternatively,
+we can also write the return as
+
+Gt =
+
+T
+
+1
+
+t
+−
+
+−
+
+(cid:88)k=0
+
+γkRt+k+1,
+
+(3.3)
+
+or γ = 1 (but not both6). We use these
+including the possibility that T =
+conventions throughout the rest of the book to simplify notation and to express
+the close parallels between episodic and continuing tasks.
+
+∞
+
+∗3.5 The Markov Property
+
+In the reinforcement learning framework, the agent makes its decisions as a
+function of a signal from the environment called the environment’s state. In
+this section we discuss what is required of the state signal, and what kind of
+information we should and should not expect it to provide. In particular, we
+formally deﬁne a property of environments and their state signals that is of
+particular interest, called the Markov property.
+
+In this book, by “the state” we mean whatever information is available to
+the agent. We assume that the state is given by some preprocessing system
+that is nominally part of the environment. We do not address the issues of
+constructing, changing, or learning the state signal in this book. We take this
+approach not because we consider state representation to be unimportant, but
+
+6Ways to formulate tasks that are both continuing and undiscounted are the subject of
+current research (e.g., Mahadevan, 1996; Schwartz, 1993; Tadepalli and Ok, 1994). Some of
+the ideas are discussed in Section 11.2.
+
+R1 = +1S0S1R2 = +1S2R3 = +1R4 = 0R5 = 0. . .∗3.5. THE MARKOV PROPERTY
+
+63
+
+in order to focus fully on the decision-making issues. In other words, our main
+concern is not with designing the state signal, but with deciding what action
+to take as a function of whatever state signal is available.
+
+Certainly the state signal should include immediate sensations such as sen-
+sory measurements, but it can contain much more than that. State represen-
+tations can be highly processed versions of original sensations, or they can be
+complex structures built up over time from the sequence of sensations. For ex-
+ample, we can move our eyes over a scene, with only a tiny spot corresponding
+to the fovea visible in detail at any one time, yet build up a rich and detailed
+representation of a scene. Or, more obviously, we can look at an object, then
+look away, and know that it is still there. We can hear the word “yes” and
+consider ourselves to be in totally diﬀerent states depending on the question
+that came before and which is no longer audible. At a more mundane level, a
+control system can measure position at two diﬀerent times to produce a state
+representation including information about velocity. In all of these cases the
+state is constructed and maintained on the basis of immediate sensations to-
+gether with the previous state or some other memory of past sensations. In
+this book, we do not explore how that is done, but certainly it can be and has
+been done. There is no reason to restrict the state representation to immediate
+sensations; in typical applications we should expect the state representation
+to be able to inform the agent of more than that.
+
+On the other hand, the state signal should not be expected to inform the
+agent of everything about the environment, or even everything that would be
+useful to it in making decisions. If the agent is playing blackjack, we should not
+expect it to know what the next card in the deck is. If the agent is answering
+the phone, we should not expect it to know in advance who the caller is. If
+the agent is a paramedic called to a road accident, we should not expect it
+to know immediately the internal injuries of an unconscious victim.
+In all
+of these cases there is hidden state information in the environment, and that
+information would be useful if the agent knew it, but the agent cannot know it
+because it has never received any relevant sensations. In short, we don’t fault
+an agent for not knowing something that matters, but only for having known
+something and then forgotten it!
+
+What we would like, ideally, is a state signal that summarizes past sensa-
+tions compactly, yet in such a way that all relevant information is retained.
+This normally requires more than the immediate sensations, but never more
+than the complete history of all past sensations. A state signal that suc-
+ceeds in retaining all relevant information is said to be Markov, or to have
+the Markov property (we deﬁne this formally below). For example, a check-
+ers position—the current conﬁguration of all the pieces on the board—would
+serve as a Markov state because it summarizes everything important about the
+
+64
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+complete sequence of positions that led to it. Much of the information about
+the sequence is lost, but all that really matters for the future of the game is
+retained. Similarly, the current position and velocity of a cannonball is all that
+matters for its future ﬂight. It doesn’t matter how that position and velocity
+came about. This is sometimes also referred to as an “independence of path”
+property because all that matters is in the current state signal; its meaning is
+independent of the “path,” or history, of signals that have led up to it.
+
+We now formally deﬁne the Markov property for the reinforcement learning
+problem. To keep the mathematics simple, we assume here that there are a
+ﬁnite number of states and reward values. This enables us to work in terms
+of sums and probabilities rather than integrals and probability densities, but
+the argument can easily be ext

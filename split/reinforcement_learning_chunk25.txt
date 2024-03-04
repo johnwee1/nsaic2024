@@ -1,0 +1,546 @@
+een are the n-step backups, based on n steps of real rewards and the
+estimated value of the nth next state, all appropriately discounted.
+
+one-step backups the target is the ﬁrst reward plus the discounted estimated
+value of the next state:
+
+Rt+1 + γVt(St+1),
+
+→
+
+R here is the estimate at time t of vπ, in which case it makes
+where Vt : S
+sense that γVt(St+1) should take the place of the remaining terms γRt+2 +
+γ2Rt+3 +
+1RT , as we discussed in the previous chapter. Our point
+now is that this idea makes just as much sense after two steps as it does after
+one. The target for a two-step backup might be
+
++ γT
+
+t
+−
+−
+
+· · ·
+
+Rt+1 + γRt+2 + γ2Vt(St+2),
+
+where now γ2Vt(St+2) corrects for the absence of the terms γ2Rt+3 + γ3Rt+4 +
+1RT . Similarly, the target for an arbitrary n-step backup might be
+t
+−
+
++ γT
+
+−
+
+· · ·
+
+Rt+1 + γRt+2 + γ2 +
+
+· · ·
+
+1Rt+n + γnVt(St+n),
++ γn
+−
+
+n
+
+∀
+
+≥
+
+1.
+
+(7.1)
+
+All of these can be considered approximate returns, truncated after n steps and
+then corrected for the remaining missing terms, in the above case by Vt(St+n).
+Notationally, it is useful to retain full generality for the correction term. We
+deﬁne the general n-step return as
+
+Gt+n
+t
+
+(c) = Rt+1 + γRt+2 +
+
++ γn
+
+1Rh + γnc,
+−
+
+· · ·
+
+TD (1-step)2-step3-stepn-stepMonte Carlo170
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+for any n
+the horizon of the n-step return.
+
+1 and any scalar correction c
+
+≥
+
+R. The time h = t + n is called
+
+∈
+
+T , then Gh
+
+If the episode ends before the horizon is reached, then the truncation in
+an n-step return eﬀectively occurs at the episode’s end, resulting in the con-
+t (c) = Gt. Thus,
+ventional complete return. In other words, if h
+the last n n-step returns of an episode are always complete returns, and an
+inﬁnite-step return is always a complete return. This deﬁnition enables us
+to treat Monte Carlo methods as the special case of inﬁnite-step targets. All
+of this is consistent with the tricks for treating episodic and continuing tasks
+equivalently that we introduced in Section 3.4. There we chose to treat the
+terminal state as a state that always transitions to itself with zero reward.
+Under this trick, all n-step returns that last up to or past termination have
+the same value as the complete return.
+
+≥
+
+An n-step backup is deﬁned to be a backup toward the n-step return. In the
+tabular, state-value case, the n-step backup at time t produces the following
+increment ∆t(St) in the estimated value V (St):
+
+∆t(St) = α
+
+Gt+n
+t
+
+(Vt(St+n))
+
+Vt(St)
+
+,
+
+(7.2)
+
+(cid:104)
+
+−
+
+(cid:105)
+
+where α is a positive step-size parameter, as usual. The increments to the
+= St).
+estimated values of the other states are deﬁned to be zero (∆t(s) = 0,
+
+s
+∀
+
+We deﬁne the n-step backup in terms of an increment, rather than as a
+direct update rule as we did in the previous chapter, in order to allow diﬀerent
+ways of making the updates. In on-line updating, the updates are made during
+the episode, as soon as the increment is computed. In this case we write
+
+Vt+1(s) = Vt(s) + ∆t(s),
+
+S.
+
+s
+∀
+
+∈
+On-line updating is what we have implicitly assumed in most of the previous
+In oﬀ-line updating, on the other hand, the increments are
+two chapters.
+accumulated “on the side” and are not used to change value estimates until
+S, do
+the end of the episode. In this case, the approximate values Vt(s),
+not change during an episode and can be denoted simpty V (s). At the end
+of the episode, the new value (for the next episode) is obtained by summing
+all the increments during the episode. That is, for an episode starting at time
+step 0 and terminating at step T , for all s
+
+s
+∀
+
+S:
+
+∈
+
+(7.3)
+
+∈
+
+t < T,
+
+Vt+1(s) = Vt(s),
+
+T
+
+VT (s) = VT
+
+1(s) +
+
+−
+
+∀
+1
+−
+
+t=0
+(cid:88)
+
+∆t(s),
+
+(7.4)
+
+with of course V0 of the next episode being the VT of this one. You may
+recall how in Section 6.3 we carried this idea one step further, deferring the
+
+(cid:54)
+7.1. N -STEP TD PREDICTION
+
+171
+
+increments until they could be summed over a whole set of episodes, in batch
+updating.
+
+For any value function v : S
+
+R, the expected value of the n-step return
+using v is guaranteed to be a better estimate of vπ than v is, in a worst-state
+sense. That is, the worst error under the new estimate is guaranteed to be less
+than or equal to γn times the worst error under v:
+
+→
+
+max
+s
+
+Eπ
+
+Gt+n
+t
+
+(v(St+n))
+
+St = s
+
+vπ(s)
+
+−
+
+γn max
+
+s
+
+v(s)
+|
+
+vπ(s)
+|
+
+−
+
+≤
+
+, (7.5)
+
+(cid:3)
+
+(cid:12)
+(cid:12)
+
+(cid:12)
+(cid:12)
+≥
+
+(cid:12)
+(cid:2)
+(cid:12)
+for all n
+1. This is called the error reduction property of n-step returns.
+Because of the error reduction property, one can show formally that on-line and
+oﬀ-line TD prediction methods using n-step backups converge to the correct
+predictions under appropriate technical conditions. The n-step TD methods
+thus form a family of valid methods, with one-step TD methods and Monte
+Carlo methods as extreme members.
+
+Nevertheless, n-step TD methods are rarely used because they are incon-
+venient to implement. Computing n-step returns requires waiting n steps to
+observe the resultant rewards and states. For large n, this can become prob-
+lematic, particularly in control applications. The signiﬁcance of n-step TD
+methods is primarily for theory and for understanding related methods that
+are more conveniently implemented. In the next few sections we use the idea
+of n-step TD methods to explain and justify eligibility trace methods.
+
+Example 7.1: n-step TD Methods on the Random Walk Consider
+using n-step TD methods on the random walk task described in Example 6.2
+and shown in Figure 6.5. Suppose the ﬁrst episode progressed directly from the
+center state, C, to the right, through D and E, and then terminated on the right
+with a return of 1. Recall that the estimated values of all the states started
+at an intermediate value, V0(s) = 0.5. As a result of this experience, a one-
+step method would change only the estimate for the last state, V (E), which
+would be incremented toward 1, the observed return. A two-step method,
+on the other hand, would increment the values of the two states preceding
+termination: V (D) and V (E) both would be incremented toward 1. A three-
+step method, or any n-step method for n > 2, would increment the values
+of all three of the visited states toward 1, all by the same amount. Which
+n is better? Figure 7.2 shows the results of a simple empirical assessment
+for a larger random walk process, with 19 states (and with a
+1 outcome on
+the left, all values initialized to 0). Results are shown for on-line and oﬀ-line
+n-step TD methods with a range of values for n and α. The performance
+measure for each algorithm and parameter setting, shown on the vertical axis,
+is the square-root of the average squared error between its predictions at the
+end of the episodenfor the 19 states and their true values, then averaged over
+
+−
+
+172
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+Figure 7.2: Performance of n-step TD methods as a function of α, for various
+values of n, on a 19-state random walk task (Example 7.1).
+
+the ﬁrst 10 episodes and 100 repetitions of the whole experiment (the same
+sets of walks were used for all methods). First note that the on-line methods
+generally worked best on this task, both reaching lower levels of absolute error
+and doing so over a larger range of the step-size parameter α (in fact, all
+the oﬀ-line methods were unstable for α much above 0.3). Second, note that
+methods with an intermediate value of n worked best. This illustrates how
+the generalization of TD and Monte Carlo methods to n-step methods can
+potentially perform better than either of the two extreme methods.
+
+7.2 The Forward View of TD(λ)
+
+t
+
+t
+
+2Gt+2
+
+Backups can be done not just toward any n-step return, but toward any aver-
+age of n-step returns. For example, a backup can be done toward a target that
+is half of a two-step return and half of a four-step return: 1
+(Vt(St+2)) +
+2Gt+4
+1
+(Vt(St+4)). Any set of returns can be averaged in this way, even an in-
+ﬁnite set, as long as the weights on the component returns are positive and
+sum to 1. The composite return possesses an error reduction property similar
+to that of individual n-step returns (7.5) and thus can be used to construct
+backups with guaranteed convergence properties. Averaging produces a sub-
+stantial new range of algorithms. For example, one could average one-step
+and inﬁnite-step returns to obtain another way of interrelating TD and Monte
+Carlo methods. In principle, one could even average experience-based back-
+ups with DP backups to get a simple combination of experience-based and
+model-based methods (see Chapter 8).
+
+On-line n-step TD methodsOff-line n-step TD methods↵↵RMS errorover ﬁrst10 episodesn=1n=2n=4n=8n=16n=32n=64256128512n=3n=64n=1n=2n=4n=8n=16n=32n=32n=641285122567.2. THE FORWARD VIEW OF TD(λ)
+
+173
+
+A backup that averages simpler component backups is called a complex
+backup. The backup diagram for a complex backup consists of the backup
+diagrams for each of the component backups with a horizontal line above
+them and the weighting fractions below. For example, the complex backup
+for the case mentioned at the start of this section, mixing half of a two-step
+backup and half of a four-step backup, has the diagram:
+
+The TD(λ) algorithm can be understood as one particular way of averaging
+n-step backups. This average contains all the n-step backups, each weighted
+proportional to λn
+λ
+to ensure that the weights sum to 1 (see Figure 7.3). The resulting backup is
+toward a return, called the λ-return, deﬁned by
+
+[0, 1], and normalized by a factor of 1
+
+1, where λ
+−
+
+−
+
+∈
+
+Lt = (1
+
+λ)
+
+−
+
+∞
+
+n=1
+(cid:88)
+
+λn
+−
+
+1Gt+n
+t
+
+(Vt(St+n)).
+
+Figure 7.4 further illustrates the weighting on the sequence of n-step returns
+in the λ-return. The one-step return is given the largest weight, 1
+λ; the
+λ)λ; the three-step return
+two-step return is given the next largest weight, (1
+−
+λ)λ2; and so on. The weight fades by λ with each
+is given the weight (1
+additional step. After a terminal state has been reached, all subsequent n-step
+returns are equal to Gt. If we want, we can separate these post-termination
+terms from the main sum, yielding
+
+−
+
+−
+
+Lt = (1
+
+1
+
+t
+−
+
+−
+
+T
+λ)
+
+n=1
+(cid:88)
+
+−
+
+λn
+
+1Gt+n
+−
+t
+
+(Vt(St+n)) + λT
+
+t
+−
+−
+
+1Gt,
+
+(7.6)
+
+as indicated in the ﬁgures. This equation makes it clearer what happens when
+λ = 1. In this case the main sum goes to zero, and the remaining term reduces
+to the conventional return, Gt. Thus, for λ = 1, backing up according to the
+
+1212174
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+Figure 7.3: The backup digram for TD(λ). If λ = 0, then the overall backup
+reduces to its ﬁrst component, the one-step TD backup, whereas if λ = 1, then
+the overall backup reduces to its last component, the Monte Carlo backup.
+
+λ-return is the same as the Monte Carlo algorithm that we called constant-α
+MC (6.1) in the previous chapter. On the other hand, if λ = 0, then the
+λ-return reduces to Gt+1
+(Vt(St+1)), the one-step return. Thus, for λ = 0,
+backing up according to the λ-return is the same as the one-step TD method,
+TD(0) from the previous chapter (6.2).
+
+t
+
+We deﬁne the λ-return algorithm as the method that performs backups
+towards the λ-return as target. On each step, t, it computes an increment,
+
+Figure 7.4: Weighting given in the λ-return to each of the n-step returns.
+
+1!"(1!") "(1!") "2#= 1TD("), "-return"T-t-11!"weight given tothe 3-step returndecay by "weight given toactual, final returntTTimeWeighttotal area = 1is(1  ) 2is T t 17.2. THE FORWARD VIEW OF TD(λ)
+
+175
+
+Figure 7.5: The forward or theoretical view. We decide how to update each
+state by looking forward to future rewards and states.
+
+∆t(St), to the value of the state occurring on that step:
+
+∆t(St) = α
+
+Lt −
+
+.
+
+Vt(St)
+(cid:105)
+
+(cid:104)
+
+(7.7)
+
+(The increments for other states are of course ∆t(s) = 0, for all s
+= St.)
+As with n-step TD methods, the updating can be either on-line or oﬀ-line.
+The upper row of Figure 7.6 shows the performance of the on-line and oﬀ-
+line λ-return algorithms on the 19-state random walk task (Example 7.1).
+The experiment was just as in the n-step case (Figure 7.2) except that here we
+varied λ instead of n. Note that overall performance of the λ-return algorithms
+is comparable to that of the n-step algorithms.
+In both cases we get best
+performance with an intermediate value of the truncation parameter, n or λ.
+
+The approach that we have been taking so far is what we call the theoret-
+ical, or forward, view of a learning algorithm. For each state visited, we look
+forward in time to all the future rewards and decide how best to combine them.
+We might imagine ourselves riding the stream of states, looking forward from
+each state to determine its update, as suggested by Figure 7.5. After looking
+forward from and updating one state, we move on to the next and never have
+to work with the preceding state again. Future states, on the other hand,
+are viewed and processed repeatedly, once from each vantage point preceding
+them.
+
+The λ-return algorithm is the basis for the forward view of eligibility traces
+as used in the TD(λ) method. In fact, we show in a later section that, in the
+oﬀ-line case, the λ-return algorithm is the TD(λ) algorithm. The λ-return
+and TD(λ) methods use the λ parameter to shift from one-step TD methods
+to Monte Carlo methods. The speciﬁc way this shift is done is interesting,
+but not obviously better or worse than the way it is done with simple n-step
+methods by varying n. Ultimately, the most compelling motivation for the λ
+way of mixing n-step backups is that there in a simple algorithm—TD(λ)—for
+achieving it. This is a mechanism issue rather than a theoretical one. In the
+
+Timert+3rt+2rt+1rTst+1st+2st+3stStSt+1St+2St+3RRRR(cid:54)
+176
+
+CHAPTER 7. ELIGIBILITY TRACES
+
+Figure 7.6: Performance of all λ-based algorithms on the 19-state random walk
+(Example 7.1). The λ = 0 line is the same for all ﬁve on-line algorithms.
+
+On-line TD(λ), accumulating tracesOn-line TD(λ), dutch tracesOn-line λ-returnOff-line λ-return = off-line TD(λ), accumulating tracesRMS error over ﬁrst 10 episodes on 19-state random walkλ=0λ=.4λ=.8λ=.9λ=.95.975.991λ=0λ=.4λ=.8λ=.9λ=.95λ=.975λ=.99λ=1λ=.95On-line TD(λ), replacing tracesTrue on-line TD(λ)= real-time λ-return↵↵λ=0λ=.4λ=.8λ=.9λ=.95λ=0λ=.4λ=.8λ=.9λ=.95λ=.975λ=.99λ=1λ=.95λ=0λ=.4λ=.8λ=.9λ=.95λ=.975λ=.99λ=1λ=.95λ=.975λ=1λ=.99λ=0λ=.4λ=.8λ=.9λ=.95λ=.975λ=.99λ=1λ=.99λ=.9757.3. THE BACKWARD VIEW OF TD(λ)
+
+177
+
+next few sections we develop the mechanistic, or backward, view of eligibility
+traces as used in TD(λ).
+
+7.3 The Backward View of TD(λ)
+
+In the previous section we presented the forward or theoretical view of the
+tabular TD(λ) algorithm as a way of mixing backups that parametrically shifts
+In this section we instead
+from a TD method to a Monte Carlo method.
+deﬁne TD(λ) mechanistically and show that it can closely approximate the
+forward view. The mechanistic, or backward , view of TD(λ) is useful because
+it is simple conceptually and computationally. In particular, the forward view
+itself is not directly implementable because it is acausal, using at each step
+knowledge of what will happen many steps later. The backward view provides
+a causal, incremental mechanism for approximating the forward view and, in
+the oﬀ-line case, for achieving it exactly.
+
+In the backward view of TD(λ), there is an additional memory variable
+associated with each state, its eligibility trace. The eligibility trace for state
+R+. On each step, the
+s at time t is a random variable denoted Et(s)
+eligibility traces of all

@@ -4,7 +4,7 @@ import os
 """Helper script to sanitize the output from gpt files. idk how useful this will be but whatevs"""
 
 ### the .txt suffix IS NEEDED HERE!
-FILENAME = "ISLP_website_qns.txt"
+FILENAME = "reinforcement_learning_qns.txt"
 
 
 def parse_text_file(input_file, output_file):

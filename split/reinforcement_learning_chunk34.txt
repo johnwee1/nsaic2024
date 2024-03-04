@@ -1,0 +1,336 @@
+onal square-wave function (shown at the top of Figure 9.4). The
+values of this function were used as the targets, Vt. With just one dimension,
+the receptive ﬁelds were intervals rather than circles. Learning was repeated
+with three diﬀerent sizes of the intervals: narrow, medium, and broad, as
+shown at the bottom of the ﬁgure. All three cases had the same density of
+features, about 50 over the extent of the function being learned. Training
+examples were generated uniformly at random over this extent. The step-size
+parameter was α = 0.2
+m , where m is the number of features that were present
+at one time. Figure 9.4 shows the functions learned in all three cases over the
+course of learning. Note that the width of the features had a strong eﬀect early
+in learning. With broad features, the generalization tended to be broad; with
+narrow features, only the close neighbors of each trained point were changed,
+causing the function learned to be more bumpy. However, the ﬁnal function
+
+a) Narrow generalizationb) Broad generalizationc) Asymmetric generalization236CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+Figure 9.4: Example of feature width’s strong eﬀect on initial generalization
+(ﬁrst row) and weak eﬀect on asymptotic accuracy (last row).
+
+learned was aﬀected only slightly by the width of the features. Receptive
+ﬁeld shape tends to have a strong eﬀect on generalization but little eﬀect on
+asymptotic solution quality.
+
+Tile Coding
+
+Tile coding is a form of coarse coding that is particularly well suited for use on
+sequential digital computers and for eﬃcient on-line learning. In tile coding
+the receptive ﬁelds of the features are grouped into exhaustive partitions of
+the input space. Each such partition is called a tiling, and each element of the
+partition is called a tile. Each tile is the receptive ﬁeld for one binary feature.
+
+An immediate advantage of tile coding is that the overall number of features
+that are present at one time is strictly controlled and independent of the input
+state. Exactly one feature is present in each tiling, so the total number of
+features present is always the same as the number of tilings. This allows
+the step-size parameter, α, to be set in an easy, intuitive way. For example,
+choosing α = 1
+m , where m is the number of tilings, results in exact one-trial
+v is received, then whatever the prior value,
+learning.
+ˆv(s,w), the new value will be ˆv(s,w) = v. Usually one wishes to change more
+slowly than this, to allow for generalization and stochastic variation in target
+outputs. For example, one might choose α = 1
+10m , in which case one would
+move one-tenth of the way to the target in one update.
+
+If the example s
+
+(cid:55)→
+
+Because tile coding uses exclusively binary (0–1-valued) features, the weighted
+
+1040160640256010240NarrowfeaturesdesiredfunctionMediumfeaturesBroadfeatures#Examplesapprox-imationfeaturewidth9.3. LINEAR METHODS
+
+237
+
+sum making up the approximate value function (9.8) is almost trivial to com-
+pute. Rather than performing n multiplications and additions, one simply
+computes the indices of the m
+n present features and then adds up the
+m corresponding components of the parameter vector. The eligibility trace
+computation (9.7) is also simpliﬁed because the components of the gradient,
+
+(cid:28)
+
+ˆv(s,w), are also usually 0, and otherwise 1.
+
+∇
+
+The computation of the indices of the present features is particularly easy
+if gridlike tilings are used. The ideas and techniques here are best illustrated
+by examples. Suppose we address a task with two continuous state variables.
+Then the simplest way to tile the space is with a uniform two-dimensional
+grid:
+
+Given the x and y coordinates of a point in the space, it is computationally
+easy to determine the index of the tile it is in. When multiple tilings are used,
+each is oﬀset by a diﬀerent amount, so that each cuts the space in a diﬀerent
+way. In the example shown in Figure 9.5, an extra row and an extra column
+of tiles have been added to the grid so that no points are left uncovered. The
+two tiles highlighted are those that are present in the state indicated by the
+X. The diﬀerent tilings may be oﬀset by random amounts, or by cleverly de-
+signed deterministic strategies (simply oﬀsetting each dimension by the same
+increment is known not to be a good idea). The eﬀects on generalization and
+asymptotic accuracy illustrated in Figures 9.3 and 9.4 apply here as well. The
+width and shape of the tiles should be chosen to match the width of general-
+ization that one expects to be appropriate. The number of tilings should be
+chosen to inﬂuence the density of tiles. The denser the tiling, the ﬁner and
+more accurately the desired function can be approximated, but the greater the
+computational costs.
+
+It is important to note that the tilings can be arbitrary and need not be
+uniform grids. Not only can the tiles be strangely shaped, as in Figure 9.6a,
+but they can be shaped and distributed to give particular kinds of generaliza-
+tion. For example, the stripe tiling in Figure 9.6b will promote generalization
+along the vertical dimension and discrimination along the horizontal dimen-
+sion, particularly on the left. The diagonal stripe tiling in Figure 9.6c will
+promote generalization along one diagonal. In higher dimensions, axis-aligned
+stripes correspond to ignoring some of the dimensions in some of the tilings,
+
+238CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+that is, to hyperplanar slices.
+
+Another important trick for reducing memory requirements is hashing—a
+consistent pseudo-random collapsing of a large tiling into a much smaller set
+of tiles. Hashing produces tiles consisting of noncontiguous, disjoint regions
+randomly spread throughout the state space, but that still form an exhaustive
+tiling. For example, one tile might consist of the four subtiles shown below:
+
+Through hashing, memory requirements are often reduced by large factors with
+little loss of performance. This is possible because high resolution is needed
+in only a small fraction of the state space. Hashing frees us from the curse of
+dimensionality in the sense that memory requirements need not be exponential
+in the number of dimensions, but need merely match the real demands of the
+task. Good public-domain implementations of tile coding, including hashing,
+are widely available.
+
+Radial Basis Functions
+
+Radial basis functions (RBFs) are the natural generalization of coarse coding
+to continuous-valued features. Rather than each feature being either 0 or 1,
+it can be anything in the interval [0, 1], reﬂecting various degrees to which
+the feature is present. A typical RBF feature, i, has a Gaussian (bell-shaped)
+response xi(s) dependent only on the distance between the state, s, and the
+
+Figure 9.5: Multiple, overlapping gridtilings.
+
+onetiletiling #1tiling #2Shape of tiles ! Generalization#Tilings ! Resolution of final approximation2D statespace9.3. LINEAR METHODS
+
+239
+
+Figure 9.6: Tilings.
+
+Figure 9.7: One-dimensional radial basis functions.
+
+feature’s prototypical or center state, ci, and relative to the feature’s width,
+σi:
+
+xi(s) = exp
+
+s
+||
+
+2
+
+ci||
+−
+2σ2
+i
+
+.
+
+(cid:19)
+
+−
+
+(cid:18)
+
+The norm or distance metric of course can be chosen in whatever way seems
+most appropriate to the states and task at hand. Figure 9.7 shows a one-
+dimensional example with a Euclidean distance metric.
+
+An RBF network is a linear function approximator using RBFs for its fea-
+tures. Learning is deﬁned by equations (9.3) and (9.8), exactly as in other lin-
+ear function approximators. The primary advantage of RBFs over binary fea-
+tures is that they produce approximate functions that vary smoothly and are
+diﬀerentiable. In addition, some learning methods for RBF networks change
+the centers and widths of the features as well. Such nonlinear methods may
+be able to ﬁt the target function much more precisely. The downside to RBF
+networks, and to nonlinear RBF networks especially, is greater computational
+complexity and, often, more manual tuning before learning is robust and eﬃ-
+cient.
+
+a) Irregularb) Log stripesc) Diagonal stripesci!ici+1ci-1240CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+Kanerva Coding
+
+On tasks with very high dimensionality, say hundreds of dimensions, tile coding
+and RBF networks become impractical.
+If we take either method at face
+value, its computational complexity increases exponentially with the number
+of dimensions. There are a number of tricks that can reduce this growth (such
+as hashing), but even these become impractical after a few tens of dimensions.
+
+On the other hand, some of the general ideas underlying these methods can
+be practical for high-dimensional tasks. In particular, the idea of representing
+states by a list of the features present and then mapping those features linearly
+to an approximation may scale well to large tasks. The key is to keep the
+number of features from scaling explosively. Is there any reason to think this
+might be possible?
+
+First we need to establish some realistic expectations. Roughly speaking, a
+function approximator of a given complexity can only accurately approximate
+target functions of comparable complexity. But as dimensionality increases,
+the size of the state space inherently increases exponentially. It is reasonable
+to assume that in the worst case the complexity of the target function scales
+like the size of the state space. Thus, if we focus the worst case, then there
+is no solution, no way to get good approximations for high-dimensional tasks
+without using resources exponential in the dimension.
+
+A more useful way to think about the problem is to focus on the complexity
+of the target function as separate and distinct from the size and dimensionality
+of the state space. The size of the state space may give an upper bound on
+complexity, but short of that high bound, complexity and dimension can be
+unrelated. For example, one might have a 1000-dimensional task where only
+one of the dimensions happens to matter. Given a certain level of complexity,
+we then seek to be able to accurately approximate any target function of that
+complexity or less. As the target level of complexity increases, we would like
+to get by with a proportionate increase in computational resources.
+
+From this point of view, the real source of the problem is the complexity of
+the target function, or of a reasonable approximation of it, not the dimension-
+ality of the state space. Thus, adding dimensions, such as new sensors or new
+features, to a task should be almost without consequence if the complexity of
+the needed approximations remains the same. The new dimensions may even
+make things easier if the target function can be simply expressed in terms of
+them. Unfortunately, methods like tile coding and RBF coding do not work
+this way. Their complexity increases exponentially with dimensionality even if
+the complexity of the target function does not. For these methods, dimension-
+ality itself is still a problem. We need methods whose complexity is unaﬀected
+
+9.4. CONTROL WITH FUNCTION APPROXIMATION
+
+241
+
+by dimensionality per se, methods that are limited only by, and scale well
+with, the complexity of what they approximate.
+
+One simple approach that meets these criteria, which we call Kanerva
+coding, is to choose binary features that correspond to particular prototype
+states. For deﬁniteness, let us say that the prototypes are randomly selected
+from the entire state space. The receptive ﬁeld of such a feature is all states
+suﬃciently close to the prototype. Kanerva coding uses a diﬀerent kind of
+distance metric than in is used in tile coding and RBFs. For deﬁniteness,
+consider a binary state space and the hamming distance, the number of bits
+at which two states diﬀer. States are considered similar if they agree on enough
+dimensions, even if they are totally diﬀerent on others.
+
+The strength of Kanerva coding is that the complexity of the functions
+that can be learned depends entirely on the number of features, which bears
+no necessary relationship to the dimensionality of the task. The number of
+features can be more or less than the number of dimensions. Only in the worst
+case must it be exponential in the number of dimensions. Dimensionality itself
+is thus no longer a problem. Complex functions are still a problem, as they
+have to be. To handle more complex tasks, a Kanerva coding approach simply
+needs more features. There is not a great deal of experience with such systems,
+but what there is suggests that their abilities increase in proportion to their
+computational resources. This is an area of current research, and signiﬁcant
+improvements in existing methods can still easily be found.
+
+9.4 Control with Function Approximation
+
+We now extend value prediction methods using function approximation to
+control methods, following the pattern of GPI. First we extend the state-
+value prediction methods to action-value prediction methods, then we combine
+them with policy improvement and action selection techniques. As usual, the
+problem of ensuring exploration is solved by pursuing either an on-policy or
+an oﬀ-policy approach.
+
+The extension to action-value prediction is straightforward. In this case
+it is the approximate action-value function, ˆq
+qπ, that is represented as a
+parameterized functional form with parameter vector w. Whereas before we
+Vt, now we consider ex-
+considered random training examples of the form St (cid:55)→
+Qt. The target output, Qt, can be any approxima-
+amples of the form St, At (cid:55)→
+tion of qπ(St, At), including the usual backed-up values such as the full Monte
+Carlo return, Gt, or the one-step Sarsa-style return, Gt+1 + γ ˆq(St+1, At+1,wt).
+
+≈
+
+242CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+The general gradient-descent update for action-value prediction is
+
+wt+1 = wt + α
+
+ˆq(St, At,wt)
+(cid:105)
+For example, the backward view of the action-value method analogous to
+TD(λ) is
+
+ˆq(St, At,wt).
+
+Qt −
+
+∇
+
+(cid:104)
+
+wt+1 = wt + αδt et,
+
+where
+
+δt = Rt+1 + γ ˆq(St+1, At+1,wt)
+
+ˆq(St, At,wt),
+
+−
+
+and
+
+et = γλet
+
+1 +
+
+−
+
+ˆq(St, At,wt),
+
+∇
+
+with e0 = 0. We call this method gradient-descent Sarsa(λ), particularly
+when it is elaborated to form a full control method. For a constant policy,
+this method converges in the same way that TD(λ) does, with the same kind
+of error bound (9.9).
+
+To form control methods, we need to couple such action-value prediction
+methods with techniques for policy improvement and action selection. Suitable
+techniques applicable to continuous actions, or to actions from large discrete
+sets, are a topic of ongoing research with as yet no clear resolution. On the
+other hand, if the action set is discrete and not too large, then we can use the
+techniques already developed in previous chapters. That is, for each possible
+action, a, available in the current state, St, we can compute ˆq(St, a,wt) and
+then ﬁnd the greedy action a∗t = argmaxa ˆq(St, a,wt). Policy improvement
+is done by changing the estimation policy to the greedy policy (in oﬀ-policy
+methods) or to a soft approximation of the greedy policy such as the ε-greedy
+policy (in on-policy methods). Actions are selected according to this same
+policy in on-policy methods, or by an arbitrary policy in oﬀ-policy methods.
+
+Figures 9.8 and 9.9 show examples of on-policy (Sarsa(λ)) and oﬀ-policy
+(Watkins’s Q(λ)) control methods using function approximation. Both meth-
+ods use linear, gradient-descent function approximation with binary f

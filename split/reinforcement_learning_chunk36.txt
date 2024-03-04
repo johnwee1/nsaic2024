@@ -1,0 +1,359 @@
+as there are states. Convergence of lin-
+ear TD(λ) for the more interesting case of general (dependent) feature
+vectors was ﬁrst shown by Dayan (1992). A signiﬁcant generalization
+
+9.6. SUMMARY
+
+251
+
+and strengthening of Dayan’s result was proved by Tsitsiklis and Van
+Roy (1997). They proved the main result presented in Section 9.2,
+the bound on the asymptotic error of TD(λ) and other bootstrapping
+methods. Recently they extended their analysis to the undiscounted
+continuing case (Tsitsiklis and Van Roy, 1999).
+
+Our presentation of the range of possibilities for linear function approx-
+imation is based on that by Barto (1990). The term coarse coding is
+due to Hinton (1984), and our Figure 9.2 is based on one of his ﬁgures.
+Waltz and Fu (1965) provide an early example of this type of function
+approximation in a reinforcement learning system.
+
+Tile coding, including hashing, was introduced by Albus (1971, 1981).
+He described it in terms of his “cerebellar model articulator controller,”
+or CMAC, as tile coding is known in the literature. The term “tile
+coding” is new to this book, though the idea of describing CMAC in
+these terms is taken from Watkins (1989). Tile coding has been used in
+many reinforcement learning systems (e.g., Shewchuk and Dean, 1990;
+Lin and Kim, 1991; Miller, Scalera, and Kim, 1994; Sofge and White,
+1992; Tham, 1994; Sutton, 1996; Watkins, 1989) as well as in other
+types of learning control systems (e.g., Kraft and Campagna, 1990;
+Kraft, Miller, and Dietz, 1992).
+
+Function approximation using radial basis functions (RBFs) has re-
+ceived wide attention ever since being related to neural networks by
+Broomhead and Lowe (1988). Powell (1987) reviewed earlier uses of
+RBFs, and Poggio and Girosi (1989, 1990) extensively developed and
+applied this approach.
+
+What we call “Kanerva coding” was introduced by Kanerva (1988) as
+part of his more general idea of sparse distributed memory. A good re-
+view of this and related memory models is provided by Kanerva (1993).
+This approach has been pursued by Gallant (1993) and by Sutton and
+Whitehead (1993), among others.
+
+9.4
+
+Q(λ) with function approximation was ﬁrst explored by Watkins (1989).
+Sarsa(λ) with function approximation was ﬁrst explored by Rummery
+and Niranjan (1994). The mountain–car example is based on a similar
+task studied by Moore (1990). The results on it presented here are from
+Sutton (1996) and Singh and Sutton (1996).
+
+Convergence of the Sarsa control method presented in this section has
+not been proved. The Q-learning control method is now known not
+to be sound and will diverge for some problems. Convergence results
+for control methods with state aggregation and other special kinds of
+
+252CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+function approximation are proved by Tsitsiklis and Van Roy (1996),
+Singh, Jaakkola, and Jordan (1995), and Gordon (1995).
+
+The use of function approximation in reinforcement learning goes back to
+the early neural networks of Farley and Clark (1954; Clark and Farley, 1955),
+who used reinforcement learning to adjust the parameters of linear threshold
+functions representing policies. The earliest example we know of in which
+function approximation methods were used for learning value functions was
+Samuel’s checkers player (1959, 1967).
+Samuel followed Shannon’s (1950)
+suggestion that a value function did not have to be exact to be a useful guide
+to selecting moves in a game and that it might be approximated by linear
+combination of features. In addition to linear function approximation, Samuel
+experimented with lookup tables and hierarchical lookup tables called signa-
+ture tables (Griﬃth, 1966, 1974; Page, 1977; Biermann, Fairﬁeld, and Beres,
+1982).
+
+At about the same time as Samuel’s work, Bellman and Dreyfus (1959)
+proposed using function approximation methods with DP. (It is tempting to
+think that Bellman and Samuel had some inﬂuence on one another, but we
+know of no reference to the other in the work of either.) There is now a
+fairly extensive literature on function approximation methods and DP, such
+as multigrid methods and methods using splines and orthogonal polynomials
+(e.g., Bellman and Dreyfus, 1959; Bellman, Kalaba, and Kotkin, 1973; Daniel,
+1976; Whitt, 1978; Reetz, 1977; Schweitzer and Seidmann, 1985; Chow and
+Tsitsiklis, 1991; Kushner and Dupuis, 1992; Rust, 1996).
+
+Holland’s (1986) classiﬁer system used a selective feature-match technique
+to generalize evaluation information across state–action pairs. Each classiﬁer
+matched a subset of states having speciﬁed values for a subset of features, with
+the remaining features having arbitrary values (“wild cards”). These subsets
+were then used in a conventional state-aggregation approach to function ap-
+proximation. Holland’s idea was to use a genetic algorithm to evolve a set
+of classiﬁers that collectively would implement a useful action-value function.
+Holland’s ideas inﬂuenced the early research of the authors on reinforcement
+learning, but we focused on diﬀerent approaches to function approximation.
+As function approximators, classiﬁers are limited in several ways. First, they
+are state-aggregation methods, with concomitant limitations in scaling and in
+representing smooth functions eﬃciently. In addition, the matching rules of
+classiﬁers can implement only aggregation boundaries that are parallel to the
+feature axes. Perhaps the most important limitation of conventional classi-
+ﬁer systems is that the classiﬁers are learned via the genetic algorithm, an
+evolutionary method. As we discussed in Chapter 1, there is available dur-
+ing learning much more detailed information about how to learn than can be
+
+9.6. SUMMARY
+
+253
+
+used by evolutionary methods. This perspective led us to instead adapt super-
+vised learning methods for use in reinforcement learning, speciﬁcally gradient-
+descent and neural network methods. These diﬀerences between Holland’s
+approach and ours are not surprising because Holland’s ideas were developed
+during a period when neural networks were generally regarded as being too
+weak in computational power to be useful, whereas our work was at the be-
+ginning of the period that saw widespread questioning of that conventional
+wisdom. There remain many opportunities for combining aspects of these
+diﬀerent approaches.
+
+A number of reinforcement learning studies using function approximation
+methods that we have not covered previously should be mentioned. Barto,
+Sutton, and Brouwer (1981) and Barto and Sutton (1981b) extended the idea
+of an associative memory network (e.g., Kohonen, 1977; Anderson, Silverstein,
+Ritz, and Jones, 1977) to reinforcement learning. Hampson (1983, 1989) was
+an early proponent of multilayer neural networks for learning value functions.
+Anderson (1986, 1987) coupled a TD algorithm with the error backpropagation
+algorithm to learn a value function. Barto and Anandan (1985) introduced a
+stochastic version of Widrow, Gupta, and Maitra’s (1973) selective bootstrap
+algorithm, which they called the associative reward-penalty (AR
+P ) algorithm.
+Williams (1986, 1987, 1988, 1992) extended this type of algorithm to a general
+class of REINFORCE algorithms, showing that they perform stochastic gra-
+dient ascent on the expected reinforcement. Gullapalli (1990) and Williams
+devised algorithms for learning generalizing policies for the case of continuous
+actions. Phansalkar and Thathachar (1995) proved both local and global con-
+vergence theorems for modiﬁed versions of REINFORCE algorithms. Chris-
+tensen and Korf (1986) experimented with regression methods for modifying
+coeﬃcients of linear value function approximations in the game of chess. Chap-
+man and Kaelbling (1991) and Tan (1991) adapted decision-tree methods for
+learning value functions. Explanation-based learning methods have also been
+adapted for learning value functions, yielding compact representations (Yee,
+Saxena, Utgoﬀ, and Barto, 1990; Dietterich and Flann, 1995).
+
+−
+
+Exercises
+
+Exercise 9.1 Show that table-lookup TD(λ) is a special case of general TD(λ)
+as given by equations (9.5–9.7).
+
+Exercise 9.2 State aggregation is a simple form of generalizing function ap-
+proximation in which states are grouped together, with one table entry (value
+estimate) used for each group. Whenever a state in a group is encountered, the
+group’s entry is used to determine the state’s value, and when the state is up-
+
+254CHAPTER 9. ON-POLICY APPROXIMATION OF ACTION VALUES
+
+dated, the group’s entry is updated. Show that this kind of state aggregation
+is a special case of a gradient method such as (9.4).
+
+Exercise 9.3 The equations given in this section are for the on-line version
+of gradient-descent TD(λ). What are the equations for the oﬀ-line version?
+Give a complete description specifying the new weight vector at the end of an
+episode, w(cid:48), in terms of the weight vector used during the episode, w. Start
+by modifying a forward-view equation for TD(λ), such as (9.4).
+
+Exercise 9.4 For oﬀ-line updating, show that equations (9.5–9.7) produce
+updates identical to (9.4).
+
+Exercise 9.5 How could we reproduce the tabular case within the linear
+framework?
+
+Exercise 9.6 How could we reproduce the state aggregation case (see Exer-
+cise 8.4) within the linear framework?
+
+Exercise 9.7 Suppose we believe that one of two state dimensions is more
+likely to have an eﬀect on the value function than is the other, that general-
+ization should be primarily across this dimension rather than along it. What
+kind of tilings could be used to take advantage of this prior knowledge?
+
+Chapter 10
+
+Oﬀ-policy Approximation of
+Action Values
+
+255
+
+256CHAPTER 10. OFF-POLICY APPROXIMATION OF ACTION VALUES
+
+Chapter 11
+
+Policy Approximation
+
+All of the methods we have considered so far in this book have learned the
+values of states or state–action pairs. To use them for control, we learned
+the values of state–action pairs, and then used those action values directly to
+implement the policy (e.g., ε-greedy) and select actions. All methods of this
+form can be called action-value methods.
+
+In this chapter we explore methods that are not action-value methods.
+They may still compute action (or state) values, but they do not use them
+directly to select actions. Instead, the policy is represented directly, with its
+own weights independent of any value function.
+
+11.1 Actor–Critic Methods
+
+Actor–critic methods are TD methods that have a separate memory structure
+to explicitly represent the policy independent of the value function. The policy
+structure is known as the actor, because it is used to select actions, and the
+estimated value function is known as the critic, because it criticizes the actions
+made by the actor. Learning is always on-policy: the critic must learn about
+and critique whatever policy is currently being followed by the actor. The
+critique takes the form of a TD error. This scalar signal is the sole output
+of the critic and drives all learning in both actor and critic, as suggested by
+Figure 11.1.
+
+Actor–critic methods are the natural extension of the idea of gradient-
+bandit methods (Section 2.7) to TD learning and to the full reinforcement
+learning problem. Typically, the critic is a state-value function. After each
+action selection, the critic evaluates the new state to determine whether things
+have gone better or worse than expected. That evaluation is the TD error:
+
+257
+
+258
+
+CHAPTER 11. POLICY APPROXIMATION
+
+Figure 11.1: The actor–critic architecture.
+
+δt = Rt+1 + γVt(St+1)
+
+V (St),
+
+−
+
+where Vt is the value function implemented by the critic at time t. This TD
+error can be used to evaluate the action just selected, the action At taken in
+state St. If the TD error is positive, it suggests that the tendency to select At
+should be strengthened for the future, whereas if the TD error is negative, it
+suggests the tendency should be weakened. Suppose actions are generated by
+the Gibbs softmax method:
+
+πt(a
+
+s) = Pr
+|
+
+{
+
+At = a
+
+St = s
+
+=
+
+}
+
+|
+
+eHt(s,a)
+b eHt(s,b) ,
+
+(cid:80)
+where the Ht(s, a) are the values at time t of the modiﬁable policy parameters
+of the actor, indicating the tendency to select (preference for) each action a
+when in each state s at time t. Then the strengthening or weakening described
+above can be implemented by increasing or decreasing Ht(St, At), for instance,
+by
+
+Ht+1(St, At) = Ht(St, At) + βδt,
+
+where β is another positive step-size parameter.
+
+This is just one example of an actor–critic method. Other variations select
+the actions in diﬀerent ways, or use eligibility traces like those described in the
+
+PolicyTDerrorEnvironmentValueFunctionrewardstateactionActorCritic11.2. ELIGIBILITY TRACES FOR ACTOR–CRITIC METHODS
+
+259
+
+next chapter. Another common dimension of variation, as in reinforcement
+comparison methods, is to include additional factors varying the amount of
+credit assigned to the action taken, At. For example, one of the most common
+such factors is inversely related to the probability of selecting At, resulting in
+the update rule:
+
+Ht(St, At) = Ht(St, At) + βδt
+
+1
+
+−
+These issues were explored early on, primarily for the immediate reward case
+(Sutton, 1984; Williams, 1992) and have not been brought fully up to date.
+
+(cid:104)
+
+(cid:105)
+
+πt(At|
+
+St)
+
+.
+
+Many of the earliest reinforcement learning systems that used TD methods
+were actor–critic methods (Witten, 1977; Barto, Sutton, and Anderson, 1983).
+Since then, more attention has been devoted to methods that learn action-value
+functions and determine a policy exclusively from the estimated values (such
+as Sarsa and Q-learning). This divergence may be just historical accident.
+For example, one could imagine intermediate architectures in which both an
+action-value function and an independent policy would be learned.
+In any
+event, actor–critic methods are likely to remain of current interest because of
+two signiﬁcant apparent advantages:
+
+•
+
+•
+
+They require minimal computation in order to select actions. Consider a
+case where there are an inﬁnite number of possible actions—for example,
+a continuous-valued action. Any method learning just action values must
+search through this inﬁnite set in order to pick an action. If the policy
+is explicitly stored, then this extensive computation may not be needed
+for each action selection.
+
+They can learn an explicitly stochastic policy; that is, they can learn
+the optimal probabilities of selecting various actions. This ability turns
+out to be useful in competitive and non-Markov cases (e.g., see Singh,
+Jaakkola, and Jordan, 1994).
+
+In addition, the separate actor in actor–critic methods makes them more ap-
+pealing in some respects as psychological and biological models. In some cases
+it may also make it easier to impose domain-speciﬁc constraints on the set of
+allowed policies.
+
+11.2 Eligibility Traces for Actor–Critic Meth-
+
+ods
+
+In this section we describe how to extend the actor–critic methods introduced
+in Section 11.1 to use eligibility traces. This is fairly straightforward. The
+
+260
+
+CHAPTER 11. POLICY APPROXIMATION
+
+critic part of an actor–critic method is simply on-policy learning of vπ. The
+TD(λ) algorithm can be used for that, with one eligibility trace for each state.
+The actor part needs to use an eligibility trace for each state–action pair.
+Thus, an actor–critic method needs two sets of traces, one for each state and
+one for each state–action pair.
+
+Recall that the one-step actor–critic method updates the actor by
+
+Ht+1(s, a) =
+
+(cid:26)
+
+Ht(s, a)

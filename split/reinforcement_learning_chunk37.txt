@@ -1,0 +1,387 @@
+ + αδt
+Ht(s, a)
+
+if a = At and s = St
+otherwise,
+
+where δt is the TD(λ) error (7.10), and Ht(s, a) is the preference for taking
+action a at time t if in state s. The preferences determine the policy via, for
+example, a softmax method (Section 2.3). We generalize the above equation
+to use eligibility traces as follows:
+
+Ht+1(s, a) = Ht(s, a) + αδt Et(s, a),
+
+(11.1)
+
+where Et(s, a) denotes the trace at time t for state–action pair s, a. For the
+simplest case mentioned above, the trace can be updated as in Sarsa(λ).
+
+In Section 11.1 we also discussed a more sophisticated actor–critic method
+
+that uses the update
+
+Ht+1(s, a) =
+
+(cid:26)
+
+Ht(s, a) + αδt[1
+Ht(s, a)
+
+s)]
+πt(a
+|
+
+−
+
+if a = At and s = St
+otherwise.
+
+To generalize this equation to eligibility traces we can use the same update
+(11.1) with a slightly diﬀerent trace. Rather than incrementing the trace by 1
+each time a state–action pair occurs, it is updated by 1
+
+πt(St, At):
+
+−
+
+Et(s, a) =
+
+(cid:26)
+
+for all s, a.
+
+γλEt
+γλEt
+
+1(s, a) + 1
+1(s, a)
+
+−
+
+−
+
+πt(St, At)
+
+−
+
+if s = St and a = At;
+otherwise,
+
+(11.2)
+
+11.3 R-Learning and the Average-Reward Set-
+
+ting
+
+When the policy is approximated, we generally have to abandon the discounted-
+reward setting that we have relied on up to now. We replace it with the
+average-reward setting, which we discuss in this section.
+
+R-learning is an oﬀ-policy control method for the advanced version of the
+reinforcement learning problem in which one neither discounts nor divides
+
+11.3. R-LEARNING AND THE AVERAGE-REWARD SETTING
+
+261
+
+experience into distinct episodes with ﬁnite returns.
+In this average-reward
+setting, one seeks to maximize the average reward per time step. The value
+functions for a policy, π, are deﬁned relative to the average expected reward
+per step under the policy, ¯r(π):
+
+¯r(π) = lim
+→∞
+
+n
+
+Eπ[Rt] .
+
+1
+n
+
+n
+
+t=1
+(cid:88)
+
+This average reward is well deﬁned if we assume that the process is ergodic
+(nonzero probability of reaching any state from any other under any policy),
+and thus that ¯r(π) does not depend on the starting state. From any state, in
+the long run the average reward is the same, but there is a transient. From
+some states better-than-average rewards are received for a while, and from
+others worse-than-average rewards are received. It is this transient that deﬁnes
+the value of a state:
+
+vπ(s) =
+
+∞
+
+(cid:88)k=1
+
+Eπ[Rt+k −
+
+¯r(π)
+
+|
+
+St = s] ,
+
+and the value of a state–action pair is similarly the transient diﬀerence in
+reward when starting in that state and taking that action:
+
+qπ(s, a) =
+
+∞
+
+(cid:88)k=1
+
+Eπ[Rt+k −
+
+¯r(π)
+
+|
+
+St = s, At = a] .
+
+We call these relative values because they are relative to the average reward
+under the current policy.
+
+There are subtle distinctions that need to be drawn between diﬀerent kinds
+of optimality in the undiscounted continuing case. Nevertheless, for most
+practical purposes it may be adequate simply to order policies according to
+their average reward per time step, in other words, according to their ¯r(π).
+For now let us consider all policies that attain the maximal value of ¯r(π) to
+be optimal.
+
+Other than its use of relative values, R-learning is a standard TD control
+method based on oﬀ-policy GPI, much like Q-learning. It maintains two poli-
+cies, a behavior policy and an estimation policy, plus an action-value function
+and an estimated average reward. The behavior policy is used to generate
+experience; it might be the ε-greedy policy with respect to the action-value
+function. The estimation policy is the one involved in GPI. It is typically the
+greedy policy with respect to the action-value function. If π is the estimation
+policy, then the action-value function, Q, is an approximation of qπ and the
+average reward, ¯R, is an approximation of ¯r(π). The complete algorithm is
+given in Figure 11.2.
+
+262
+
+CHAPTER 11. POLICY APPROXIMATION
+
+Initialize ¯R and Q(s, a), for all s, a, arbitrarily
+Repeat forever:
+
+←
+
+current state
+
+S
+Choose action A in S using behavior policy (e.g., (cid:15)-greedy)
+Take action A, observe R, S(cid:48)
+¯R + maxa Q(S(cid:48), a)
+δ
+←
+−
+Q(S, A)
+Q(S, A) + αδ
+If Q(S, A) = maxa Q(S, a), then:
+
+Q(S, A)
+
+−
+
+R
+
+←
+¯R + βδ
+
+¯R
+
+←
+
+Figure 11.2: R-learning: An oﬀ-policy TD control algorithm for undiscounted,
+continuing tasks. The scalars α and β are step-size parameters.
+
+Example 11.1: An Access-Control Queuing Task This is a decision
+task involving access control to a set of n servers. Customers of four diﬀerent
+priorities arrive at a single queue. If given access to a server, the customers
+pay a reward of 1, 2, 4, or 8, depending on their priority, with higher priority
+customers paying more. In each time step, the customer at the head of the
+queue is either accepted (assigned to one of the servers) or rejected (removed
+from the queue).
+In either case, on the next time step the next customer
+in the queue is considered. The queue never empties, and the proportion of
+(randomly distributed) high priority customers in the queue is h. Of course a
+customer can be served only if there is a free server. Each busy server becomes
+free with probability p on each time step. Although we have just described
+them for deﬁniteness, let us assume the statistics of arrivals and departures are
+unknown. The task is to decide on each step whether to accept or reject the
+next customer, on the basis of his priority and the number of free servers, so
+as to maximize long-term reward without discounting. Figure 11.3 shows the
+solution found by R-learning for this task with n = 10, h = 0.5, and p = 0.06.
+The R-learning parameters were α = 0.01, β = 0.01, and (cid:15) = 0.1. The initial
+action values and ¯R were zero.
+
+Exercises
+
+∗Exercise 11.1 Design an on-policy method for undiscounted, continuing
+tasks.
+
+11.3. R-LEARNING AND THE AVERAGE-REWARD SETTING
+
+263
+
+Figure 11.3: The policy and value function found by R-learning on the access-
+control queuing task after 2 million steps. The drop on the right of the graph is
+probably due to insuﬃcient data; many of these states were never experienced.
+The value learned for ¯R was about 2.73.
+
+123456789100!15!10!5057priority 8priority 4priority 2priority 1Number of free servers428ACCEPTREJECT12345678910Number of free serversPriority1POLICYValue ofbest actionVALUEFUNCTION264
+
+CHAPTER 11. POLICY APPROXIMATION
+
+Part III
+
+Frontiers
+
+265
+
+In this last part of the book we discuss some of the frontiers of reinforcement
+learning research, including its relationship to neuroscience and animal learn-
+ing behavior, a sampling of reinforcement learning applications, and prospects
+for the future of reinforcement learning.
+
+267
+
+268
+
+Chapter 12
+
+Psychology
+
+269
+
+270
+
+CHAPTER 12. PSYCHOLOGY
+
+Chapter 13
+
+Neuroscience
+
+271
+
+272
+
+CHAPTER 13. NEUROSCIENCE
+
+Chapter 14
+
+Applications and Case Studies
+
+In this ﬁnal chapter we present a few case studies of reinforcement learning.
+Several of these are substantial applications of potential economic signiﬁcance.
+One, Samuel’s checkers player, is primarily of historical interest. Our presen-
+tations are intended to illustrate some of the trade-oﬀs and issues that arise in
+real applications. For example, we emphasize how domain knowledge is incor-
+porated into the formulation and solution of the problem. We also highlight
+the representation issues that are so often critical to successful applications.
+The algorithms used in some of these case studies are substantially more com-
+plex than those we have presented in the rest of the book. Applications of
+reinforcement learning are still far from routine and typically require as much
+art as science. Making applications easier and more straightforward is one of
+the goals of current research in reinforcement learning.
+
+14.1 TD-Gammon
+
+One of the most impressive applications of reinforcement learning to date is
+that by Gerry Tesauro to the game of backgammon (Tesauro, 1992, 1994,
+1995). Tesauro’s program, TD-Gammon, required little backgammon knowl-
+edge, yet learned to play extremely well, near the level of the world’s strongest
+grandmasters. The learning algorithm in TD-Gammon was a straightforward
+combination of the TD(λ) algorithm and nonlinear function approximation
+using a multilayer neural network trained by backpropagating TD errors.
+
+Backgammon is a major game in the sense that it is played throughout the
+world, with numerous tournaments and regular world championship matches.
+It is in part a game of chance, and it is a popular vehicle for waging signiﬁcant
+sums of money. There are probably more professional backgammon players
+
+273
+
+274
+
+CHAPTER 14. APPLICATIONS AND CASE STUDIES
+
+Figure 14.1: A backgammon position
+
+than there are professional chess players. The game is played with 15 white
+and 15 black pieces on a board of 24 locations, called points. Figure 14.1 shows
+a typical position early in the game, seen from the perspective of the white
+player.
+
+In this ﬁgure, white has just rolled the dice and obtained a 5 and a 2. This
+means that he can move one of his pieces 5 steps and one (possibly the same
+piece) 2 steps. For example, he could move two pieces from the 12 point, one
+to the 17 point, and one to the 14 point. White’s objective is to advance all of
+his pieces into the last quadrant (points 19–24) and then oﬀ the board. The
+ﬁrst player to remove all his pieces wins. One complication is that the pieces
+interact as they pass each other going in diﬀerent directions. For example, if
+it were black’s move in Figure 14.1, he could use the dice roll of 2 to move a
+piece from the 24 point to the 22 point, “hitting” the white piece there. Pieces
+that have been hit are placed on the “bar” in the middle of the board (where
+we already see one previously hit black piece), from whence they reenter the
+race from the start. However, if there are two pieces on a point, then the
+opponent cannot move to that point; the pieces are protected from being hit.
+Thus, white cannot use his 5–2 dice roll to move either of his pieces on the 1
+point, because their possible resulting points are occupied by groups of black
+pieces. Forming contiguous blocks of occupied points to block the opponent is
+one of the elementary strategies of the game.
+
+Backgammon involves several further complications, but the above descrip-
+tion gives the basic idea. With 30 pieces and 24 possible locations (26, count-
+ing the bar and oﬀ-the-board) it should be clear that the number of possible
+backgammon positions is enormous, far more than the number of memory el-
+ements one could have in any physically realizable computer. The number of
+moves possible from each position is also large. For a typical dice roll there
+might be 20 diﬀerent ways of playing. In considering future moves, such as
+
+white pieces move    counterclockwise123456789101112181716151413192021222324    black pieces move clockwise14.1. TD-GAMMON
+
+275
+
+Figure 14.2: The neural network used in TD-Gammon
+
+the response of the opponent, one must consider the possible dice rolls as well.
+The result is that the game tree has an eﬀective branching factor of about 400.
+This is far too large to permit eﬀective use of the conventional heuristic search
+methods that have proved so eﬀective in games like chess and checkers.
+
+On the other hand, the game is a good match to the capabilities of TD
+learning methods. Although the game is highly stochastic, a complete de-
+scription of the game’s state is available at all times. The game evolves over
+a sequence of moves and positions until ﬁnally ending in a win for one player
+or the other, ending the game. The outcome can be interpreted as a ﬁnal
+reward to be predicted. On the other hand, the theoretical results we have
+described so far cannot be usefully applied to this task. The number of states
+is so large that a lookup table cannot be used, and the opponent is a source
+of uncertainty and time variation.
+
+TD-Gammon used a nonlinear form of TD(λ). The estimated value, ˆv(s),of
+any state (board position) s was meant to estimate the probability of winning
+starting from state s. To achieve this, rewards were deﬁned as zero for all
+time steps except those on which the game is won. To implement the value
+function, TD-Gammon used a standard multilayer neural network, much as
+shown in Figure 14.2. (The real network had two additional units in its ﬁnal
+layer to estimate the probability of each player’s winning in a special way
+called a “gammon” or “backgammon.”) The network consisted of a layer of
+input units, a layer of hidden units, and a ﬁnal output unit. The input to the
+network was a representation of a backgammon position, and the output was
+an estimate of the value of that position.
+
+In the ﬁrst version of TD-Gammon, TD-Gammon 0.0, backgammon posi-
+tions were represented to the network in a relatively direct way that involved
+little backgammon knowledge. It did, however, involve substantial knowledge
+
+Vt+1! Vthidden units (40-80)backgammon position (198 input units)predicted probabilityof winning, VtTD error,. . .. . .. . .. . .. . .. . .15.1.TD-GAMMON263gationalgorithm(Rumelhart,Hinton,andWilliams,1986).Recallthatthegeneralupdateruleforthiscaseiswt+1=wt+↵hRt+1+ ˆv(St+1,wt) ˆv(St,wt)iet,(15.1)wherewtisthevectorofallmodiﬁableparameters(inthiscase,theweightsofthenetwork)andetisavectorofeligibilitytraces,oneforeachcomponentofwt,updatedbyet=  et 1+rwtˆv(St,wt),withe0=0.Thegradientinthisequationcanbecomputede cientlybythebackpropagationprocedure.Forthebackgammonapplication,inwhich =1andtherewardisalwayszeroexceptuponwinning,theTDerrorportionofthelearningruleisusuallyjustˆv(St+1,w) ˆv(St,w),assuggestedinFigure15.2.Toapplythelearningruleweneedasourceofbackgammongames.Tesauroobtainedanunendingsequenceofgamesbyplayinghislearningbackgammonplayeragainstitself.Tochooseitsmoves,TD-Gammonconsideredeachofthe20orsowaysitcouldplayitsdicerollandthecorrespondingpositionsthatwouldresult.TheresultingpositionsareafterstatesasdiscussedinSection6.8.Thenetworkwasconsultedtoestimateeachoftheirvalues.Themovewasthenselectedthatwouldleadtothepositionwiththehighestestimatedvalue.Continuinginthisway,withTD-Gammonmakingthemovesforbothsides,itwaspossibletoeasilygeneratelargenumbersofbackgammongames.Eachgamewastreatedasanepisode,withthesequenceofpositionsactingasthestates,S0,S1,S2,....TesauroappliedthenonlinearTDrule(15.1)fullyincrementally,thatis,aftereachindividualmove.Theweightsofthenetworkweresetinitiallytosmallrandomvalues.Theinitialevaluationswerethusentirelyarbitrary.Sincethemoveswereselectedonthebasisoftheseevaluations,theinitialmoveswereinevitablypoor,andtheinitialgamesoftenlastedhundredsorthousandsofmovesbeforeonesideortheotherwon,almostbyaccident.Afterafewdozengameshowever,performanceimprovedrapidly.Afterplayingabout300,000gamesagainstitself,TD-Gammon0.0asde-scribedabovelearnedtoplayapproximatelyaswellasthebestpreviousbackgammoncomputerprograms.Thiswasastrikingresultbecausealltheprevioushigh-performancecomputerprogramshadusedextensivebackgam-monknowledge.Forexample,thereigningchampionprogramatthetimewas,arguably,Neurogammon,anotherprogramwrittenbyTesaurothatusedaneuralnetworkbutnotTDlearning.Neurogammon’snetworkwastrainedonalargetrainingcorpusofexemplarymovesprovidedbybackgammonex-perts,and,inaddition,startedwithasetoffeaturesspeciallycraftedforTD error15.1.TD-GAMMON263gationalgorithm(Rumelhart,Hinton,andWilliams,1986).Recallthatthegeneralupdateruleforthiscaseiswt+1=wt+↵hRt+1+ ˆv(St+1,wt) ˆv(St,wt)iet,(15.1)wherewtisthevectorofallmodiﬁableparameters(inthiscase,theweightsofthenetwork)andetisavectorofeligibilitytrace

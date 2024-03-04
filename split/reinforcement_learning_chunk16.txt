@@ -1,0 +1,289 @@
+bler’s problem for ph = 0.4. The upper
+graph shows the value function found by successive sweeps of value iteration.
+The lower graph shows the ﬁnal policy.
+
+99755025111020304050100.20.40.60.8125507599CapitalCapitalValueestimatesFinalpolicy(stake)sweep 1sweep 2sweep 3sweep 324.5. ASYNCHRONOUS DYNAMIC PROGRAMMING
+
+103
+
+other states happen to be available. The values of some states may be backed
+up several times before the values of others are backed up once. To converge
+correctly, however, an asynchronous algorithm must continue to backup the
+values of all the states:
+it can’t ignore any state after some point in the
+computation. Asynchronous DP algorithms allow great ﬂexibility in selecting
+states to which backup operations are applied.
+
+≤
+
+For example, one version of asynchronous value iteration backs up the
+value, in place, of only one state, sk, on each step, k, using the value iteration
+γ < 1, asymptotic convergence to v
+is guaranteed given
+backup (4.10). If 0
+∗
+only that all states occur in the sequence
+an inﬁnite number of times
+(the sequence could even be stochastic). (In the undiscounted episodic case,
+it is possible that there are some orderings of backups that do not result in
+convergence, but it is relatively easy to avoid these.) Similarly, it is possible
+to intermix policy evaluation and value iteration backups to produce a kind
+of asynchronous truncated policy iteration. Although the details of this and
+other more unusual DP algorithms are beyond the scope of this book, it is clear
+that a few diﬀerent backups form building blocks that can be used ﬂexibly in
+a wide variety of sweepless DP algorithms.
+
+sk}
+{
+
+Of course, avoiding sweeps does not necessarily mean that we can get away
+with less computation. It just means that an algorithm does not need to get
+locked into any hopelessly long sweep before it can make progress improving a
+policy. We can try to take advantage of this ﬂexibility by selecting the states
+to which we apply backups so as to improve the algorithm’s rate of progress.
+We can try to order the backups to let value information propagate from state
+to state in an eﬃcient way. Some states may not need their values backed up
+as often as others. We might even try to skip backing up some states entirely
+if they are not relevant to optimal behavior. Some ideas for doing this are
+discussed in Chapter 8.
+
+Asynchronous algorithms also make it easier to intermix computation with
+real-time interaction. To solve a given MDP, we can run an iterative DP
+algorithm at the same time that an agent is actually experiencing the MDP.
+The agent’s experience can be used to determine the states to which the DP
+algorithm applies its backups. At the same time, the latest value and policy
+information from the DP algorithm can guide the agent’s decision-making. For
+example, we can apply backups to states as the agent visits them. This makes
+it possible to focus the DP algorithm’s backups onto parts of the state set that
+are most relevant to the agent. This kind of focusing is a repeated theme in
+reinforcement learning.
+
+104
+
+CHAPTER 4. DYNAMIC PROGRAMMING
+
+4.6 Generalized Policy Iteration
+
+Policy iteration consists of two simultaneous, interacting processes, one making
+the value function consistent with the current policy (policy evaluation), and
+the other making the policy greedy with respect to the current value function
+(policy improvement). In policy iteration, these two processes alternate, each
+completing before the other begins, but this is not really necessary. In value
+iteration, for example, only a single iteration of policy evaluation is performed
+in between each policy improvement. In asynchronous DP methods, the eval-
+uation and improvement processes are interleaved at an even ﬁner grain. In
+some cases a single state is updated in one process before returning to the
+other. As long as both processes continue to update all states, the ultimate
+result is typically the same—convergence to the optimal value function and an
+optimal policy.
+
+We use the term generalized policy iteration (GPI) to refer to the general
+idea of letting policy evaluation and policy improvement processes interact,
+independent of the granularity and other details of the two processes. Almost
+all reinforcement learning methods are well described as GPI. That is, all
+have identiﬁable policies and value functions, with the policy always being
+improved with respect to the value function and the value function always
+being driven toward the value function for the policy. This overall schema for
+GPI is illustrated in Figure 4.7.
+
+It is easy to see that if both the evaluation process and the improvement
+process stabilize, that is, no longer produce changes, then the value function
+and policy must be optimal. The value function stabilizes only when it is con-
+sistent with the current policy, and the policy stabilizes only when it is greedy
+with respect to the current value function. Thus, both processes stabilize only
+when a policy has been found that is greedy with respect to its own evaluation
+function. This implies that the Bellman optimality equation (4.1) holds, and
+thus that the policy and the value function are optimal.
+
+The evaluation and improvement processes in GPI can be viewed as both
+competing and cooperating. They compete in the sense that they pull in op-
+posing directions. Making the policy greedy with respect to the value function
+typically makes the value function incorrect for the changed policy, and mak-
+ing the value function consistent with the policy typically causes that policy no
+longer to be greedy. In the long run, however, these two processes interact to
+ﬁnd a single joint solution: the optimal value function and an optimal policy.
+
+One might also think of the interaction between the evaluation and im-
+provement processes in GPI in terms of two constraints or goals—for example,
+as two lines in two-dimensional space:
+
+4.6. GENERALIZED POLICY ITERATION
+
+105
+
+Figure 4.7: Generalized policy iteration: Value and policy functions interact
+until they are optimal and thus consistent with each other.
+
+Although the real geometry is much more complicated than this, the diagram
+suggests what happens in the real case. Each process drives the value function
+or policy toward one of the lines representing a solution to one of the two
+goals. The goals interact because the two lines are not orthogonal. Driving
+directly toward one goal causes some movement away from the other goal.
+Inevitably, however, the joint process is brought closer to the overall goal of
+optimality. The arrows in this diagram correspond to the behavior of policy
+iteration in that each takes the system all the way to achieving one of the two
+goals completely. In GPI one could also take smaller, incomplete steps toward
+each goal. In either case, the two processes together achieve the overall goal
+
+πvevaluationv → vπimprovementπ→greedy(v)v*π*v0  π0  v  =  vππ  =  greedy(v)v*  π*  106
+
+CHAPTER 4. DYNAMIC PROGRAMMING
+
+of optimality even though neither is attempting to achieve it directly.
+
+4.7 Eﬃciency of Dynamic Programming
+
+DP may not be practical for very large problems, but compared with other
+methods for solving MDPs, DP methods are actually quite eﬃcient.
+If we
+ignore a few technical details, then the (worst case) time DP methods take to
+ﬁnd an optimal policy is polynomial in the number of states and actions. If n
+and m denote the number of states and actions, this means that a DP method
+takes a number of computational operations that is less than some polynomial
+function of n and m. A DP method is guaranteed to ﬁnd an optimal policy in
+polynomial time even though the total number of (deterministic) policies is mn.
+In this sense, DP is exponentially faster than any direct search in policy space
+could be, because direct search would have to exhaustively examine each policy
+to provide the same guarantee. Linear programming methods can also be used
+to solve MDPs, and in some cases their worst-case convergence guarantees are
+better than those of DP methods. But linear programming methods become
+impractical at a much smaller number of states than do DP methods (by a
+factor of about 100). For the largest problems, only DP methods are feasible.
+
+DP is sometimes thought to be of limited applicability because of the curse
+of dimensionality (Bellman, 1957a), the fact that the number of states often
+grows exponentially with the number of state variables. Large state sets do
+create diﬃculties, but these are inherent diﬃculties of the problem, not of DP
+as a solution method. In fact, DP is comparatively better suited to handling
+large state spaces than competing methods such as direct search and linear
+programming.
+
+In practice, DP methods can be used with today’s computers to solve
+MDPs with millions of states. Both policy iteration and value iteration are
+widely used, and it is not clear which, if either, is better in general. In practice,
+these methods usually converge much faster than their theoretical worst-case
+run times, particularly if they are started with good initial value functions or
+policies.
+
+On problems with large state spaces, asynchronous DP methods are of-
+ten preferred. To complete even one sweep of a synchronous method requires
+computation and memory for every state. For some problems, even this much
+memory and computation is impractical, yet the problem is still potentially
+solvable because only a relatively few states occur along optimal solution tra-
+jectories. Asynchronous methods and other variations of GPI can be applied in
+such cases and may ﬁnd good or optimal policies much faster than synchronous
+
+4.8. SUMMARY
+
+methods can.
+
+4.8 Summary
+
+107
+
+In this chapter we have become familiar with the basic ideas and algorithms of
+dynamic programming as they relate to solving ﬁnite MDPs. Policy evaluation
+refers to the (typically) iterative computation of the value functions for a
+given policy. Policy improvement refers to the computation of an improved
+policy given the value function for that policy. Putting these two computations
+together, we obtain policy iteration and value iteration, the two most popular
+DP methods. Either of these can be used to reliably compute optimal policies
+and value functions for ﬁnite MDPs given complete knowledge of the MDP.
+
+Classical DP methods operate in sweeps through the state set, performing
+a full backup operation on each state. Each backup updates the value of one
+state based on the values of all possible successor states and their probabilities
+of occurring. Full backups are closely related to Bellman equations: they are
+little more than these equations turned into assignment statements. When the
+backups no longer result in any changes in value, convergence has occurred to
+values that satisfy the corresponding Bellman equation. Just as there are
+four primary value functions (vπ, v
+), there are four corresponding
+Bellman equations and four corresponding full backups. An intuitive view of
+the operation of backups is given by backup diagrams.
+
+, qπ, and q
+
+∗
+
+∗
+
+Insight into DP methods and, in fact, into almost all reinforcement learn-
+ing methods, can be gained by viewing them as generalized policy iteration
+(GPI). GPI is the general idea of two interacting processes revolving around
+an approximate policy and an approximate value function. One process takes
+the policy as given and performs some form of policy evaluation, changing the
+value function to be more like the true value function for the policy. The other
+process takes the value function as given and performs some form of policy
+improvement, changing the policy to make it better, assuming that the value
+function is its value function. Although each process changes the basis for the
+other, overall they work together to ﬁnd a joint solution: a policy and value
+function that are unchanged by either process and, consequently, are optimal.
+In some cases, GPI can be proved to converge, most notably for the classical
+DP methods that we have presented in this chapter. In other cases convergence
+has not been proved, but still the idea of GPI improves our understanding of
+the methods.
+
+It is not necessary to perform DP methods in complete sweeps through the
+state set. Asynchronous DP methods are in-place iterative methods that back
+
+108
+
+CHAPTER 4. DYNAMIC PROGRAMMING
+
+up states in an arbitrary order, perhaps stochastically determined and using
+out-of-date information. Many of these methods can be viewed as ﬁne-grained
+forms of GPI.
+
+Finally, we note one last special property of DP methods. All of them
+update estimates of the values of states based on estimates of the values of
+successor states. That is, they update estimates on the basis of other estimates.
+We call this general idea bootstrapping. Many reinforcement learning methods
+perform bootstrapping, even those that do not require, as DP requires, a
+In the next chapter we
+complete and accurate model of the environment.
+explore reinforcement learning methods that do not require a model and do
+not bootstrap. In the chapter after that we explore methods that do not require
+a model but do bootstrap. These key features and properties are separable,
+yet can be mixed in interesting combinations.
+
+Bibliographical and Historical Remarks
+
+The term “dynamic programming” is due to Bellman (1957a), who showed
+how these methods could be applied to a wide range of problems. Extensive
+treatments of DP can be found in many texts, including Bertsekas (1995),
+Bertsekas and Tsitsiklis (1996), Dreyfus and Law (1977), Ross (1983), White
+(1969), and Whittle (1982, 1983). Our interest in DP is restricted to its use
+in solving MDPs, but DP also applies to other types of problems. Kumar and
+Kanal (1988) provide a more general look at DP.
+
+To the best of our knowledge, the ﬁrst connection between DP and rein-
+forcement learning was made by Minsky (1961) in commenting on Samuel’s
+In a footnote, Minsky mentioned that it is possible to ap-
+checkers player.
+ply DP to problems in which Samuel’s backing-up process can be handled in
+closed analytic form. This remark may have misled artiﬁcial intelligence re-
+searchers into believing that DP was restricted to analytically tractable prob-
+lems and therefore largely irrelevant to artiﬁcial intelligence. Andreae (1969b)
+mentioned DP in the context of reinforcement learning, speciﬁcally policy iter-
+ation, although he did not make speciﬁc connections between DP and learning
+algorithms. Werbos (1977) suggested an approach to approximating DP called
+“heuristic dynamic programming” that emphasizes gradient-descent methods
+for continuous-state problems (Werbos, 1982, 1987, 1988, 1989, 1992). These
+methods are closely related to the reinforcement learning algorithms that we
+discuss in this book. Watkins (1989) was explicit in connecting reinforcement
+learning to DP, characterizing a class of reinforcement learning methods as
+“incremental dynamic programming.”
+
+4.8. SUMMARY
+
+109
+
+4.1–4 These sections describe well-established DP algorithms that are covered
+in any of the general DP references cited above. The policy improve-
+ment theorem and the policy iteration algorithm are due to Bellman
+(1957a) and Howard (1960). Our presentation was inﬂuenced by the
+local view of policy improvement taken by Watkins (1989). Our discus-
+sion of value iteration as a form of truncated policy iteration is based
+on the approach of Puterman and Shin (1978), who presented a class
+of algorithms called modiﬁed policy

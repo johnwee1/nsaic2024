@@ -1,0 +1,391 @@
+ it would do the most good. In the much larger problems
+that are our real objective, the number of states is so large that an unfocused
+search would be extremely ineﬃcient.
+
+This example suggests that search might be usefully focused by working
+backward from goal states. Of course, we do not really want to use any methods
+speciﬁc to the idea of “goal state.” We want methods that work for general
+reward functions. Goal states are just a special case, convenient for stimulating
+intuition. In general, we want to work back not just from goal states but from
+any state whose value has changed. Assume that the values are initially correct
+given the model, as they were in the maze example prior to discovering the
+goal. Suppose now that the agent discovers a change in the environment and
+changes its estimated value of one state. Typically, this will imply that the
+values of many other states should also be changed, but the only useful one-
+step backups are those of actions that lead directly into the one state whose
+value has already been changed. If the values of these actions are updated,
+
+1The Dyna-Q+ agent was changed in two other ways as well. First, actions that had
+never before been tried before from a state were allowed to be considered in the planning
+step (f) of Figure 8.4. Second, the initial model for such actions was that they would lead
+back to the same state with a reward of zero.
+
+8.4. PRIORITIZED SWEEPING
+
+207
+
+then the values of the predecessor states may change in turn. If so, then actions
+leading into them need to be backed up, and then their predecessor states may
+have changed. In this way one can work backward from arbitrary states that
+have changed in value, either performing useful backups or terminating the
+propagation.
+
+As the frontier of useful backups propagates backward,
+
+it often grows
+rapidly, producing many state–action pairs that could usefully be backed up.
+But not all of these will be equally useful. The values of some states may
+have changed a lot, whereas others have changed little. The predecessor pairs
+of those that have changed a lot are more likely to also change a lot. In a
+stochastic environment, variations in estimated transition probabilities also
+contribute to variations in the sizes of changes and in the urgency with which
+pairs need to be backed up. It is natural to prioritize the backups according to
+a measure of their urgency, and perform them in order of priority. This is the
+idea behind prioritized sweeping. A queue is maintained of every state–action
+pair whose estimated value would change nontrivially if backed up, prioritized
+by the size of the change. When the top pair in the queue is backed up, the
+eﬀect on each of its predecessor pairs is computed.
+If the eﬀect is greater
+than some small threshold, then the pair is inserted in the queue with the new
+priority (if there is a previous entry of the pair in the queue, then insertion re-
+sults in only the higher priority entry remaining in the queue). In this way the
+eﬀects of changes are eﬃciently propagated backward until quiescence. The
+full algorithm for the case of deterministic environments is given in Figure 8.9.
+
+Example 8.4: Prioritized Sweeping on Mazes
+Prioritized sweeping
+has been found to dramatically increase the speed at which optimal solutions
+are found in maze tasks, often by a factor of 5 to 10. A typical example is
+shown in Figure 8.10. These data are for a sequence of maze tasks of exactly
+the same structure as the one shown in Figure 8.5, except that they vary
+in the grid resolution. Prioritized sweeping maintained a decisive advantage
+over unprioritized Dyna-Q. Both systems made at most n = 5 backups per
+environmental interaction.
+
+Example 8.5: Rod Maneuvering The objective in this task is to maneuver
+a rod around some awkwardly placed obstacles to a goal position in the fewest
+number of steps (Figure 8.11). The rod can be translated along its long axis
+or perpendicular to that axis, or it can be rotated in either direction around
+its center. The distance of each movement is approximately 1/20 of the work
+space, and the rotation increment is 10 degrees. Translations are deterministic
+and quantized to one of 20
+20 positions. The ﬁgure shows the obstacles and
+the shortest solution from start to goal, found by prioritized sweeping. This
+problem is still deterministic, but has four actions and 14,400 potential states
+(some of these are unreachable because of the obstacles). This problem is
+
+×
+
+208CHAPTER 8. PLANNING AND LEARNING WITH TABULAR METHODS
+
+←
+←
+
+current (nonterminal) state
+policy(S, Q)
+
+Initialize Q(s, a), M odel(s, a), for all s, a, and P Queue to empty
+Do forever:
+(a) S
+(b) A
+(c) Execute action A; observe resultant reward, R, and state, S(cid:48)
+(d) M odel(S, A)
+(e) P
+(f) if P > θ, then insert S, A into P Queue with priority P
+(g) Repeat n times, while P Queue is not empty:
+
+R + γ maxa Q(S(cid:48), a)
+
+.
+Q(S, A)
+|
+
+R, S(cid:48)
+
+← |
+
+←
+
+−
+
+f irst(P Queue)
+M odel(S, A)
+
+S, A
+←
+R, S(cid:48) ←
+Q(S, A)
+R + γ maxa Q(S(cid:48), a)
+Repeat, for all ¯S, ¯A predicted to lead to S:
+
+Q(S, A) + α
+
+←
+(cid:2)
+predicted reward for ¯S, ¯A, S
+¯R + γ maxa Q(S, a)
+
+¯R
+P
+−
+if P > θ then insert ¯S, ¯A into P Queue with priority P
+
+Q( ¯S, ¯A)
+
+←
+← |
+
+Q(S, A)
+
+−
+
+.
+|
+
+(cid:3)
+
+Figure 8.9: The prioritized sweeping algorithm for a deterministic environ-
+ment.
+
+Figure 8.10: Prioritized sweeping signiﬁcantly shortens learning time on the
+Dyna maze task for a wide range of grid resolutions. Reprinted from Peng and
+Williams (1993).
+
+Backupsuntiloptimalsolution1010310410510610710204794186376752150430086016Gridworld size (#states)Dyna-Qprioritizedsweeping8.4. PRIORITIZED SWEEPING
+
+209
+
+Figure 8.11: A rod-maneuvering task and its solution by prioritized sweeping.
+Reprinted from Moore and Atkeson (1993).
+
+probably too large to be solved with unprioritized methods.
+
+Prioritized sweeping is clearly a powerful idea, but the algorithms that have
+been developed so far appear not to extend easily to more interesting cases.
+The greatest problem is that the algorithms appear to rely on the assumption
+of discrete states. When a change occurs at one state, these methods perform
+a computation on all the predecessor states that may have been aﬀected. If
+function approximation is used to learn the model or the value function, then
+a single backup could inﬂuence a great many other states. It is not apparent
+how these states could be identiﬁed or processed eﬃciently. On the other hand,
+the general idea of focusing search on the states believed to have changed in
+value, and then on their predecessors, seems intuitively to be valid in general.
+Additional research may produce more general versions of prioritized sweeping.
+
+Extensions of prioritized sweeping to stochastic environments are relatively
+straightforward. The model is maintained by keeping counts of the number of
+times each state–action pair has been experienced and of what the next states
+were. It is natural then to backup each pair not with a sample backup, as we
+have been using so far, but with a full backup, taking into account all possible
+next states and their probabilities of occurring.
+
+StartGoal210CHAPTER 8. PLANNING AND LEARNING WITH TABULAR METHODS
+
+8.5 Full vs. Sample Backups
+
+The examples in the previous sections give some idea of the range of possi-
+bilities for combining methods of learning and planning. In the rest of this
+chapter, we analyze some of the component ideas involved, starting with the
+relative advantages of full and sample backups.
+
+∗
+
+∗
+
+, v
+
+Much of this book has been about diﬀerent kinds of backups, and we have
+considered a great many varieties. Focusing for the moment on one-step back-
+ups, they vary primarily along three binary dimensions. The ﬁrst two dimen-
+sions are whether they back up state values or action values and whether they
+estimate the value for the optimal policy or for an arbitrary given policy. These
+two dimensions give rise to four classes of backups for approximating the four
+value functions, q
+, qπ, and vπ. The other binary dimension is whether the
+backups are full backups, considering all possible events that might happen,
+or sample backups, considering a single sample of what might happen. These
+three binary dimensions give rise to eight cases, seven of which correspond to
+speciﬁc algorithms, as shown in Figure 8.12. (The eighth case does not seem
+to correspond to any useful backup.) Any of these one-step backups can be
+used in planning methods. The Dyna-Q agents discussed earlier use q
+sample
+backups, but they could just as well use q
+full backups, or either full or sam-
+ple qπ backups. The Dyna-AC system uses vπ sample backups together with
+a learning policy structure. For stochastic problems, prioritized sweeping is
+always done using one of the full backups.
+
+∗
+
+∗
+
+When we introduced one-step sample backups in Chapter 6, we presented
+them as substitutes for full backups. In the absence of a distribution model,
+full backups are not possible, but sample backups can be done using sample
+transitions from the environment or a sample model. Implicit in that point
+of view is that full backups, if possible, are preferable to sample backups.
+But are they? Full backups certainly yield a better estimate because they are
+uncorrupted by sampling error, but they also require more computation, and
+computation is often the limiting resource in planning. To properly assess the
+relative merits of full and sample backups for planning we must control for
+their diﬀerent computational requirements.
+
+For concreteness, consider the full and sample backups for approximating
+q
+, and the special case of discrete states and actions, a table-lookup repre-
+∗
+sentation of the approximate value function, Q, and a model in the form of
+estimated dynamics, ˆp(s(cid:48), r
+s, a). The full backup for a state–action pair, s, a,
+|
+is:
+
+Q(s, a)
+
+←
+
+(cid:88)s(cid:48),r
+
+ˆp(s(cid:48), r
+
+s, a)
+|
+
+(cid:104)
+
+r + γ max
+
+a(cid:48)
+
+Q(s(cid:48), a(cid:48))
+
+.
+
+(cid:105)
+
+(8.1)
+
+8.5. FULL VS. SAMPLE BACKUPS
+
+211
+
+Figure 8.12: The one-step backups.
+
+Full backups(DP)Sample backups(one-step TD)ValueestimatedV!(s)V*(s)Q!(a,s)Q*(a,s)sas'rpolicy evaluationsas'rmaxvalue iterationsars'TD(0)s,aa's'rQ-policy  evaluations,aa's'rmaxQ-value iterations,aa's'rSarsas,aa's'rQ-learningmaxS'RS'Rvπv*qπq*ARS'A'212CHAPTER 8. PLANNING AND LEARNING WITH TABULAR METHODS
+
+The corresponding sample backup for s, a, given a sample next state and re-
+ward, S(cid:48) and R (from the model), is the Q-learning-like update:
+
+Q(s, a)
+
+←
+
+Q(s, a) + α
+
+R + γ max
+
+a(cid:48)
+
+Q(S(cid:48), a(cid:48))
+
+where α is the usual positive step-size parameter.
+
+(cid:104)
+
+−
+
+Q(s, a)
+
+,
+
+(cid:105)
+
+(8.2)
+
+The diﬀerence between these full and sample backups is signiﬁcant to the
+extent that the environment is stochastic, speciﬁcally, to the extent that, given
+a state and action, many possible next states may occur with various probabil-
+ities. If only one next state is possible, then the full and sample backups given
+above are identical (taking α = 1). If there are many possible next states, then
+there may be signiﬁcant diﬀerences. In favor of the full backup is that it is an
+exact computation, resulting in a new Q(s, a) whose correctness is limited only
+by the correctness of the Q(s(cid:48), a(cid:48)) at successor states. The sample backup is
+in addition aﬀected by sampling error. On the other hand, the sample backup
+is cheaper computationally because it considers only one next state, not all
+possible next states. In practice, the computation required by backup oper-
+ations is usually dominated by the number of state–action pairs at which Q
+is evaluated. For a particular starting pair, s, a, let b be the branching factor
+(i.e., the number of possible next states, s(cid:48), for which ˆp(s(cid:48)
+s, a) > 0). Then
+|
+a full backup of this pair requires roughly b times as much computation as a
+sample backup.
+
+If there is enough time to complete a full backup, then the resulting esti-
+mate is generally better than that of b sample backups because of the absence
+of sampling error. But if there is insuﬃcient time to complete a full backup,
+then sample backups are always preferable because they at least make some
+improvement in the value estimate with fewer than b backups. In a large prob-
+lem with many state–action pairs, we are often in the latter situation. With
+so many state–action pairs, full backups of all of them would take a very long
+time. Before that we may be much better oﬀ with a few sample backups at
+many state–action pairs than with full backups at a few pairs. Given a unit
+of computational eﬀort, is it better devoted to a few full backups or to b times
+as many sample backups?
+
+Figure 8.13 shows the results of an analysis that suggests an answer to
+this question.
+It shows the estimation error as a function of computation
+time for full and sample backups for a variety of branching factors, b. The
+case considered is that in which all b successor states are equally likely and
+in which the error in the initial estimate is 1. The values at the next states
+are assumed correct, so the full backup reduces the error to zero upon its
+1
+completion. In this case, sample backups reduce the error according to
+−
+bt
+where t is the number of sample backups that have been performed (assuming
+
+b
+
+(cid:113)
+
+8.6. TRAJECTORY SAMPLING
+
+213
+
+Figure 8.13: Comparison of eﬃciency of full and sample backups.
+
+sample averages, i.e., α = 1/t). The key observation is that for moderately
+large b the error falls dramatically with a tiny fraction of b backups. For these
+cases, many state–action pairs could have their values improved dramatically,
+to within a few percent of the eﬀect of a full backup, in the same time that
+one state–action pair could be backed up fully.
+
+The advantage of sample backups shown in Figure 8.13 is probably an
+underestimate of the real eﬀect. In a real problem, the values of the succes-
+sor states would themselves be estimates updated by backups. By causing
+estimates to be more accurate sooner, sample backups will have a second ad-
+vantage in that the values backed up from the successor states will be more
+accurate. These results suggest that sample backups are likely to be superior
+to full backups on problems with large stochastic branching factors and too
+many states to be solved exactly.
+
+8.6 Trajectory Sampling
+
+In this section we compare two ways of distributing backups. The classical
+approach, from dynamic programming, is to perform sweeps through the entire
+state (or state–action) space, backing up each state (or state–action pair) once
+per sweep. This is problematic on large tasks because there may not be time
+to complete even one sweep. In many tasks the vast majority of the states are
+irrelevant because they are visited only under very poor policies or with very
+low probability. Exhaustive sweeps implicitly devote equal time to all parts
+
+b = 2 (branching factor)b =10b =100b =1000b =10,000samplebackupsfullbackups1001b2bRMS errorin valueestimateNumber of                         computationsmaxa0Q(s0,a0)214CHAPTER 8. PLANNING AND LEARNING WITH TABULAR METHODS
+
+of the state space rather than focusing where it is needed. As we discussed in
+Chapter 4, exhaustive sweeps and the equal treatment of all states that they
+imply are not necessary properties of dynamic programming.
+In principle,
+backups can be distributed any way one likes (to assure convergence, all states
+or state–action pairs must be visite

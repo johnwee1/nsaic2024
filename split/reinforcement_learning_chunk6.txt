@@ -1,0 +1,649 @@
+ize parameter of
+1
+k . In this book we denote the step-size parameter by the symbol α or, more
+generally, by αt(a). We sometimes use the informal shorthand α = 1
+k to refer
+to this case, leaving the dependence of k on the action implicit.
+
+2.4 Tracking a Nonstationary Problem
+
+The averaging methods discussed so far are appropriate in a stationary envi-
+ronment, but not if the bandit is changing over time. As noted earlier, we
+often encounter reinforcement learning problems that are eﬀectively nonsta-
+tionary. In such cases it makes sense to weight recent rewards more heavily
+than long-past ones. One of the most popular ways of doing this is to use a
+constant step-size parameter. For example, the incremental update rule (2.3)
+for updating an average Qk of the k
+
+1 past rewards is modiﬁed to be
+
+−
+
+Qk+1 = Qk + α
+
+Qk
+
+,
+
+(2.5)
+
+Rk −
+(cid:104)
+
+(cid:105)
+
+where the step-size parameter α
+∈
+being a weighted average of past rewards and the initial estimate Q1:
+
+(0, 1]1 is constant. This results in Qk+1
+
+Qk+1 = Qk + α
+
+Qk
+
+(cid:104)
+= αRk + (1
+= αRk + (1
+= αRk + (1
+= αRk + (1
+
+Rk −
+−
+−
+−
+−
+
+(cid:105)
+α)Qk
+α) [αRk
+α)αRk
+α)αRk
+−
++ (1
+k
+
+−
+
+· · ·
+α)kQ1 +
+
+= (1
+
+−
+
+1]
+
+1 + (1
+−
+1 + (1
+1 + (1
+α)k
+
+α)Qk
+−
+−
+α)2Qk
+1
+−
+−
+α)2αRk
+−
+−
+1αR1 + (1
+−
+
+−
+
+2 +
+
+α)kQ1
+
+−
+
+α(1
+
+−
+
+α)k
+
+iRi.
+−
+
+i=1
+(cid:88)
+
+We call this a weighted average because the sum of the weights is (1
+
+k
+i=1 α(1
+i, given to the reward Ri depends on how many rewards ago, k
+−
+
+i = 1, as you can check yourself. Note that the weight, α(1
+−
+
+−
+i, it was
+
+α)k
+
+−
+
+−
+
+−
+
+α)k
+(cid:80)
+
+1The notation (a, b] as a set denotes the real interval between a and b including b but
+
+not including a. Thus, here we are saying that 0 < α
+
+1.
+
+≤
+
+(2.6)
+
+α)k +
+
+2.5. OPTIMISTIC INITIAL VALUES
+
+39
+
+−
+
+α is less than 1, and thus the weight given to Ri
+observed. The quantity 1
+decreases as the number of intervening rewards increases. In fact, the weight
+α = 0, then
+decays exponentially according to the exponent on 1
+all the weight goes on the very last reward, Rk, because of the convention that
+00 = 1.) Accordingly, this is sometimes called an exponential, recency-weighted
+average.
+
+α. (If 1
+
+−
+
+−
+
+Sometimes it is convenient to vary the step-size parameter from step to
+step. Let αk(a) denote the step-size parameter used to process the reward
+received after the kth selection of action a. As we have noted, the choice
+αk(a) = 1
+k results in the sample-average method, which is guaranteed to con-
+verge to the true action values by the law of large numbers. But of course
+. A well-
+convergence is not guaranteed for all choices of the sequence
+known result in stochastic approximation theory gives us the conditions re-
+quired to assure convergence with probability 1:
+
+αk(a)
+}
+{
+
+∞
+
+αk(a) =
+
+∞
+
+and
+
+∞
+
+α2
+
+k(a) <
+
+.
+∞
+
+(cid:88)k=1
+
+(cid:88)k=1
+The ﬁrst condition is required to guarantee that the steps are large enough to
+eventually overcome any initial conditions or random ﬂuctuations. The second
+condition guarantees that eventually the steps become small enough to assure
+convergence.
+
+(2.7)
+
+Note that both convergence conditions are met for the sample-average case,
+αk(a) = 1
+k , but not for the case of constant step-size parameter, αk(a) = α. In
+the latter case, the second condition is not met, indicating that the estimates
+never completely converge but continue to vary in response to the most re-
+cently received rewards. As we mentioned above, this is actually desirable in
+a nonstationary environment, and problems that are eﬀectively nonstationary
+In addition, sequences of step-size
+are the norm in reinforcement learning.
+parameters that meet the conditions (2.7) often converge very slowly or need
+considerable tuning in order to obtain a satisfactory convergence rate. Al-
+though sequences of step-size parameters that meet these convergence condi-
+tions are often used in theoretical work, they are seldom used in applications
+and empirical research.
+
+2.5 Optimistic Initial Values
+
+All the methods we have discussed so far are dependent to some extent on
+the initial action-value estimates, Q1(a). In the language of statistics, these
+methods are biased by their initial estimates. For the sample-average methods,
+
+40
+
+CHAPTER 2. MULTI-ARM BANDITS
+
+Figure 2.2: The eﬀect of optimistic initial action-value estimates on the 10-
+armed testbed. Both methods used a constant step-size parameter, α = 0.1.
+
+the bias disappears once all actions have been selected at least once, but for
+methods with constant α, the bias is permanent, though decreasing over time
+as given by (2.6). In practice, this kind of bias is usually not a problem, and
+can sometimes be very helpful. The downside is that the initial estimates
+become, in eﬀect, a set of parameters that must be picked by the user, if only
+to set them all to zero. The upside is that they provide an easy way to supply
+some prior knowledge about what level of rewards can be expected.
+
+Initial action values can also be used as a simple way of encouraging ex-
+ploration. Suppose that instead of setting the initial action values to zero, as
+we did in the 10-armed testbed, we set them all to +5. Recall that the q(a)
+in this problem are selected from a normal distribution with mean 0 and vari-
+ance 1. An initial estimate of +5 is thus wildly optimistic. But this optimism
+encourages action-value methods to explore. Whichever actions are initially
+selected, the reward is less than the starting estimates; the learner switches
+to other actions, being “disappointed” with the rewards it is receiving. The
+result is that all actions are tried several times before the value estimates con-
+verge. The system does a fair amount of exploration even if greedy actions are
+selected all the time.
+
+Figure 2.2 shows the performance on the 10-armed bandit testbed of a
+greedy method using Q1(a) = +5, for all a. For comparison, also shown is an
+ε-greedy method with Q1(a) = 0. Initially, the optimistic method performs
+worse because it explores more, but eventually it performs better because its
+exploration decreases with time. We call this technique for encouraging ex-
+ploration optimistic initial values. We regard it as a simple trick that can be
+quite eﬀective on stationary problems, but it is far from being a generally use-
+ful approach to encouraging exploration. For example, it is not well suited to
+
+0%20%40%60%80%100%%Optimalaction02004006008001000Playsoptimistic, greedyQ0 = 5,    = 0realistic, !-greedyQ0 = 0,    = 0.111Steps𝜀𝜀2.6. UPPER-CONFIDENCE-BOUND ACTION SELECTION
+
+41
+
+nonstationary problems because its drive for exploration is inherently tempo-
+rary. If the task changes, creating a renewed need for exploration, this method
+cannot help. Indeed, any method that focuses on the initial state in any special
+way is unlikely to help with the general nonstationary case. The beginning
+of time occurs only once, and thus we should not focus on it too much. This
+criticism applies as well to the sample-average methods, which also treat the
+beginning of time as a special event, averaging all subsequent rewards with
+equal weights. Nevertheless, all of these methods are very simple, and one of
+them or some simple combination of them is often adequate in practice. In the
+rest of this book we make frequent use of several of these simple exploration
+techniques.
+
+2.6 Upper-Conﬁdence-Bound Action Selection
+
+Exploration is needed because the estimates of the action values are uncertain.
+The greedy actions are those that look best at present, but some of the other
+actions may actually be better. ε-greedy action selection forces the non-greedy
+actions to be tried, but indiscriminately, with no preference for those that are
+nearly greedy or particularly uncertain. It would be better to select among
+the non-greedy actions according to their potential for actually being optimal,
+taking into account both how close their estimates are to being maximal and
+the uncertainties in those estimates. One eﬀective way of doing this is to select
+actions as
+
+At = argmax
+
+a
+
+(cid:34)
+
+Qt(a) + c
+
+ln t
+Nt(a) (cid:35)
+
+,
+
+(cid:115)
+
+(2.8)
+
+where ln t denotes the natural logarithm of t (the number that e
+2.71828
+would have to be raised to in order to equal t), and the number c > 0 controls
+the degree of exploration. If Nt(a) = 0, then a is considered to be a maximizing
+action.
+
+≈
+
+The idea of this upper conﬁdence bound (UCB) action selection is that the
+square-root term is a measure of the uncertainty or variance in the estimate
+of a’s value. The quantity being max’ed over is thus a sort of upper bound
+on the possible true value of action a, with the c parameter determining the
+conﬁdence level. Each time a is selected the uncertainty is presumably reduced;
+Nt(a) is incremented and, as it appears in the denominator of the uncertainty
+term, the term is decreased. On the other hand, each time an action other a is
+selected t is increased; as it appears in the numerator the uncertainty estimate
+is increased. The use of the natural logarithm means that the increase gets
+smaller over time, but is unbounded; all actions will eventually be selected, but
+
+42
+
+CHAPTER 2. MULTI-ARM BANDITS
+
+Figure 2.3: Average performance of UCB action selection on the 10-armed
+testbed. As shown, UCB generally performs better that ε-greedy action selec-
+tion, except in the ﬁrst n plays, when it selects randomly among the as-yet-
+unplayed actions. UCB with c = 1 would perform even better but would not
+show the prominent spike in performance on the 11th play. Can you think of
+an explanation of this spike?
+
+as time goes by it will be a longer wait, and thus a lower selection frequency,
+for actions with a lower value estimate or that have already been selected more
+times.
+
+Results with UCB on the 10-armed testbed are shown in Figure 2.3. UCB
+will often perform well, as shown here, but is more diﬃcult than ε-greedy
+to extend beyond bandits to the more general reinforcement learning settings
+considered in the rest of this book. One diﬃculty is in dealing with nonsta-
+tionary problems; something more complex than the methods presented in
+Section 2.4 would be needed. Another diﬃculty is dealing with large state
+spaces, particularly function approximation as developed in Part III of this
+book. In these more advanced settings there is currently no known practical
+way of utilizing the idea of UCB action selection.
+
+2.7 Gradient Bandits
+
+So far in this chapter we have considered methods that estimate action values
+and use those estimates to select actions. This is often a good approach,
+but it is not the only one possible.
+In this section we consider learning a
+numerical preference Ht(a) for each action a. The larger the preference, the
+
+𝜀-greedy  𝜀 = 0.1UCB  c = 2AveragerewardSteps2.7. GRADIENT BANDITS
+
+43
+
+more often that action is taken, but the preference has no interpretation in
+terms of reward. Only the relative preference of one action over another is
+important; if we add 1000 to all the preferences there is no aﬀect on the action
+probabilities, which are determined according to a soft-max distribution (i.e.,
+Gibbs or Boltzmann distribution) as follows:
+
+At = a
+Pr
+{
+
+}
+
+=
+
+eHt(a))
+b=1 eHt(b) = πt(a),
+n
+
+(2.9)
+
+where here we have also introduced a useful new notation πt(a) for the proba-
+bility of taking action a at time t. Initially all preferences are the same (e.g.,
+a) so that all actions have an equal probability of being selected.
+H1(a) = 0,
+
+(cid:80)
+
+∀
+
+There is a natural learning algorithm for this setting based on the idea
+of stochastic gradient ascent. On each step, after selecting the action At and
+receiving the reward Rt, the preferences are updated by:
+
+πt(At)
+
+,
+
+and
+
+(2.10)
+
+Ht+1(At) = Ht(At) + α
+α
+Ht+1(a) = Ht(a)
+
+¯Rt
+Rt −
+¯Rt
+Rt −
+(cid:0)
+(cid:0)
+
+1
+
+−
+πt(a),
+(cid:1)(cid:0)
+
+a
+
+= At,
+
+(cid:1)
+
+(cid:1)
+−
+where α > 0 is a step-size parameter, and ¯Rt ∈
+R is the average of all the
+rewards up through and including time t, which can be computed incrementally
+as described in Section 2.3 (or Section 2.4 if the problem is nonstationary).
+The ¯Rt term serves as a baseline with which the reward is compared. If the
+reward is higher than the baseline, then the probability of taking At in the
+future is increased, and if the reward is below baseline, then probability is
+decreased. The non-selected actions move in the opposite direction.
+
+∀
+
+Figure 2.4 shows results with the gradient-bandit algorithm on a variant
+of the 10-armed testbed in which the true expected rewards were selected
+according to a normal distribution with a mean of +4 instead of zero (and with
+unit variance as before). This shifting up of all the rewards has absolutely no
+aﬀect on the gradient-bandit algorithm because of the reward baseline term,
+which instantaneously adapts to the new level. But if the baseline were omitted
+(that is, if ¯Rt was taken to be constant zero in (2.10)), then performance would
+be signiﬁcantly degraded, as shown in the ﬁgure.
+
+One can gain a deeper insight into this algorithm by understanding it as
+a stochastic approximation to gradient ascent. In exact gradient ascent, each
+preference Ht(a) would be incrementing proportional to the increment’s eﬀect
+on performance:
+
+Ht+1(a) = Ht(a) + α
+
+∂ E [Rt]
+∂Ht(a)
+
+,
+
+(2.11)
+
+where the measure of performance here is the expected reward:
+
+E[Rt] =
+
+πt(b)q(b).
+
+(cid:88)b
+
+(cid:54)
+44
+
+CHAPTER 2. MULTI-ARM BANDITS
+
+Figure 2.4: Average performance of the gradient-bandit algorithm with and
+without a reward baseline on the 10-armed testbed with E[q(a)] = 4.
+
+Of course, it is not possible to implement gradient ascent exactly in our case
+because by assumption we do not know the q(b), but in fact the updates of our
+algorithm (2.10) are equal to (2.11) in expected value, making the algorithm
+an instance of stochastic gradient ascent.
+
+The calculations showing this require only beginning calculus, but take
+several steps. If you are mathematically inclined, then you will enjoy the rest
+of this section in which we go through these steps. First we take a closer look
+at the exact performance gradient:
+
+∂ E[Rt]
+∂Ht(a)
+
+=
+
+=
+
+=
+
+∂
+∂Ht(a) (cid:34)
+
+q(b)
+
+(cid:88)b
+
+q(b)
+
+(cid:88)b
+
+(cid:0)
+
+πt(b)q(b)
+
+(cid:35)
+
+(cid:88)b
+∂ πt(b)
+∂Ht(a)
+
+Xt
+
+−
+
+∂ πt(b)
+∂Ht(a)
+
+,
+
+(cid:1)
+
+where Xt can be any scalar that does not depend on b. We can include it here
+∂ πt(b)
+∂Ht(a) = 0. As
+because the gradient sums to zero over the all the actions,
+Ht(a) is changed, some actions’ probabilities go up and some down, but the
+sum of the changes must be zero because the sum of the probabilities must
+
+(cid:80)
+
+b
+
+%OptimalactionStepsα = 0.1100%80%60%40%20%0%α = 0.4α = 0.1α = 0.4without baselinewith baseline025050075010002.7. GRADIENT BANDITS
+
+45
+
+remain one.
+
+∂ E[Rt]
+∂Ht(a)
+
+=
+
+πt(b)
+
+q(b)
+
+(cid:88)b
+
+(cid:0)
+
+Xt
+
+−
+
+∂ πt(b)
+∂Ht(a)
+
+/πt(b)
+
+(cid:1)
+
+The equation is now in the form of an expectation, summing over all possible
+values b of the random variable At, then multiplying by the probability of
+taking those values. Thus:
+
+∂ E[Rt]
+∂Ht(a)
+
+= E
+
+q(At)
+
+= E
+
+(cid:20)
+(cid:0)
+
+(cid:20)
+(cid:0)
+
+Rt −
+
+−
+
+¯Rt
+
+Xt
+
+∂ πt(At)
+∂Ht(a)
+
+/πt(At)
+(cid:21)
+
+(cid:1)
+
+∂ πt(At)
+∂Ht(a)
+
+(cid:1)
+
+,
+
+/πt(At)
+(cid:21)
+
+where here we have chosen Xt = ¯Rt and substituted Rt for q(At), which is
+permitted because E[Rt] = q(At) and because all the other factors are non-
+, where Ia=b
+random. Shortly we will establish that ∂ πt(b)
+πt(a)
+is deﬁned to be 1 if a = b, else 0. Assuming that for now we have
+(cid:1)
+
+Ia=b −
+(cid:0)
+
+∂Ht(a) = πt(b)
+
+∂ E[Rt]
+∂Ht(a)
+
+= E
+
+= E
+
+Rt −
+Rt −
+
+(cid:2)(c

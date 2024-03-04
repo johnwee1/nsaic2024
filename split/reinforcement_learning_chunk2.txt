@@ -1,0 +1,284 @@
+in this book.
+
+An evolutionary method applied to this problem would directly search the
+space of possible policies for one with a high probability of winning against
+the opponent. Here, a policy is a rule that tells the player what move to make
+for every state of the game—every possible conﬁguration of Xs and Os on the
+three-by-three board. For each policy considered, an estimate of its winning
+probability would be obtained by playing some number of games against the
+opponent. This evaluation would then direct which policy or policies were
+considered next. A typical evolutionary method would hill-climb in policy
+space, successively generating and evaluating policies in an attempt to obtain
+incremental improvements. Or, perhaps, a genetic-style algorithm could be
+used that would maintain and evaluate a population of policies. Literally
+hundreds of diﬀerent optimization methods could be applied.
+
+Here is how the tic-tac-toe problem would be approached with a method
+making use of a value function. First we set up a table of numbers, one for
+each possible state of the game. Each number will be the latest estimate of
+the probability of our winning from that state. We treat this estimate as the
+state’s value, and the whole table is the learned value function. State A has
+higher value than state B, or is considered “better” than state B, if the current
+estimate of the probability of our winning from A is higher than it is from B.
+
+12
+
+CHAPTER 1. THE REINFORCEMENT LEARNING PROBLEM
+
+Figure 1.1: A sequence of tic-tac-toe moves. The solid lines represent the
+moves taken during a game; the dashed lines represent moves that we (our
+reinforcement learning player) considered but did not make. Our second move
+was an exploratory move, meaning that it was taken even though another
+sibling move, the one leading to e∗, was ranked higher. Exploratory moves do
+not result in any learning, but each of our other moves does, causing backups
+as suggested by the curved arrows and detailed in the text.
+
+Assuming we always play Xs, then for all states with three Xs in a row the
+probability of winning is 1, because we have already won. Similarly, for all
+states with three Os in a row, or that are “ﬁlled up,” the correct probability
+is 0, as we cannot win from them. We set the initial values of all the other
+states to 0.5, representing a guess that we have a 50% chance of winning.
+
+We play many games against the opponent. To select our moves we examine
+the states that would result from each of our possible moves (one for each blank
+space on the board) and look up their current values in the table. Most of the
+time we move greedily, selecting the move that leads to the state with greatest
+value, that is, with the highest estimated probability of winning. Occasionally,
+however, we select randomly from among the other moves instead. These are
+called exploratory moves because they cause us to experience states that we
+might otherwise never see. A sequence of moves made and considered during
+a game can be diagrammed as in Figure 1.1.
+
+..•our move{opponent's move{our move{starting position•••abc*dee*opponent's move{c•f•g*gopponent's move{our move{.•1.5. AN EXTENDED EXAMPLE: TIC-TAC-TOE
+
+13
+
+While we are playing, we change the values of the states in which we ﬁnd
+ourselves during the game. We attempt to make them more accurate estimates
+of the probabilities of winning. To do this, we “back up” the value of the state
+after each greedy move to the state before the move, as suggested by the arrows
+in Figure 1.1. More precisely, the current value of the earlier state is adjusted
+to be closer to the value of the later state. This can be done by moving the
+earlier state’s value a fraction of the way toward the value of the later state.
+If we let s denote the state before the greedy move, and s(cid:48) the state after
+the move, then the update to the estimated value of s, denoted V (s), can be
+written as
+
+V (s)
+
+←
+
+V (s) + α
+
+V (s(cid:48))
+
+V (s)
+
+,
+
+(cid:104)
+
+−
+
+(cid:105)
+
+where α is a small positive fraction called the step-size parameter, which in-
+ﬂuences the rate of learning. This update rule is an example of a temporal-
+diﬀerence learning method, so called because its changes are based on a dif-
+ference, V (s(cid:48))
+
+V (s), between estimates at two diﬀerent times.
+
+−
+
+The method described above performs quite well on this task. For example,
+if the step-size parameter is reduced properly over time, this method converges,
+for any ﬁxed opponent, to the true probabilities of winning from each state
+given optimal play by our player. Furthermore, the moves then taken (except
+on exploratory moves) are in fact the optimal moves against the opponent. In
+other words, the method converges to an optimal policy for playing the game.
+If the step-size parameter is not reduced all the way to zero over time, then
+this player also plays well against opponents that slowly change their way of
+playing.
+
+This example illustrates the diﬀerences between evolutionary methods and
+the methods that learn value functions. To evaluate a policy an evolutionary
+method holds the policy ﬁxed and plays many games against the opponent, or
+simulate many games using a model of the opponent. The frequency of wins
+gives an unbiased estimate of the probability of winning with that policy, and
+can be used to direct the next policy selection. But each policy change is made
+only after many games, and only the ﬁnal outcome of each game is used: what
+happens during the games is ignored. For example, if the player wins, then
+all of its behavior in the game is given credit, independently of how speciﬁc
+moves might have been critical to the win. Credit is even given to moves that
+never occurred! Value function methods, in contrast, allow individual states
+to be evaluated. In the end, evolutionary and value function methods both
+search the space of policies, but learning a value function takes advantage of
+information available during the course of play.
+
+This simple example illustrates some of the key features of reinforcement
+learning methods. First, there is the emphasis on learning while interacting
+
+14
+
+CHAPTER 1. THE REINFORCEMENT LEARNING PROBLEM
+
+with an environment, in this case with an opponent player. Second, there is a
+clear goal, and correct behavior requires planning or foresight that takes into
+account delayed eﬀects of one’s choices. For example, the simple reinforce-
+ment learning player would learn to set up multi-move traps for a shortsighted
+opponent. It is a striking feature of the reinforcement learning solution that it
+can achieve the eﬀects of planning and lookahead without using a model of the
+opponent and without conducting an explicit search over possible sequences
+of future states and actions.
+
+While this example illustrates some of the key features of reinforcement
+learning, it is so simple that it might give the impression that reinforcement
+learning is more limited than it really is. Although tic-tac-toe is a two-person
+game, reinforcement learning also applies in the case in which there is no exter-
+nal adversary, that is, in the case of a “game against nature.” Reinforcement
+learning also is not restricted to problems in which behavior breaks down into
+separate episodes, like the separate games of tic-tac-toe, with reward only at
+the end of each episode. It is just as applicable when behavior continues indef-
+initely and when rewards of various magnitudes can be received at any time.
+Reinforcement learning is also applicable to problems that do not even break
+down into discrete time steps, like the plays of tic-tac-toe. The general princi-
+ples apply to continuous-time problems as well, although the theory gets more
+complicated and we omit it from this introductory treatment.
+
+Tic-tac-toe has a relatively small, ﬁnite state set, whereas reinforcement
+learning can be used when the state set is very large, or even inﬁnite. For
+example, Gerry Tesauro (1992, 1995) combined the algorithm described above
+with an artiﬁcial neural network to learn to play backgammon, which has
+approximately 1020 states. With this many states it is impossible ever to
+experience more than a small fraction of them. Tesauro’s program learned to
+play far better than any previous program, and now plays at the level of the
+world’s best human players (see Chapter 15). The neural network provides
+the program with the ability to generalize from its experience, so that in new
+states it selects moves based on information saved from similar states faced
+in the past, as determined by its network. How well a reinforcement learning
+system can work in problems with such large state sets is intimately tied to
+how appropriately it can generalize from past experience. It is in this role that
+we have the greatest need for supervised learning methods with reinforcement
+learning. Neural networks are not the only, or necessarily the best, way to do
+this.
+
+In this tic-tac-toe example, learning started with no prior knowledge be-
+yond the rules of the game, but reinforcement learning by no means entails a
+tabula rasa view of learning and intelligence. On the contrary, prior informa-
+tion can be incorporated into reinforcement learning in a variety of ways that
+
+1.6. SUMMARY
+
+15
+
+can be critical for eﬃcient learning. We also had access to the true state in the
+tic-tac-toe example, whereas reinforcement learning can also be applied when
+part of the state is hidden, or when diﬀerent states appear to the learner to be
+the same. That case, however, is substantially more diﬃcult, and we do not
+cover it signiﬁcantly in this book.
+
+Finally, the tic-tac-toe player was able to look ahead and know the states
+that would result from each of its possible moves. To do this, it had to have
+a model of the game that allowed it to “think about” how its environment
+would change in response to moves that it might never make. Many problems
+are like this, but in others even a short-term model of the eﬀects of actions
+is lacking. Reinforcement learning can be applied in either case. No model is
+required, but models can easily be used if they are available or can be learned.
+
+On the other hand, there are reinforcement learning methods that do not
+need any kind of environment model at all. Model-free systems cannot even
+think about how their environments will change in response to a single action.
+The tic-tac-toe player is model-free in this sense with respect to its opponent:
+it has no model of its opponent of any kind. Because models have to be
+reasonably accurate to be useful, model-free methods can have advantages over
+more complex methods when the real bottleneck in solving a problem is the
+diﬃculty of constructing a suﬃciently accurate environment model. Model-
+free methods are also important building blocks for model-based methods. In
+this book we devote several chapters to model-free methods before we discuss
+how they can be used as components of more complex model-based methods.
+
+But reinforcement learning can be used at both high and low levels in a sys-
+tem. Although the tic-tac-toe player learned only about the basic moves of the
+game, nothing prevents reinforcement learning from working at higher levels
+where each of the “actions” may itself be the application of a possibly elabo-
+rate problem-solving method. In hierarchical learning systems, reinforcement
+learning can work simultaneously on several levels.
+
+1.6 Summary
+
+Reinforcement learning is a computational approach to understanding and au-
+tomating goal-directed learning and decision-making. It is distinguished from
+other computational approaches by its emphasis on learning by an agent from
+direct interaction with its environment, without relying on exemplary super-
+vision or complete models of the environment. In our opinion, reinforcement
+learning is the ﬁrst ﬁeld to seriously address the computational issues that
+arise when learning from interaction with an environment in order to achieve
+
+16
+
+CHAPTER 1. THE REINFORCEMENT LEARNING PROBLEM
+
+long-term goals.
+
+Reinforcement learning uses a formal framework deﬁning the interaction
+between a learning agent and its environment in terms of states, actions, and
+rewards. This framework is intended to be a simple way of representing es-
+sential features of the artiﬁcial intelligence problem. These features include a
+sense of cause and eﬀect, a sense of uncertainty and nondeterminism, and the
+existence of explicit goals.
+
+The concepts of value and value functions are the key features of most of
+the reinforcement learning methods that we consider in this book. We take
+the position that value functions are important for eﬃcient search in the space
+of policies. Their use of value functions distinguishes reinforcement learning
+methods from evolutionary methods that search directly in policy space guided
+by scalar evaluations of entire policies.
+
+1.7 History of Reinforcement Learning
+
+The history of reinforcement learning has two main threads, both long and rich,
+that were pursued independently before intertwining in modern reinforcement
+learning. One thread concerns learning by trial and error that started in the
+psychology of animal learning. This thread runs through some of the earliest
+work in artiﬁcial intelligence and led to the revival of reinforcement learning in
+the early 1980s. The other thread concerns the problem of optimal control and
+its solution using value functions and dynamic programming. For the most
+part, this thread did not involve learning. Although the two threads have
+been largely independent, the exceptions revolve around a third, less distinct
+thread concerning temporal-diﬀerence methods such as used in the tic-tac-toe
+example in this chapter. All three threads came together in the late 1980s
+to produce the modern ﬁeld of reinforcement learning as we present it in this
+book.
+
+The thread focusing on trial-and-error learning is the one with which we
+are most familiar and about which we have the most to say in this brief history.
+Before doing that, however, we brieﬂy discuss the optimal control thread.
+
+The term “optimal control” came into use in the late 1950s to describe
+the problem of designing a controller to minimize a measure of a dynamical
+system’s behavior over time. One of the approaches to this problem was de-
+veloped in the mid-1950s by Richard Bellman and others through extending
+a nineteenth century theory of Hamilton and Jacobi. This approach uses the
+concepts of a dynamical system’s state and of a value function, or “optimal
+return function,” to deﬁne a functional equation, now often called the Bell-
+
+1.7. HISTORY OF REINFORCEMENT LEARNING
+
+17
+
+man equation. The class of methods for solving optimal control problems by
+solving this equation came to be known as dynamic programming (Bellman,
+1957a). Bellman (1957b) also introduced the discrete stochastic version of the
+optimal control problem known as Markovian decision processes (MDPs), and
+Ronald Howard (1960) devised the policy iteration method for MDPs. All of
+these are essential elements underlying the theory and algorithms of modern
+reinforcement learning.
+
+Dynamic programming is widely considered the only feasible way of solv-
+It suﬀers from what Bell-
+ing general stochastic optimal control problems.
+man called “the curse of dimensionality,” meaning that its computational
+requirements grow exponentially with the number of state variables, but it
+is still far more eﬃcient and more widely applicable than any other general
+method. Dynami

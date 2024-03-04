@@ -1,0 +1,275 @@
+oduce in this book. Reinforcement learning and
+game theory is a much diﬀerent subject from reinforcement learning used in
+programs to play tic-tac-toe, checkers, and other recreational games. See, for
+example, Szita (2012) for an overview of this aspect of reinforcement learning
+and games.
+
+John Holland (1975) outlined a general theory of adaptive systems based
+on selectional principles. His early work concerned trial and error primarily in
+its nonassociative form, as in evolutionary methods and the n-armed bandit.
+In 1986 he introduced classiﬁer systems, true reinforcement learning systems
+including association and value functions. A key component of Holland’s clas-
+siﬁer systems was always a genetic algorithm, an evolutionary method whose
+role was to evolve useful representations. Classiﬁer systems have been exten-
+sively developed by many researchers to form a major branch of reinforcement
+learning research (reviewed by Urbanowicz and Moore, 2009), but genetic
+algorithms—which we do not consider to be reinforcement learning systems
+by themselves—have received much more attention, as have other approaches
+to evolutionary computation (e.g., Fogel, Owens and Walsh, 1966, and Koza,
+1992).
+
+The individual most responsible for reviving the trial-and-error thread to
+reinforcement learning within artiﬁcial intelligence was Harry Klopf (1972,
+1975, 1982). Klopf recognized that essential aspects of adaptive behavior
+were being lost as learning researchers came to focus almost exclusively on
+supervised learning. What was missing, according to Klopf, were the hedonic
+
+1.7. HISTORY OF REINFORCEMENT LEARNING
+
+23
+
+aspects of behavior, the drive to achieve some result from the environment, to
+control the environment toward desired ends and away from undesired ends.
+This is the essential idea of trial-and-error learning. Klopf’s ideas were espe-
+cially inﬂuential on the authors because our assessment of them (Barto and
+Sutton, 1981a) led to our appreciation of the distinction between supervised
+and reinforcement learning, and to our eventual focus on reinforcement learn-
+ing. Much of the early work that we and colleagues accomplished was directed
+toward showing that reinforcement learning and supervised learning were in-
+deed diﬀerent (Barto, Sutton, and Brouwer, 1981; Barto and Sutton, 1981b;
+Barto and Anandan, 1985). Other studies showed how reinforcement learning
+could address important problems in neural network learning, in particular,
+how it could produce learning algorithms for multilayer networks (Barto, An-
+derson, and Sutton, 1982; Barto and Anderson, 1985; Barto and Anandan,
+1985; Barto, 1985, 1986; Barto and Jordan, 1987). We say more about the
+reinforcement learning and neural networks in Chapter Y.
+
+We turn now to the third thread to the history of reinforcement learn-
+ing, that concerning temporal-diﬀerence learning. Temporal-diﬀerence learn-
+ing methods are distinctive in being driven by the diﬀerence between tempo-
+rally successive estimates of the same quantity—for example, of the probability
+of winning in the tic-tac-toe example. This thread is smaller and less distinct
+than the other two, but it has played a particularly important role in the ﬁeld,
+in part because temporal-diﬀerence methods seem to be new and unique to
+reinforcement learning.
+
+The origins of temporal-diﬀerence learning are in part in animal learning
+psychology, in particular, in the notion of secondary reinforcers. A secondary
+reinforcer is a stimulus that has been paired with a primary reinforcer such as
+food or pain and, as a result, has come to take on similar reinforcing proper-
+ties. Minsky (1954) may have been the ﬁrst to realize that this psychological
+principle could be important for artiﬁcial learning systems. Arthur Samuel
+(1959) was the ﬁrst to propose and implement a learning method that included
+temporal-diﬀerence ideas, as part of his celebrated checkers-playing program.
+
+Samuel made no reference to Minsky’s work or to possible connections
+to animal learning. His inspiration apparently came from Claude Shannon’s
+(1950) suggestion that a computer could be programmed to use an evalua-
+tion function to play chess, and that it might be able to improve its play by
+modifying this function on-line. (It is possible that these ideas of Shannon’s
+also inﬂuenced Bellman, but we know of no evidence for this.) Minsky (1961)
+extensively discussed Samuel’s work in his “Steps” paper, suggesting the con-
+nection to secondary reinforcement theories, both natural and artiﬁcial.
+
+As we have discussed, in the decade following the work of Minsky and
+
+24
+
+CHAPTER 1. THE REINFORCEMENT LEARNING PROBLEM
+
+Samuel, little computational work was done on trial-and-error learning, and
+apparently no computational work at all was done on temporal-diﬀerence
+learning.
+In 1972, Klopf brought trial-and-error learning together with an
+important component of temporal-diﬀerence learning. Klopf was interested
+in principles that would scale to learning in large systems, and thus was in-
+trigued by notions of local reinforcement, whereby subcomponents of an overall
+learning system could reinforce one another. He developed the idea of “gen-
+eralized reinforcement,” whereby every component (nominally, every neuron)
+views all of its inputs in reinforcement terms: excitatory inputs as rewards
+and inhibitory inputs as punishments. This is not the same idea as what we
+now know as temporal-diﬀerence learning, and in retrospect it is farther from
+it than was Samuel’s work. On the other hand, Klopf linked the idea with
+trial-and-error learning and related it to the massive empirical database of
+animal learning psychology.
+
+Sutton (1978a, 1978b, 1978c) developed Klopf’s ideas further, particu-
+larly the links to animal learning theories, describing learning rules driven
+by changes in temporally successive predictions. He and Barto reﬁned these
+ideas and developed a psychological model of classical conditioning based on
+temporal-diﬀerence learning (Sutton and Barto, 1981a; Barto and Sutton,
+1982). There followed several other inﬂuential psychological models of classical
+conditioning based on temporal-diﬀerence learning (e.g., Klopf, 1988; Moore
+et al., 1986; Sutton and Barto, 1987, 1990). Some neuroscience models devel-
+oped at this time are well interpreted in terms of temporal-diﬀerence learning
+(Hawkins and Kandel, 1984; Byrne, Gingrich, and Baxter, 1990; Gelperin,
+Hopﬁeld, and Tank, 1985; Tesauro, 1986; Friston et al., 1994), although in
+most cases there was no historical connection.
+
+Our early work on temporal-diﬀerence learning was strongly inﬂuenced
+by animal learning theories and by Klopf’s work. Relationships to Minsky’s
+“Steps” paper and to Samuel’s checkers players appear to have been recognized
+only afterward. By 1981, however, we were fully aware of all the prior work
+mentioned above as part of the temporal-diﬀerence and trial-and-error threads.
+At this time we developed a method for using temporal-diﬀerence learning in
+trial-and-error learning, known as the actor–critic architecture, and applied
+this method to Michie and Chambers’s pole-balancing problem (Barto, Sutton,
+and Anderson, 1983). This method was extensively studied in Sutton’s (1984)
+Ph.D. dissertation and extended to use backpropagation neural networks in
+Anderson’s (1986) Ph.D. dissertation. Around this time, Holland (1986) incor-
+porated temporal-diﬀerence ideas explicitly into his classiﬁer systems. A key
+step was taken by Sutton in 1988 by separating temporal-diﬀerence learning
+from control, treating it as a general prediction method. That paper also in-
+troduced the TD(λ) algorithm and proved some of its convergence properties.
+
+1.8. BIBLIOGRAPHICAL REMARKS
+
+25
+
+As we were ﬁnalizing our work on the actor–critic architecture in 1981, we
+discovered a paper by Ian Witten (1977) that contains the earliest known pub-
+lication of a temporal-diﬀerence learning rule. He proposed the method that
+we now call tabular TD(0) for use as part of an adaptive controller for solving
+MDPs. Witten’s work was a descendant of Andreae’s early experiments with
+STeLLA and other trial-and-error learning systems. Thus, Witten’s 1977 pa-
+per spanned both major threads of reinforcement learning research—trial-and-
+error learning and optimal control—while making a distinct early contribution
+to temporal-diﬀerence learning.
+
+The temporal-diﬀerence and optimal control threads were fully brought
+together in 1989 with Chris Watkins’s development of Q-learning. This work
+extended and integrated prior work in all three threads of reinforcement learn-
+ing research. Paul Werbos (1987) contributed to this integration by arguing
+for the convergence of trial-and-error learning and dynamic programming since
+1977. By the time of Watkins’s work there had been tremendous growth in
+reinforcement learning research, primarily in the machine learning subﬁeld
+of artiﬁcial intelligence, but also in neural networks and artiﬁcial intelligence
+more broadly. In 1992, the remarkable success of Gerry Tesauro’s backgammon
+playing program, TD-Gammon, brought additional attention to the ﬁeld.
+
+In the time since publication of the ﬁrst edition of this book, a ﬂourishing
+subﬁeld of neuroscience developed that focuses on the relationship between
+reinforcement learning algorithms and reinforcement learning in the nervous
+system. Most responsible for this is an uncanny similarity between the behav-
+ior of temporal-diﬀerence algorithms and the activity of dopamine producing
+neurons in the brain, as pointed out by a number of researchers (Friston et
+al., 1994; Barto, 1995a; Houk, Adams, and Barto, 1995; Montague, Dayan,
+and Sejnowski, 1996; and Schultz, Dayan, and Montague,1997). Chapter Y
+provides is an introduction to this exciting aspect of reinforcement leaning.
+
+Other important contributions made in the recent history of reinforcement
+learning are too numerous to mention in this brief account; we cite many these
+at the end of the individual chapters in which they arise.
+
+1.8 Bibliographical Remarks
+
+For additional general coverage of reinforcement learning, we refer the reader to
+the books by Szepesv´ari (2010), Bertsekas and Tsitsiklis (1996), and Kaelbling
+(1993a). Books that take a control or operation research perspective are those
+of Si et al. (2004), Powell (2011), and Lewis and Liu (2012). Two special
+issues of the journal Machine Learning focus on reinforcement learning: Sutton
+
+26
+
+CHAPTER 1. THE REINFORCEMENT LEARNING PROBLEM
+
+(1992) and Kaelbling (1996). Useful surveys are provided by Barto (1995b);
+Kaelbling, Littman, and Moore (1996); and Keerthi and Ravindran (1997).
+The volume edited by Weiring and van Otterlo (2012) provides an excellent
+overview of recent developments.
+
+The example of Phil’s breakfast in this chapter was inspired by Agre (1988).
+We direct the reader to Chapter 6 for references to the kind of temporal-
+diﬀerence method we used in the tic-tac-toe example.
+
+Exercises
+
+Exercise 1.1: Self-Play
+Suppose, instead of playing against a random
+opponent, the reinforcement learning algorithm described above played against
+itself. What do you think would happen in this case? Would it learn a diﬀerent
+way of playing?
+
+Exercise 1.2: Symmetries Many tic-tac-toe positions appear diﬀerent but
+are really the same because of symmetries. How might we amend the reinforce-
+ment learning algorithm described above to take advantage of this? In what
+ways would this improve it? Now think again. Suppose the opponent did not
+take advantage of symmetries. In that case, should we? Is it true, then, that
+symmetrically equivalent positions should necessarily have the same value?
+
+Exercise 1.3: Greedy Play Suppose the reinforcement learning player was
+greedy, that is, it always played the move that brought it to the position that
+it rated the best. Would it learn to play better, or worse, than a nongreedy
+player? What problems might occur?
+
+Exercise 1.4: Learning from Exploration Suppose learning updates occurred
+If the step-size parameter is
+after all moves, including exploratory moves.
+appropriately reduced over time, then the state values would converge to a
+set of probabilities. What are the two sets of probabilities computed when we
+do, and when we do not, learn from exploratory moves? Assuming that we
+do continue to make exploratory moves, which set of probabilities might be
+better to learn? Which would result in more wins?
+
+Exercise 1.5: Other Improvements Can you think of other ways to improve
+the reinforcement learning player? Can you think of any better way to solve
+the tic-tac-toe problem as posed?
+
+Part I
+
+Tabular Solution Methods
+
+27
+
+29
+
+In this part of the book we describe almost all the core ideas of reinforce-
+ment learning algorithms in their simplest forms, that in which the state and
+action spaces are small enough for the approximate action-value function to be
+represented as an array, or table. In this case, the methods can often ﬁnd exact
+solutions, that is, they can often ﬁnd exactly the optimal value function and
+the optimal policy. This contrasts with the approximate methods described in
+the next part of the book, which only ﬁnd approximate solutions, but which
+in return can be applied eﬀectively to much larger problems.
+
+The ﬁrst chapter of this part of the book describes solution methods for
+the special of the reinforcement learning problem in which there is only a
+single state, called bandit problems. The second chapter describes the general
+problem formulation that we treat throughout the rest of the book—ﬁnite
+markov decision processes—and its main ideas including Bellman equations
+and value functions.
+
+The next three chapters describe three fundamental classes of methods
+for solving ﬁnite Markov decision problems: dynamic programming, Monte
+Carlo methods, and temporal-diﬀerence learning. Each class of methods has
+its strengths and weaknesses. Dynamic programming methods are well de-
+veloped mathematically, but require a complete and accurate model of the
+environment. Monte Carlo methods don’t require a model and are concep-
+tually simple, but are not suited for step-by-step incremental computation.
+Finally, temporal-diﬀerence methods require no model and are fully incremen-
+tal, but are more complex to analyze. The methods also diﬀer in several ways
+with respect to their eﬃciency and speed of convergence.
+
+The remaining two chapters describe how these three classes of methods
+can be combined to obtain the best features of each of them. In one chapter we
+describe how the strengths of Monte Carlo methods can be combined with the
+strengths of temporal-diﬀerence methods via the use of eligibility traces. In
+the ﬁnal chapter of this part of the book we show these two learning methods
+can be combined with model learning and planning methods (such as dynamic
+programming) for a complete and uniﬁed solution to the tabular reinforcement
+learning problem.
+
+30
+
+Chapter 2
+
+Multi-arm Bandits
+
+The most important feature distinguishing reinforcement learning from other
+types of learning is that it uses training information that evaluates the actions
+taken rather than instructs by giving correct actions. This is what creates
+the need for active exploration, for an explicit trial-and-error search for good
+behavior. Purely evaluative feedback indicates how good the action taken is,
+but not whether it is the best or the worst action possible. Evaluative feed-
+back is the basis of methods for function optimization, including evolutionary
+m

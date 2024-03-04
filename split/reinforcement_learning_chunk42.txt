@@ -1,0 +1,298 @@
+ complicated time-delay neural network (TDNN) borrowed from the ﬁeld
+of speech recognition (Lang, Waibel, and Hinton, 1990). This version divided
+each schedule into a sequence of blocks (maximal time intervals during which
+tasks and resource assignments did not change) and represented each block by
+a set of features similar to those used in the ﬁrst program. It then scanned
+a set of “kernel” networks across the blocks to create a set of more abstract
+features. Since diﬀerent schedules had diﬀerent numbers of blocks, another
+layer averaged these abstract features over each third of the blocks. Then a
+ﬁnal layer of 8 sigmoidal output units represented the schedule’s value using
+the same code as in the ﬁrst version of the system. In all, this network had
+1123 adjustable weights.
+
+A set of 100 artiﬁcial scheduling problems was constructed and divided into
+subsets used for training, determining when to stop training (a validation set),
+and ﬁnal testing. During training they tested the system on the validation
+set after every 100 episodes and stopped training when performance on the
+validation set stopped changing, which generally took about 10,000 episodes.
+They trained networks with diﬀerent values of λ (0.2 and 0.7), with three
+diﬀerent training sets, and they saved both the ﬁnal set of weights and the
+set of weights producing the best performance on the validation set. Counting
+each set of weights as a diﬀerent network, this produced 12 networks, each of
+which corresponded to a diﬀerent scheduling algorithm.
+
+Figure 14.11 shows how the mean performance of the 12 TDNN networks
+(labeled G12TDN) compared with the performances of two versions of Zweben
+and Daun’s iterative repair algorithm, one using the number of constraint
+violations as the function to be minimized by simulated annealing (IR-V)
+and the other using the RDF measure (IR-RDF). The ﬁgure also shows the
+performance of the ﬁrst version of their system that did not use a TDNN
+(G12N). The mean RDF of the best schedule found by repeatedly running
+an algorithm is plotted against the total number of schedule repairs (using a
+log scale). These results show that the learning system produced scheduling
+algorithms that needed many fewer repairs to ﬁnd conﬂict-free schedules of the
+
+300
+
+CHAPTER 14. APPLICATIONS AND CASE STUDIES
+
+Figure 14.11: Comparison of accepted schedule repairs. Reprinted with per-
+mission from Zhang and Dietterich, 1996.
+
+same quality as those found by the iterative repair algorithms. Figure 14.12
+compares the computer time required by each scheduling algorithm to ﬁnd
+schedules of various RDFs. According to this measure of performance, the
+best trade-oﬀ between computer time and schedule quality is produced by
+the non-TDNN algorithm (G12N). The TDNN algorithm (G12TDN) suﬀered
+due to the time it took to apply the kernel-scanning process, but Zhang and
+Dietterich point out that there are many ways to make it run faster.
+
+These results do not unequivocally establish the utility of reinforcement
+learning for job-shop scheduling or for other diﬃcult search problems. But
+they do suggest that it is possible to use reinforcement learning methods to
+learn how to improve the eﬃciency of search. Zhang and Dietterich’s job-
+shop scheduling system is the ﬁrst successful instance of which we are aware
+in which reinforcement learning was applied in plan-space, that is, in which
+states are complete plans (job-shop schedules in this case), and actions are plan
+modiﬁcations. This is a more abstract application of reinforcement learning
+than we are used to thinking about. Note that in this application the system
+learned not just to eﬃciently create one good schedule, a skill that would
+not be particularly useful; it learned how to quickly ﬁnd good schedules for
+a class of related scheduling problems. It is clear that Zhang and Dietterich
+went through a lot of trial-and-error learning of their own in developing this
+example. But remember that this was a groundbreaking exploration of a new
+aspect of reinforcement learning. We expect that future applications of this
+kind and complexity will become more routine as experience accumulates.
+
+1.151.21.251.31.351.41.451.51024204840968192163843276865536131072262144RDFAccepted RepairsG12TDNG12NIR-RDFIR-V14.6. JOB-SHOP SCHEDULING
+
+301
+
+Figure 14.12: Comparison of CPU time. Reprinted with permission from
+Zhang and Dietterich, 1996.
+
+1.151.21.251.31.351.41.451.516326412825651210242048RDFCPU Time (Seconds)G12TDNG12NIR-RDFIR-V302
+
+CHAPTER 14. APPLICATIONS AND CASE STUDIES
+
+Chapter 15
+
+Prospects
+
+In this book we have tried to present reinforcement learning not as a collection
+of individual methods, but as a coherent set of ideas cutting across methods.
+Each idea can be viewed as a dimension along which methods vary. The set
+of such dimensions spans a large space of possible methods. By exploring
+this space at the level of dimensions we hope to obtain the broadest and
+most lasting understanding. In this chapter we use the concept of dimensions
+in method space to recapitulate the view of reinforcement learning we have
+developed in this book and to identify some of the more important gaps in our
+coverage of the ﬁeld.
+
+15.1 The Uniﬁed View
+
+All of the reinforcement learning methods we have explored in this book have
+three key ideas in common. First, the objective of all of them is the estimation
+of value functions. Second, all operate by backing up values along actual or
+possible state trajectories. Third, all follow the general strategy of general-
+ized policy iteration (GPI), meaning that they maintain an approximate value
+function and an approximate policy, and they continually try to improve each
+on the basis of the other. These three ideas that the methods have in common
+circumscribe the subject covered in this book. We suggest that value func-
+tions, backups, and GPI are powerful organizing principles potentially relevant
+to any model of intelligence.
+
+Two of the most important dimensions along which the methods vary are
+shown in Figure 15.1. These dimensions have to do with the kind of backup
+used to improve the value function. The horizontal dimension is whether they
+are sample backups (based on a sample trajectory) or full backups (based
+
+303
+
+304
+
+CHAPTER 15. PROSPECTS
+
+Figure 15.1: A slice of the space of reinforcement learning methods.
+
+on a distribution of possible trajectories). Full backups of course require a
+model, whereas sample backups can be done either with or without a model
+(another dimension of variation). The vertical dimension corresponds to the
+depth of backups, that is, to the degree of bootstrapping. At three of the
+four corners of the space are the three primary methods for estimating values:
+DP, TD, and Monte Carlo. Along the left edge of the space are the sample-
+backup methods, ranging from one-step TD backups to full-return Monte Carlo
+backups. Between these is a spectrum including methods based on n-step
+backups and mixtures of n-step backups such as the λ-backups implemented
+by eligibility traces.
+
+DP methods are shown in the extreme upper-right corner of the space be-
+cause they involve one-step full backups. The lower-right corner is the extreme
+case of full backups so deep that they run all the way to terminal states (or, in
+a continuing task, until discounting has reduced the contribution of any further
+rewards to a negligible level). This is the case of exhaustive search. Intermedi-
+
+widthof backupheight(depth)of backupTemporal-differencelearningDynamicprogrammingMonteCarlo...Exhaustivesearch15.1. THE UNIFIED VIEW
+
+305
+
+ate methods along this dimension include heuristic search and related methods
+that search and backup up to a limited depth, perhaps selectively. There are
+also methods that are intermediate along the horizontal dimension. These
+include methods that mix full and sample backups, as well as the possibility
+of methods that mix samples and distributions within a single backup. The
+interior of the square is ﬁlled in to represent the space of all such intermediate
+methods.
+
+A third important dimension is that of function approximation. Function
+approximation can be viewed as an orthogonal spectrum of possibilities ranging
+from tabular methods at one extreme through state aggregation, a variety
+of linear methods, and then a diverse set of nonlinear methods. This third
+dimension might be visualized as perpendicular to the plane of the page in
+Figure 15.1.
+
+Another dimension that we heavily emphasized in this book is the binary
+distinction between on-policy and oﬀ-policy methods. In the former case, the
+agent learns the value function for the policy it is currently following, whereas
+in the latter case it learns the value function for the policy that it currently
+thinks is best. These two policies are often diﬀerent because of the need
+to explore. The interaction between this dimension and the bootstrapping
+and function approximation dimension discussed in Chapter 9 illustrates the
+advantages of analyzing the space of methods in terms of dimensions. Even
+though this did involve an interaction between three dimensions, many other
+dimensions were found to be irrelevant, greatly simplifying the analysis and
+increasing its signiﬁcance.
+
+In addition to the four dimensions just discussed, we have identiﬁed a
+
+number of others throughout the book:
+
+Deﬁnition of return Is the task episodic or continuing, discounted or undis-
+
+counted?
+
+Action values vs. state values vs. afterstate values What kind of val-
+ues should be estimated? If only state values are estimated, then either
+a model or a separate policy (as in actor–critic methods) is required for
+action selection.
+
+Action selection/exploration How are actions selected to ensure a suitable
+trade-oﬀ between exploration and exploitation? We have considered only
+the simplest ways to do this: ε-greedy and softmax action selection, and
+optimistic initialization of values.
+
+Synchronous vs. asynchronous Are the backups for all states performed
+
+simultaneously or one by one in some order?
+
+306
+
+CHAPTER 15. PROSPECTS
+
+Replacing vs. accumulating traces If eligibility traces are used, which kind
+
+is most appropriate?
+
+Real vs. simulated Should one backup real experience or simulated experi-
+
+ence? If both, how much of each?
+
+Location of backups What states or state–action pairs should be backed
+up? Modelfree methods can choose only among the states and state–
+action pairs actually encountered, but model-based methods can choose
+arbitrarily. There are many potent possibilities here.
+
+Timing of backups Should backups be done as part of selecting actions, or
+
+only afterward?
+
+Memory for backups How long should backed-up values be retained? Should
+
+they be retained permanently, or only while computing an action selec-
+tion, as in heuristic search?
+
+Of course, these dimensions are neither exhaustive nor mutually exclusive.
+Individual algorithms diﬀer in many other ways as well, and many algorithms
+lie in several places along several dimensions. For example, Dyna methods use
+both real and simulated experience to aﬀect the same value function. It is also
+perfectly sensible to maintain multiple value functions computed in diﬀerent
+ways or over diﬀerent state and action representations. These dimensions do,
+however, constitute a coherent set of ideas for describing and exploring a wide
+space of possible methods.
+
+15.2 State Estimation
+
+15.3 Temporal Abstraction
+
+15.4 Predictive Representations
+
+15.5 Other Frontier Dimensions
+
+Much research remains to be done within this space of reinforcement learning
+methods. For example, even for the tabular case no control method using
+multistep backups has been proved to converge to an optimal policy. Among
+planning methods, basic ideas such as trajectory sampling and focusing sample
+backups are almost completely unexplored. On closer inspection, parts of the
+
+15.5. OTHER FRONTIER DIMENSIONS
+
+307
+
+space will undoubtedly turn out to have far greater complexity and greater
+internal structure than is now apparent. There are also other dimensions along
+which reinforcement learning can be extended, we have not yet mentioned,
+that lead to a much larger space of methods. Here we identify some of these
+dimensions and note some of the open questions and frontiers that have been
+left out of the preceding chapters.
+
+One of the most important extensions of reinforcement learning beyond
+what we have treated in this book is to eliminate the requirement that the
+state representation have the Markov property. There are a number of inter-
+esting approaches to the non-Markov case. Most strive to construct from the
+given state signal and its past values a new signal that is Markov, or more
+nearly Markov. For example, one approach is based on the theory of partially
+observable MDPs (POMDPs). POMDPs are ﬁnite MDPs in which the state
+is not observable, but another “sensation” signal stochastically related to the
+state is observable. The theory of POMDPs has been extensively studied for
+the case of complete knowledge of the dynamics of the POMDP. In this case,
+Bayesian methods can be used to compute at each time step the probability of
+the environment’s being in each state of the underlying MDP. This probability
+distribution can then be used as a new state signal for the original problem.
+The downside for the Bayesian POMDP approach is its computational ex-
+pense and its strong reliance on complete environment models. Some of the
+recent work pursuing this approach is by Littman, Cassandra, and Kaelbling
+(1995), Parr and Russell (1995), and Chrisman (1992).
+If we are not willing
+to assume a complete model of a POMDP’s dynamics, then existing theory
+seems to oﬀer little guidance. Nevertheless, one can still attempt to construct
+a Markov state signal from the sequence of sensations. Various statistical and
+ad hoc methods along these lines have been explored (e.g., Chrisman, 1992;
+McCallum, 1993, 1995; Lin and Mitchell, 1992; Chapman and Kaelbling, 1991;
+Moore, 1994; Rivest and Schapire, 1987; Colombetti and Dorigo, 1994; White-
+head and Ballard, 1991; Hochreiter and Schmidhuber, 1997).
+
+All of the above methods involve constructing an improved state repre-
+sentation from the non-Markov one provided by the environment. Another
+approach is to leave the state representation unchanged and use methods that
+are not too adversely aﬀected by its being non-Markov (e.g., Singh, Jaakkola,
+and Jordan, 1994, 1995; Jaakkola, Singh and Jordan, 1995).
+In fact, most
+function approximation methods can be viewed in this way. For example, state
+aggregation methods for function approximation are in eﬀect equivalent to a
+non-Markov representation in which all members of a set of states are mapped
+into a common sensation. There are other parallels between the issues of func-
+tion approximation and non-Markov representations. In both cases the overall
+problem divides into two parts: constructing an improved representation, and
+
+308
+
+CHAPTER 15. PROSPECTS
+
+making do with the current representation. In both cases the “making do”
+part is relatively well understood, whereas the constructive part is unclear
+and wide open. At this point we can only guess as to whether or not these
+parallels point to any common solution methods for the two problems.
+
+Another important direction for extending reinforcement learning beyond
+what we have covered in this book is to incorporate ideas of modularity and
+hierarchy. Introductory reinforcement learning is about learning value fun

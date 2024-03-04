@@ -1,0 +1,689 @@
+ identical to π except
+that π(cid:48)(s) = a
+= π(s). Obviously, (4.7) holds at all states other than s. Thus,
+if qπ(s, a) > vπ(s), then the changed policy is indeed better than π.
+
+The idea behind the proof of the policy improvement theorem is easy to
+understand. Starting from (4.7), we keep expanding the qπ side and reapplying
+
+(cid:54)
+(cid:54)
+4.2. POLICY IMPROVEMENT
+
+95
+
+(4.7) until we get vπ(cid:48)(s):
+
+vπ(s)
+
+qπ(s, π(cid:48)(s))
+
+|
+
+St = s]
+
+≤
+= Eπ(cid:48)[Rt+1 + γvπ(St+1)
+
+St = s]
+Eπ(cid:48)[Rt+1 + γqπ(St+1, π(cid:48)(St+1))
+≤
+= Eπ(cid:48)[Rt+1 + γEπ(cid:48)[Rt+2 + γvπ(St+2)]
+= Eπ(cid:48)
+Eπ(cid:48)
+
+Rt+1 + γRt+2 + γ2vπ(St+2)
+Rt+1 + γRt+2 + γ2Rt+3 + γ3vπ(St+3)
+(cid:2)
+(cid:3)
+(cid:2)
+Rt+1 + γRt+2 + γ2Rt+3 + γ3Rt+4 +
+
+|
+St = s
+
+≤
+...
+
+(cid:12)
+(cid:12)
+
+|
+
+St = s]
+
+Eπ(cid:48)
+≤
+= vπ(cid:48)(s).
+
+(cid:2)
+
+(cid:12)
+(cid:12)
+
+· · ·
+
+St = s
+
+(cid:3)
+St = s
+
+(cid:12)
+(cid:12)
+
+(cid:3)
+
+So far we have seen how, given a policy and its value function, we can easily
+evaluate a change in the policy at a single state to a particular action. It is a
+natural extension to consider changes at all states and to all possible actions,
+selecting at each state the action that appears best according to qπ(s, a). In
+other words, to consider the new greedy policy, π(cid:48), given by
+
+π(cid:48)(s) = argmax
+
+a
+
+= argmax
+
+a
+
+qπ(s, a)
+
+E[Rt+1 + γvπ(St+1)
+
+St = s, At = a]
+
+|
+
+(4.9)
+
+= argmax
+
+p(s(cid:48), r
+
+a
+
+(cid:88)s(cid:48),r
+
+s, a)
+|
+
+(cid:104)
+
+r + γvπ(s(cid:48))
+
+,
+
+(cid:105)
+
+where argmaxa denotes the value of a at which the expression that follows is
+maximized (with ties broken arbitrarily). The greedy policy takes the action
+that looks best in the short term—after one step of lookahead—according to
+vπ. By construction, the greedy policy meets the conditions of the policy
+improvement theorem (4.7), so we know that it is as good as, or better than,
+the original policy. The process of making a new policy that improves on an
+original policy, by making it greedy with respect to the value function of the
+original policy, is called policy improvement.
+
+Suppose the new greedy policy, π(cid:48), is as good as, but not better than, the
+
+old policy π. Then vπ = vπ(cid:48), and from (4.9) it follows that for all s
+
+S:
+
+∈
+
+vπ(cid:48)(s) = max
+
+a
+
+E[Rt+1 + γvπ(cid:48)(St+1)
+
+St = s, At = a]
+
+= max
+
+a
+
+(cid:88)s(cid:48),r
+
+p(s(cid:48), r
+
+s, a)
+|
+
+|
+r + γvπ(cid:48)(s(cid:48))
+
+.
+
+(cid:104)
+
+(cid:105)
+
+96
+
+CHAPTER 4. DYNAMIC PROGRAMMING
+
+But this is the same as the Bellman optimality equation (4.1), and therefore,
+, and both π and π(cid:48) must be optimal policies. Policy improve-
+vπ(cid:48) must be v
+∗
+ment thus must give us a strictly better policy except when the original policy
+is already optimal.
+
+So far in this section we have considered the special case of deterministic
+policies. In the general case, a stochastic policy π speciﬁes probabilities, π(a
+s),
+|
+for taking each action, a, in each state, s. We will not go through the details,
+but in fact all the ideas of this section extend easily to stochastic policies. In
+particular, the policy improvement theorem carries through as stated for the
+stochastic case, under the natural deﬁnition:
+
+qπ(s, π(cid:48)(s)) =
+
+π(cid:48)(a
+
+s)qπ(s, a).
+|
+
+a
+(cid:88)
+
+In addition, if there are ties in policy improvement steps such as (4.9)—that
+is, if there are several actions at which the maximum is achieved—then in the
+stochastic case we need not select a single action from among them. Instead,
+each maximizing action can be given a portion of the probability of being
+selected in the new greedy policy. Any apportioning scheme is allowed as long
+as all submaximal actions are given zero probability.
+
+The last row of Figure 4.2 shows an example of policy improvement for
+stochastic policies. Here the original policy, π, is the equiprobable random
+policy, and the new policy, π(cid:48), is greedy with respect to vπ. The value function
+vπ is shown in the bottom-left diagram and the set of possible π(cid:48) is shown in
+the bottom-right diagram. The states with multiple arrows in the π(cid:48) diagram
+are those in which several actions achieve the maximum in (4.9); any appor-
+tionment of probability among these actions is permitted. The value function
+of any such policy, vπ(cid:48)(s), can be seen by inspection to be either
+1,
+3
+2, or
+−
+S, whereas vπ(s) is at most
+at all states, s
+vπ(s), for all
+14. Thus, vπ(cid:48)(s)
+S, illustrating policy improvement. Although in this case the new policy
+s
+π(cid:48) happens to be optimal, in general only an improvement is guaranteed.
+
+−
+≥
+
+−
+
+−
+
+∈
+
+∈
+
+4.3 Policy Iteration
+
+Once a policy, π, has been improved using vπ to yield a better policy, π(cid:48), we can
+then compute vπ(cid:48) and improve it again to yield an even better π(cid:48)(cid:48). We can thus
+obtain a sequence of monotonically improving policies and value functions:
+
+π0
+
+π1
+
+vπ0
+
+I
+−→
+
+I
+−→
+where
+denotes a policy improvement.
+Each policy is guaranteed to be a strict improvement over the previous one
+
+−→ · · ·
+denotes a policy evaluation and I
+
+E
+−→
+E
+−→
+
+E
+−→
+
+E
+−→
+
+I
+−→
+
+−→
+
+vπ1
+
+v
+∗
+
+π2
+
+π
+
+,
+
+∗
+
+E
+
+4.3. POLICY ITERATION
+
+97
+
+1. Initialization
+
+V (s)
+
+∈
+
+R and π(s)
+
+2. Policy Evaluation
+
+Repeat
+
+A(s) arbitrarily for all s
+
+S
+
+∈
+
+∈
+
+S:
+
+∈
+V (s)
+
+←
+
+0
+∆
+For each s
+v
+←
+V (s)
+∆
+
+←
+
+←
+max(∆,
+(cid:80)
+
+s(cid:48),r p(s(cid:48), r
+v
+|
+
+s, π(s))
+|
+V (s)
+)
+|
+
+−
+
+(cid:2)
+
+r + γV (s(cid:48))
+
+(cid:3)
+
+until ∆ < θ (a small positive number)
+
+3. Policy Improvement
+true
+
+←
+S:
+
+policy-stable
+For each s
+a
+←
+π(s)
+If a
+
+∈
+π(s)
+
+argmaxa
+
+s, a)
+s(cid:48),r p(s(cid:48), r
+←
+|
+= π(s), then policy-stable
+
+r + γV (s(cid:48))
+f alse
+(cid:2)
+
+(cid:3)
+
+←
+
+(cid:80)
+
+If policy-stable, then stop and return V and π; else go to 2
+
+Figure 4.3: Policy iteration (using iterative policy evaluation) for v
+. This
+algorithm has a subtle bug, in that it may never terminate if the policy con-
+tinually switches between two or more policies that are equally good. The bug
+can be ﬁxed by adding additional ﬂags, but it makes the pseudocode so ugly
+that it is not worth it. :-)
+
+∗
+
+(unless it is already optimal). Because a ﬁnite MDP has only a ﬁnite number
+of policies, this process must converge to an optimal policy and optimal value
+function in a ﬁnite number of iterations.
+
+This way of ﬁnding an optimal policy is called policy iteration. A complete
+algorithm is given in Figure 4.3. Note that each policy evaluation, itself an
+iterative computation, is started with the value function for the previous policy.
+This typically results in a great increase in the speed of convergence of policy
+evaluation (presumably because the value function changes little from one
+policy to the next).
+
+Policy iteration often converges in surprisingly few iterations. This is illus-
+trated by the example in Figure 4.2. The bottom-left diagram shows the value
+function for the equiprobable random policy, and the bottom-right diagram
+shows a greedy policy for this value function. The policy improvement theo-
+rem assures us that these policies are better than the original random policy.
+In this case, however, these policies are not just better, but optimal, proceed-
+
+(cid:54)
+98
+
+CHAPTER 4. DYNAMIC PROGRAMMING
+
+ing to the terminal states in the minimum number of steps. In this example,
+policy iteration would ﬁnd the optimal policy after just one iteration.
+
+Example 4.2: Jack’s Car Rental
+Jack manages two locations for a na-
+tionwide car rental company. Each day, some number of customers arrive at
+each location to rent cars. If Jack has a car available, he rents it out and is
+credited $10 by the national company. If he is out of cars at that location,
+then the business is lost. Cars become available for renting the day after they
+are returned. To help ensure that cars are available where they are needed,
+Jack can move them between the two locations overnight, at a cost of $2 per
+car moved. We assume that the number of cars requested and returned at
+each location are Poisson random variables, meaning that the probability that
+the number is n is λn
+λ, where λ is the expected number. Suppose λ is 3
+and 4 for rental requests at the ﬁrst and second locations and 3 and 2 for
+returns. To simplify the problem slightly, we assume that there can be no
+more than 20 cars at each location (any additional cars are returned to the
+nationwide company, and thus disappear from the problem) and a maximum
+of ﬁve cars can be moved from one location to the other in one night. We take
+the discount rate to be γ = 0.9 and formulate this as a continuing ﬁnite MDP,
+where the time steps are days, the state is the number of cars at each location
+at the end of the day, and the actions are the net numbers of cars moved
+between the two locations overnight. Figure 4.4 shows the sequence of policies
+found by policy iteration starting from the policy that never moves any cars.
+
+n! e−
+
+4.4 Value Iteration
+
+One drawback to policy iteration is that each of its iterations involves policy
+evaluation, which may itself be a protracted iterative computation requiring
+multiple sweeps through the state set. If policy evaluation is done iteratively,
+then convergence exactly to vπ occurs only in the limit. Must we wait for
+exact convergence, or can we stop short of that? The example in Figure 4.2
+certainly suggests that it may be possible to truncate policy evaluation. In
+that example, policy evaluation iterations beyond the ﬁrst three have no eﬀect
+on the corresponding greedy policy.
+
+In fact, the policy evaluation step of policy iteration can be truncated in
+several ways without losing the convergence guarantees of policy iteration.
+One important special case is when policy evaluation is stopped after just one
+sweep (one backup of each state). This algorithm is called value iteration. It
+can be written as a particularly simple backup operation that combines the
+
+4.4. VALUE ITERATION
+
+99
+
+Figure 4.4: The sequence of policies found by policy iteration on Jack’s car
+rental problem, and the ﬁnal state-value function. The ﬁrst ﬁve diagrams show,
+for each number of cars at each location at the end of the day, the number
+of cars to be moved from the ﬁrst location to the second (negative numbers
+indicate transfers from the second location to the ﬁrst). Each successive policy
+is a strict improvement over the previous policy, and the last policy is optimal.
+
+4V612#Cars at second location042020020#Cars at first location115!1!2-4432432!3005!1!2!3!412340"1"0"2!3!4!201234!1"32!4!3!201345!1"4#Cars at second location#Cars at first location5200020v4100
+
+CHAPTER 4. DYNAMIC PROGRAMMING
+
+policy improvement and truncated policy evaluation steps:
+
+vk+1(s) = max
+
+a
+
+E[Rt+1 + γvk(St+1)
+
+St = s, At = a]
+
+(4.10)
+
+= max
+
+a
+
+(cid:88)s(cid:48),r
+
+p(s(cid:48), r
+
+s, a)
+|
+
+|
+r + γvk(s(cid:48))
+(cid:105)
+(cid:104)
+
+,
+
+for all s
+v
+∗
+
+∈
+
+S. For arbitrary v0, the sequence
+
+under the same conditions that guarantee the existence of v
+
+vk}
+
+{
+
+can be shown to converge to
+.
+
+∗
+
+Another way of understanding value iteration is by reference to the Bellman
+optimality equation (4.1). Note that value iteration is obtained simply by
+turning the Bellman optimality equation into an update rule. Also note how
+the value iteration backup is identical to the policy evaluation backup (4.5)
+except that it requires the maximum to be taken over all actions. Another
+way of seeing this close relationship is to compare the backup diagrams for
+these algorithms: Figure 3.4a shows the backup diagram for policy evaluation
+and Figure 3.7a shows the backup diagram for value iteration. These two are
+the natural backup operations for computing vπ and v
+∗
+
+.
+
+Finally, let us consider how value iteration terminates. Like policy eval-
+uation, value iteration formally requires an inﬁnite number of iterations to
+converge exactly to v
+. In practice, we stop once the value function changes
+∗
+by only a small amount in a sweep. Figure 4.5 gives a complete value iteration
+algorithm with this kind of termination condition.
+
+Value iteration eﬀectively combines, in each of its sweeps, one sweep of
+policy evaluation and one sweep of policy improvement. Faster convergence is
+often achieved by interposing multiple policy evaluation sweeps between each
+policy improvement sweep.
+In general, the entire class of truncated policy
+iteration algorithms can be thought of as sequences of sweeps, some of which
+use policy evaluation backups and some of which use value iteration backups.
+Since the max operation in (4.10) is the only diﬀerence between these backups,
+this just means that the max operation is added to some sweeps of policy
+evaluation. All of these algorithms converge to an optimal policy for discounted
+ﬁnite MDPs.
+
+Example 4.3: Gambler’s Problem A gambler has the opportunity to
+make bets on the outcomes of a sequence of coin ﬂips. If the coin comes up
+heads, he wins as many dollars as he has staked on that ﬂip; if it is tails, he
+loses his stake. The game ends when the gambler wins by reaching his goal
+of $100, or loses by running out of money. On each ﬂip, the gambler must
+decide what portion of his capital to stake, in integer numbers of dollars. This
+problem can be formulated as an undiscounted, episodic, ﬁnite MDP. The
+state is the gambler’s capital, s
+and the actions are stakes,
+
+1, 2, . . . , 99
+}
+
+∈ {
+
+4.5. ASYNCHRONOUS DYNAMIC PROGRAMMING
+
+101
+
+Initialize array V arbitrarily (e.g., V (s) = 0 for all s
+
+S+)
+
+∈
+
+←
+
+Repeat
+∆
+0
+For each s
+v
+←
+V (s)
+∆
+
+S:
+
+∈
+V (s)
+
+maxa
+←
+max(∆,
+
+s(cid:48),r p(s(cid:48), r
+V (s)
+)
+|
+
+v
+(cid:80)
+|
+
+(cid:2)
+until ∆ < θ (a small positive number)
+
+←
+
+−
+
+s, a)
+|
+
+r + γV (s(cid:48))
+
+(cid:3)
+
+Output a deterministic policy, π, such that
+
+π(s) = argmaxa
+
+s(cid:48),r p(s(cid:48), r
+
+s, a)
+|
+
+r + γV (s(cid:48))
+
+(cid:80)
+
+Figure 4.5: Value iteration.
+
+(cid:2)
+
+(cid:3)
+
+−
+
+∈ {
+
+0, 1, . . . , min(s, 100
+
+a
+s)
+. The reward is zero on all transitions except
+}
+those on which the gambler reaches his goal, when it is +1. The state-value
+function then gives the probability of winning from each state. A policy is a
+mapping from levels of capital to stakes. The optimal policy maximizes the
+probability of reaching the goal. Let ph denote the probability of the coin
+coming up heads. If ph is known, then the entire problem is known and it can
+be solved, for instance, by value iteration. Figure 4.6 shows the change in the
+value function over successive sweeps of value iteration, and the ﬁnal policy
+found, for the case of ph = 0.4. This policy is optimal, but not unique. In
+fact, there is a whole family of optimal policies, all corresponding to ties for
+the argmax action selection with respect to the optimal value function. Can
+you guess what the entire family looks like?
+
+4.5 Asynchronous Dynamic Programming
+
+A major drawback to the DP methods that we have discussed so far is that
+they involve operations over the entire state set of the MDP, that is, they
+require sweeps of the state set. If the state set is very large, then even a single
+sweep can be prohibitively expensive. For example, the game of backgammon
+has over 1020 states. Even if we could perform the value iteration backup on
+a million states per second, it would take over a thousand years to complete a
+single sweep.
+
+Asynchronous DP algorithms are in-place iterative DP algorithms that are
+not organized in terms of systematic sweeps of the state set. These algorithms
+back up the values of states in any order whatsoever, using whatever values of
+
+102
+
+CHAPTER 4. DYNAMIC PROGRAMMING
+
+Figure 4.6: The solution to the gam

@@ -1,0 +1,721 @@
+om which it is likely to run into the edge of the
+grid. State B, on the other hand, is valued more than 5, its immediate reward,
+because from B the agent is taken to B(cid:48), which has a positive value. From B(cid:48) the
+expected penalty (negative reward) for possibly running into an edge is more
+than compensated for by the expected gain for possibly stumbling onto A or B.
+
+−
+
+Example 3.9: Golf To formulate playing a hole of golf as a reinforcement
+learning task, we count a penalty (negative reward) of
+1 for each stroke until
+we hit the ball into the hole. The state is the location of the ball. The value of
+a state is the negative of the number of strokes to the hole from that location.
+Our actions are how we aim and swing at the ball, of course, and which club
+we select. Let us take the former as given and consider just the choice of club,
+which we assume is either a putter or a driver. The upper part of Figure 3.6
+shows a possible state-value function, vputt(s), for the policy that always uses
+the putter. The terminal state in-the-hole has a value of 0. From anywhere
+on the green we assume we can make a putt; these states have value
+1. Oﬀ
+the green we cannot reach the hole by putting, and the value is greater. If
+we can reach the green from a state by putting, then that state must have
+value one less than the green’s value, that is,
+2. For simplicity, let us assume
+we can putt very precisely and deterministically, but with a limited range.
+2 in the ﬁgure; all locations
+This gives us the sharp contour line labeled
+between that line and the green require exactly two strokes to complete the
+hole. Similarly, any location within putting range of the
+2 contour line
+must have a value of
+3, and so on to get all the contour lines shown in the
+.
+ﬁgure. Putting doesn’t get us out of sand traps, so they have a value of
+−∞
+Overall, it takes us six strokes to get from the tee to the hole by putting.
+
+−
+
+−
+
+−
+
+−
+
+−
+
+3.38.84.45.31.51.53.02.31.90.50.10.70.70.4-0.4-1.0-0.4-0.4-0.6-1.2-1.9-1.3-1.2-1.4-2.0ABA'B'+10+5Actions(a)(b)74
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+Figure 3.6: A golf example: the state-value function for putting (above) and
+the optimal action-value function for using the driver (below).
+
+Q*(s,driver)Vputtsandgreen!1sand!2!2!3!4!1!5!6!4!3!3!2!4sandgreen!1sand!2!3!200!"!"vputtq*(s,driver)3.8. OPTIMAL VALUE FUNCTIONS
+
+75
+
+3.8 Optimal Value Functions
+
+Solving a reinforcement learning task means, roughly, ﬁnding a policy that
+achieves a lot of reward over the long run. For ﬁnite MDPs, we can precisely
+deﬁne an optimal policy in the following way. Value functions deﬁne a partial
+ordering over policies. A policy π is deﬁned to be better than or equal to a
+policy π(cid:48) if its expected return is greater than or equal to that of π(cid:48) for all
+S. There
+states. In other words, π
+π(cid:48) if and only if vπ(s)
+is always at least one policy that is better than or equal to all other policies.
+This is an optimal policy. Although there may be more than one, we denote
+all the optimal policies by π
+. They share the same state-value function, called
+the optimal state-value function, denoted v
+, and deﬁned as
+∗
+
+vπ(cid:48)(s) for all s
+
+≥
+
+≥
+
+∈
+
+∗
+
+v
+∗
+
+(s) = max
+
+π
+
+vπ(s),
+
+(3.13)
+
+for all s
+
+S.
+
+∈
+
+Optimal policies also share the same optimal action-value function, denoted
+
+, and deﬁned as
+
+q
+
+∗
+
+q
+
+∗
+
+(s, a) = max
+
+π
+
+qπ(s, a),
+
+(3.14)
+
+S and a
+
+A(s). For the state–action pair (s, a), this function gives
+for all s
+the expected return for taking action a in state s and thereafter following an
+optimal policy. Thus, we can write q
+
+as follows:
+
+∈
+
+∈
+
+(s, a) = E[Rt+1 + γv
+
+q
+
+∗
+
+(St+1)
+
+∗
+
+|
+
+in terms of v
+∗
+
+∗
+St = s, At = a] .
+
+(3.15)
+
+Example 3.10: Optimal Value Functions for Golf The lower part
+of Figure 3.6 shows the contours of a possible optimal action-value function
+(s, driver). These are the values of each state if we ﬁrst play a stroke with
+q
+∗
+the driver and afterward select either the driver or the putter, whichever is
+better. The driver enables us to hit the ball farther, but with less accuracy.
+We can reach the hole in one shot using the driver only if we are already very
+(s, driver) covers only a small portion of
+close; thus the
+the green. If we have two strokes, however, then we can reach the hole from
+2 contour. In this case we don’t have
+much farther away, as shown by the
+1 contour, but only to anywhere
+to drive all the way to within the small
+on the green; from there we can use the putter. The optimal action-value
+function gives the values after committing to a particular ﬁrst action, in this
+case, to the driver, but afterward using whichever actions are best. The
+3
+−
+contour is still farther out and includes the starting tee. From the tee, the best
+sequence of actions is two drives and one putt, sinking the ball in three strokes.
+
+1 contour for q
+
+−
+
+−
+
+−
+
+∗
+
+76
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+Because v
+∗
+
+is the value function for a policy,
+
+it must satisfy the self-
+consistency condition given by the Bellman equation for state values (3.12).
+Because it is the optimal value function, however, v
+’s consistency condition
+∗
+can be written in a special form without reference to any speciﬁc policy. This
+is the Bellman equation for v
+, or the Bellman optimality equation. Intuitively,
+∗
+the Bellman optimality equation expresses the fact that the value of a state
+under an optimal policy must equal the expected return for the best action
+from that state:
+
+v
+∗
+
+(s) = max
+A(s)
+a
+∈
+= max
+
+a
+
+qπ∗(s, a)
+Eπ∗[Gt |
+Eπ∗
+
+∞
+
+(cid:34)
+
+St = s, At = a]
+
+= max
+
+a
+
+γkRt+k+1
+
+St = s, At = a
+
+(cid:88)k=0
+Rt+1 + γ
+
+∞
+
+(cid:12)
+(cid:12)
+(cid:12)
+(cid:12)
+γkRt+k+2
+(cid:12)
+
+(cid:35)
+
+= max
+
+a
+
+Eπ∗
+
+(cid:34)
+
+= max
+
+a
+
+E[Rt+1 + γv
+
+∗
+
+= max
+A(s)
+a
+∈
+
+(cid:88)s(cid:48),r
+
+p(s(cid:48), r
+
+s, a)
+|
+
+(cid:88)k=0
+(St+1)
+
+(cid:12)
+(cid:12)
+(cid:12)
+St = s, At = a]
+(cid:12)
+(cid:12)
+.
+
+(s(cid:48))
+
+|
+r + γv
+
+∗
+
+(cid:2)
+
+(cid:3)
+
+St = s, At = a
+
+(cid:35)
+
+(3.16)
+
+(3.17)
+
+The last two equations are two forms of the Bellman optimality equation for
+v
+∗
+
+. The Bellman optimality equation for q
+
+is
+
+∗
+
+(s, a) = E
+
+q
+
+∗
+
+Rt+1 + γ max
+
+a(cid:48)
+
+q
+
+∗
+
+(St+1, a(cid:48))
+
+St = s, At = a
+
+p(s(cid:48), r
+
+=
+
+(cid:104)
+
+(cid:88)s(cid:48),r
+
+r + γ max
+
+a(cid:48)
+
+(cid:12)
+(cid:12)
+(s(cid:48), a(cid:48))
+(cid:12)
+
+q
+
+∗
+
+s, a)
+|
+
+(cid:104)
+
+(cid:105)
+
+.
+
+(cid:105)
+
+The backup diagrams in Figure 3.7 show graphically the spans of future
+states and actions considered in the Bellman optimality equations for v
+and
+q
+. These are the same as the backup diagrams for vπ and qπ except that arcs
+∗
+have been added at the agent’s choice points to represent that the maximum
+over that choice is taken rather than the expected value given some policy.
+Figure 3.7a graphically represents the Bellman optimality equation (3.17).
+
+∗
+
+For ﬁnite MDPs, the Bellman optimality equation (3.17) has a unique so-
+lution independent of the policy. The Bellman optimality equation is actually
+a system of equations, one for each state, so if there are N states, then there
+are N equations in N unknowns.
+If the dynamics of the environment are
+s, a)), then in principle one can solve this system of equations
+known (p(s(cid:48), r
+|
+
+3.8. OPTIMAL VALUE FUNCTIONS
+
+77
+
+Figure 3.7: Backup diagrams for (a) v
+∗
+
+and (b) q
+
+∗
+
+using any one of a variety of methods for solving systems of nonlinear
+
+for v
+∗
+equations. One can solve a related set of equations for q
+
+.
+
+∗
+
+∗
+
+Once one has v
+∗
+
+If you have the optimal value function, v
+
+, it is relatively easy to determine an optimal policy. For
+each state s, there will be one or more actions at which the maximum is ob-
+tained in the Bellman optimality equation. Any policy that assigns nonzero
+probability only to these actions is an optimal policy. You can think of this
+as a one-step search.
+, then the
+actions that appear best after a one-step search will be optimal actions. An-
+other way of saying this is that any policy that is greedy with respect to
+the optimal evaluation function v
+is an optimal policy. The term greedy is
+∗
+used in computer science to describe any search or decision procedure that
+selects alternatives based only on local or immediate considerations, without
+considering the possibility that such a selection may prevent future access to
+even better alternatives. Consequently, it describes policies that select actions
+based only on their short-term consequences. The beauty of v
+is that if one
+uses it to evaluate the short-term consequences of actions—speciﬁcally, the
+one-step consequences—then a greedy policy is actually optimal in the long-
+term sense in which we are interested because v
+already takes into account
+∗
+the reward consequences of all possible future behavior. By means of v
+, the
+∗
+optimal expected long-term return is turned into a quantity that is locally and
+immediately available for each state. Hence, a one-step-ahead search yields
+the long-term optimal actions.
+
+∗
+
+∗
+
+Having q
+
+makes choosing optimal actions still easier. With q
+, the agent
+does not even have to do a one-step-ahead search: for any state s, it can simply
+(s, a). The action-value function eﬀectively
+ﬁnd any action that maximizes q
+caches the results of all one-step-ahead searches. It provides the optimal ex-
+pected long-term return as a value that is locally and immediately available
+for each state–action pair. Hence, at the cost of representing a function of
+state–action pairs, instead of just of states, the optimal action-value function
+allows optimal actions to be selected without having to know anything about
+possible successor states and their values, that is, without having to know
+
+∗
+
+∗
+
+s,asas'ra's'r(b)(a)maxmax78
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+anything about the environment’s dynamics.
+
+Example 3.11: Bellman Optimality Equations for the Recycling
+Robot Using (3.17), we can explicitly give the Bellman optimality equation
+for the recycling robot example. To make things more compact, we abbre-
+viate the states high and low, and the actions search, wait, and recharge
+respectively by h, l, s, w, and re. Since there are only two states, the Bellman
+(h) can be
+optimality equation consists of two equations. The equation for v
+written as follows:
+
+∗
+
+(h) = max
+
+v
+∗
+
+= max
+
+= max
+
+(cid:26)
+
+(cid:26)
+
+(cid:26)
+
+∗
+
+p(h
+h, s)[r(h, s, h) + γv
+|
+h, w)[r(h, w, h) + γv
+p(h
+|
+α[rs + γv
+1[rw + γv
+∗
+rs + γ[αv
+rw + γv
+
+(h)] + (1
+∗
+(h)] + 0[rw + γv
+(h) + (1
+α)v
+∗
+
+∗
+(h)
+
+−
+
+−
+
+∗
+
+∗
+
+(l)]
+
+∗
+(l)],
+
+(cid:27)
+
+.
+
+(cid:27)
+
+(h)] + p(l
+h, s)[r(h, s, l) + γv
+|
+h, w)[r(h, w, l) + γv
+(h)] + p(l
+|
+(l)],
+
+∗
+α)[rs + γv
+
+(l)],
+(l)]
+
+∗
+
+∗
+
+(cid:27)
+
+Following the same procedure for v
+∗
+
+(l) yields the equation
+
+(l) = max
+
+v
+∗
+
+
+
+
+3(1
+
+βrs −
+rw + γv
+(h)
+γv
+
+∗
+
+−
+(l),
+
+∗
+
+β) + γ[(1
+
+β)v
+
+∗
+
+−
+
+(h) + βv
+
+(l)]
+
+∗
+
+.
+
+
+
+
+For any choice of rs, rw, α, β, and γ, with 0
+exactly one pair of numbers, v
+∗
+two nonlinear equations.
+
+(h) and v
+∗
+
+
+
+γ < 1, 0
+
+1, there is
+≤
+(l), that simultaneously satisfy these
+
+
+≤
+
+α, β
+
+≤
+
+Example 3.12: Solving the Gridworld Suppose we solve the Bellman
+equation for v
+for the simple grid task introduced in Example 3.8 and shown
+∗
+again in Figure 3.8a. Recall that state A is followed by a reward of +10 and
+transition to state A(cid:48), while state B is followed by a reward of +5 and transition
+to state B(cid:48). Figure 3.8b shows the optimal value function, and Figure 3.8c
+shows the corresponding optimal policies. Where there are multiple arrows in
+a cell, any of the corresponding actions is optimal.
+
+Explicitly solving the Bellman optimality equation provides one route to
+ﬁnding an optimal policy, and thus to solving the reinforcement learning prob-
+lem. However, this solution is rarely directly useful. It is akin to an exhaustive
+search, looking ahead at all possibilities, computing their probabilities of oc-
+currence and their desirabilities in terms of expected rewards. This solution
+relies on at least three assumptions that are rarely true in practice: (1) we
+accurately know the dynamics of the environment; (2) we have enough com-
+putational resources to complete the computation of the solution; and (3) the
+Markov property. For the kinds of tasks in which we are interested, one is
+
+3.9. OPTIMALITY AND APPROXIMATION
+
+79
+
+Figure 3.8: Optimal solutions to the gridworld example.
+
+generally not able to implement this solution exactly because various com-
+binations of these assumptions are violated. For example, although the ﬁrst
+and third assumptions present no problems for the game of backgammon, the
+second is a major impediment. Since the game has about 1020 states, it would
+take thousands of years on today’s fastest computers to solve the Bellman
+equation for v
+. In reinforcement learning
+∗
+one typically has to settle for approximate solutions.
+
+, and the same is true for ﬁnding q
+
+∗
+
+Many diﬀerent decision-making methods can be viewed as ways of ap-
+proximately solving the Bellman optimality equation. For example, heuristic
+search methods can be viewed as expanding the right-hand side of (3.17) sev-
+eral times, up to some depth, forming a “tree” of possibilities, and then using
+a heuristic evaluation function to approximate v
+at the “leaf” nodes. (Heuris-
+∗
+tic search methods such as A∗ are almost always based on the episodic case.)
+The methods of dynamic programming can be related even more closely to
+the Bellman optimality equation. Many reinforcement learning methods can
+be clearly understood as approximately solving the Bellman optimality equa-
+tion, using actual experienced transitions in place of knowledge of the expected
+transitions. We consider a variety of such methods in the following chapters.
+
+3.9 Optimality and Approximation
+
+We have deﬁned optimal value functions and optimal policies. Clearly, an
+agent that learns an optimal policy has done very well, but in practice this
+rarely happens. For the kinds of tasks in which we are interested, optimal
+policies can be generated only with extreme computational cost. A well-deﬁned
+notion of optimality organizes the approach to learning we describe in this book
+and provides a way to understand the theoretical properties of various learning
+algorithms, but it is an ideal that agents can only approximate to varying
+degrees. As we discussed above, even if we have a complete and accurate
+model of the environment’s dynamics, it is usually not possible to simply
+
+a) gridworldb) V*c) !*22.024.422.019.417.519.822.019.817.816.017.819.817.816.014.416.017.816.014.413.014.416.014.413.011.7ABA'B'+10+5v*π*80
+
+CHAPTER 3. FINITE MARKOV DECISION PROCESSES
+
+compute an optimal policy by solving the Bellman optimality equation. For
+example, board games such as chess are a tiny fraction of human experience,
+yet large, custom-designed computers still cannot compute the optimal moves.
+A critical aspect of the problem facing the agent is always the computational
+power available to it, in particular, the amount of computation it can perform
+in a single time step.
+
+The memory available is also an important constraint. A large amount
+of memory is often required to build up approximations of value functions,
+In tasks with small, ﬁnite state sets, it is possible to
+policies, and models.
+form these approximations using arrays or tables with one entry for each state
+(or state–action pair). This we call the tabular case, and the corresponding
+methods we call tabular methods. In many cases of practical interest, however,
+there are far more states than could possibly be entries i

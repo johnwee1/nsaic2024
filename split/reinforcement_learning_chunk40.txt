@@ -1,0 +1,351 @@
+ove up (otherwise evening rush hour traﬃc would tend to push all
+the elevators down to the lobby). These last three constraints were explicitly
+included to provide some prior knowledge and make the problem easier. The
+net result of all these constraints was that each elevator had to make few and
+simple decisions. The only decision that had to be made was whether or not
+to stop at a ﬂoor that was being approached and that had passengers waiting
+to be picked up. At all other times, no choices needed to be made.
+
+That each elevator made choices only infrequently permitted a second sim-
+pliﬁcation of the problem. As far as the learning agent was concerned, the
+system made discrete jumps from one time at which it had to make a decision
+to the next. When a continuous-time decision problem is treated as a discrete-
+time system in this way it is known as a semi-Markov decision process. To a
+large extent, such processes can be treated just like any other Markov decision
+process by taking the reward on each discrete transition as the integral of the
+reward over the corresponding continuous-time interval. The notion of return
+generalizes naturally from a discounted sum of future rewards to a discounted
+integral of future rewards:
+
+Gt =
+
+∞
+
+(cid:88)k=0
+
+γkRt+k+1
+
+becomes
+
+Gt =
+
+∞
+
+e−
+
+βτ Rt+τ dτ,
+
+0
+(cid:90)
+
+where Rt on the left is the usual immediate reward in discrete time and Rt+τ
+on the right is the instantaneous reward at continuous time t + τ .
+In the
+elevator problem the continuous-time reward is the negative of the sum of the
+squared waiting times of all waiting passengers. The parameter β > 0 plays a
+role similar to that of the discount-rate parameter γ
+
+[0, 1).
+
+∈
+
+The basic idea of the extension of Q-learning to semi-Markov decision prob-
+lems can now be explained. Suppose the system is in state S and takes action
+A at time t1, and then the next decision is required at time t2 in state S(cid:48).
+After this discrete-event transition, the semi-Markov Q-learning backup for a
+tabular action-value function, Q, would be:
+
+Q(S, A)
+
+←
+
+Q(S, A)+α
+
+t2
+
+β(τ
+
+e−
+
+t1)Rτ dτ + e−
+−
+
+β(t2
+
+t1) min
+−
+a
+
+Q(S(cid:48), a)
+
+Q(S, A)
+
+.
+
+−
+
+t1
+
+(cid:20)(cid:90)
+
+(cid:21)
+t1) acts as a variable discount factor that depends on the
+Note how e−
+−
+amount of time between events. This method is due to Bradtke and Duﬀ
+(1995).
+
+β(t2
+
+14.4. ELEVATOR DISPATCHING
+
+289
+
+One complication is that the reward as deﬁned—the negative sum of the
+squared waiting times—is not something that would normally be known while
+an actual elevator was running. This is because in a real elevator system one
+does not know how many people are waiting at a ﬂoor, only how long it has
+been since the button requesting a pickup on that ﬂoor was pressed. Of course
+this information is known in a simulator, and Crites and Barto used it to
+obtain their best results. They also experimented with another technique that
+used only information that would be known in an on-line learning situation
+with a real set of elevators. In this case one can use how long since each button
+has been pushed together with an estimate of the arrival rate to compute an
+expected summed squared waiting time for each ﬂoor. Using this in the reward
+measure proved nearly as eﬀective as using the actual summed squared waiting
+time.
+
+For function approximation, a nonlinear neural network trained by back-
+propagation was used to represent the action-value function. Crites and Barto
+experimented with a wide variety of ways of representing states to the network.
+After much exploration, their best results were obtained using networks with
+47 input units, 20 hidden units, and two output units, one for each action.
+The way the state was encoded by the input units was found to be critical to
+the eﬀectiveness of the learning. The 47 input units were as follows:
+
+•
+
+•
+
+•
+
+•
+
+•
+
+18 units: Two units encoded information about each of the nine hall
+buttons for down pickup requests. A real-valued unit encoded the elapsed
+time if the button had been pushed, and a binary unit was on if the
+button had not been pushed.
+
+16 units: A unit for each possible location and direction for the car whose
+decision was required. Exactly one of these units was on at any given
+time.
+
+10 units: The location of the other elevators superimposed over the 10
+ﬂoors. Each elevator had a “footprint” that depended on its direction
+and speed. For example, a stopped elevator caused activation only on
+the unit corresponding to its current ﬂoor, but a moving elevator caused
+activation on several units corresponding to the ﬂoors it was approaching,
+with the highest activations on the closest ﬂoors. No information was
+provided about which one of the other cars was at a particular location.
+
+1 unit: This unit was on if the elevator whose decision was required was
+at the highest ﬂoor with a passenger waiting.
+
+1 unit: This unit was on if the elevator whose decision was required was
+at the ﬂoor with the passenger who had been waiting for the longest
+amount of time.
+
+290
+
+CHAPTER 14. APPLICATIONS AND CASE STUDIES
+
+Figure 14.9: Comparison of elevator dispatchers. The SECTOR dispatcher is
+similar to what is used in many actual elevator systems. The RL1 and RL2
+dispatchers were constructed through reinforcement learning.
+
+1 unit: Bias unit was always on.
+
+•
+
+Two architectures were used.
+
+In RL1, each elevator was given its own
+action-value function and its own neural network.
+In RL2, there was only
+one network and one action-value function, with the experiences of all four
+In both cases, each
+elevators contributing to learning in the one network.
+elevator made its decisions independently of the other elevators, but shared
+a single reward signal with them. This introduced additional stochasticity as
+far as each elevator was concerned because its reward depended in part on the
+actions of the other elevators, which it could not control. In the architecture
+in which each elevator had its own action-value function, it was possible for
+diﬀerent elevators to learn diﬀerent specialized strategies (although in fact
+they tended to learn the same strategy). On the other hand, the architecture
+with a common action-value function could learn faster because it learned
+simultaneously from the experiences of all elevators. Training time was an issue
+here, even though the system was trained in simulation. The reinforcement
+learning methods were trained for about four days of computer time on a 100
+mips processor (corresponding to about 60,000 hours of simulated time). While
+this is a considerable amount of computation, it is negligible compared with
+what would be required by any conventional dynamic programming algorithm.
+
+The networks were trained by simulating a great many evening rush hours
+while making dispatching decisions using the developing, learned action-value
+functions. Crites and Barto used the Gibbs softmax procedure to select ac-
+tions as described in Section 2.3, reducing the “temperature” gradually over
+training. A temperature of zero was used during test runs on which the per-
+formance of the learned dispatchers was assessed.
+
+Figure 14.9 shows the performance of several dispatchers during a simulated
+evening rush hour, what researchers call down-peak traﬃc. The dispatchers
+
+SECTORDLBHUFF1LQFHUFF2FIMESA/nqESARL1RL2HUFF1LQFHUFF2FIMESA/nqESARL1RL2020406080AveragewaitingandsystemtimesSECTORDLBHUFF1LQFHUFF2FIMESA/nqESARL1RL2Dispatcher012% Waiting >1 minuteSECTORDLBDispatcher0200400600800DispatcherAveragesquaredwaitingtime14.5. DYNAMIC CHANNEL ALLOCATION
+
+291
+
+include methods similar to those commonly used in the industry, a variety
+of heuristic methods, sophisticated research algorithms that repeatedly run
+complex optimization algorithms on-line (Bao et al., 1994), and dispatchers
+learned by using the two reinforcement learning architectures. By all of the
+performance measures, the reinforcement learning dispatchers compare favor-
+ably with the others. Although the optimal policy for this problem is unknown,
+and the state of the art is diﬃcult to pin down because details of commercial
+dispatching strategies are proprietary, these learned dispatchers appeared to
+perform very well.
+
+14.5 Dynamic Channel Allocation
+
+An important problem in the operation of a cellular telephone system is how
+to eﬃciently use the available bandwidth to provide good service to as many
+customers as possible. This problem is becoming critical with the rapid growth
+in the use of cellular telephones. Here we describe a study due to Singh and
+Bertsekas (1997) in which they applied reinforcement learning to this problem.
+
+Mobile telephone systems take advantage of the fact that a communication
+channel—a band of frequencies—can be used simultaneously by many callers
+if these callers are spaced physically far enough apart that their calls do not
+interfere with each another. The minimum distance at which there is no inter-
+ference is called the channel reuse constraint. In a cellular telephone system,
+the service area is divided into a number of regions called cells. In each cell
+is a base station that handles all the calls made within the cell. The total
+available bandwidth is divided permanently into a number of channels. Chan-
+nels must then be allocated to cells and to calls made within cells without
+violating the channel reuse constraint. There are a great many ways to do
+this, some of which are better than others in terms of how reliably they make
+channels available to new calls, or to calls that are “handed oﬀ” from one cell
+to another as the caller crosses a cell boundary. If no channel is available for
+a new or a handed-oﬀ call, the call is lost, or blocked. Singh and Bertsekas
+considered the problem of allocating channels so that the number of blocked
+calls is minimized.
+
+A simple example provides some intuition about the nature of the problem.
+Imagine a situation with three cells sharing two channels. The three cells are
+arranged in a line where no two adjacent cells can use the same channel without
+violating the channel reuse constraint. If the left cell is serving a call on channel
+1 while the right cell is serving another call on channel 2, as in the left diagram
+below, then any new call arriving in the middle cell must be blocked.
+
+292
+
+CHAPTER 14. APPLICATIONS AND CASE STUDIES
+
+Obviously, it would be better for both the left and the right cells to use channel
+1 for their calls. Then a new call in the middle cell could be assigned channel 2,
+as in the right diagram, without violating the channel reuse constraint. Such
+interactions and possible optimizations are typical of the channel assignment
+problem.
+In larger and more realistic cases with many cells, channels, and
+calls, and uncertainty about when and where new calls will arrive or existing
+calls will have to be handed oﬀ, the problem of allocating channels to minimize
+blocking can become extremely complex.
+
+The simplest approach is to permanently assign channels to cells in such a
+way that the channel reuse constraint can never be violated even if all channels
+of all cells are used simultaneously. This is called a ﬁxed assignment method.
+In a dynamic assignment method, in contrast, all channels are potentially
+available to all cells and are assigned to cells dynamically as calls arrive. If
+this is done right, it can take advantage of temporary changes in the spatial
+and temporal distribution of calls in order to serve more users. For example,
+when calls are concentrated in a few cells, these cells can be assigned more
+channels without increasing the blocking rate in the lightly used cells.
+
+The channel assignment problem can be formulated as a semi-Markov de-
+cision process much as the elevator dispatching problem was in the previous
+section. A state in the semi-MDP formulation has two components. The ﬁrst
+is the conﬁguration of the entire cellular system that gives for each cell the
+usage state (occupied or unoccupied) of each channel for that cell. A typical
+cellular system with 49 cells and 70 channels has a staggering 7049 conﬁgura-
+tions, ruling out the use of conventional dynamic programming methods. The
+other state component is an indicator of what kind of event caused a state
+transition: arrival, departure, or handoﬀ. This state component determines
+what kinds of actions are possible. When a call arrives, the possible actions
+are to assign it a free channel or to block it if no channels are available. When
+a call departs, that is, when a caller hangs up, the system is allowed to reassign
+the channels in use in that cell in an attempt to create a better conﬁguration.
+At time t the immediate reward, Rt, is the number of calls taking place at
+that time, and the return is
+
+Gt =
+
+∞
+
+e−
+
+βτ Rt+τ dτ,
+
+0
+(cid:90)
+
+where β > 0 plays a role similar to that of the discount-rate parameter γ. Max-
+imizing the expectation of this return is the same as minimizing the expected
+(discounted) number of calls blocked over an inﬁnite horizon.
+
+1211214.5. DYNAMIC CHANNEL ALLOCATION
+
+293
+
+This is another problem greatly simpliﬁed if treated in terms of afterstates
+(Section 6.6). For each state and action, the immediate result is a new con-
+ﬁguration, an afterstate. A value function is learned over just these conﬁgu-
+rations. To select among the possible actions, the resulting conﬁguration was
+determined and evaluated. The action was then selected that would lead to
+the conﬁguration of highest estimated value. For example, when a new call
+arrived at a cell, it could be assigned to any of the free channels, if there were
+any; otherwise, it had to be blocked. The new conﬁguration that would result
+from each assignment was easy to compute because it was always a simple de-
+terministic consequence of the assignment. When a call terminated, the newly
+released channel became available for reassigning to any of the ongoing calls.
+In this case, the actions of reassigning each ongoing call in the cell to the newly
+released channel were considered. An action was then selected leading to the
+conﬁguration with the highest estimated value.
+
+Linear function approximation was used for the value function: the esti-
+mated value of a conﬁguration was a weighted sum of features. Conﬁgurations
+were represented by two sets of features: an availability feature for each cell
+and a packing feature for each cell–channel pair. For any conﬁguration, the
+availability feature for a cell gave the number of additional calls it could accept
+without conﬂict if the rest of the cells were frozen in the current conﬁguration.
+For any given conﬁguration, the packing feature for a cell–channel pair gave
+the number of times that channel was being used in that conﬁguration within
+a four-cell radius of that cell. All of these features were normalized to lie be-
+tween
+1 and 1. A semi-Markov version of linear TD(0) was used to update
+the weights.
+
+−
+
+×
+
+Singh and Bertsekas compared three channel allocation methods using a
+simulation of a 7
+7 cellular array with 70 channels. The channel reuse con-
+straint was that calls had to be 3 cells apart to be allowed to use the same chan-
+nel. Calls arrived at cells randomly according to Poisson distributions possibly
+having diﬀerent means for diﬀerent cells, and call durations were determined
+randomly by an exponential distribution with a mean of three minutes. The
+methods compared were a ﬁxed assignment method (FA), a dynamic alloca-
+tion method called “borrowing with directional channel locking” (BDCL), and
+the reinforcement learning m

@@ -1,0 +1,257 @@
+ to ferry some of them to the dining table
+before obtaining others. Each step is guided by goals, such as grasping
+a spoon or getting to the refrigerator, and is in service of other goals,
+such as having the spoon to eat with once the cereal is prepared and ul-
+timately obtaining nourishment. Whether he is aware of it or not, Phil
+is accessing information about the state of his body that determines his
+nutritional needs, level of hunger, and food preferences.
+
+These examples share features that are so basic that they are easy to over-
+look. All involve interaction between an active decision-making agent and
+its environment, within which the agent seeks to achieve a goal despite un-
+certainty about its environment. The agent’s actions are permitted to aﬀect
+the future state of the environment (e.g., the next chess position, the level of
+reservoirs of the reﬁnery, the robot’s next location and the future charge level
+of its battery), thereby aﬀecting the options and opportunities available to
+the agent at later times. Correct choice requires taking into account indirect,
+delayed consequences of actions, and thus may require foresight or planning.
+
+At the same time, in all these examples the eﬀects of actions cannot be
+fully predicted; thus the agent must monitor its environment frequently and
+react appropriately. For example, Phil must watch the milk he pours into
+his cereal bowl to keep it from overﬂowing. All these examples involve goals
+that are explicit in the sense that the agent can judge progress toward its goal
+based on what it can sense directly. The chess player knows whether or not
+he wins, the reﬁnery controller knows how much petroleum is being produced,
+the mobile robot knows when its batteries run down, and Phil knows whether
+or not he is enjoying his breakfast.
+
+Neither the agent nor its environment may coincide with what we normally
+think of as an agent and its environment. An agent is not necessarily an entire
+robot or organism, and its environment is not necessarily only what is outside
+of a robot or organism. The example robot’s battery is part of the environment
+of its controlling agent, and Phil’s degree of hunger and food preferences are
+features of the environment of his internal decision-making agent. The state
+of an agent’s environment often include’s information about the state of the
+machine or organism in which the agent resides, and this can include memories
+and even aspirations. Throughout this book we are being abstract in this way
+when we talk about agents and their environments.
+
+In all of these examples the agent can use its experience to improve its per-
+formance over time. The chess player reﬁnes the intuition he uses to evaluate
+positions, thereby improving his play; the gazelle calf improves the eﬃciency
+
+1.3. ELEMENTS OF REINFORCEMENT LEARNING
+
+7
+
+with which it can run; Phil learns to streamline making his breakfast. The
+knowledge the agent brings to the task at the start—either from previous ex-
+perience with related tasks or built into it by design or evolution—inﬂuences
+what is useful or easy to learn, but interaction with the environment is essential
+for adjusting behavior to exploit speciﬁc features of the task.
+
+1.3 Elements of Reinforcement Learning
+
+Beyond the agent and the environment, one can identify four main subelements
+of a reinforcement learning system: a policy, a reward signal , a value function,
+and, optionally, a model of the environment.
+
+A policy deﬁnes the learning agent’s way of behaving at a given time.
+Roughly speaking, a policy is a mapping from perceived states of the envi-
+ronment to actions to be taken when in those states. It corresponds to what
+in psychology would be called a set of stimulus–response rules or associations
+(provided that stimuli include those that can come from within the animal).
+In some cases the policy may be a simple function or lookup table, whereas
+in others it may involve extensive computation such as a search process. The
+policy is the core of a reinforcement learning agent in the sense that it alone
+is suﬃcient to determine behavior. In general, policies may be stochastic.
+
+A reward signal deﬁnes the goal in a reinforcement learning problem. On
+each time step, the environment sends to the reinforcement learning agent a
+single number, a reward. The agent’s sole objective is to maximize the total
+reward it receives over the long run. The reward signal thus deﬁnes what are
+the good and bad events for the agent. In a biological system, we might think
+of rewards as analogous to the experiences of pleasure or pain. They are the
+The
+immediate and deﬁning features of the problem faced by the agent.
+reward sent to the agent at any time depends on the agent’s current action
+and the current state of the agent’s environment. The agent cannot alter the
+process that does this. The only way the agent can inﬂuence the reward signal
+is through its actions, which can have a direct eﬀect on reward, or an indirect
+eﬀect through changing the environment’s state. In our example above of Phil
+eating breakfast, the reinforcement learning agent directing his behavior might
+receive diﬀerent reward signals when he eats his breakfast depending on how
+hungry he is, what mood he is in, and other features of his of his body, which
+is part of his internal reinforcement learning agent’s environment. The reward
+signal is the primary basis for altering the policy. If an action selected by the
+policy is followed by low reward, then the policy may be changed to select
+some other action in that situation in the future. In general, reward signals
+may be stochastic functions of the state of the environment and the actions
+
+8
+
+CHAPTER 1. THE REINFORCEMENT LEARNING PROBLEM
+
+taken.
+
+Whereas the reward signal indicates what is good in an immediate sense,
+a value function speciﬁes what is good in the long run. Roughly speaking, the
+value of a state is the total amount of reward an agent can expect to accumulate
+over the future, starting from that state. Whereas rewards determine the
+immediate, intrinsic desirability of environmental states, values indicate the
+long-term desirability of states after taking into account the states that are
+likely to follow, and the rewards available in those states. For example, a state
+might always yield a low immediate reward but still have a high value because
+it is regularly followed by other states that yield high rewards. Or the reverse
+could be true. To make a human analogy, rewards are somewhat like pleasure
+(if high) and pain (if low), whereas values correspond to a more reﬁned and
+farsighted judgment of how pleased or displeased we are that our environment
+is in a particular state. Expressed this way, we hope it is clear that value
+functions formalize a basic and familiar idea.
+
+Rewards are in a sense primary, whereas values, as predictions of rewards,
+are secondary. Without rewards there could be no values, and the only purpose
+of estimating values is to achieve more reward. Nevertheless, it is values with
+which we are most concerned when making and evaluating decisions. Action
+choices are made based on value judgments. We seek actions that bring about
+states of highest value, not highest reward, because these actions obtain the
+greatest amount of reward for us over the long run. In decision-making and
+planning, the derived quantity called value is the one with which we are most
+concerned. Unfortunately, it is much harder to determine values than it is to
+determine rewards. Rewards are basically given directly by the environment,
+but values must be estimated and re-estimated from the sequences of obser-
+vations an agent makes over its entire lifetime. In fact, the most important
+component of almost all reinforcement learning algorithms we consider is a
+method for eﬃciently estimating values. The central role of value estimation
+is arguably the most important thing we have learned about reinforcement
+learning over the last few decades.
+
+The fourth and ﬁnal element of some reinforcement learning systems is
+a model of the environment. This is something that mimics the behavior of
+the environment, or more generally, that allows inferences to be made about
+how the environment will behave. For example, given a state and action,
+the model might predict the resultant next state and next reward. Models
+are used for planning, by which we mean any way of deciding on a course of
+action by considering possible future situations before they are actually expe-
+rienced. Methods for solving reinforcement learning problems that use models
+and planning are called model-based methods, as opposed to simpler model-
+free methods that are explicitly trial-and-error learners—viewed as almost the
+
+1.4. LIMITATIONS AND SCOPE
+
+9
+
+opposite of planning. In Chapter 9 we explore reinforcement learning systems
+that simultaneously learn by trial and error, learn a model of the environ-
+ment, and use the model for planning. Modern reinforcement learning spans
+the spectrum from low-level, trial-and-error learning to high-level, deliberative
+planning.
+
+1.4 Limitations and Scope
+
+Most of the reinforcement learning methods we consider in this book are struc-
+tured around estimating value functions, but it is not strictly necessary to do
+this to solve reinforcement learning problems. For example, methods such as
+genetic algorithms, genetic programming, simulated annealing, and other opti-
+mization methods have been used to approach reinforcement learning problems
+without ever appealing to value functions. These methods evaluate the “life-
+time” behavior of many non-learning agents, each using a diﬀerent policy for
+interacting with its environment, and select those that are able to obtain the
+most reward. We call these evolutionary methods because their operation is
+analogous to the way biological evolution produces organisms with skilled be-
+havior even when they do not learn during their individual lifetimes. If the
+space of policies is suﬃciently small, or can be structured so that good policies
+are common or easy to ﬁnd—or if a lot of time is available for the search—then
+evolutionary methods can be eﬀective. In addition, evolutionary methods have
+advantages on problems in which the learning agent cannot accurately sense
+the state of its environment.
+
+Our focus is on reinforcement learning methods that involve learning while
+interacting with the environment, which evolutionary methods do not do (un-
+less they evolve learning algorithms, as in some of the approaches that have
+been studied).
+It is our belief that methods able to take advantage of the
+details of individual behavioral interactions can be much more eﬃcient than
+evolutionary methods in many cases. Evolutionary methods ignore much of
+the useful structure of the reinforcement learning problem: they do not use
+the fact that the policy they are searching for is a function from states to
+actions; they do not notice which states an individual passes through during
+In some cases this information can
+its lifetime, or which actions it selects.
+be misleading (e.g., when states are misperceived), but more often it should
+enable more eﬃcient search. Although evolution and learning share many fea-
+tures and naturally work together, we do not consider evolutionary methods
+by themselves to be especially well suited to reinforcement learning problems.
+For simplicity, in this book when we use the term “reinforcement learning
+method” we do not include evolutionary methods.
+
+10
+
+CHAPTER 1. THE REINFORCEMENT LEARNING PROBLEM
+
+However, we do include some methods that, like evolutionary methods,
+do not appeal to value functions. These methods search in spaces of policies
+deﬁned by a collection of numerical parameters. They estimate the directions
+the parameters should be adjusted in order to most rapidly improve a policy’s
+performance. Unlike evolutionary methods, however, they produce these es-
+timates while the agent is interacting with its environment and so can take
+advantage of the details of individual behavioral interactions. Methods like
+this, called policy gradient methods, have proven useful in many problems, and
+some of the simplest reinforcement learning methods fall into this category. In
+fact, some of these methods take advantage of value function estimates to im-
+prove their gradient estimates. Overall, the distinction between policy gradient
+methods and other methods we include as reinforcement learning methods is
+not sharply deﬁned.
+
+Reinforcement learning’s connection to optimization methods deserves some
+additional comment because it is a source of a common misunderstanding.
+When we say that a reinforcement learning agent’s goal is to maximize a nu-
+merical reward signal, we of course are not insisting that the agent has to
+actually achieve the goal of maximum reward. Trying to maximize a quantity
+does not mean that that quantity is ever maximized. The point is that a re-
+inforcement learning agent is always trying to increase the amount of reward
+it receives. Many factors can prevent it from achieving the maximum, even if
+one exists. In other words, optimization is not the same a optimality.
+
+1.5 An Extended Example: Tic-Tac-Toe
+
+To illustrate the general idea of reinforcement learning and contrast it with
+other approaches, we next consider a single example in more detail.
+
+Consider the familiar child’s game of tic-tac-toe. Two players take turns
+playing on a three-by-three board. One player plays Xs and the other Os until
+one player wins by placing three marks in a row, horizontally, vertically, or
+diagonally, as the X player has in this game:
+
+If the board ﬁlls up with neither player getting three in a row, the game is
+a draw. Because a skilled player can play so as never to lose, let us assume
+that we are playing against an imperfect player, one whose play is sometimes
+
+XXXOOXO1.5. AN EXTENDED EXAMPLE: TIC-TAC-TOE
+
+11
+
+incorrect and allows us to win. For the moment, in fact, let us consider draws
+and losses to be equally bad for us. How might we construct a player that will
+ﬁnd the imperfections in its opponent’s play and learn to maximize its chances
+of winning?
+
+Although this is a simple problem, it cannot readily be solved in a satisfac-
+tory way through classical techniques. For example, the classical “minimax”
+solution from game theory is not correct here because it assumes a particular
+way of playing by the opponent. For example, a minimax player would never
+reach a game state from which it could lose, even if in fact it always won from
+that state because of incorrect play by the opponent. Classical optimization
+methods for sequential decision problems, such as dynamic programming, can
+compute an optimal solution for any opponent, but require as input a com-
+plete speciﬁcation of that opponent, including the probabilities with which
+the opponent makes each move in each board state. Let us assume that this
+information is not available a priori for this problem, as it is not for the vast
+majority of problems of practical interest. On the other hand, such informa-
+tion can be estimated from experience, in this case by playing many games
+against the opponent. About the best one can do on this problem is ﬁrst to
+learn a model of the opponent’s behavior, up to some level of conﬁdence, and
+then apply dynamic programming to compute an optimal solution given the
+approximate opponent model. In the end, this is not that diﬀerent from some
+of the reinforcement learning methods we examine later 
