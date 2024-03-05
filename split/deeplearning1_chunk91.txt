@@ -1,0 +1,366 @@
+ues are especially powerful if
+the data has regular structure that allows the S index sets to be designed to capture
+the most important correlations while leaving out groups of variables that only
+have negligible correlation. For example, in natural images, pixels that are widely
+separated in space also have weak correlation, so the generalized pseudolikelihood
+can be applied with each S set being a small, spatially localized window.
+One weakness of the pseudolikelihood estimator is that it cannot be used with
+other approximations that provide only a lower bound on p̃(x), such as variational
+inference, which will be covered in chapter 19. This is because p̃ appears in the
+denominator. A lower bound on the denominator provides only an upper bound on
+the expression as a whole, and there is no bene�?t to maximizing an upper bound.
+This makes it diﬃcult to apply pseudolikelihood approaches to deep models such
+as deep Boltzmann machines, since variational methods are one of the dominant
+approaches to approximately marginalizing out the many layers of hidden variables
+616
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+that interact with each other. However, pseudolikelihood is still useful for deep
+learning, because it can be used to train single layer models, or deep models using
+approximate inference methods that are not based on lower bounds.
+Pseudolikelihood has a much greater cost per gradient step than SML, due to
+its explicit computation of all of the conditionals. However, generalized pseudolikelihood and similar criteria can still perform well if only one randomly selected
+conditional is computed per example (Goodfellow et al., 2013b), thereby bringing
+the computational cost down to match that of SML.
+Though the pseudolikelihood estimator does not explicitly minimize log Z , it
+can still be thought of as having something resembling a negative phase. The
+denominators of each conditional distribution result in the learning algorithm
+suppressing the probability of all states that have only one variable diﬀering from
+a training example.
+See Marlin and de Freitas (2011) for a theoretical analysis of the asymptotic
+eﬃciency of pseudolikelihood.
+
+18.4
+
+Score Matching and Ratio Matching
+
+Score matching (Hyvärinen, 2005) provides another consistent means of training a
+model without estimating Z or its derivatives. The name score matching comes
+from terminology in which the derivatives of a log density with respect to its
+argument, ∇x log p(x), are called its score. The strategy used by score matching
+is to minimize the expected squared diﬀerence between the derivatives of the
+model’s log density with respect to the input and the derivatives of the data’s log
+density with respect to the input:
+1
+||∇ x log pmodel (x; θ) − ∇x log p data(x)||22
+2
+1
+J(θ) = Epdata (x) L(x, θ)
+2
+∗
+θ = min J(θ)
+
+L(x, θ) =
+
+θ
+
+(18.22)
+(18.23)
+(18.24)
+
+This objective function avoids the diﬃculties associated with diﬀerentiating
+the partition function Z because Z is not a function of x and therefore ∇x Z = 0.
+Initially, score matching appears to have a new diﬃculty: computing the score
+of the data distribution requires knowledge of the true distribution generating
+the training data, pdata. Fortunately, minimizing the expected value of L(x, θ) is
+617
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+equivalent to minimizing the expected value of
+
+
+2 
+n
+2
+�?�
+∂
+1
+∂
+L̃(x, θ) =
+log pmodel (x; θ) +
+log p model (x; θ)
+2
+∂x
+2
+∂x
+j
+j
+j=1
+
+(18.25)
+
+where n is the dimensionality of x.
+Because score matching requires taking derivatives with respect to x, it is not
+applicable to models of discrete data. However, the latent variables in the model
+may be discrete.
+Like the pseudolikelihood, score matching only works when we are able to
+evaluate log p̃(x) and its derivatives directly. It is not compatible with methods
+that only provide a lower bound on log p̃(x), because score matching requires
+the derivatives and second derivatives of log p̃(x) and a lower bound conveys no
+information about its derivatives. This means that score matching cannot be
+applied to estimating models with complicated interactions between the hidden
+units, such as sparse coding models or deep Boltzmann machines. While score
+matching can be used to pretrain the �?rst hidden layer of a larger model, it has
+not been applied as a pretraining strategy for the deeper layers of a larger model.
+This is probably because the hidden layers of such models usually contain some
+discrete variables.
+While score matching does not explicitly have a negative phase, it can be
+viewed as a version of contrastive divergence using a speci�?c kind of Markov chain
+(Hyvärinen, 2007a). The Markov chain in this case is not Gibbs sampling, but
+rather a diﬀerent approach that makes local moves guided by the gradient. Score
+matching is equivalent to CD with this type of Markov chain when the size of the
+local moves approaches zero.
+Lyu (2009) generalized score matching to the discrete case (but made an error
+in their derivation that was corrected by Marlin et al. (2010)). Marlin et al.
+(2010) found that generalized score matching (GSM) does not work in high
+dimensional discrete spaces where the observed probability of many events is 0.
+A more successful approach to extending the basic ideas of score matching
+to discrete data is ratio matching (Hyvärinen, 2007b). Ratio matching applies
+speci�?cally to binary data. Ratio matching consists of minimizing the average over
+examples of the following objective function:
+L(RM) (x, θ) =
+
+n
+�?�
+j=1
+
+
+
+
+1
+(x ;θ )
+1 + p pmodel
+model(f (x),j );θ)
+
+618
+
+2
+
+ ,
+
+(18.26)
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+where f (x, j ) returns x with the bit at position j ﬂipped. Ratio matching avoids
+the partition function using the same trick as the pseudolikelihood estimator: in a
+ratio of two probabilities, the partition function cancels out. Marlin et al. (2010)
+found that ratio matching outperforms SML, pseudolikelihood and GSM in terms
+of the ability of models trained with ratio matching to denoise test set images.
+Like the pseudolikelihood estimator, ratio matching requires n evaluations of p̃
+per data point, making its computational cost per update roughly n times higher
+than that of SML.
+As with the pseudolikelihood estimator, ratio matching can be thought of as
+pushing down on all fantasy states that have only one variable diﬀerent from a
+training example. Since ratio matching applies speci�?cally to binary data, this
+means that it acts on all fantasy states within Hamming distance 1 of the data.
+Ratio matching can also be useful as the basis for dealing with high-dimensional
+sparse data, such as word count vectors. This kind of data poses a challenge for
+MCMC-based methods because the data is extremely expensive to represent in
+dense format, yet the MCMC sampler does not yield sparse values until the model
+has learned to represent the sparsity in the data distribution. Dauphin and Bengio
+(2013) overcame this issue by designing an unbiased stochastic approximation to
+ratio matching. The approximation evaluates only a randomly selected subset of
+the terms of the objective, and does not require the model to generate complete
+fantasy samples.
+See Marlin and de Freitas (2011) for a theoretical analysis of the asymptotic
+eﬃciency of ratio matching.
+
+18.5
+
+Denoising Score Matching
+
+In some cases we may wish to regularize score matching, by �?tting a distribution
+�?�
+psmoothed (x) = p data(y)q(x | y)dy
+(18.27)
+rather than the true p data. The distribution q(x | y ) is a corruption process, usually
+one that forms x by adding a small amount of noise to y .
+Denoising score matching is especially useful because in practice we usually do
+not have access to the true p data but rather only an empirical distribution de�?ned
+by samples from it. Any consistent estimator will, given enough capacity, make
+pmodel into a set of Dirac distributions centered on the training points. Smoothing
+by q helps to reduce this problem, at the loss of the asymptotic consistency property
+619
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+described in section 5.4.5. Kingma and LeCun (2010) introduced a procedure for
+performing regularized score matching with the smoothing distribution q being
+normally distributed noise.
+Recall from section 14.5.1 that several autoencoder training algorithms are
+equivalent to score matching or denoising score matching. These autoencoder
+training algorithms are therefore a way of overcoming the partition function
+problem.
+
+18.6
+
+Noise-Contrastive Estimation
+
+Most techniques for estimating models with intractable partition functions do not
+provide an estimate of the partition function. SML and CD estimate only the
+gradient of the log partition function, rather than the partition function itself.
+Score matching and pseudolikelihood avoid computing quantities related to the
+partition function altogether.
+Noise-contrastive estimation (NCE) (Gutmann and Hyvarinen, 2010)
+takes a diﬀerent strategy. In this approach, the probability distribution estimated
+by the model is represented explicitly as
+log pmodel (x) = log p˜model (x; θ) + c,
+
+(18.28)
+
+where c is explicitly introduced as an approximation of − log Z(θ). Rather than
+estimating only θ , the noise contrastive estimation procedure treats c as just
+another parameter and estimates θ and c simultaneously, using the same algorithm
+for both. The resulting log p model(x) thus may not correspond exactly to a valid
+probability distribution, but will become closer and closer to being valid as the
+estimate of c improves.1
+Such an approach would not be possible using maximum likelihood as the
+criterion for the estimator. The maximum likelihood criterion would choose to set
+c arbitrarily high, rather than setting c to create a valid probability distribution.
+NCE works by reducing the unsupervised learning problem of estimating p(x)
+to that of learning a probabilistic binary classi�?er in which one of the categories
+corresponds to the data generated by the model. This supervised learning problem
+is constructed in such a way that maximum likelihood estimation in this supervised
+1
+
+NCE is also applicable to problems with a tractable partition function, where there is no
+need to introduce the extra parameter c . However, it has generated the most interest as a means
+of estimating models with diﬃcult partition functions.
+
+620
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+learning problem de�?nes an asymptotically consistent estimator of the original
+problem.
+Speci�?cally, we introduce a second distribution, the noise distribution pnoise(x).
+The noise distribution should be tractable to evaluate and to sample from. We
+can now construct a model over both x and a new, binary class variable y . In the
+new joint model, we specify that
+1
+pjoint(y = 1) = ,
+2
+
+(18.29)
+
+pjoint(x | y = 1) = pmodel(x),
+
+(18.30)
+
+pjoint(x | y = 0) = pnoise(x).
+
+(18.31)
+
+and
+In other words, y is a switch variable that determines whether we will generate x
+from the model or from the noise distribution.
+We can construct a similar joint model of training data. In this case, the
+switch variable determines whether we draw x from the data or from the noise
+distribution. Formally, p train(y = 1) = 12 , ptrain(x | y = 1) = p data(x), and
+ptrain (x | y = 0) = pnoise(x).
+We can now just use standard maximum likelihood learning on the supervised
+learning problem of �?tting pjoint to ptrain:
+θ, c = arg max Ex,y∼ptrain log pjoint (y | x).
+
+(18.32)
+
+θ,c
+
+The distribution pjoint is essentially a logistic regression model applied to the
+diﬀerence in log probabilities of the model and the noise distribution:
+pjoint(y = 1 | x) =
+=
+
+pmodel (x)
+p model(x) + p noise(x)
+1
+
+1 + ppnoise((xx))
+model
+
+1
+�?
+
+pnoise(x)
+1 + exp log p
+model (x)
+
+
+pnoise(x)
+= σ − log
+p model(x)
+
+=
+
+= σ (log pmodel(x) − log p noise(x)) .
+621
+
+(18.33)
+(18.34)
+(18.35)
+
+(18.36)
+(18.37)
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+NCE is thus simple to apply so long as log p̃ model is easy to back-propagate
+through, and, as speci�?ed above, p noise is easy to evaluate (in order to evaluate
+pjoint) and sample from (in order to generate the training data).
+NCE is most successful when applied to problems with few random variables,
+but can work well even if those random variables can take on a high number of
+values. For example, it has been successfully applied to modeling the conditional
+distribution over a word given the context of the word (Mnih and Kavukcuoglu,
+2013). Though the word may be drawn from a large vocabulary, there is only one
+word.
+When NCE is applied to problems with many random variables, it becomes less
+eﬃcient. The logistic regression classi�?er can reject a noise sample by identifying
+any one variable whose value is unlikely. This means that learning slows down
+greatly after p model has learned the basic marginal statistics. Imagine learning a
+model of images of faces, using unstructured Gaussian noise as pnoise . If p model
+learns about eyes, it can reject almost all unstructured noise samples without
+having learned anything about other facial features, such as mouths.
+The constraint that pnoise must be easy to evaluate and easy to sample from
+can be overly restrictive. When pnoise is simple, most samples are likely to be too
+obviously distinct from the data to force pmodel to improve noticeably.
+Like score matching and pseudolikelihood, NCE does not work if only a lower
+bound on p̃ is available. Such a lower bound could be used to construct a lower
+bound on pjoint(y = 1 | x), but it can only be used to construct an upper bound on
+pjoint(y = 0 | x), which appears in half the terms of the NCE objective. Likewise,
+a lower bound on p noise is not useful, because it provides only an upper bound on
+pjoint(y = 1 | x).
+
+When the model distribution is copied to de�?ne a new noise distribution before
+each gradient step, NCE de�?nes a procedure called self-contrastive estimation,
+whose expected gradient is equivalent to the expected gradient of maximum
+likelihood (Goodfellow, 2014). The special case of NCE where the noise samples
+are those generated by the model suggests that maximum likelihood can be
+interpreted as a procedure that forces a model to constantly learn to distinguish
+reality from its own evolving beliefs, while noise contrastive estimation achieves
+some reduced computational cost by only forcing the model to distinguish reality
+from a �?xed baseline (the noise model).
+
+Using the supervised task of classifying between training samples and generated
+samples (with the model energy function used in de�?ning the classi�?er) to provide
+a gradient on the model was introduced earlier in various forms (Welling et al.,
+2003b; Bengio, 2009).
+622
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+Noise contrastive estimation is based on the idea that a good generative
+model should be able to distinguish data from noise. A closely related idea
+is that a good generative model should be able to generate samples that no
+classi�?er can distinguish from data. This idea yields generative adversarial networks
+(section 20.10.4).
+
+18.7
+
+Estimating the Partition Function
+
+While much of this chapter is dedicated to describing methods that avoid needing
+to compute the intractable partition function Z(θ ) associated with an undirected
+graphical model, in this sect

@@ -1,0 +1,365 @@
+ere p(Âµ) is the probability distribution that was used to sample Âµ at training
+time.
+
+Because this sum includes an exponential number of terms, it is intractable
+to evaluate except in cases where the structure of the model permits some form
+of simpliï¬?cation. So far, deep neural nets are not known to permit any tractable
+simpliï¬?cation. Instead, we can approximate the inference with sampling, by
+averaging together the output from many masks. Even 10-20 masks are often
+suï¬ƒcient to obtain good performance.
+However, there is an even better approach, that allows us to obtain a good
+approximation to the predictions of the entire ensemble, at the cost of only one
+forward propagation. To do so, we change to using the geometric mean rather than
+the arithmetic mean of the ensemble membersâ€™ predicted distributions. WardeFarley et al. (2014) present arguments and empirical evidence that the geometric
+mean performs comparably to the arithmetic mean in this context.
+The geometric mean of multiple probability distributions is not guaranteed to be
+a probability distribution. To guarantee that the result is a probability distribution,
+we impose the requirement that none of the sub-models assigns probability 0 to any
+event, and we renormalize the resulting distribution. The unnormalized probability
+distribution deï¬?ned directly by the geometric mean is given by
+î?³î?™
+pÌƒensemble (y | x) = 2d
+p(y | x, Âµ)
+(7.54)
+Âµ
+
+where d is the number of units that may be dropped. Here we use a uniform
+distribution over Âµ to simplify the presentation, but non-uniform distributions are
+262
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+also possible. To make predictions we must re-normalize the ensemble:
+pÌƒensemble (y | x)
+.
+î€°
+y î€° pÌƒ ensemble(y | x)
+
+pensemble (y | x) = î??
+
+(7.55)
+
+A key insight (Hinton et al., 2012c) involved in dropout is that we can approximate p ensemble by evaluating p(y | x) in one model: the model with all units, but
+with the weights going out of unit i multiplied by the probability of including unit
+i. The motivation for this modiï¬?cation is to capture the right expected value of the
+output from that unit. We call this approach the weight scaling inference rule.
+There is not yet any theoretical argument for the accuracy of this approximate
+inference rule in deep nonlinear networks, but empirically it performs very well.
+Because we usually use an inclusion probability of 12 , the weight scaling rule
+usually amounts to dividing the weights by 2 at the end of training, and then using
+the model as usual. Another way to achieve the same result is to multiply the
+states of the units by 2 during training. Either way, the goal is to make sure that
+the expected total input to a unit at test time is roughly the same as the expected
+total input to that unit at train time, even though half the units at train time are
+missing on average.
+For many classes of models that do not have nonlinear hidden units, the weight
+scaling inference rule is exact. For a simple example, consider a softmax regression
+classiï¬?er with n input variables represented by the vector v:
+î€?
+î€‘
+î€¾
+(7.56)
+P (y = y | v) = softmax W v + b .
+y
+
+We can index into the family of sub-models by element-wise multiplication of the
+input with a binary vector d:
+î€?
+î€‘
+î€¾
+(7.57)
+P (y = y | v; d) = softmax W (d î€Œ v) + b .
+y
+
+The ensemble predictor is deï¬?ned by re-normalizing the geometric mean over all
+ensemble membersâ€™ predictions:
+
+where
+
+P ensemble(y = y | v) = î??
+
+PÌƒensemble(y = y | v)
+î€°
+yî€° PÌƒensemble(y = y | v)
+
+î?³ î?™
+
+PÌƒensemble(y = y | v) = 2n
+
+dâˆˆ{0,1}n
+
+263
+
+P (y = y | v; d).
+
+(7.58)
+
+(7.59)
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+To see that the weight scaling rule is exact, we can simplify PËœensemble:
+î?³ î?™
+PÌƒ ensemble (y = y | v) = 2n
+P (y = y | v; d)
+
+(7.60)
+
+dâˆˆ{0,1}n
+
+î?³ î?™
+
+= 2n
+
+î?¶
+î?µ
+î?µ
+n
+= 2î?´
+
+dâˆˆ{0,1} n
+
+softmax (W î€¾ (d î€Œ v) + b)y
+
+î€€
+î€?
+î€¾ (d î€Œ v ) + b
+exp Wy,:
+y
+î€?
+î€‘
+î??
+î€¾ (d î€Œ v ) + b î€°
+n
+exp
+W
+î€°
+y
+dâˆˆ{0,1}
+y
+y î€° ,:
+î?±î?‘
+î€€
+î€?
+n
+î€¾
+2
+dâˆˆ{0,1}n exp Wy,: (d î€Œ v ) + b y
+= î?²
+î€?
+î€‘
+î??
+n î?‘
+î€¾
+2
+î€°
+y î€° exp Wyî€° ,: (d î€Œ v ) + by
+dâˆˆ{0,1} n
+î?™
+
+(7.61)
+
+(7.62)
+
+(7.63)
+
+Because PÌƒ will be normalized, we can safely ignore multiplication by factors that
+are constant with respect to y:
+î?³ î?™
+î€€ î€¾
+î€?
+PËœensemble(y = y | v) âˆ? 2n
+exp Wy,:
+(7.64)
+(d î€Œ v) + by
+ï£«
+
+1
+= exp ï£­ n
+2
+
+dâˆˆ{0,1}n
+
+î?˜
+
+dâˆˆ{0,1}n
+
+= exp
+
+î€’
+
+ï£¶
+
+î€¾
+Wy,:
+(d î€Œ v ) + b y ï£¸
+
+î€“
+1 î€¾
+W v + by .
+2 y,:
+
+(7.65)
+
+(7.66)
+
+Substituting this back into equation 7.58 we obtain a softmax classiï¬?er with weights
+1W .
+2
+The weight scaling rule is also exact in other settings, including regression
+networks with conditionally normal outputs, and deep networks that have hidden
+layers without nonlinearities. However, the weight scaling rule is only an approximation for deep models that have nonlinearities. Though the approximation has
+not been theoretically characterized, it often works well, empirically. Goodfellow
+et al. (2013a) found experimentally that the weight scaling approximation can work
+better (in terms of classiï¬?cation accuracy) than Monte Carlo approximations to the
+ensemble predictor. This held true even when the Monte Carlo approximation was
+allowed to sample up to 1,000 sub-networks. Gal and Ghahramani (2015) found
+that some models obtain better classiï¬?cation accuracy using twenty samples and
+264
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+the Monte Carlo approximation. It appears that the optimal choice of inference
+approximation is problem-dependent.
+Srivastava et al. (2014) showed that dropout is more eï¬€ective than other
+standard computationally inexpensive regularizers, such as weight decay, ï¬?lter
+norm constraints and sparse activity regularization. Dropout may also be combined
+with other forms of regularization to yield a further improvement.
+One advantage of dropout is that it is very computationally cheap. Using
+dropout during training requires only O(n) computation per example per update,
+to generate n random binary numbers and multiply them by the state. Depending
+on the implementation, it may also require O(n) memory to store these binary
+numbers until the back-propagation stage. Running inference in the trained model
+has the same cost per-example as if dropout were not used, though we must pay
+the cost of dividing the weights by 2 once before beginning to run inference on
+examples.
+Another signiï¬?cant advantage of dropout is that it does not signiï¬?cantly limit
+the type of model or training procedure that can be used. It works well with nearly
+any model that uses a distributed representation and can be trained with stochastic
+gradient descent. This includes feedforward neural networks, probabilistic models
+such as restricted Boltzmann machines (Srivastava et al., 2014), and recurrent
+neural networks (Bayer and Osendorfer, 2014; Pascanu et al., 2014a). Many other
+regularization strategies of comparable power impose more severe restrictions on
+the architecture of the model.
+Though the cost per-step of applying dropout to a speciï¬?c model is negligible,
+the cost of using dropout in a complete system can be signiï¬?cant. Because dropout
+is a regularization technique, it reduces the eï¬€ective capacity of a model. To oï¬€set
+this eï¬€ect, we must increase the size of the model. Typically the optimal validation
+set error is much lower when using dropout, but this comes at the cost of a much
+larger model and many more iterations of the training algorithm. For very large
+datasets, regularization confers little reduction in generalization error. In these
+cases, the computational cost of using dropout and larger models may outweigh
+the beneï¬?t of regularization.
+When extremely few labeled training examples are available, dropout is less
+eï¬€ective. Bayesian neural networks (Neal, 1996) outperform dropout on the
+Alternative Splicing Dataset (Xiong et al., 2011) where fewer than 5,000 examples
+are available (Srivastava et al., 2014). When additional unlabeled data is available,
+unsupervised feature learning can gain an advantage over dropout.
+Wager et al. (2013) showed that, when applied to linear regression, dropout
+is equivalent to L2 weight decay, with a diï¬€erent weight decay coeï¬ƒcient for
+265
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+each input feature. The magnitude of each featureâ€™s weight decay coeï¬ƒcient is
+determined by its variance. Similar results hold for other linear models. For deep
+models, dropout is not equivalent to weight decay.
+The stochasticity used while training with dropout is not necessary for the
+approachâ€™s success. It is just a means of approximating the sum over all submodels. Wang and Manning (2013) derived analytical approximations to this
+marginalization. Their approximation, known as fast dropout resulted in faster
+convergence time due to the reduced stochasticity in the computation of the
+gradient. This method can also be applied at test time, as a more principled
+(but also more computationally expensive) approximation to the average over all
+sub-networks than the weight scaling approximation. Fast dropout has been used
+to nearly match the performance of standard dropout on small neural network
+problems, but has not yet yielded a signiï¬?cant improvement or been applied to a
+large problem.
+Just as stochasticity is not necessary to achieve the regularizing eï¬€ect of
+dropout, it is also not suï¬ƒcient. To demonstrate this, Warde-Farley et al. (2014)
+designed control experiments using a method called dropout boosting that they
+designed to use exactly the same mask noise as traditional dropout but lack
+its regularizing eï¬€ect. Dropout boosting trains the entire ensemble to jointly
+maximize the log-likelihood on the training set. In the same sense that traditional
+dropout is analogous to bagging, this approach is analogous to boosting. As
+intended, experiments with dropout boosting show almost no regularization eï¬€ect
+compared to training the entire network as a single model. This demonstrates that
+the interpretation of dropout as bagging has value beyond the interpretation of
+dropout as robustness to noise. The regularization eï¬€ect of the bagged ensemble is
+only achieved when the stochastically sampled ensemble members are trained to
+perform well independently of each other.
+Dropout has inspired other stochastic approaches to training exponentially
+large ensembles of models that share weights. DropConnect is a special case of
+dropout where each product between a single scalar weight and a single hidden
+unit state is considered a unit that can be dropped (Wan et al., 2013). Stochastic
+pooling is a form of randomized pooling (see section 9.3) for building ensembles
+of convolutional networks with each convolutional network attending to diï¬€erent
+spatial locations of each feature map. So far, dropout remains the most widely
+used implicit ensemble method.
+One of the key insights of dropout is that training a network with stochastic
+behavior and making predictions by averaging over multiple stochastic decisions
+implements a form of bagging with parameter sharing. Earlier, we described
+266
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+dropout as bagging an ensemble of models formed by including or excluding
+units. However, there is no need for this model averaging strategy to be based on
+inclusion and exclusion. In principle, any kind of random modiï¬?cation is admissible.
+In practice, we must choose modiï¬?cation families that neural networks are able
+to learn to resist. Ideally, we should also use model families that allow a fast
+approximate inference rule. We can think of any form of modiï¬?cation parametrized
+by a vector Âµ as training an ensemble consisting of p(y | x, Âµ) for all possible
+values of Âµ. There is no requirement that Âµ have a ï¬?nite number of values. For
+example, Âµ can be real-valued. Srivastava et al. (2014) showed that multiplying the
+weights by Âµ âˆ¼ N (1, I) can outperform dropout based on binary masks. Because
+E[Âµ] = 1 the standard network automatically implements approximate inference
+in the ensemble, without needing any weight scaling.
+So far we have described dropout purely as a means of performing eï¬ƒcient,
+approximate bagging. However, there is another view of dropout that goes further
+than this. Dropout trains not just a bagged ensemble of models, but an ensemble
+of models that share hidden units. This means each hidden unit must be able to
+perform well regardless of which other hidden units are in the model. Hidden units
+must be prepared to be swapped and interchanged between models. Hinton et al.
+(2012c) were inspired by an idea from biology: sexual reproduction, which involves
+swapping genes between two diï¬€erent organisms, creates evolutionary pressure for
+genes to become not just good, but to become readily swapped between diï¬€erent
+organisms. Such genes and such features are very robust to changes in their
+environment because they are not able to incorrectly adapt to unusual features
+of any one organism or model. Dropout thus regularizes each hidden unit to be
+not merely a good feature but a feature that is good in many contexts. WardeFarley et al. (2014) compared dropout training to training of large ensembles and
+concluded that dropout oï¬€ers additional improvements to generalization error
+beyond those obtained by ensembles of independent models.
+It is important to understand that a large portion of the power of dropout
+arises from the fact that the masking noise is applied to the hidden units. This
+can be seen as a form of highly intelligent, adaptive destruction of the information
+content of the input rather than destruction of the raw values of the input. For
+example, if the model learns a hidden unit hi that detects a face by ï¬?nding the nose,
+then dropping h i corresponds to erasing the information that there is a nose in
+the image. The model must learn another h i, either that redundantly encodes the
+presence of a nose, or that detects the face by another feature, such as the mouth.
+Traditional noise injection techniques that add unstructured noise at the input are
+not able to randomly erase the information about a nose from an image of a face
+unless the magnitude of the noise is so great that nearly all of the information in
+267
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+the image is removed. Destroying extracted features rather than original values
+allows the destruction process to make use of all of the knowledge about the input
+distribution that the model has acquired so far.
+Another important aspect of dropout is that the noise is multiplicative. If the
+noise were additive with ï¬?xed scale, then a rectiï¬?ed linear hidden unit hi with
+added noise î€? could simply learn to have h i become very large in order to make
+the added noise î€? insigniï¬?cant by comparison. Multiplicative noise does not allow
+such a pathological solution to the noise robustness problem.
+Another deep learning algorithm, batch normalization, reparametrizes the model
+in a way that introduces both additive and multiplicative noise on the hidden
+units at training time. The primary purpose of batch normalization is to improve
+optimization, but the noise can have a regularizing eï¬€ect, and sometimes makes
+dropout unnecessary. Batch normalization is described further in section 8.7.1.
+
+7.13
+
+Adversarial Training
+
+In many cases, neural networks have begun to reach human performance

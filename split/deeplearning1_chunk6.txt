@@ -1,0 +1,397 @@
+g possible to ï¬?nd A âˆ’1. We discuss
+the conditions for the existence of Aâˆ’1 in the following section.
+When Aâˆ’1 exists, several diï¬€erent algorithms exist for ï¬?nding it in closed form.
+In theory, the same inverse matrix can then be used to solve the equation many
+times for diï¬€erent values of b. However, A âˆ’1 is primarily useful as a theoretical
+tool, and should not actually be used in practice for most software applications.
+Because Aâˆ’1 can be represented with only limited precision on a digital computer,
+algorithms that make use of the value of b can usually obtain more accurate
+estimates of x.
+
+2.4
+
+Linear Dependence and Span
+
+In order for Aâˆ’1 to exist, equation 2.11 must have exactly one solution for every
+value of b. However, it is also possible for the system of equations to have no
+solutions or inï¬?nitely many solutions for some values of b. It is not possible to
+have more than one but less than inï¬?nitely many solutions for a particular b; if
+both x and y are solutions then
+z = Î±x + (1 âˆ’ Î±)y
+
+(2.26)
+
+is also a solution for any real Î±.
+To analyze how many solutions the equation has, we can think of the columns
+of A as specifying diï¬€erent directions we can travel from the origin (the point
+speciï¬?ed by the vector of all zeros), and determine how many ways there are of
+reaching b. In this view, each element of x speciï¬?es how far we should travel in
+each of these directions, with xi specifying how far to move in the direction of
+column i:
+î?˜
+Ax =
+x iA:,i.
+(2.27)
+i
+
+In general, this kind of operation is called a linear combination. Formally, a
+linear combination of some set of vectors {v (1) , . . . , v (n)} is given by multiplying
+each vector v (i) by a corresponding scalar coeï¬ƒcient and adding the results:
+î?˜
+ci v (i).
+(2.28)
+i
+
+The span of a set of vectors is the set of all points obtainable by linear combination
+of the original vectors.
+37
+
+CHAPTER 2. LINEAR ALGEBRA
+
+Determining whether Ax = b has a solution thus amounts to testing whether b
+is in the span of the columns of A. This particular span is known as the column
+space or the range of A.
+In order for the system Ax = b to have a solution for all values of b âˆˆ Rm ,
+we therefore require that the column space of A be all of Rm . If any point in R m
+is excluded from the column space, that point is a potential value of b that has
+no solution. The requirement that the column space of A be all of R m implies
+immediately that A must have at least m columns, i.e., n â‰¥ m. Otherwise, the
+dimensionality of the column space would be less than m. For example, consider a
+3 Ã— 2 matrix. The target b is 3-D, but x is only 2-D, so modifying the value of x
+at best allows us to trace out a 2-D plane within R 3. The equation has a solution
+if and only if b lies on that plane.
+Having n â‰¥ m is only a necessary condition for every point to have a solution.
+It is not a suï¬ƒcient condition, because it is possible for some of the columns to
+be redundant. Consider a 2 Ã— 2 matrix where both of the columns are identical.
+This has the same column space as a 2 Ã— 1 matrix containing only one copy of the
+replicated column. In other words, the column space is still just a line, and fails to
+encompass all of R2 , even though there are two columns.
+Formally, this kind of redundancy is known as linear dependence. A set of
+vectors is linearly independent if no vector in the set is a linear combination
+of the other vectors. If we add a vector to a set that is a linear combination of
+the other vectors in the set, the new vector does not add any points to the setâ€™s
+span. This means that for the column space of the matrix to encompass all of Rm ,
+the matrix must contain at least one set of m linearly independent columns. This
+condition is both necessary and suï¬ƒcient for equation 2.11 to have a solution for
+every value of b. Note that the requirement is for a set to have exactly m linear
+independent columns, not at least m. No set of m-dimensional vectors can have
+more than m mutually linearly independent columns, but a matrix with more than
+m columns may have more than one such set.
+In order for the matrix to have an inverse, we additionally need to ensure that
+equation 2.11 has at most one solution for each value of b. To do so, we need to
+ensure that the matrix has at most m columns. Otherwise there is more than one
+way of parametrizing each solution.
+Together, this means that the matrix must be square, that is, we require that
+m = n and that all of the columns must be linearly independent. A square matrix
+with linearly dependent columns is known as singular.
+If A is not square or is square but singular, it can still be possible to solve the
+equation. However, we can not use the method of matrix inversion to ï¬?nd the
+38
+
+CHAPTER 2. LINEAR ALGEBRA
+
+solution.
+So far we have discussed matrix inverses as being multiplied on the left. It is
+also possible to deï¬?ne an inverse that is multiplied on the right:
+AAâˆ’1 = I.
+
+(2.29)
+
+For square matrices, the left inverse and right inverse are equal.
+
+2.5
+
+Norms
+
+Sometimes we need to measure the size of a vector. In machine learning, we usually
+measure the size of vectors using a function called a norm . Formally, the Lp norm
+is given by
+î€ 
+î€¡1
+p
+î?˜
+p
+(2.30)
+||x||p =
+|x i|
+i
+
+for p âˆˆ R, p â‰¥ 1.
+
+Norms, including the Lp norm, are functions mapping vectors to non-negative
+values. On an intuitive level, the norm of a vector x measures the distance from
+the origin to the point x. More rigorously, a norm is any function f that satisï¬?es
+the following properties:
+â€¢ f (x ) = 0 â‡’ x = 0
+â€¢ f (x + y) â‰¤ f (x) + f (y) (the triangle inequality)
+â€¢ âˆ€Î± âˆˆ R, f (Î±x) = |Î±|f (x)
+The L 2 norm, with p = 2, is known as the Euclidean norm. It is simply the
+Euclidean distance from the origin to the point identiï¬?ed by x. The L 2 norm is
+used so frequently in machine learning that it is often denoted simply as ||x||, with
+the subscript 2 omitted. It is also common to measure the size of a vector using
+the squared L2 norm, which can be calculated simply as xî€¾x.
+The squared L 2 norm is more convenient to work with mathematically and
+computationally than the L 2 norm itself. For example, the derivatives of the
+squared L2 norm with respect to each element of x each depend only on the
+corresponding element of x, while all of the derivatives of the L2 norm depend
+on the entire vector. In many contexts, the squared L2 norm may be undesirable
+because it increases very slowly near the origin. In several machine learning
+39
+
+CHAPTER 2. LINEAR ALGEBRA
+
+applications, it is important to discriminate between elements that are exactly
+zero and elements that are small but nonzero. In these cases, we turn to a function
+that grows at the same rate in all locations, but retains mathematical simplicity:
+the L1 norm. The L1 norm may be simpliï¬?ed to
+î?˜
+||x||1 =
+|xi |.
+(2.31)
+i
+
+The L1 norm is commonly used in machine learning when the diï¬€erence between
+zero and nonzero elements is very important. Every time an element of x moves
+away from 0 by î€?, the L1 norm increases by î€?.
+We sometimes measure the size of the vector by counting its number of nonzero
+elements. Some authors refer to this function as the â€œL 0 norm,â€? but this is incorrect
+terminology. The number of non-zero entries in a vector is not a norm, because
+scaling the vector by Î± does not change the number of nonzero entries. The L1
+norm is often used as a substitute for the number of nonzero entries.
+One other norm that commonly arises in machine learning is the L âˆž norm,
+also known as the max norm. This norm simpliï¬?es to the absolute value of the
+element with the largest magnitude in the vector,
+||x||âˆž = max |xi |.
+i
+
+(2.32)
+
+Sometimes we may also wish to measure the size of a matrix. In the context
+of deep learning, the most common way to do this is with the otherwise obscure
+Frobenius norm:
+î?³î?˜
+||A|| F =
+A 2i,j,
+(2.33)
+i,j
+
+which is analogous to the L 2 norm of a vector.
+The dot product of two vectors can be rewritten in terms of norms. Speciï¬?cally,
+xî€¾ y = ||x||2||y|| 2 cos Î¸
+
+(2.34)
+
+where Î¸ is the angle between x and y .
+
+2.6
+
+Special Kinds of Matrices and Vectors
+
+Some special kinds of matrices and vectors are particularly useful.
+Diagonal matrices consist mostly of zeros and have non-zero entries only along
+the main diagonal. Formally, a matrix D is diagonal if and only if Di,j = 0 for
+40
+
+CHAPTER 2. LINEAR ALGEBRA
+
+all i î€¶ = j . We have already seen one example of a diagonal matrix: the identity
+matrix, where all of the diagonal entries are 1. We write diag(v) to denote a square
+diagonal matrix whose diagonal entries are given by the entries of the vector v.
+Diagonal matrices are of interest in part because multiplying by a diagonal matrix
+is very computationally eï¬ƒcient. To compute diag(v)x, we only need to scale each
+element xi by vi . In other words, diag(v)x = v î€Œ x. Inverting a square diagonal
+matrix is also eï¬ƒcient. The inverse exists only if every diagonal entry is nonzero,
+and in that case, diag(v) âˆ’1 = diag([1/v 1, . . . , 1 /vn ]î€¾ ). In many cases, we may
+derive some very general machine learning algorithm in terms of arbitrary matrices,
+but obtain a less expensive (and less descriptive) algorithm by restricting some
+matrices to be diagonal.
+Not all diagonal matrices need be square. It is possible to construct a rectangular
+diagonal matrix. Non-square diagonal matrices do not have inverses but it is still
+possible to multiply by them cheaply. For a non-square diagonal matrix D, the
+product Dx will involve scaling each element of x, and either concatenating some
+zeros to the result if D is taller than it is wide, or discarding some of the last
+elements of the vector if D is wider than it is tall.
+A symmetric matrix is any matrix that is equal to its own transpose:
+A = A î€¾.
+
+(2.35)
+
+Symmetric matrices often arise when the entries are generated by some function of
+two arguments that does not depend on the order of the arguments. For example,
+if A is a matrix of distance measurements, with Ai,j giving the distance from point
+i to point j , then Ai,j = Aj,i because distance functions are symmetric.
+A unit vector is a vector with unit norm:
+||x||2 = 1.
+
+(2.36)
+
+A vector x and a vector y are orthogonal to each other if x î€¾y = 0. If both
+vectors have nonzero norm, this means that they are at a 90 degree angle to each
+other. In Rn , at most n vectors may be mutually orthogonal with nonzero norm.
+If the vectors are not only orthogonal but also have unit norm, we call them
+orthonormal.
+An orthogonal matrix is a square matrix whose rows are mutually orthonormal and whose columns are mutually orthonormal:
+Aî€¾ A = AAî€¾ = I.
+41
+
+(2.37)
+
+CHAPTER 2. LINEAR ALGEBRA
+
+This implies that
+Aâˆ’1 = Aî€¾ ,
+
+(2.38)
+
+so orthogonal matrices are of interest because their inverse is very cheap to compute.
+Pay careful attention to the deï¬?nition of orthogonal matrices. Counterintuitively,
+their rows are not merely orthogonal but fully orthonormal. There is no special
+term for a matrix whose rows or columns are orthogonal but not orthonormal.
+
+2.7
+
+Eigendecomposition
+
+Many mathematical objects can be understood better by breaking them into
+constituent parts, or ï¬?nding some properties of them that are universal, not caused
+by the way we choose to represent them.
+For example, integers can be decomposed into prime factors. The way we
+represent the number 12 will change depending on whether we write it in base ten
+or in binary, but it will always be true that 12 = 2Ã— 2 Ã— 3. From this representation
+we can conclude useful properties, such as that 12 is not divisible by 5, or that any
+integer multiple of 12 will be divisible by 3.
+Much as we can discover something about the true nature of an integer by
+decomposing it into prime factors, we can also decompose matrices in ways that
+show us information about their functional properties that is not obvious from the
+representation of the matrix as an array of elements.
+One of the most widely used kinds of matrix decomposition is called eigendecomposition, in which we decompose a matrix into a set of eigenvectors and
+eigenvalues.
+An eigenvector of a square matrix A is a non-zero vector v such that multiplication by A alters only the scale of v:
+Av = Î»v.
+
+(2.39)
+
+The scalar Î» is known as the eigenvalue corresponding to this eigenvector. (One
+can also ï¬?nd a left eigenvector such that v î€¾A = Î»vî€¾ , but we are usually
+concerned with right eigenvectors).
+If v is an eigenvector of A, then so is any rescaled vector sv for s âˆˆ R, s î€¶ = 0.
+Moreover, sv still has the same eigenvalue. For this reason, we usually only look
+for unit eigenvectors.
+Suppose that a matrix A has n linearly independent eigenvectors, {v (1) , . . . ,
+v(n)}, with corresponding eigenvalues {Î»1, . . . , Î» n}. We may concatenate all of the
+42
+
+CHAPTER 2. LINEAR ALGEBRA
+
+î?…î?¦î?¦î?¥î?£î?´î€ î?¯î?¦î€ î?¥î?©î?§î?¥î?®î?¶î?¥î?£î?´î?¯î?²î?³î€ î?¡î?®î?¤î€ î?¥î?©î?§î?¥î?®î?¶î?¡î?¬î?µî?¥î?³
+
+î€³
+
+î?‚î?¥î?¦î?¯î?²î?¥î€ î?­î?µî?¬î?´î?©î?°î?¬î?©î?£î?¡î?´î?©î?¯î?®
+
+î€³
+
+î€²
+
+î€±
+
+î?¶ î€¨î€±î€©
+
+î€°
+
+î?¸î€±î€°
+
+î?¸î€±
+
+î‚¸î€± î?¶ î€¨î€±î€©
+
+î€²
+
+î€±
+
+î?¶
+
+ó°¤“î€±
+
+î?¶î€¨î€±î€©
+
+î€°
+
+î‚¸î€² î?¶ î€¨î€²î€©
+î?¶î€¨î€²î€©
+
+î€¨î€²î€©
+
+ó°¤“î€±
+
+ó°¤“î€²
+ó°¤“î€³
+ó°¤“î€³
+
+î??î?¦î?´î?¥î?²î€ î?­î?µî?¬î?´î?©î?°î?¬î?©î?£î?¡î?´î?©î?¯î?®
+
+ó°¤“î€²
+ó°¤“î€²
+
+ó°¤“î€±
+
+î€°
+î?¸î€°
+
+î€±
+
+î€²
+
+ó°¤“î€³
+ó°¤“î€³
+
+î€³
+
+ó°¤“î€²
+
+ó°¤“î€±
+
+î€°
+î?¸î€°î€°
+
+î€±
+
+î€²
+
+î€³
+
+Figure 2.3: An example of the eï¬€ect of eigenvectors and eigenvalues. Here, we have
+a matrix A with two orthonormal eigenvectors, v (1) with eigenvalue Î»1 and v (2) with
+eigenvalue Î»2. (Left)We plot the set of all unit vectors u âˆˆ R2 as a unit circle. (Right)We
+plot the set of all points Au. By observing the way that A distorts the unit circle, we
+can see that it scales space in direction v(i) by Î»i.
+
+eigenvectors to form a matrix V with one eigenvector per column: V = [v (1) , . . . ,
+v(n)]. Likewise, we can concatenate the eigenvalues to form a vector Î» = [Î» 1 , . . . ,
+Î»n ]î€¾. The eigendecomposition of A is then given by
+A = V diag(Î»)V âˆ’1 .
+
+(2.40)
+
+We have seen that constructing matrices with speciï¬?c eigenvalues and eigenvectors allows us to stretch space in desired directions. However, we often want to
+decompose matrices into their eigenvalues and eigenvectors. Doing so can help
+us to analyze certain properties of the matrix, much as decomposing an integer
+into its prime factors can help us understand the behavior of that integer.
+Not every matrix can be decomposed into eigenvalues and eigenvectors. In some
+43
+
+CHAPTER 2. LINEAR ALGEBRA
+
+cases, the decomposition exists, but may involve complex rather than real numbers.
+Fortunately, in this book, we usually need to decompose only a speciï¬?c class of
+matrices that have a simple decomposition. Speciï¬?cally, every real symmetric
+matrix can be decomposed into an expression using only real-valued eigenvectors
+and eigenvalues:
+A = QÎ›Q î€¾ ,
+(2.41)
+where Q is an orthogonal matrix composed of eigenvectors of A, and Î› is a
+diagonal matrix. The eigenvalue Î›i,i is associated with the eigenvector in column i
+of Q, denoted as Q:,i. Because Q is an orthogonal matrix, we can think of A as
+scaling space by Î»i in direction v (i). See ï¬?gure 2.3 for an example.
+While any real symmetric matrix A is guaranteed to have an eigendecomposition, the eigendecomposition may not be unique. If any two or more eigenvectors
+share the same eigenva

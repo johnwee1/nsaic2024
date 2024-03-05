@@ -1,0 +1,285 @@
+ect to the training set. We
+would usually prefer to minimize the corresponding objective function where the
+expectation is taken across the data generating distribution pdata rather than just
+over the ï¬?nite training set:
+J âˆ—(Î¸) = E(x,y)âˆ¼pdata L(f (x; Î¸), y).
+
+8.1.1
+
+(8.2)
+
+Empirical Risk Minimization
+
+The goal of a machine learning algorithm is to reduce the expected generalization
+error given by equation 8.2. This quantity is known as the risk. We emphasize here
+that the expectation is taken over the true underlying distribution pdata. If we knew
+the true distribution pdata (x, y), risk minimization would be an optimization task
+275
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+solvable by an optimization algorithm. However, when we do not know p data(x, y)
+but only have a training set of samples, we have a machine learning problem.
+The simplest way to convert a machine learning problem back into an optimization problem is to minimize the expected loss on the training set. This
+means replacing the true distribution p(x, y) with the empirical distribution pÌ‚(x, y)
+deï¬?ned by the training set. We now minimize the empirical risk
+m
+
+1 î?˜
+Ex,yâˆ¼pÌ‚data(x,y) [L(f (x; Î¸), y)] =
+L(f (x(i) ; Î¸), y (i))
+m
+
+(8.3)
+
+i=1
+
+where m is the number of training examples.
+The training process based on minimizing this average training error is known
+as empirical risk minimization. In this setting, machine learning is still very
+similar to straightforward optimization. Rather than optimizing the risk directly,
+we optimize the empirical risk, and hope that the risk decreases signiï¬?cantly as
+well. A variety of theoretical results establish conditions under which the true risk
+can be expected to decrease by various amounts.
+However, empirical risk minimization is prone to overï¬?tting. Models with
+high capacity can simply memorize the training set. In many cases, empirical
+risk minimization is not really feasible. The most eï¬€ective modern optimization
+algorithms are based on gradient descent, but many useful loss functions, such
+as 0-1 loss, have no useful derivatives (the derivative is either zero or undeï¬?ned
+everywhere). These two problems mean that, in the context of deep learning, we
+rarely use empirical risk minimization. Instead, we must use a slightly diï¬€erent
+approach, in which the quantity that we actually optimize is even more diï¬€erent
+from the quantity that we truly want to optimize.
+
+8.1.2
+
+Surrogate Loss Functions and Early Stopping
+
+Sometimes, the loss function we actually care about (say classiï¬?cation error) is not
+one that can be optimized eï¬ƒciently. For example, exactly minimizing expected 0-1
+loss is typically intractable (exponential in the input dimension), even for a linear
+classiï¬?er (Marcotte and Savard, 1992). In such situations, one typically optimizes
+a surrogate loss function instead, which acts as a proxy but has advantages.
+For example, the negative log-likelihood of the correct class is typically used as a
+surrogate for the 0-1 loss. The negative log-likelihood allows the model to estimate
+the conditional probability of the classes, given the input, and if the model can
+do that well, then it can pick the classes that yield the least classiï¬?cation error in
+expectation.
+276
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+In some cases, a surrogate loss function actually results in being able to learn
+more. For example, the test set 0-1 loss often continues to decrease for a long
+time after the training set 0-1 loss has reached zero, when training using the
+log-likelihood surrogate. This is because even when the expected 0-1 loss is zero,
+one can improve the robustness of the classiï¬?er by further pushing the classes apart
+from each other, obtaining a more conï¬?dent and reliable classiï¬?er, thus extracting
+more information from the training data than would have been possible by simply
+minimizing the average 0-1 loss on the training set.
+A very important diï¬€erence between optimization in general and optimization
+as we use it for training algorithms is that training algorithms do not usually halt
+at a local minimum. Instead, a machine learning algorithm usually minimizes
+a surrogate loss function but halts when a convergence criterion based on early
+stopping (section 7.8) is satisï¬?ed. Typically the early stopping criterion is based
+on the true underlying loss function, such as 0-1 loss measured on a validation set,
+and is designed to cause the algorithm to halt whenever overï¬?tting begins to occur.
+Training often halts while the surrogate loss function still has large derivatives,
+which is very diï¬€erent from the pure optimization setting, where an optimization
+algorithm is considered to have converged when the gradient becomes very small.
+
+8.1.3
+
+Batch and Minibatch Algorithms
+
+One aspect of machine learning algorithms that separates them from general
+optimization algorithms is that the objective function usually decomposes as a sum
+over the training examples. Optimization algorithms for machine learning typically
+compute each update to the parameters based on an expected value of the cost
+function estimated using only a subset of the terms of the full cost function.
+For example, maximum likelihood estimation problems, when viewed in log
+space, decompose into a sum over each example:
+Î¸ML = arg max
+Î¸
+
+m
+î?˜
+
+log p model(x(i), y(i) ; Î¸).
+
+(8.4)
+
+i=1
+
+Maximizing this sum is equivalent to maximizing the expectation over the
+empirical distribution deï¬?ned by the training set:
+J(Î¸) = Ex,yâˆ¼pÌ‚data log pmodel(x, y; Î¸).
+
+(8.5)
+
+Most of the properties of the objective function J used by most of our optimization algorithms are also expectations over the training set. For example, the
+277
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+most commonly used property is the gradient:
+âˆ‡Î¸ J(Î¸) = Ex,yâˆ¼pÌ‚data âˆ‡Î¸ log pmodel (x, y; Î¸).
+
+(8.6)
+
+Computing this expectation exactly is very expensive because it requires
+evaluating the model on every example in the entire dataset. In practice, we can
+compute these expectations by randomly sampling a small number of examples
+from the dataset, then taking the average over only those examples.
+Recall that the standard
+error of the mean (equation 5.46) estimated from n
+âˆš
+Ïƒ is the true standard deviation of the value of
+samples is given by Ïƒ/ n, where âˆš
+the samples. The denominator of n shows that there are less than linear returns
+to using more examples to estimate the gradient. Compare two hypothetical
+estimates of the gradient, one based on 100 examples and another based on 10,000
+examples. The latter requires 100 times more computation than the former, but
+reduces the standard error of the mean only by a factor of 10. Most optimization
+algorithms converge much faster (in terms of total computation, not in terms of
+number of updates) if they are allowed to rapidly compute approximate estimates
+of the gradient rather than slowly computing the exact gradient.
+Another consideration motivating statistical estimation of the gradient from a
+small number of samples is redundancy in the training set. In the worst case, all
+m samples in the training set could be identical copies of each other. A samplingbased estimate of the gradient could compute the correct gradient with a single
+sample, using m times less computation than the naive approach. In practice, we
+are unlikely to truly encounter this worst-case situation, but we may ï¬?nd large
+numbers of examples that all make very similar contributions to the gradient.
+Optimization algorithms that use the entire training set are called batch or
+deterministic gradient methods, because they process all of the training examples
+simultaneously in a large batch. This terminology can be somewhat confusing
+because the word â€œbatchâ€? is also often used to describe the minibatch used by
+minibatch stochastic gradient descent. Typically the term â€œbatch gradient descentâ€?
+implies the use of the full training set, while the use of the term â€œbatchâ€? to describe
+a group of examples does not. For example, it is very common to use the term
+â€œbatch sizeâ€? to describe the size of a minibatch.
+Optimization algorithms that use only a single example at a time are sometimes
+called stochastic or sometimes online methods. The term online is usually
+reserved for the case where the examples are drawn from a stream of continually
+created examples rather than from a ï¬?xed-size training set over which several
+passes are made.
+Most algorithms used for deep learning fall somewhere in between, using more
+278
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+than one but less than all of the training examples. These were traditionally called
+minibatch or minibatch stochastic methods and it is now common to simply
+call them stochastic methods.
+The canonical example of a stochastic method is stochastic gradient descent,
+presented in detail in section 8.3.1.
+Minibatch sizes are generally driven by the following factors:
+â€¢ Larger batches provide a more accurate estimate of the gradient, but with
+less than linear returns.
+â€¢ Multicore architectures are usually underutilized by extremely small batches.
+This motivates using some absolute minimum batch size, below which there
+is no reduction in the time to process a minibatch.
+â€¢ If all examples in the batch are to be processed in parallel (as is typically
+the case), then the amount of memory scales with the batch size. For many
+hardware setups this is the limiting factor in batch size.
+â€¢ Some kinds of hardware achieve better runtime with speciï¬?c sizes of arrays.
+Especially when using GPUs, it is common for power of 2 batch sizes to oï¬€er
+better runtime. Typical power of 2 batch sizes range from 32 to 256, with 16
+sometimes being attempted for large models.
+â€¢ Small batches can oï¬€er a regularizing eï¬€ect (Wilson and Martinez, 2003),
+perhaps due to the noise they add to the learning process. Generalization
+error is often best for a batch size of 1. Training with such a small batch
+size might require a small learning rate to maintain stability due to the high
+variance in the estimate of the gradient. The total runtime can be very high
+due to the need to make more steps, both because of the reduced learning
+rate and because it takes more steps to observe the entire training set.
+Diï¬€erent kinds of algorithms use diï¬€erent kinds of information from the minibatch in diï¬€erent ways. Some algorithms are more sensitive to sampling error than
+others, either because they use information that is diï¬ƒcult to estimate accurately
+with few samples, or because they use information in ways that amplify sampling
+errors more. Methods that compute updates based only on the gradient g are
+usually relatively robust and can handle smaller batch sizes like 100. Second-order
+methods, which use also the Hessian matrix H and compute updates such as
+H âˆ’1 g, typically require much larger batch sizes like 10,000. These large batch
+sizes are required to minimize ï¬‚uctuations in the estimates of H âˆ’1 g. Suppose
+that H is estimated perfectly but has a poor condition number. Multiplication by
+279
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+H or its inverse ampliï¬?es pre-existing errors, in this case, estimation errors in g.
+Very small changes in the estimate of g can thus cause large changes in the update
+H âˆ’1 g, even if H were estimated perfectly. Of course, H will be estimated only
+approximately, so the update H âˆ’1 g will contain even more error than we would
+predict from applying a poorly conditioned operation to the estimate of g .
+It is also crucial that the minibatches be selected randomly. Computing an
+unbiased estimate of the expected gradient from a set of samples requires that those
+samples be independent. We also wish for two subsequent gradient estimates to be
+independent from each other, so two subsequent minibatches of examples should
+also be independent from each other. Many datasets are most naturally arranged
+in a way where successive examples are highly correlated. For example, we might
+have a dataset of medical data with a long list of blood sample test results. This
+list might be arranged so that ï¬?rst we have ï¬?ve blood samples taken at diï¬€erent
+times from the ï¬?rst patient, then we have three blood samples taken from the
+second patient, then the blood samples from the third patient, and so on. If we
+were to draw examples in order from this list, then each of our minibatches would
+be extremely biased, because it would represent primarily one patient out of the
+many patients in the dataset. In cases such as these where the order of the dataset
+holds some signiï¬?cance, it is necessary to shuï¬„e the examples before selecting
+minibatches. For very large datasets, for example datasets containing billions of
+examples in a data center, it can be impractical to sample examples truly uniformly
+at random every time we want to construct a minibatch. Fortunately, in practice
+it is usually suï¬ƒcient to shuï¬„e the order of the dataset once and then store it in
+shuï¬„ed fashion. This will impose a ï¬?xed set of possible minibatches of consecutive
+examples that all models trained thereafter will use, and each individual model
+will be forced to reuse this ordering every time it passes through the training
+data. However, this deviation from true random selection does not seem to have a
+signiï¬?cant detrimental eï¬€ect. Failing to ever shuï¬„e the examples in any way can
+seriously reduce the eï¬€ectiveness of the algorithm.
+Many optimization problems in machine learning decompose over examples
+well enough that we can compute entire separate updates over diï¬€erent examples
+in parallel. In other words, we can compute the update that minimizes J(X) for
+one minibatch of examples X at the same time that we compute the update for
+several other minibatches. Such asynchronous parallel distributed approaches are
+discussed further in section 12.1.3.
+An interesting motivation for minibatch stochastic gradient descent is that it
+follows the gradient of the true generalization error (equation 8.2) so long as no
+examples are repeated. Most implementations of minibatch stochastic gradient
+280
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+descent shuï¬„e the dataset once and then pass through it multiple times. On the
+ï¬?rst pass, each minibatch is used to compute an unbiased estimate of the true
+generalization error. On the second pass, the estimate becomes biased because it is
+formed by re-sampling values that have already been used, rather than obtaining
+new fair samples from the data generating distribution.
+The fact that stochastic gradient descent minimizes generalization error is
+easiest to see in the online learning case, where examples or minibatches are drawn
+from a stream of data. In other words, instead of receiving a ï¬?xed-size training
+set, the learner is similar to a living being who sees a new example at each instant,
+with every example (x, y) coming from the data generating distribution p data(x, y ).
+In this scenario, examples are never repeated; every experience is a fair sample
+from p data.
+The equivalence is easiest to derive when both x and y are discrete. In this
+case, the generalization error (equation 8.2) can be written as a sum
+î?˜î?˜
+J âˆ—(Î¸) =
+pdata(x, y)L(f (x; Î¸), y),
+(8.7)
+y
+
+x
+
+with the exact gradient
+g = âˆ‡Î¸ J âˆ—(Î¸) =
+
+î?˜î?˜
+x
+
+y
+
+pdata (x, y)âˆ‡Î¸ L(f (x; Î¸), y).
+
+(8.8)
+
+We have already seen the same fa

@@ -1,0 +1,353 @@
+mizing
+either DKL (p�?�q ) or DKL (q �?�p). We illustrate the eﬀect of this choice using a mixture of
+two Gaussians for p, and a single Gaussian for q. The choice of which direction of the
+KL divergence to use is problem-dependent. Some applications require an approximation
+that usually places high probability anywhere that the true distribution places high
+probability, while other applications require an approximation that rarely places high
+probability anywhere that the true distribution places low probability. The choice of the
+direction of the KL divergence reﬂects which of these considerations takes priority for each
+application. (Left)The eﬀect of minimizing DKL(p�?�q ). In this case, we select a q that has
+high probability where p has high probability. When p has multiple modes, q chooses to
+blur the modes together, in order to put high probability mass on all of them. (Right)The
+eﬀect of minimizing DKL(q �?�p). In this case, we select a q that has low probability where
+p has low probability. When p has multiple modes that are suﬃciently widely separated,
+as in this �?gure, the KL divergence is minimized by choosing a single mode, in order to
+avoid putting probability mass in the low-probability areas between modes ofp. Here, we
+illustrate the outcome when q is chosen to emphasize the left mode. We could also have
+achieved an equal value of the KL divergence by choosing the right mode. If the modes
+are not separated by a suﬃciently strong low probability region, then this direction of the
+KL divergence can still choose to blur the modes.
+
+76
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+describe the entire joint probability distribution can be very ineﬃcient (both
+computationally and statistically).
+Instead of using a single function to represent a probability distribution, we
+can split a probability distribution into many factors that we multiply together.
+For example, suppose we have three random variables: a, b and c. Suppose that
+a inﬂuences the value of b and b inﬂuences the value of c, but that a and c are
+independent given b. We can represent the probability distribution over all three
+variables as a product of probability distributions over two variables:
+p(a, b, c) = p(a)p(b | a)p(c | b).
+
+(3.52)
+
+These factorizations can greatly reduce the number of parameters needed
+to describe the distribution. Each factor uses a number of parameters that is
+exponential in the number of variables in the factor. This means that we can greatly
+reduce the cost of representing a distribution if we are able to �?nd a factorization
+into distributions over fewer variables.
+We can describe these kinds of factorizations using graphs. Here we use the word
+“graph�? in the sense of graph theory: a set of vertices that may be connected to each
+other with edges. When we represent the factorization of a probability distribution
+with a graph, we call it a structured probabilistic model or graphical model.
+There are two main kinds of structured probabilistic models: directed and
+undirected. Both kinds of graphical models use a graph G in which each node
+in the graph corresponds to a random variable, and an edge connecting two
+random variables means that the probability distribution is able to represent direct
+interactions between those two random variables.
+Directed models use graphs with directed edges, and they represent factorizations into conditional probability distributions, as in the example above.
+Speci�?cally, a directed model contains one factor for every random variable xi in
+the distribution, and that factor consists of the conditional distribution over xi
+given the parents of xi , denoted P aG (xi ):
+�?�
+p(x) =
+p (xi | P a G (xi)) .
+(3.53)
+i
+
+See �?gure 3.7 for an example of a directed graph and the factorization of probability
+distributions it represents.
+Undirected models use graphs with undirected edges, and they represent
+factorizations into a set of functions; unlike in the directed case, these functions
+77
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+a
+
+b
+
+c
+
+d
+
+e
+
+Figure 3.7: A directed graphical model over random variables a, b, c, d and e. This graph
+corresponds to probability distributions that can be factored as
+p(a, b, c, d, e) = p(a)p(b | a)p(c | a, b)p(d | b)p(e | c).
+
+(3.54)
+
+This graph allows us to quickly see some properties of the distribution. For example,a
+and c interact directly, but a and e interact only indirectly via c.
+
+are usually not probability distributions of any kind. Any set of nodes that are all
+connected to each other in G is called a clique. Each clique C (i) in an undirected
+model is associated with a factor φ (i)(C(i) ). These factors are just functions, not
+probability distributions. The output of each factor must be non-negative, but
+there is no constraint that the factor must sum or integrate to 1 like a probability
+distribution.
+The probability of a con�?guration of random variables is proportional to the
+product of all of these factors—assignments that result in larger factor values are
+more likely. Of course, there is no guarantee that this product will sum to 1. We
+therefore divide by a normalizing constant Z, de�?ned to be the sum or integral
+over all states of the product of the φ functions, in order to obtain a normalized
+probability distribution:
+1 �?� ( i) �? (i ) 
+p(x) =
+φ
+.
+(3.55)
+C
+Z
+i
+
+See �?gure 3.8 for an example of an undirected graph and the factorization of
+probability distributions it represents.
+Keep in mind that these graphical representations of factorizations are a
+language for describing probability distributions. They are not mutually exclusive
+families of probability distributions. Being directed or undirected is not a property
+of a probability distribution; it is a property of a particular description of a
+78
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+a
+
+b
+
+c
+
+d
+
+e
+
+Figure 3.8: An undirected graphical model over random variablesa, b, c, d and e. This
+graph corresponds to probability distributions that can be factored as
+p(a, b, c, d, e) =
+
+1 (1)
+φ (a, b, c)φ(2) (b, d)φ(3) (c, e).
+Z
+
+(3.56)
+
+This graph allows us to quickly see some properties of the distribution. For example,a
+and c interact directly, but a and e interact only indirectly via c.
+
+probability distribution, but any probability distribution may be described in both
+ways.
+Throughout parts I and II of this book, we will use structured probabilistic
+models merely as a language to describe which direct probabilistic relationships
+diﬀerent machine learning algorithms choose to represent. No further understanding
+of structured probabilistic models is needed until the discussion of research topics,
+in part III, where we will explore structured probabilistic models in much greater
+detail.
+This chapter has reviewed the basic concepts of probability theory that are
+most relevant to deep learning. One more set of fundamental mathematical tools
+remains: numerical methods.
+
+79
+
+Chapter 4
+
+Numerical Computation
+Machine learning algorithms usually require a high amount of numerical computation. This typically refers to algorithms that solve mathematical problems by
+methods that update estimates of the solution via an iterative process, rather than
+analytically deriving a formula providing a symbolic expression for the correct solution. Common operations include optimization (�?nding the value of an argument
+that minimizes or maximizes a function) and solving systems of linear equations.
+Even just evaluating a mathematical function on a digital computer can be diﬃcult
+when the function involves real numbers, which cannot be represented precisely
+using a �?nite amount of memory.
+
+4.1
+
+Overﬂow and Underﬂow
+
+The fundamental diﬃculty in performing continuous math on a digital computer
+is that we need to represent in�?nitely many real numbers with a �?nite number
+of bit patterns. This means that for almost all real numbers, we incur some
+approximation error when we represent the number in the computer. In many
+cases, this is just rounding error. Rounding error is problematic, especially when
+it compounds across many operations, and can cause algorithms that work in
+theory to fail in practice if they are not designed to minimize the accumulation of
+rounding error.
+One form of rounding error that is particularly devastating is underﬂow.
+Underﬂow occurs when numbers near zero are rounded to zero. Many functions
+behave qualitatively diﬀerently when their argument is zero rather than a small
+positive number. For example, we usually want to avoid division by zero (some
+80
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+software environments will raise exceptions when this occurs, others will return a
+result with a placeholder not-a-number value) or taking the logarithm of zero (this
+is usually treated as −∞, which then becomes not-a-number if it is used for many
+further arithmetic operations).
+Another highly damaging form of numerical error is overﬂow. Overﬂow occurs
+when numbers with large magnitude are approximated as ∞ or −∞. Further
+arithmetic will usually change these in�?nite values into not-a-number values.
+One example of a function that must be stabilized against underﬂow and
+overﬂow is the softmax function. The softmax function is often used to predict the
+probabilities associated with a multinoulli distribution. The softmax function is
+de�?ned to be
+exp(xi )
+softmax(x)i = �??n
+.
+(4.1)
+j=1 exp(xj )
+
+Consider what happens when all of the xi are equal to some constant c. Analytically,
+we can see that all of the outputs should be equal to 1n . Numerically, this may
+not occur when c has large magnitude. If c is very negative, then exp(c) will
+underﬂow. This means the denominator of the softmax will become 0, so the �?nal
+result is unde�?ned. When c is very large and positive, exp(c) will overﬂow, again
+resulting in the expression as a whole being unde�?ned. Both of these diﬃculties
+can be resolved by instead evaluating softmax(z ) where z = x − max i xi. Simple
+algebra shows that the value of the softmax function is not changed analytically by
+adding or subtracting a scalar from the input vector. Subtracting maxi xi results
+in the largest argument to exp being 0, which rules out the possibility of overﬂow.
+Likewise, at least one term in the denominator has a value of 1, which rules out
+the possibility of underﬂow in the denominator leading to a division by zero.
+There is still one small problem. Underﬂow in the numerator can still cause
+the expression as a whole to evaluate to zero. This means that if we implement
+log softmax(x) by �?rst running the softmax subroutine then passing the result to
+the log function, we could erroneously obtain −∞. Instead, we must implement
+a separate function that calculates log softmax in a numerically stable way. The
+log softmax function can be stabilized using the same trick as we used to stabilize
+the softmax function.
+For the most part, we do not explicitly detail all of the numerical considerations
+involved in implementing the various algorithms described in this book. Developers
+of low-level libraries should keep numerical issues in mind when implementing
+deep learning algorithms. Most readers of this book can simply rely on lowlevel libraries that provide stable implementations. In some cases, it is possible
+to implement a new algorithm and have the new implementation automatically
+81
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+stabilized. Theano (Bergstra et al., 2010; Bastien et al., 2012) is an example
+of a software package that automatically detects and stabilizes many common
+numerically unstable expressions that arise in the context of deep learning.
+
+4.2
+
+Poor Conditioning
+
+Conditioning refers to how rapidly a function changes with respect to small changes
+in its inputs. Functions that change rapidly when their inputs are perturbed slightly
+can be problematic for scienti�?c computation because rounding errors in the inputs
+can result in large changes in the output.
+Consider the function f(x) = A−1x. When A ∈ R n×n has an eigenvalue
+decomposition, its condition number is
+ 
+ λi 
+max   .
+(4.2)
+i,j
+λj
+
+This is the ratio of the magnitude of the largest and smallest eigenvalue. When
+this number is large, matrix inversion is particularly sensitive to error in the input.
+This sensitivity is an intrinsic property of the matrix itself, not the result
+of rounding error during matrix inversion. Poorly conditioned matrices amplify
+pre-existing errors when we multiply by the true matrix inverse. In practice, the
+error will be compounded further by numerical errors in the inversion process itself.
+
+4.3
+
+Gradient-Based Optimization
+
+Most deep learning algorithms involve optimization of some sort. Optimization
+refers to the task of either minimizing or maximizing some function f (x) by altering
+x. We usually phrase most optimization problems in terms of minimizing f (x).
+Maximization may be accomplished via a minimization algorithm by minimizing
+−f (x).
+
+The function we want to minimize or maximize is called the objective function or criterion. When we are minimizing it, we may also call it the cost
+function, loss function, or error function. In this book, we use these terms
+interchangeably, though some machine learning publications assign special meaning
+to some of these terms.
+We often denote the value that minimizes or maximizes a function with a
+superscript ∗. For example, we might say x∗ = arg min f (x).
+82
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+2 .0
+1 .5
+
+Global minimum at x = 0.
+Since f  (x) = 0, gradient
+descent halts here.
+
+1 .0
+0 .5
+0 .0
+−0.5
+
+For x < 0, we have f (x) < 0,
+so we can decrease f by
+moving rightward.
+
+For x > 0, we have f (x) > 0,
+so we can decrease f by
+moving leftward.
+
+−1.0
+
+f (x) = 12 x2
+
+−1.5
+−2.0
+− 2 .0
+
+f  (x ) = x
+− 1 .5
+
+− 1 .0
+
+− 0 .5
+
+0 .0
+
+0.5
+
+1 .0
+
+1 .5
+
+2.0
+
+x
+
+Figure 4.1: An illustration of how the gradient descent algorithm uses the derivatives of a
+function can be used to follow the function downhill to a minimum.
+
+We assume the reader is already familiar with calculus, but provide a brief
+review of how calculus concepts relate to optimization here.
+Suppose we have a function y = f (x), where both x and y are real numbers.
+
+The derivative of this function is denoted as f (x) or as dy
+dx . The derivative f (x)
+gives the slope of f (x) at the point x. In other words, it speci�?es how to scale
+a small change in the input in order to obtain the corresponding change in the
+output: f (x + �?) ≈ f (x) + �?f (x).
+
+The derivative is therefore useful for minimizing a function because it tells
+us how to change x in order to make a small improvement in y. For example,
+we know that f (x − �? sign(f  (x))) is less than f (x) for small enough �?. We can
+thus reduce f (x) by moving x in small steps with opposite sign of the derivative.
+This technique is called gradient descent (Cauchy, 1847). See �?gure 4.1 for an
+example of this technique.
+When f  (x) = 0, the derivative provides no information about which direction
+to move. Points where f  (x) = 0 are known as critical points or stationary
+points. A local minimum is a point where f (x) is lower than at all neighboring
+points, so it is no longer possible to decrease f(x) by making in�?nitesimal steps.
+A local maximum is a point where f (x) is higher than at all neighboring points,
+83
+
+CHAPTER 4. NUMERICAL COMPUTATIO

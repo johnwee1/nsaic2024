@@ -1,0 +1,325 @@
+iodic evaluations may be reduced by using a validation set that is
+small compared to the training set or by evaluating the validation set error less
+frequently and obtaining a lower resolution estimate of the optimal training time.
+An additional cost to early stopping is the need to maintain a copy of the
+best parameters. This cost is generally negligible, because it is acceptable to store
+these parameters in a slower and larger form of memory (for example, training in
+GPU memory, but storing the optimal parameters in host memory or on a disk
+drive). Since the best parameters are written to infrequently and never read during
+training, these occasional slow writes have little eﬀect on the total training time.
+Early stopping is a very unobtrusive form of regularization, in that it requires
+almost no change in the underlying training procedure, the objective function,
+or the set of allowable parameter values. This means that it is easy to use early
+stopping without damaging the learning dynamics. This is in contrast to weight
+decay, where one must be careful not to use too much weight decay and trap the
+network in a bad local minimum corresponding to a solution with pathologically
+small weights.
+Early stopping may be used either alone or in conjunction with other regularization strategies. Even when using regularization strategies that modify the objective
+function to encourage better generalization, it is rare for the best generalization to
+occur at a local minimum of the training objective.
+Early stopping requires a validation set, which means some training data is not
+fed to the model. To best exploit this extra data, one can perform extra training
+after the initial training with early stopping has completed. In the second, extra
+training step, all of the training data is included. There are two basic strategies
+one can use for this second training procedure.
+One strategy (algorithm 7.2) is to initialize the model again and retrain on all
+248
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+of the data. In this second training pass, we train for the same number of steps as
+the early stopping procedure determined was optimal in the �?rst pass. There are
+some subtleties associated with this procedure. For example, there is not a good
+way of knowing whether to retrain for the same number of parameter updates or
+the same number of passes through the dataset. On the second round of training,
+each pass through the dataset will require more parameter updates because the
+training set is bigger.
+Algorithm 7.2 A meta-algorithm for using early stopping to determine how long
+to train, then retraining on all the data.
+Let X(train) and y(train) be the training set.
+Split X(train) and y(train) into (X(subtrain), X (valid)) and ( y(subtrain), y(valid))
+respectively.
+Run early stopping (algorithm 7.1) starting from random θ using X(subtrain) and
+y(subtrain) for training data and X(valid) and y(valid) for validation data. This
+returns i∗, the optimal number of steps.
+Set θ to random values again.
+Train on X (train) and y(train) for i∗ steps.
+Another strategy for using all of the data is to keep the parameters obtained
+from the �?rst round of training and then continue training but now using all of
+the data. At this stage, we now no longer have a guide for when to stop in terms
+of a number of steps. Instead, we can monitor the average loss function on the
+validation set, and continue training until it falls below the value of the training
+set objective at which the early stopping procedure halted. This strategy avoids
+the high cost of retraining the model from scratch, but is not as well-behaved. For
+example, there is not any guarantee that the objective on the validation set will
+ever reach the target value, so this strategy is not even guaranteed to terminate.
+This procedure is presented more formally in algorithm 7.3.
+Early stopping is also useful because it reduces the computational cost of the
+training procedure. Besides the obvious reduction in cost due to limiting the number
+of training iterations, it also has the bene�?t of providing regularization without
+requiring the addition of penalty terms to the cost function or the computation of
+the gradients of such additional terms.
+How early stopping acts as a regularizer: So far we have stated that early
+stopping is a regularization strategy, but we have supported this claim only by
+showing learning curves where the validation set error has a U-shaped curve. What
+249
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+Algorithm 7.3 Meta-algorithm using early stopping to determine at what objective value we start to over�?t, then continue training until that value is reached.
+Let X(train) and y(train) be the training set.
+Split X(train) and y(train) into (X(subtrain), X (valid)) and ( y(subtrain), y(valid))
+respectively.
+Run early stopping (algorithm 7.1) starting from random θ using X(subtrain) and
+y(subtrain) for training data and X(valid) and y(valid) for validation data. This
+updates θ.
+�? �? J (θ, X (subtrain), y(subtrain))
+while J (θ, X (valid) , y (valid) ) > �? do
+Train on X (train) and y(train) for n steps.
+end while
+is the actual mechanism by which early stopping regularizes the model? Bishop
+(1995a) and Sjöberg and Ljung (1995) argued that early stopping has the eﬀect of
+restricting the optimization procedure to a relatively small volume of parameter
+space in the neighborhood of the initial parameter value θo, as illustrated in
+�?gure 7.4. More speci�?cally, imagine taking τ optimization steps (corresponding
+to τ training iterations) and with learning rate �?. We can view the product �?τ
+as a measure of eﬀective capacity. Assuming the gradient is bounded, restricting
+both the number of iterations and the learning rate limits the volume of parameter
+space reachable from θo . In this sense, �?τ behaves as if it were the reciprocal of
+the coeﬃcient used for weight decay.
+Indeed, we can show how—in the case of a simple linear model with a quadratic
+error function and simple gradient descent—early stopping is equivalent to L 2
+regularization.
+In order to compare with classical L2 regularization, we examine a simple
+setting where the only parameters are linear weights (θ = w). We can model
+the cost function J with a quadratic approximation in the neighborhood of the
+empirically optimal value of the weights w∗:
+1
+Jˆ(θ) = J (w∗) + (w − w∗ ) H (w − w∗),
+2
+
+(7.33)
+
+where H is the Hessian matrix of J with respect to w evaluated at w∗ . Given the
+assumption that w ∗ is a minimum of J(w), we know that H is positive semide�?nite.
+Under a local Taylor series approximation, the gradient is given by:
+ˆ w) = H (w − w ∗).
+∇w J(
+250
+
+(7.34)
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+w̃
+
+w∗
+w2
+
+w2
+
+w∗
+
+w1
+
+w̃
+
+w1
+
+Figure 7.4: An illustration of the eﬀect of early stopping. (Left)The solid contour lines
+indicate the contours of the negative log-likelihood. The dashed line indicates the trajectory
+taken by SGD beginning from the origin. Rather than stopping at the point w∗ that
+minimizes the cost, early stopping results in the trajectory stopping at an earlier point w̃.
+(Right)An illustration of the eﬀect of L2 regularization for comparison. The dashed circles
+indicate the contours of the L2 penalty, which causes the minimum of the total cost to lie
+nearer the origin than the minimum of the unregularized cost.
+
+We are going to study the trajectory followed by the parameter vector during
+training. For simplicity, let us set the initial parameter vector to the origin,3 that
+is w (0) = 0. Let us study the approximate behavior of gradient descent on J by
+ˆ
+analyzing gradient descent on J:
+ˆ (τ−1) )
+w (τ ) = w (τ−1) − �?∇w J(w
+
+= w (τ−1) − �?H (w(τ−1) − w ∗)
+
+w(τ ) − w ∗ = (I − �?H )(w (τ−1) − w∗ ).
+
+(7.35)
+(7.36)
+(7.37)
+
+Let us now rewrite this expression in the space of the eigenvectors of H , exploiting
+the eigendecomposition of H: H = QΛQ , where Λ is a diagonal matrix and Q
+is an orthonormal basis of eigenvectors.
+w (τ ) − w ∗ = (I − �?QΛQ  )(w(τ−1) − w ∗ )
+
+Q(w(τ ) − w ∗) = (I − �?Λ)Q (w(τ−1) − w∗ )
+3
+
+(7.38)
+(7.39)
+
+For neural networks, to obtain symmetry breaking between hidden units, we cannot initialize
+all the parameters to 0, as discussed in section 6.2. However, the argument holds for any other
+initial value w(0) .
+
+251
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+Assuming that w (0) = 0 and that �? is chosen to be small enough to guarantee
+|1 − �?λ i| < 1, the parameter trajectory during training after τ parameter updates
+is as follows:
+Qw (τ ) = [I − (I − �?Λ)τ ]Q w∗ .
+
+(7.40)
+
+Now, the expression for Q w̃ in equation 7.13 for L2 regularization can be rearranged as:
+Q w̃ = (Λ + αI )−1ΛQ w ∗
+
+(7.41)
+
+Q w̃ = [I − (Λ + αI )−1 α]Qw ∗
+
+(7.42)
+
+Comparing equation 7.40 and equation 7.42, we see that if the hyperparameters �?,
+α, and τ are chosen such that
+(I − �?Λ)τ = (Λ + αI )−1 α,
+
+(7.43)
+
+then L 2 regularization and early stopping can be seen to be equivalent (at least
+under the quadratic approximation of the objective function). Going even further,
+by taking logarithms and using the series expansion for log(1 + x), we can conclude
+that if all λi are small (that is, �?λi  1 and λi/α  1) then
+
+1
+,
+(7.44)
+�?α
+1
+α≈ .
+(7.45)
+τ�?
+That is, under these assumptions, the number of training iterations τ plays a role
+inversely proportional to the L2 regularization parameter, and the inverse of τ�?
+plays the role of the weight decay coeﬃcient.
+τ≈
+
+Parameter values corresponding to directions of signi�?cant curvature (of the
+objective function) are regularized less than directions of less curvature. Of course,
+in the context of early stopping, this really means that parameters that correspond
+to directions of signi�?cant curvature tend to learn early relative to parameters
+corresponding to directions of less curvature.
+The derivations in this section have shown that a trajectory of length τ ends
+at a point that corresponds to a minimum of the L2-regularized objective. Early
+stopping is of course more than the mere restriction of the trajectory length;
+instead, early stopping typically involves monitoring the validation set error in
+order to stop the trajectory at a particularly good point in space. Early stopping
+therefore has the advantage over weight decay that early stopping automatically
+determines the correct amount of regularization while weight decay requires many
+training experiments with diﬀerent values of its hyperparameter.
+252
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+7.9
+
+Parameter Tying and Parameter Sharing
+
+Thus far, in this chapter, when we have discussed adding constraints or penalties
+to the parameters, we have always done so with respect to a �?xed region or point.
+For example, L2 regularization (or weight decay) penalizes model parameters for
+deviating from the �?xed value of zero. However, sometimes we may need other
+ways to express our prior knowledge about suitable values of the model parameters.
+Sometimes we might not know precisely what values the parameters should take
+but we know, from knowledge of the domain and model architecture, that there
+should be some dependencies between the model parameters.
+A common type of dependency that we often want to express is that certain
+parameters should be close to one another. Consider the following scenario: we
+have two models performing the same classi�?cation task (with the same set of
+classes) but with somewhat diﬀerent input distributions. Formally, we have model
+A with parameters w (A) and model B with parameters w (B ) . The two models
+map the input to two diﬀerent, but related outputs: ŷ (A) = f(w(A) , x) and
+ŷ (B ) = g(w (B ), x).
+Let us imagine that the tasks are similar enough (perhaps with similar input
+and output distributions) that we believe the model parameters should be close
+to each other: ∀i, wi(A) should be close to w(i B ) . We can leverage this information
+through regularization. Speci�?cally, we can use a parameter norm penalty of the
+form: Ω(w(A) , w (B )) = �?�w (A) − w(B )�?�22. Here we used an L 2 penalty, but other
+choices are also possible.
+This kind of approach was proposed by Lasserre et al. (2006), who regularized
+the parameters of one model, trained as a classi�?er in a supervised paradigm, to
+be close to the parameters of another model, trained in an unsupervised paradigm
+(to capture the distribution of the observed input data). The architectures were
+constructed such that many of the parameters in the classi�?er model could be
+paired to corresponding parameters in the unsupervised model.
+While a parameter norm penalty is one way to regularize parameters to be
+close to one another, the more popular way is to use constraints: to force sets
+of parameters to be equal. This method of regularization is often referred to as
+parameter sharing, because we interpret the various models or model components
+as sharing a unique set of parameters. A signi�?cant advantage of parameter sharing
+over regularizing the parameters to be close (via a norm penalty) is that only a
+subset of the parameters (the unique set) need to be stored in memory. In certain
+models—such as the convolutional neural network—this can lead to signi�?cant
+reduction in the memory footprint of the model.
+253
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+Convolutional Neural Networks By far the most popular and extensive use
+of parameter sharing occurs in convolutional neural networks (CNNs) applied
+to computer vision.
+Natural images have many statistical properties that are invariant to translation.
+For example, a photo of a cat remains a photo of a cat if it is translated one pixel
+to the right. CNNs take this property into account by sharing parameters across
+multiple image locations. The same feature (a hidden unit with the same weights)
+is computed over diﬀerent locations in the input. This means that we can �?nd a
+cat with the same cat detector whether the cat appears at column i or column
+i + 1 in the image.
+Parameter sharing has allowed CNNs to dramatically lower the number of unique
+model parameters and to signi�?cantly increase network sizes without requiring a
+corresponding increase in training data. It remains one of the best examples of
+how to eﬀectively incorporate domain knowledge into the network architecture.
+CNNs will be discussed in more detail in chapter 9.
+
+7.10
+
+Sparse Representations
+
+Weight decay acts by placing a penalty directly on the model parameters. Another
+strategy is to place a penalty on the activations of the units in a neural network,
+encouraging their activations to be sparse. This indirectly imposes a complicated
+penalty on the model parameters.
+We have already discussed (in section 7.1.2) how L1 penalization induces
+a sparse parametrization—meaning that many of the parameters become zero
+(or close to zero). Representational sparsity, on the other hand, describes a
+representation where many of the elements of the representation are zero (or close
+to zero). A simpli�?ed view of this distinction can be illustrated in the context of
+linear regression:
+
+
+
+
+
+
+2
+18
+4 0 0 −2 0
+0
+
+
+ 5 
+ 0 0 −1 0
+  3 
+3
+0
+
+
+
+  −2 
+ 15  =  0 5 0
+ 

@@ -1,0 +1,268 @@
+or, y. Because the mixture
+components (e.g., natural object classes in image data) are statistically salient, just
+modeling p( x) in an unsupervised way with no labeled example already reveals the factor
+y.
+
+Next, let us see a simple example of how semi-supervised learning can succeed.
+Consider the situation where x arises from a mixture, with one mixture component
+per value of y, as illustrated in ï¬?gure 15.4. If the mixture components are wellseparated, then modeling p(x) reveals precisely where each component is, and a
+single labeled example of each class will then be enough to perfectly learn p(y | x).
+But more generally, what could make p(y | x) and p(x) be tied together?
+If y is closely associated with one of the causal factors of x, then p(x ) and
+p(y | x) will be strongly tied, and unsupervised representation learning that
+tries to disentangle the underlying factors of variation is likely to be useful as a
+semi-supervised learning strategy.
+Consider the assumption that y is one of the causal factors of x, and let
+h represent all those factors. The true generative process can be conceived as
+structured according to this directed graphical model, with h as the parent of x:
+p(h, x) = p(x | h)p(h).
+
+(15.1)
+
+As a consequence, the data has marginal probability
+p(x) = E h p(x | h).
+
+(15.2)
+
+From this straightforward observation, we conclude that the best possible model
+of x (from a generalization point of view) is the one that uncovers the above â€œtrueâ€?
+542
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+structure, with h as a latent variable that explains the observed variations in x.
+The â€œidealâ€? representation learning discussed above should thus recover these latent
+factors. If y is one of these (or closely related to one of them), then it will be
+very easy to learn to predict y from such a representation. We also see that the
+conditional distribution of y given x is tied by Bayesâ€™ rule to the components in
+the above equation:
+p(x | y )p (y )
+.
+(15.3)
+p(y | x) =
+p(x)
+Thus the marginal p(x) is intimately tied to the conditional p(y | x) and knowledge
+of the structure of the former should be helpful to learn the latter. Therefore, in
+situations respecting these assumptions, semi-supervised learning should improve
+performance.
+An important research problem regards the fact that most observations are
+formed by an extremely large number of underlying causes. Suppose y = hi, but
+the unsupervised learner does not know which hi. The brute force solution is for
+an unsupervised learner to learn a representation that captures all the reasonably
+salient generative factors h j and disentangles them from each other, thus making
+it easy to predict y from h, regardless of which hi is associated with y .
+In practice, the brute force solution is not feasible because it is not possible
+to capture all or most of the factors of variation that inï¬‚uence an observation.
+For example, in a visual scene, should the representation always encode all of
+the smallest objects in the background? It is a well-documented psychological
+phenomenon that human beings fail to perceive changes in their environment that
+are not immediately relevant to the task they are performingâ€”see, e.g., Simons
+and Levin (1998). An important research frontier in semi-supervised learning is
+determining what to encode in each situation. Currently, two of the main strategies
+for dealing with a large number of underlying causes are to use a supervised
+learning signal at the same time as the unsupervised learning signal so that the
+model will choose to capture the most relevant factors of variation, or to use much
+larger representations if using purely unsupervised learning.
+An emerging strategy for unsupervised learning is to modify the deï¬?nition of
+which underlying causes are most salient. Historically, autoencoders and generative
+models have been trained to optimize a ï¬?xed criterion, often similar to mean
+squared error. These ï¬?xed criteria determine which causes are considered salient.
+For example, mean squared error applied to the pixels of an image implicitly
+speciï¬?es that an underlying cause is only salient if it signiï¬?cantly changes the
+brightness of a large number of pixels. This can be problematic if the task we wish
+to solve involves interacting with small objects. See ï¬?gure 15.5 for an example
+543
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+Input
+
+Reconstruction
+
+Figure 15.5: An autoencoder trained with mean squared error for a robotics task has
+failed to reconstruct a ping pong ball. The existence of the ping pong ball and all of its
+spatial coordinates are important underlying causal factors that generate the image and
+are relevant to the robotics task. Unfortunately, the autoencoder has limited capacity,
+and the training with mean squared error did not identify the ping pong ball as being
+salient enough to encode. Images graciously provided by Chelsea Finn.
+
+of a robotics task in which an autoencoder has failed to learn to encode a small
+ping pong ball. This same robot is capable of successfully interacting with larger
+objects, such as baseballs, which are more salient according to mean squared error.
+Other deï¬?nitions of salience are possible. For example, if a group of pixels
+follow a highly recognizable pattern, even if that pattern does not involve extreme
+brightness or darkness, then that pattern could be considered extremely salient.
+One way to implement such a deï¬?nition of salience is to use a recently developed
+approach called generative adversarial networks (Goodfellow et al., 2014c).
+In this approach, a generative model is trained to fool a feedforward classiï¬?er.
+The feedforward classiï¬?er attempts to recognize all samples from the generative
+model as being fake, and all samples from the training set as being real. In this
+framework, any structured pattern that the feedforward network can recognize is
+highly salient. The generative adversarial network will be described in more detail
+in section 20.10.4. For the purposes of the present discussion, it is suï¬ƒcient to
+understand that they learn how to determine what is salient. Lotter et al. (2015)
+showed that models trained to generate images of human heads will often neglect
+to generate the ears when trained with mean squared error, but will successfully
+generate the ears when trained with the adversarial framework. Because the
+ears are not extremely bright or dark compared to the surrounding skin, they
+are not especially salient according to mean squared error loss, but their highly
+544
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+Ground Truth
+
+MSE
+
+Adversarial
+
+Figure 15.6: Predictive generative networks provide an example of the importance of
+learning which features are salient. In this example, the predictive generative network
+has been trained to predict the appearance of a 3-D model of a human head at a speciï¬?c
+viewing angle. (Left)Ground truth. This is the correct image, that the network should
+emit. (Center)Image produced by a predictive generative network trained with mean
+squared error alone. Because the ears do not cause an extreme diï¬€erence in brightness
+compared to the neighboring skin, they were not suï¬ƒciently salient for the model to learn
+to represent them. (Right)Image produced by a model trained with a combination of
+mean squared error and adversarial loss. Using this learned cost function, the ears are
+salient because they follow a predictable pattern. Learning which underlying causes are
+important and relevant enough to model is an important active area of research. Figures
+graciously provided by Lotter et al. (2015).
+
+recognizable shape and consistent position means that a feedforward network
+can easily learn to detect them, making them highly salient under the generative
+adversarial framework. See ï¬?gure 15.6 for example images. Generative adversarial
+networks are only one step toward determining which factors should be represented.
+We expect that future research will discover better ways of determining which
+factors to represent, and develop mechanisms for representing diï¬€erent factors
+depending on the task.
+A beneï¬?t of learning the underlying causal factors, as pointed out by SchÃ¶lkopf
+et al. (2012), is that if the true generative process has x as an eï¬€ect and y as
+a cause, then modeling p(x | y) is robust to changes in p(y). If the cause-eï¬€ect
+relationship was reversed, this would not be true, since by Bayesâ€™ rule, p( x | y)
+would be sensitive to changes in p(y). Very often, when we consider changes in
+distribution due to diï¬€erent domains, temporal non-stationarity, or changes in
+the nature of the task, the causal mechanisms remain invariant (the laws of the
+universe are constant) while the marginal distribution over the underlying causes
+can change. Hence, better generalization and robustness to all kinds of changes can
+545
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+be expected via learning a generative model that attempts to recover the causal
+factors h and p(x | h).
+
+15.4
+
+Distributed Representation
+
+Distributed representations of conceptsâ€”representations composed of many elements that can be set separately from each otherâ€”are one of the most important
+tools for representation learning. Distributed representations are powerful because
+they can use n features with k values to describe k n diï¬€erent concepts. As we
+have seen throughout this book, both neural networks with multiple hidden units
+and probabilistic models with multiple latent variables make use of the strategy of
+distributed representation. We now introduce an additional observation. Many
+deep learning algorithms are motivated by the assumption that the hidden units
+can learn to represent the underlying causal factors that explain the data, as
+discussed in section 15.3. Distributed representations are natural for this approach,
+because each direction in representation space can correspond to the value of a
+diï¬€erent underlying conï¬?guration variable.
+An example of a distributed representation is a vector of n binary features,
+which can take 2 n conï¬?gurations, each potentially corresponding to a diï¬€erent
+region in input space, as illustrated in ï¬?gure 15.7. This can be compared with
+a symbolic representation, where the input is associated with a single symbol or
+category. If there are n symbols in the dictionary, one can imagine n feature
+detectors, each corresponding to the detection of the presence of the associated
+category. In that case only n diï¬€erent conï¬?gurations of the representation space
+are possible, carving n diï¬€erent regions in input space, as illustrated in ï¬?gure 15.8.
+Such a symbolic representation is also called a one-hot representation, since it can
+be captured by a binary vector with n bits that are mutually exclusive (only one
+of them can be active). A symbolic representation is a speciï¬?c example of the
+broader class of non-distributed representations, which are representations that
+may contain many entries but without signiï¬?cant meaningful separate control over
+each entry.
+Examples of learning algorithms based on non-distributed representations
+include:
+â€¢ Clustering methods, including the k-means algorithm: each input point is
+assigned to exactly one cluster.
+â€¢ k-nearest neighbors algorithms: one or a few templates or prototype examples
+are associated with a given input. In the case of k > 1, there are multiple
+546
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+h2
+
+h3
+h = [1, 0, 0] î€¡
+
+h = [1, 1, 0]î€¡
+
+h = [1, 0, 1]î€¡
+h = [1, 1, 1] î€¡
+
+h1
+h = [0, 1, 0] î€¡
+
+h = [0, 1, 1] î€¡
+
+h = [0, 0, 1]î€¡
+
+Figure 15.7: Illustration of how a learning algorithm based on a distributed representation
+breaks up the input space into regions. In this example, there are three binary features
+h1 , h2 , and h3 . Each feature is deï¬?ned by thresholding the output of a learned, linear
+transformation. Each feature divides R2 into two half-planes. Let h+
+i be the set of input
+âˆ’
+points for which hi = 1 and h i be the set of input points for which hi = 0. In this
+illustration, each line represents the decision boundary for oneh i, with the corresponding
+arrow pointing to the h+
+i side of the boundary. The representation as a whole takes
+on a unique value at each possible intersection of these half-planes. For example, the
++
++
+representation value [1, 1, 1]î€¾ corresponds to the region h+
+1 âˆ© h2 âˆ© h3 . Compare this to the
+non-distributed representations in ï¬?gure 15.8. In the general case of d input dimensions,
+a distributed representation divides Rd by intersecting half-spaces rather than half-planes.
+The distributed representation with n features assigns unique codes to O(nd ) diï¬€erent
+regions, while the nearest neighbor algorithm with n examples assigns unique codes to only
+n regions. The distributed representation is thus able to distinguish exponentially many
+more regions than the non-distributed one. Keep in mind that not all h values are feasible
+(there is no h = 0 in this example) and that a linear classiï¬?er on top of the distributed
+representation is not able to assign diï¬€erent class identities to every neighboring region;
+even a deep linear-threshold network has a VC dimension of only O (w log w ) where w
+is the number of weights (Sontag, 1998). The combination of a powerful representation
+layer and a weak classiï¬?er layer can be a strong regularizer; a classiï¬?er trying to learn
+the concept of â€œpersonâ€? versus â€œnot a personâ€? does not need to assign a diï¬€erent class to
+an input represented as â€œwoman with glassesâ€? than it assigns to an input represented as
+â€œman without glasses.â€? This capacity constraint encourages each classiï¬?er to focus on few
+hi and encourages h to learn to represent the classes in a linearly separable way.
+547
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+values describing each input, but they can not be controlled separately from
+each other, so this does not qualify as a true distributed representation.
+â€¢ Decision trees: only one leaf (and the nodes on the path from root to leaf) is
+activated when an input is given.
+â€¢ Gaussian mixtures and mixtures of experts: the templates (cluster centers) or
+experts are now associated with a degree of activation. As with the k-nearest
+neighbors algorithm, each input is represented with multiple values, but
+those values cannot readily be controlled separately from each other.
+â€¢ Kernel machines with a Gaussian kernel (or other similarly local kernel):
+although the degree of activation of each â€œsupport vectorâ€? or template example
+is now continuous-valued, the same issue arises as with Gaussian mixtures.
+â€¢ Language or translation models based on n-grams. The set of contexts
+(sequences of symbols) is partitioned according to a tree structure of suï¬ƒxes.
+A leaf may correspond to the last two words being w 1 and w2, for example.
+Separate parameters are estimated for each leaf of the tree (with some sharing
+being possible).
+For some of these non-distributed algorithms, the output is not constant by
+parts but instead interpolates between neighboring regions. The relationship
+between the number of parameters (or examples) and the number of regions they
+can deï¬?ne remains linear.
+An important related concept that distinguishes a distributed representation
+from a symbolic one is that generalization arises due to shared attributes between
+diï¬€erent concepts. As pure symbols, â€œcatâ€? and â€œ dogâ€? are as far from each other
+as any other two symbols. However, if one 

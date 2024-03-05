@@ -1,0 +1,563 @@
+al examples can be used to compute a con�?dence interval around the mean
+(equation 5.47). While these con�?dence intervals are not well-justi�?ed after the
+use of cross-validation, it is still common practice to use them to declare that
+algorithm A is better than algorithm B only if the con�?dence interval of the error
+of algorithm A lies below and does not intersect the con�?dence interval of algorithm
+B.
+De�?ne KFoldXV(D, A, L, k):
+Require: D, the given dataset, with elements z(i)
+Require: A, the learning algorithm, seen as a function that takes a dataset as
+input and outputs a learned function
+Require: L, the loss function, seen as a function from a learned function f and
+an example z(i) ∈ D to a scalar ∈ R
+Require: k, the number of folds
+Split D into k mutually exclusive subsets Di, whose union is D.
+for i from 1 to k do
+fi = A(D\D i)
+for z(j) in D i do
+ej = L(fi , z(j) )
+end for
+end for
+Return e
+
+123
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+(i.i.d.) data points. A point estimator or statistic is any function of the data:
+θ̂m = g(x(1) , . . . , x(m) ).
+
+(5.19)
+
+The de�?nition does not require that g return a value that is close to the true
+θ or even that the range of g is the same as the set of allowable values of θ.
+This de�?nition of a point estimator is very general and allows the designer of an
+estimator great ﬂexibility. While almost any function thus quali�?es as an estimator,
+a good estimator is a function whose output is close to the true underlying θ that
+generated the training data.
+For now, we take the frequentist perspective on statistics. That is, we assume
+that the true parameter value θ is �?xed but unknown, while the point estimate
+θ̂ is a function of the data. Since the data is drawn from a random process, any
+function of the data is random. Therefore θ̂ is a random variable.
+Point estimation can also refer to the estimation of the relationship between
+input and target variables. We refer to these types of point estimates as function
+estimators.
+Function Estimation As we mentioned above, sometimes we are interested in
+performing function estimation (or function approximation). Here we are trying to
+predict a variable y given an input vector x. We assume that there is a function
+f (x) that describes the approximate relationship between y and x. For example,
+we may assume that y = f(x) + �?, where �? stands for the part of y that is not
+predictable from x. In function estimation, we are interested in approximating
+ˆ Function estimation is really just the same as
+f with a model or estimate f.
+estimating a parameter θ; the function estimator fˆ is simply a point estimator in
+function space. The linear regression example (discussed above in section 5.1.4) and
+the polynomial regression example (discussed in section 5.2) are both examples of
+scenarios that may be interpreted either as estimating a parameter w or estimating
+a function fˆ mapping from x to y.
+We now review the most commonly studied properties of point estimators and
+discuss what they tell us about these estimators.
+
+5.4.2
+
+Bias
+
+The bias of an estimator is de�?ned as:
+bias(θ̂m ) = E( θ̂m ) − θ
+124
+
+(5.20)
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+where the expectation is over the data (seen as samples from a random variable)
+and θ is the true underlying value of θ used to de�?ne the data generating distribution. An estimator θ̂ m is said to be unbiased if bias( θ̂m) = 0, which implies
+that E(θ̂m) = θ. An estimator θˆm is said to be asymptotically unbiased if
+limm→∞ bias(θ̂ m ) = 0, which implies that limm→∞ E(θˆm) = θ.
+Example: Bernoulli Distribution Consider a set of samples {x(1) , . . . , x(m) }
+that are independently and identically distributed according to a Bernoulli distribution with mean θ:
+( i)
+( i)
+P (x(i); θ) = θx (1 − θ)(1−x ) .
+(5.21)
+A common estimator for the θ parameter of this distribution is the mean of the
+training samples:
+m
+1 �?� (i )
+θ̂m =
+x .
+(5.22)
+m
+i=1
+
+To determine whether this estimator is biased, we can substitute equation 5.22
+into equation 5.20:
+bias(θ̂m) = E[θˆm] − θ
+
+
+m
+1 �?� (i )
+=E
+x
+−θ
+m i=1
+m
+1 �?� �?� ( i) �?�
+=
+−θ
+E x
+m
+i=1
+m
+�?�
+
+1
+�?
+
+�?�
+1
+( i) x ( i)
+(1−x(i) )
+=
+x θ (1 − θ)
+−θ
+m i=1 (i)
+
+=
+
+x
+
+(5.23)
+(5.24)
+(5.25)
+
+(5.26)
+
+=0
+
+m
+�?�
+
+1
+(θ ) − θ
+m i=1
+
+=θ−θ =0
+
+(5.27)
+(5.28)
+
+Since bias( θ̂) = 0, we say that our estimator θ̂ is unbiased.
+Example: Gaussian Distribution Estimator of the Mean Now, consider
+a set of samples {x(1) , . . . , x(m)} that are independently and identically distributed
+according to a Gaussian distribution p(x (i)) = N (x(i); µ, σ2 ), where i ∈ {1, . . . , m}.
+125
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+Recall that the Gaussian probability density function is given by
+
+
+(
+i
+)
+2
+1
+1 (x − µ)
+p(x(i); µ, σ 2 ) = √
+exp −
+.
+2
+σ2
+2πσ2
+
+(5.29)
+
+A common estimator of the Gaussian mean parameter is known as the sample
+mean:
+m
+1 �?� (i )
+µ̂m =
+x
+(5.30)
+m i=1
+
+To determine the bias of the sample mean, we are again interested in calculating
+its expectation:
+bias(µ̂m ) = E[ˆ
+µm ] − µ
+
+
+m
+1 �?� (i )
+=E
+x
+−µ
+m i=1
+
+
+m
+1 �?� �?� (i ) �?�
+−µ
+E x
+=
+m i=1
+
+
+m
+1 �?�
+=
+µ −µ
+m
+
+(5.31)
+(5.32)
+(5.33)
+(5.34)
+
+i=1
+
+=µ−µ=0
+
+(5.35)
+
+Thus we �?nd that the sample mean is an unbiased estimator of Gaussian mean
+parameter.
+Example: Estimators of the Variance of a Gaussian Distribution As an
+example, we compare two diﬀerent estimators of the variance parameter σ2 of a
+Gaussian distribution. We are interested in knowing if either estimator is biased.
+The �?rst estimator of σ2 we consider is known as the sample variance:
+σ̂2m =
+
+m
+2
+1 �?� �? ( i)
+x − µ̂ m ,
+m i=1
+
+(5.36)
+
+where µ̂m is the sample mean, de�?ned above. More formally, we are interested in
+computing
+2 ] − σ2
+bias(σ̂ 2m) = E[ˆ
+σm
+(5.37)
+126
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+2
+We begin by evaluating the term E[σ̂m
+]:
+
+
+m �?
+
+�?�
+2
+1
+2
+E[σ̂m
+] =E
+x(i) − µ̂ m
+m i=1
+
+=
+
+m−1 2
+σ
+m
+
+(5.38)
+(5.39)
+
+Returning to equation 5.37, we conclude that the bias of σ̂ 2m is −σ 2/m. Therefore,
+the sample variance is a biased estimator.
+The unbiased sample variance estimator
+σ̃ 2m =
+
+m
+2
+1 �?� �? (i )
+x − µ̂m
+m − 1 i=1
+
+(5.40)
+
+provides an alternative approach. As the name suggests this estimator is unbiased.
+That is, we �?nd that E[σ̃2m ] = σ2:
+
+
+m �?
+2
+�?�
+1
+E[σ̃2m] = E
+x (i) − µ̂m
+(5.41)
+m−1
+i=1
+m
+2
+=
+E[σ̂m
+]
+(5.42)
+m−1
+
+m
+m−1 2
+=
+σ
+(5.43)
+m−1
+m
+= σ 2.
+
+(5.44)
+
+We have two estimators: one is biased and the other is not. While unbiased
+estimators are clearly desirable, they are not always the “best�? estimators. As we
+will see we often use biased estimators that possess other important properties.
+
+5.4.3
+
+Variance and Standard Error
+
+Another property of the estimator that we might want to consider is how much
+we expect it to vary as a function of the data sample. Just as we computed the
+expectation of the estimator to determine its bias, we can compute its variance.
+The variance of an estimator is simply the variance
+ˆ
+Var(θ)
+
+(5.45)
+
+where the random variable is the training set. Alternately, the square root of the
+variance is called the standard error, denoted SE(θ̂).
+127
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+The variance or the standard error of an estimator provides a measure of how
+we would expect the estimate we compute from data to vary as we independently
+resample the dataset from the underlying data generating process. Just as we
+might like an estimator to exhibit low bias we would also like it to have relatively
+low variance.
+When we compute any statistic using a �?nite number of samples, our estimate
+of the true underlying parameter is uncertain, in the sense that we could have
+obtained other samples from the same distribution and their statistics would have
+been diﬀerent. The expected degree of variation in any estimator is a source of
+error that we want to quantify.
+The standard error of the mean is given by
+�?�
+
+
+�?�
+m
+�?�
+�?�
+1
+σ
+SE(µ̂m) = �?� Var
+x (i) = √ ,
+m i=1
+m
+
+(5.46)
+
+where σ2 is the true variance of the samples xi . The standard error is often
+estimated by using an estimate of σ. Unfortunately, neither the square root of
+the sample variance nor the square root of the unbiased estimator of the variance
+provide an unbiased estimate of the standard deviation. Both approaches tend
+to underestimate the true standard deviation, but are still used in practice. The
+square root of the unbiased estimator of the variance is less of an underestimate.
+For large m, the approximation is quite reasonable.
+The standard error of the mean is very useful in machine learning experiments.
+We often estimate the generalization error by computing the sample mean of the
+error on the test set. The number of examples in the test set determines the
+accuracy of this estimate. Taking advantage of the central limit theorem, which
+tells us that the mean will be approximately distributed with a normal distribution,
+we can use the standard error to compute the probability that the true expectation
+falls in any chosen interval. For example, the 95% con�?dence interval centered on
+the mean µ̂m is
+(µ̂m − 1.96SE(ˆ
+ˆm + 1.96SE(ˆ
+µm )),
+(5.47)
+µ m), µ
+under the normal distribution with mean µ̂m and variance SE(µ̂m )2 . In machine
+learning experiments, it is common to say that algorithm A is better than algorithm
+B if the upper bound of the 95% con�?dence interval for the error of algorithm A is
+less than the lower bound of the 95% con�?dence interval for the error of algorithm
+B.
+
+128
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+Example: Bernoulli Distribution We once again consider a set of samples
+{x(1) , . . . , x(m)} drawn independently and identically from a Bernoulli distribution
+(i )
+( i)
+(recall P(x(i); θ) = θ x (1 − θ)(1−x ) ).�??This time we are interested in computing
+m
+1
+(i )
+the variance of the estimator θ̂m = m
+i=1 x .
+
+
+m
+�? 
+1 �?� (i)
+Var θ̂m = Var
+x
+(5.48)
+m i=1
+�? 
+1 �?�
+= 2
+Var x(i)
+m
+
+(5.49)
+
+=
+
+(5.50)
+
+m
+
+i=1
+m
+�?�
+
+1
+θ(1 − θ)
+m2 i=1
+
+1
+mθ(1 − θ)
+m2
+1
+= θ(1 − θ)
+m
+=
+
+(5.51)
+(5.52)
+
+The variance of the estimator decreases as a function of m, the number of examples
+in the dataset. This is a common property of popular estimators that we will
+return to when we discuss consistency (see section 5.4.5).
+
+5.4.4
+
+Trading oﬀ Bias and Variance to Minimize Mean Squared
+Error
+
+Bias and variance measure two diﬀerent sources of error in an estimator. Bias
+measures the expected deviation from the true value of the function or parameter.
+Variance on the other hand, provides a measure of the deviation from the expected
+estimator value that any particular sampling of the data is likely to cause.
+What happens when we are given a choice between two estimators, one with
+more bias and one with more variance? How do we choose between them? For
+example, imagine that we are interested in approximating the function shown in
+�?gure 5.2 and we are only oﬀered the choice between a model with large bias and
+one that suﬀers from large variance. How do we choose between them?
+The most common way to negotiate this trade-oﬀ is to use cross-validation.
+Empirically, cross-validation is highly successful on many real-world tasks. Alternatively, we can also compare the mean squared error (MSE) of the estimates:
+MSE = E[(θ̂m − θ)2 ]
+
+= Bias( θ̂m) 2 + Var(θˆm )
+129
+
+(5.53)
+(5.54)
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+The MSE measures the overall expected deviation—in a squared error sense—
+between the estimator and the true value of the parameter θ. As is clear from
+equation 5.54, evaluating the MSE incorporates both the bias and the variance.
+Desirable estimators are those with small MSE and these are estimators that
+manage to keep both their bias and variance somewhat in check.
+
+Under�?tting zone
+
+Bias
+
+Over�?tting zone
+
+Generalization
+error
+
+Optimal
+capacity
+
+Variance
+
+Capacity
+
+Figure 5.6: As capacity increases (x-axis), bias (dotted) tends to decrease and variance
+(dashed) tends to increase, yielding another U-shaped curve for generalization error (bold
+curve). If we vary capacity along one axis, there is an optimal capacity, with under�?tting
+when the capacity is below this optimum and over�?tting when it is above. This relationship
+is similar to the relationship between capacity, under�?tting, and over�?tting, discussed in
+section 5.2 and �?gure 5.3.
+
+The relationship between bias and variance is tightly linked to the machine
+learning concepts of capacity, under�?tting and over�?tting. In the case where generalization error is measured by the MSE (where bias and variance are meaningful
+components of generalization error), increasing capacity tends to increase variance
+and decrease bias. This is illustrated in �?gure 5.6, where we see again the U-shaped
+curve of generalization error as a function of capacity.
+
+5.4.5
+
+Consistency
+
+So far we have discussed the properties of various estimators for a training set of
+�?xed size. Usually, we are also concerned with the behavior of an estimator as the
+amount of training data grows. In particular, we usually wish that, as the number
+of data points m in our dataset increases, our point estimates converge to the true
+130
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+value of the corresponding parameters. More formally, we would like that
+plimm→∞ θ̂m = θ.
+
+(5.55)
+
+The symbol plim indicates convergence in probability, meaning that for any �? > 0,
+P (|θˆm − θ| > �?) → 0 as m → ∞. The condition described by equation 5.55 is
+known as consistency. It is sometimes referred to as weak consistency, with
+strong consistency referring to the almost sure convergence of θ̂ to θ. Almost
+sure convergence of a sequence of random variables x (1) , x (2), . . . to a value x
+occurs when p(limm→∞ x(m) = x) = 1.
+Consistency ensures that the bias induced by the estimator diminishes as the
+number of data examples grows. However, the reverse is not true—asymptotic
+unbiasedness does not imply consistency. For example, consider estimating the
+mean parameter µ of a normal distribution N (x; µ, σ 2 ), with a dataset consisting
+of m samples: {x(1) , . . . , x(m)}. We could use the �?rst sample x (1) of the dataset
+as an unbiased estimator: θ̂ = x (1). In that case, E(θˆm) = θ so the estimator
+is unbiased no matter how many data points are seen. This, of course, implies
+that the estimate is asymptotically unbiased. However, this is not a consistent
+estimator as it is not the case that θˆm → θ as m → ∞.
+
+5.5
+
+Maximum Likelihood Estimation
+
+Previously, we have seen some de�?nitions of common estimators and analyzed
+their properties. But where did these estimators come from? Rather than guessing
+that some function might make a good estimator and then analyzing its bias and
+variance, we would like to have some principle from which we can derive speci�?c
+functions that are good estimators for diﬀerent models.
+The most common such principle is the maximum likelihood principle.
+Consider a set of m examples X = {x (1) , . . . , x (m)} drawn independently from
+the true but unknown data generating distribution pdata (x).
+Let p model(x; θ) be a parametric family of probability distributions over the
+same space indexed by θ. In other words, p model(x; θ ) maps any con

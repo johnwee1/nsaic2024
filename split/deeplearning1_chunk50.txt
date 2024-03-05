@@ -1,0 +1,404 @@
+ion means that
+if we translate the input by a small amount, the values of most of the pooled
+outputs do not change. See ï¬?gure 9.8 for an example of how this works. Invariance
+to local translation can be a very useful property if we care more about whether
+some feature is present than exactly where it is. For example, when determining
+whether an image contains a face, we need not know the location of the eyes with
+pixel-perfect accuracy, we just need to know that there is an eye on the left side
+of the face and an eye on the right side of the face. In other contexts, it is more
+important to preserve the location of a feature. For example, if we want to ï¬?nd a
+corner deï¬?ned by two edges meeting at a speciï¬?c orientation, we need to preserve
+the location of the edges well enough to test whether they meet.
+The use of pooling can be viewed as adding an inï¬?nitely strong prior that
+the function the layer learns must be invariant to small translations. When this
+assumption is correct, it can greatly improve the statistical eï¬ƒciency of the network.
+Pooling over spatial regions produces invariance to translation, but if we pool
+over the outputs of separately parametrized convolutions, the features can learn
+which transformations to become invariant to (see ï¬?gure 9.9).
+Because pooling summarizes the responses over a whole neighborhood, it is
+possible to use fewer pooling units than detector units, by reporting summary
+statistics for pooling regions spaced k pixels apart rather than 1 pixel apart. See
+ï¬?gure 9.10 for an example. This improves the computational eï¬ƒciency of the
+network because the next layer has roughly k times fewer inputs to process. When
+the number of parameters in the next layer is a function of its input size (such as
+when the next layer is fully connected and based on matrix multiplication) this
+reduction in the input size can also result in improved statistical eï¬ƒciency and
+reduced memory requirements for storing the parameters.
+For many tasks, pooling is essential for handling inputs of varying size. For
+example, if we want to classify images of variable size, the input to the classiï¬?cation
+layer must have a ï¬?xed size. This is usually accomplished by varying the size of an
+oï¬€set between pooling regions so that the classiï¬?cation layer always receives the
+same number of summary statistics regardless of the input size. For example, the
+ï¬?nal pooling layer of the network may be deï¬?ned to output four sets of summary
+statistics, one for each quadrant of an image, regardless of the image size.
+342
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+POOLING STAGE
+...
+
+1.
+
+1.
+
+1.
+
+0.2
+
+...
+
+...
+
+0.1
+
+1.
+
+0.2
+
+0.1
+
+...
+
+DETECTOR STAGE
+
+POOLING STAGE
+...
+
+0.3
+
+1.
+
+1.
+
+1.
+
+...
+
+...
+
+0.3
+
+0.1
+
+1.
+
+0.2
+
+...
+
+DETECTOR STAGE
+
+Figure 9.8: Max pooling introduces invariance. (Top)A view of the middle of the output
+of a convolutional layer. The bottom row shows outputs of the nonlinearity. The top
+row shows the outputs of max pooling, with a stride of one pixel between pooling regions
+and a pooling region width of three pixels. (Bottom)A view of the same network, after
+the input has been shifted to the right by one pixel. Every value in the bottom row has
+changed, but only half of the values in the top row have changed, because the max pooling
+units are only sensitive to the maximum value in the neighborhood, not its exact location.
+
+343
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Large
+response
+in detector
+unit 1
+
+Large response
+in pooling unit
+
+Large response
+in pooling unit
+
+Large
+response
+in detector
+unit 3
+
+Figure 9.9: Example of learned invariances: A pooling unit that pools over multiple features
+that are learned with separate parameters can learn to be invariant to transformations of
+the input. Here we show how a set of three learned ï¬?lters and a max pooling unit can learn
+to become invariant to rotation. All three ï¬?lters are intended to detect a hand-written 5.
+Each ï¬?lter attempts to match a slightly diï¬€erent orientation of the 5. When a 5 appears in
+the input, the corresponding ï¬?lter will match it and cause a large activation in a detector
+unit. The max pooling unit then has a large activation regardless of which detector unit
+was activated. We show here how the network processes two diï¬€erent inputs, resulting
+in two diï¬€erent detector units being activated. The eï¬€ect on the pooling unit is roughly
+the same either way. This principle is leveraged by maxout networks (Goodfellow et al.,
+2013a) and other convolutional networks. Max pooling over spatial positions is naturally
+invariant to translation; this multi-channel approach is only necessary for learning other
+transformations.
+
+1.
+
+0.1
+
+1.
+
+0.2
+
+0.2
+
+0.1
+
+0.1
+
+0.0
+
+0.1
+
+Figure 9.10: Pooling with downsampling. Here we use max-pooling with a pool width of
+three and a stride between pools of two. This reduces the representation size by a factor
+of two, which reduces the computational and statistical burden on the next layer. Note
+that the rightmost pooling region has a smaller size, but must be included if we do not
+want to ignore some of the detector units.
+344
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Some theoretical work gives guidance as to which kinds of pooling one should
+use in various situations (Boureau et al., 2010). It is also possible to dynamically
+pool features together, for example, by running a clustering algorithm on the
+locations of interesting features (Boureau et al., 2011). This approach yields a
+diï¬€erent set of pooling regions for each image. Another approach is to learn a
+single pooling structure that is then applied to all images (Jia et al., 2012).
+Pooling can complicate some kinds of neural network architectures that use
+top-down information, such as Boltzmann machines and autoencoders. These
+issues will be discussed further when we present these types of networks in part III.
+Pooling in convolutional Boltzmann machines is presented in section 20.6. The
+inverse-like operations on pooling units needed in some diï¬€erentiable networks will
+be covered in section 20.10.6.
+Some examples of complete convolutional network architectures for classiï¬?cation
+using convolution and pooling are shown in ï¬?gure 9.11.
+
+9.4
+
+Convolution and Pooling as an Inï¬?nitely Strong
+Prior
+
+Recall the concept of a prior probability distribution from section 5.2. This is
+a probability distribution over the parameters of a model that encodes our beliefs
+about what models are reasonable, before we have seen any data.
+Priors can be considered weak or strong depending on how concentrated the
+probability density in the prior is. A weak prior is a prior distribution with high
+entropy, such as a Gaussian distribution with high variance. Such a prior allows
+the data to move the parameters more or less freely. A strong prior has very low
+entropy, such as a Gaussian distribution with low variance. Such a prior plays a
+more active role in determining where the parameters end up.
+An inï¬?nitely strong prior places zero probability on some parameters and says
+that these parameter values are completely forbidden, regardless of how much
+support the data gives to those values.
+We can imagine a convolutional net as being similar to a fully connected net,
+but with an inï¬?nitely strong prior over its weights. This inï¬?nitely strong prior
+says that the weights for one hidden unit must be identical to the weights of its
+neighbor, but shifted in space. The prior also says that the weights must be zero,
+except for in the small, spatially contiguous receptive ï¬?eld assigned to that hidden
+unit. Overall, we can think of the use of convolution as introducing an inï¬?nitely
+strong prior probability distribution over the parameters of a layer. This prior
+345
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Output of softmax:
+1,000 class
+probabilities
+
+Output of softmax:
+1,000 class
+probabilities
+
+Output of softmax:
+1,000 class
+probabilities
+
+Output of matrix
+multiply: 1,000 units
+
+Output of matrix
+multiply: 1,000 units
+
+Output of average
+pooling: 1x1x1,000
+
+Output of reshape to
+vector:
+16,384 units
+
+Output of reshape to
+vector:
+576 units
+
+Output of
+convolution:
+16x16x1,000
+
+Output of pooling
+with stride 4:
+16x16x64
+
+Output of pooling to
+3x3 grid: 3x3x64
+
+Output of pooling
+with stride 4:
+16x16x64
+
+Output of
+convolution +
+ReLU: 64x64x64
+
+Output of
+convolution +
+ReLU: 64x64x64
+
+Output of
+convolution +
+ReLU: 64x64x64
+
+Output of pooling
+with stride 4:
+64x64x64
+
+Output of pooling
+with stride 4:
+64x64x64
+
+Output of pooling
+with stride 4:
+64x64x64
+
+Output of
+convolution +
+ReLU: 256x256x64
+
+Output of
+convolution +
+ReLU: 256x256x64
+
+Output of
+convolution +
+ReLU: 256x256x64
+
+Input image:
+256x256x3
+
+Input image:
+256x256x3
+
+Input image:
+256x256x3
+
+Figure 9.11: Examples of architectures for classiï¬?cation with convolutional networks. The
+speciï¬?c strides and depths used in this ï¬?gure are not advisable for real use; they are
+designed to be very shallow in order to ï¬?t onto the page. Real convolutional networks
+also often involve signiï¬?cant amounts of branching, unlike the chain structures used
+here for simplicity. (Left)A convolutional network that processes a ï¬?xed image size.
+After alternating between convolution and pooling for a few layers, the tensor for the
+convolutional feature map is reshaped to ï¬‚atten out the spatial dimensions. The rest
+of the network is an ordinary feedforward network classiï¬?er, as described in chapter 6.
+(Center)A convolutional network that processes a variable-sized image, but still maintains
+a fully connected section. This network uses a pooling operation with variably-sized pools
+but a ï¬?xed number of pools, in order to provide a ï¬?xed-size vector of 576 units to the
+fully connected portion of the network. (Right)A convolutional network that does not
+have any fully connected weight layer. Instead, the last convolutional layer outputs one
+feature map per class. The model presumably learns a map of how likely each class is to
+occur at each spatial location. Averaging a feature map down to a single value provides
+the argument to the softmax classiï¬?er at the top.
+346
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+says that the function the layer should learn contains only local interactions and is
+equivariant to translation. Likewise, the use of pooling is an inï¬?nitely strong prior
+that each unit should be invariant to small translations.
+Of course, implementing a convolutional net as a fully connected net with an
+inï¬?nitely strong prior would be extremely computationally wasteful. But thinking
+of a convolutional net as a fully connected net with an inï¬?nitely strong prior can
+give us some insights into how convolutional nets work.
+One key insight is that convolution and pooling can cause underï¬?tting. Like
+any prior, convolution and pooling are only useful when the assumptions made
+by the prior are reasonably accurate. If a task relies on preserving precise spatial
+information, then using pooling on all features can increase the training error.
+Some convolutional network architectures (Szegedy et al., 2014a) are designed to
+use pooling on some channels but not on other channels, in order to get both
+highly invariant features and features that will not underï¬?t when the translation
+invariance prior is incorrect. When a task involves incorporating information from
+very distant locations in the input, then the prior imposed by convolution may be
+inappropriate.
+Another key insight from this view is that we should only compare convolutional models to other convolutional models in benchmarks of statistical learning
+performance. Models that do not use convolution would be able to learn even
+if we permuted all of the pixels in the image. For many image datasets, there
+are separate benchmarks for models that are permutation invariant and must
+discover the concept of topology via learning, and models that have the knowledge
+of spatial relationships hard-coded into them by their designer.
+
+9.5
+
+Variants of the Basic Convolution Function
+
+When discussing convolution in the context of neural networks, we usually do
+not refer exactly to the standard discrete convolution operation as it is usually
+understood in the mathematical literature. The functions used in practice diï¬€er
+slightly. Here we describe these diï¬€erences in detail, and highlight some useful
+properties of the functions used in neural networks.
+First, when we refer to convolution in the context of neural networks, we usually
+actually mean an operation that consists of many applications of convolution in
+parallel. This is because convolution with a single kernel can only extract one kind
+of feature, albeit at many spatial locations. Usually we want each layer of our
+network to extract many kinds of features, at many locations.
+347
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Additionally, the input is usually not just a grid of real values. Rather, it is a
+grid of vector-valued observations. For example, a color image has a red, green
+and blue intensity at each pixel. In a multilayer convolutional network, the input
+to the second layer is the output of the ï¬?rst layer, which usually has the output
+of many diï¬€erent convolutions at each position. When working with images, we
+usually think of the input and output of the convolution as being 3-D tensors, with
+one index into the diï¬€erent channels and two indices into the spatial coordinates
+of each channel. Software implementations usually work in batch mode, so they
+will actually use 4-D tensors, with the fourth axis indexing diï¬€erent examples in
+the batch, but we will omit the batch axis in our description here for simplicity.
+Because convolutional networks usually use multi-channel convolution, the
+linear operations they are based on are not guaranteed to be commutative, even if
+kernel-ï¬‚ipping is used. These multi-channel operations are only commutative if
+each operation has the same number of output channels as input channels.
+Assume we have a 4-D kernel tensor K with element Ki,j,k,l giving the connection
+strength between a unit in channel i of the output and a unit in channel j of the
+input, with an oï¬€set of k rows and l columns between the output unit and the
+input unit. Assume our input consists of observed data V with element Vi,j,k giving
+the value of the input unit within channel i at row j and column k. Assume our
+output consists of Z with the same format as V. If Z is produced by convolving K
+across V without ï¬‚ipping K, then
+î?˜
+(9.7)
+Zi,j,k =
+V l,j +mâˆ’1,k +nâˆ’1Ki,l,m,n
+l,m,n
+
+where the summation over l, m and n is over all values for which the tensor indexing
+operations inside the summation is valid. In linear algebra notation, we index into
+arrays using a 1 for the ï¬?rst entry. This necessitates the âˆ’1 in the above formula.
+Programming languages such as C and Python index starting from 0, rendering
+the above expression even simpler.
+We may want to skip over some positions of the kernel in order to reduce the
+computational cost (at the expense of not extracting our features as ï¬?nely). We
+can think of this as downsampling the output of the full convolution function. If
+we want to sample only every s pixels in each direction in the output, then we can
+deï¬?ne a downsampled convolution function c such that
+î?˜î€‚
+î€ƒ
+(9.8)
+Zi,j,k = c(K, V , s)i,j,k =
+Vl,(j âˆ’1)Ã—s+m,(k âˆ’1)Ã—s+nKi,l,m,n .
+l,m,n
+
+We refer to s as the stride of this downsampled convolution. It is also possible
+348
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+to deï¬?ne a sep

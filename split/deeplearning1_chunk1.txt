@@ -1,0 +1,491 @@
+isentini-Scarzanella, Martin Vita, David Warde-Farley, Dustin
+Webb, Kelvin Xu, Wei Xue, Ke Yang, Li Yao, Zygmunt Zając and Ozan Çağlayan.
+We would also like to thank those who provided us with useful feedback on
+individual chapters:
+• Notation: Zhang Yuanhang.
+• Chapter 1, Introduction: Yusuf Akgul, Sebastien Bratieres, Samira Ebrahimi,
+viii
+
+CONTENTS
+
+Charlie Gorichanaz, Brendan Loudermilk, Eric Morris, Cosmin Pârvulescu
+and Alfredo Solano.
+• Chapter 2, Linear Algebra: Amjad Almahairi, Nikola Banić, Kevin Bennett,
+Philippe Castonguay, Oscar Chang, Eric Fosler-Lussier, Andrey Khalyavin,
+Sergey Oreshkov, István Petrás, Dennis Prangle, Thomas Rohée, Gitanjali
+Gulve Sehgal, Colby Toland, Alessandro Vitale and Bob Welland.
+• Chapter 3, Probability and Information Theory: John Philip Anderson, Kai
+Arulkumaran, Vincent Dumoulin, Rui Fa, Stephan Gouws, Artem Oboturov,
+Antti Rasmus, Alexey Surkov and Volker Tresp.
+• Chapter 4, Numerical Computation: Tran Lam AnIan Fischer and Hu
+Yuhuang.
+• Chapter 5, Machine Learning Basics: Dzmitry Bahdanau, Justin Domingue,
+Nikhil Garg, Makoto Otsuka, Bob Pepin, Philip Popien, Emmanuel Rayner,
+Peter Shepard, Kee-Bong Song, Zheng Sun and Andy Wu.
+• Chapter 6, Deep Feedforward Networks: Uriel Berdugo, Fabrizio Bottarel,
+Elizabeth Burl, Ishan Durugkar, Jeﬀ Hlywa, Jong Wook Kim, David Krueger
+and Aditya Kumar Praharaj.
+• Chapter 7, Regularization for Deep Learning: Morten Kolbæk, Kshitij Lauria,
+Inkyu Lee, Sunil Mohan, Hai Phong Phan and Joshua Salisbury.
+• Chapter 8, Optimization for Training Deep Models: Marcel Ackermann, Peter
+Armitage, Rowel Atienza, Andrew Brock, Tegan Maharaj, James Martens,
+Kashif Rasul, Klaus Strobl and Nicholas Turner.
+• Chapter 9, Convolutional Networks: Martín Arjovsky, Eugene Brevdo, Konstantin Divilov, Eric Jensen, Mehdi Mirza, Alex Paino, Marjorie Sayer, Ryan
+Stout and Wentao Wu.
+• Chapter 10, Sequence Modeling: Recurrent and Recursive Nets: Gökçen
+Eraslan, Steven Hickson, Razvan Pascanu, Lorenzo von Ritter, Rui Rodrigues,
+Dmitriy Serdyuk, Dongyu Shi and Kaiyu Yang.
+• Chapter 11, Practical Methodology: Daniel Beckstein.
+• Chapter 12, Applications: George Dahl, Vladimir Nekrasov and Ribana
+Roscher.
+• Chapter 13, Linear Factor Models: Jayanth Koushik.
+ix
+
+CONTENTS
+
+• Chapter 15, Representation Learning: Kunal Ghosh.
+• Chapter 16, Structured Probabilistic Models for Deep Learning: Minh Lê
+and Anton Varfolom.
+• Chapter 18, Confronting the Partition Function: Sam Bowman.
+• Chapter 19, Approximate Inference: Yujia Bao.
+• Chapter 20, Deep Generative Models: Nicolas Chapados, Daniel Galvez,
+Wenming Ma, Fady Medhat, Shakir Mohamed and Grégoire Montavon.
+• Bibliography: Lukas Michelbacher and Leslie N. Smith.
+We also want to thank those who allowed us to reproduce images, �?gures or
+data from their publications. We indicate their contributions in the �?gure captions
+throughout the text.
+We would like to thank Lu Wang for writing pdf2htmlEX, which we used to
+make the web version of the book, and for oﬀering support to improve the quality
+of the resulting HTML.
+We would like to thank Ian’s wife Daniela Flori Goodfellow for patiently
+supporting Ian during the writing of the book as well as for help with proofreading.
+We would like to thank the Google Brain team for providing an intellectual
+environment where Ian could devote a tremendous amount of time to writing this
+book and receive feedback and guidance from colleagues. We would especially like
+to thank Ian’s former manager, Greg Corrado, and his current manager, Samy
+Bengio, for their support of this project. Finally, we would like to thank Geoﬀrey
+Hinton for encouragement when writing was diﬃcult.
+
+x
+
+Notation
+This section provides a concise reference describing the notation used throughout
+this book. If you are unfamiliar with any of the corresponding mathematical
+concepts, we describe most of these ideas in chapters 2–4.
+Numbers and Arrays
+a
+
+A scalar (integer or real)
+
+a
+
+A vector
+
+A
+
+A matrix
+
+A
+
+A tensor
+
+In
+
+Identity matrix with n rows and n columns
+
+I
+
+Identity matrix with dimensionality implied by
+context
+
+e(i)
+
+Standard basis vector [0, . . . , 0, 1, 0, . . . , 0] with a
+1 at position i
+
+diag(a)
+
+A square, diagonal matrix with diagonal entries
+given by a
+
+a
+
+A scalar random variable
+
+a
+
+A vector-valued random variable
+
+A
+
+A matrix-valued random variable
+
+xi
+
+CONTENTS
+
+Sets and Graphs
+A
+
+A set
+
+R
+
+The set of real numbers
+
+{ 0, 1}
+
+The set containing 0 and 1
+
+{ 0, 1, . . . , n }
+
+The set of all integers between 0 and n
+
+[a, b]
+
+The real interval including a and b
+
+(a, b]
+
+The real interval excluding a but including b
+
+A\ B
+
+Set subtraction, i.e., the set containing the elements of A that are not in B
+
+G
+
+A graph
+
+P a G(x i)
+
+The parents of xi in G
+Indexing
+
+ai
+
+Element i of vector a, with indexing starting at 1
+
+a−i
+
+All elements of vector a except for element i
+
+Ai,j
+
+Element i, j of matrix A
+
+Ai,:
+
+Row i of matrix A
+
+A:,i
+
+Column i of matrix A
+
+Ai,j,k
+
+Element (i, j, k ) of a 3-D tensor A
+
+A:,:,i
+
+2-D slice of a 3-D tensor
+
+ai
+
+Element i of the random vector a
+Linear Algebra Operations
+
+A
+
+Transpose of matrix A
+
+A+
+
+Moore-Penrose pseudoinverse of A
+
+AB
+
+Element-wise (Hadamard) product of A and B
+
+det(A)
+
+Determinant of A
+
+xii
+
+CONTENTS
+
+Calculus
+Derivative of y with respect to x
+
+dy
+dx
+∂y
+∂x
+∇x y
+
+Partial derivative of y with respect to x
+Gradient of y with respect to x
+
+∇X y
+
+Matrix derivatives of y with respect to X
+
+∇Xy
+
+Tensor containing derivatives of y with respect to
+X
+
+∂f
+∂x
+2
+∇x f (x) or H (f )(x)
+�?�
+f (x )d x
+�?�
+f (x )d x
+
+Jacobian matrix J ∈ Rm×n of f : Rn → Rm
+The Hessian matrix of f at input point x
+De�?nite integral over the entire domain of x
+De�?nite integral with respect to x over the set S
+
+S
+
+Probability and Information Theory
+a⊥b
+
+The random variables a and b are independent
+
+a⊥b | c
+
+They are conditionally independent given c
+
+P (a)
+
+A probability distribution over a discrete variable
+
+p(a)
+
+A probability distribution over a continuous variable, or over a variable whose type has not been
+speci�?ed
+
+a∼P
+
+Random variable a has distribution P
+
+Ex∼P [f (x)] or Ef (x)
+Var(f (x))
+
+Expectation of f (x) with respect to P (x)
+Variance of f (x) under P (x)
+
+Cov(f (x), g(x))
+
+Covariance of f (x) and g(x) under P (x)
+
+H(x)
+
+Shannon entropy of the random variable x
+
+DKL(P �?�Q)
+
+Kullback-Leibler divergence of P and Q
+
+N (x; µ, Σ)
+
+Gaussian distribution over x with mean µ and
+covariance Σ
+
+xiii
+
+CONTENTS
+
+f :A→B
+
+Functions
+The function f with domain A and range B
+
+f ◦g
+
+Composition of the functions f and g
+
+f ( x; θ )
+
+A function of x parametrized by θ. (Sometimes
+we write f (x) and omit the argument θ to lighten
+notation)
+
+log x
+
+Natural logarithm of x
+
+σ (x )
+
+Logistic sigmoid,
+
+ζ (x)
+
+Softplus, log(1 + exp(x))
+
+||x||p
+
+Lp norm of x
+
+||x||
+x+
+
+1 condition
+
+1
+1 + exp(−x)
+
+L2 norm of x
+Positive part of x, i.e., max(0, x)
+is 1 if the condition is true, 0 otherwise
+
+Sometimes we use a function f whose argument is a scalar but apply it to a
+vector, matrix, or tensor: f (x), f(X), or f(X). This denotes the application of f
+to the array element-wise. For example, if C = σ(X), then C i,j,k = σ(Xi,j,k ) for all
+valid values of i, j and k.
+
+p data
+
+Datasets and Distributions
+The data generating distribution
+
+p̂data
+
+The empirical distribution de�?ned by the training
+set
+
+X
+
+A set of training examples
+
+x (i )
+
+The i-th example (input) from a dataset
+
+y (i) or y(i)
+
+The target associated with x(i) for supervised learning
+
+X
+
+The m × n matrix with input example x(i) in row
+Xi,:
+
+xiv
+
+Chapter 1
+
+Introduction
+Inventors have long dreamed of creating machines that think. This desire dates
+back to at least the time of ancient Greece. The mythical �?gures Pygmalion,
+Daedalus, and Hephaestus may all be interpreted as legendary inventors, and
+Galatea, Talos, and Pandora may all be regarded as arti�?cial life (Ovid and Martin,
+2004; Sparkes, 1996; Tandy, 1997).
+When programmable computers were �?rst conceived, people wondered whether
+such machines might become intelligent, over a hundred years before one was
+built (Lovelace, 1842). Today, arti�?cial intelligence (AI) is a thriving �?eld with
+many practical applications and active research topics. We look to intelligent
+software to automate routine labor, understand speech or images, make diagnoses
+in medicine and support basic scienti�?c research.
+In the early days of arti�?cial intelligence, the �?eld rapidly tackled and solved
+problems that are intellectually diﬃcult for human beings but relatively straightforward for computers—problems that can be described by a list of formal, mathematical rules. The true challenge to arti�?cial intelligence proved to be solving
+the tasks that are easy for people to perform but hard for people to describe
+formally—problems that we solve intuitively, that feel automatic, like recognizing
+spoken words or faces in images.
+This book is about a solution to these more intuitive problems. This solution is
+to allow computers to learn from experience and understand the world in terms of a
+hierarchy of concepts, with each concept de�?ned in terms of its relation to simpler
+concepts. By gathering knowledge from experience, this approach avoids the need
+for human operators to formally specify all of the knowledge that the computer
+needs. The hierarchy of concepts allows the computer to learn complicated concepts
+by building them out of simpler ones. If we draw a graph showing how these
+1
+
+CHAPTER 1. INTRODUCTION
+
+concepts are built on top of each other, the graph is deep, with many layers. For
+this reason, we call this approach to AI deep learning.
+Many of the early successes of AI took place in relatively sterile and formal
+environments and did not require computers to have much knowledge about
+the world. For example, IBM’s Deep Blue chess-playing system defeated world
+champion Garry Kasparov in 1997 (Hsu, 2002). Chess is of course a very simple
+world, containing only sixty-four locations and thirty-two pieces that can move
+in only rigidly circumscribed ways. Devising a successful chess strategy is a
+tremendous accomplishment, but the challenge is not due to the diﬃculty of
+describing the set of chess pieces and allowable moves to the computer. Chess
+can be completely described by a very brief list of completely formal rules, easily
+provided ahead of time by the programmer.
+Ironically, abstract and formal tasks that are among the most diﬃcult mental
+undertakings for a human being are among the easiest for a computer. Computers
+have long been able to defeat even the best human chess player, but are only
+recently matching some of the abilities of average human beings to recognize objects
+or speech. A person’s everyday life requires an immense amount of knowledge
+about the world. Much of this knowledge is subjective and intuitive, and therefore
+diﬃcult to articulate in a formal way. Computers need to capture this same
+knowledge in order to behave in an intelligent way. One of the key challenges in
+arti�?cial intelligence is how to get this informal knowledge into a computer.
+Several arti�?cial intelligence projects have sought to hard-code knowledge about
+the world in formal languages. A computer can reason about statements in these
+formal languages automatically using logical inference rules. This is known as the
+knowledge base approach to arti�?cial intelligence. None of these projects has led
+to a major success. One of the most famous such projects is Cyc (Lenat and Guha,
+1989). Cyc is an inference engine and a database of statements in a language
+called CycL. These statements are entered by a staﬀ of human supervisors. It is an
+unwieldy process. People struggle to devise formal rules with enough complexity
+to accurately describe the world. For example, Cyc failed to understand a story
+about a person named Fred shaving in the morning (Linde, 1992). Its inference
+engine detected an inconsistency in the story: it knew that people do not have
+electrical parts, but because Fred was holding an electric razor, it believed the
+entity “FredWhileShaving�? contained electrical parts. It therefore asked whether
+Fred was still a person while he was shaving.
+The diﬃculties faced by systems relying on hard-coded knowledge suggest
+that AI systems need the ability to acquire their own knowledge, by extracting
+patterns from raw data. This capability is known as machine learning. The
+2
+
+CHAPTER 1. INTRODUCTION
+
+introduction of machine learning allowed computers to tackle problems involving
+knowledge of the real world and make decisions that appear subjective. A simple
+machine learning algorithm called logistic regression can determine whether to
+recommend cesarean delivery (Mor-Yosef et al., 1990). A simple machine learning
+algorithm called naive Bayes can separate legitimate e-mail from spam e-mail.
+The performance of these simple machine learning algorithms depends heavily
+on the representation of the data they are given. For example, when logistic
+regression is used to recommend cesarean delivery, the AI system does not examine
+the patient directly. Instead, the doctor tells the system several pieces of relevant
+information, such as the presence or absence of a uterine scar. Each piece of
+information included in the representation of the patient is known as a feature.
+Logistic regression learns how each of these features of the patient correlates with
+various outcomes. However, it cannot inﬂuence the way that the features are
+de�?ned in any way. If logistic regression was given an MRI scan of the patient,
+rather than the doctor’s formalized report, it would not be able to make useful
+predictions. Individual pixels in an MRI scan have negligible correlation with any
+complications that might occur during delivery.
+This dependence on representations is a general phenomenon that appears
+throughout computer science and even daily life. In computer science, operations such as searching a collection of data can proceed exponentially faster if
+the collection is structured and indexed intelligently. People can easily perform
+arithmetic on Arabic numerals, but �?nd arithmetic on Roman numerals much
+more time-consuming. It is not surprising that the choice of representation has an
+enormous eﬀect on the performance of machine learning algorithms. For a simple
+visual example, see �?gure 1.1.
+Many arti�?cial intelligence tasks can be solved by designing the right set of
+features to extract for that task, then providing these features to a simple machine
+learning algorithm. For example, a useful feature for speaker identi�?cation from
+sound is an estimate of the size of speaker’s vocal tract. It therefore gives a strong
+clue as to whether the speaker is a man, woman, or child.
+However, for many tasks, it is diﬃcult to know what features should be extracted.
+For example, suppose that we would like to write a program to detect cars in
+photographs. We know that cars have wheels, so we might like to use the presence
+of a wheel as a feature. Unfortunately, it is diﬃcult to describe exactly what a
+wheel looks like in terms of pixel values. A wheel has a simple geometric shape but
+its image may be complicated by shadows falling on the wheel, the sun glaring oﬀ
+the metal parts of the wheel, the fender of the car or an object in the foreground
+obscuring part of the wheel, and so on.
+3
+

@@ -1,0 +1,400 @@
+ the RBM varied from one time step to the
+next, the RNN-RBM uses the RNN to emit all of the parameters of the RBM,
+including the weights. To train the model, we need to be able to back-propagate
+the gradient of the loss function through the RNN. The loss function is not applied
+directly to the RNN outputs. Instead, it is applied to the RBM. This means that
+we must approximately diﬀerentiate the loss with respect to the RBM parameters
+using contrastive divergence or a related algorithm. This approximate gradient
+may then be back-propagated through the RNN using the usual back-propagation
+through time algorithm.
+
+20.8
+
+Other Boltzmann Machines
+
+Many other variants of Boltzmann machines are possible.
+Boltzmann machines may be extended with diﬀerent training criteria. We have
+focused on Boltzmann machines trained to approximately maximize the generative
+criterion log p(v). It is also possible to train discriminative RBMs that aim to
+maximize log p(y | v) instead (Larochelle and Bengio, 2008). This approach often
+performs the best when using a linear combination of both the generative and
+the discriminative criteria. Unfortunately, RBMs do not seem to be as powerful
+supervised learners as MLPs, at least using existing methodology.
+Most Boltzmann machines used in practice have only second-order interactions
+in their energy functions, meaning that their energy functions are the sum of many
+terms and each individual term only includes the product between two random
+variables. An example of such a term is viWi,jhj . It is also possible to train
+higher-order Boltzmann machines (Sejnowski, 1987) whose energy function terms
+involve the products between many variables. Three-way interactions between a
+hidden unit and two diﬀerent images can model spatial transformations from one
+frame of video to the next (Memisevic and Hinton, 2007, 2010). Multiplication by a
+one-hot class variable can change the relationship between visible and hidden units
+depending on which class is present (Nair and Hinton, 2009). One recent example
+of the use of higher-order interactions is a Boltzmann machine with two groups of
+hidden units, with one group of hidden units that interact with both the visible
+units v and the class label y, and another group of hidden units that interact only
+with the v input values (Luo et al., 2011). This can be interpreted as encouraging
+686
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+some hidden units to learn to model the input using features that are relevant to
+the class but also to learn extra hidden units that explain nuisance details that
+are necessary for the samples of v to be realistic but do not determine the class
+of the example. Another use of higher-order interactions is to gate some features.
+Sohn et al. (2013) introduced a Boltzmann machine with third-order interactions
+with binary mask variables associated with each visible unit. When these masking
+variables are set to zero, they remove the inﬂuence of a visible unit on the hidden
+units. This allows visible units that are not relevant to the classi�?cation problem
+to be removed from the inference pathway that estimates the class.
+More generally, the Boltzmann machine framework is a rich space of models
+permitting many more model structures than have been explored so far. Developing
+a new form of Boltzmann machine requires some more care and creativity than
+developing a new neural network layer, because it is often diﬃcult to �?nd an energy
+function that maintains tractability of all of the diﬀerent conditional distributions
+needed to use the Boltzmann machine, but despite this required eﬀort the �?eld
+remains open to innovation.
+
+20.9
+
+Back-Propagation through Random Operations
+
+Traditional neural networks implement a deterministic transformation of some
+input variables x. When developing generative models, we often wish to extend
+neural networks to implement stochastic transformations of x. One straightforward
+way to do this is to augment the neural network with extra inputs z that are
+sampled from some simple probability distribution, such as a uniform or Gaussian
+distribution. The neural network can then continue to perform deterministic
+computation internally, but the function f (x, z ) will appear stochastic to an
+observer who does not have access to z. Provided that f is continuous and
+diﬀerentiable, we can then compute the gradients necessary for training using
+back-propagation as usual.
+As an example, let us consider the operation consisting of drawing samples y
+from a Gaussian distribution with mean µ and variance σ2:
+y ∼ N (µ, σ2 ).
+
+(20.54)
+
+Because an individual sample of y is not produced by a function, but rather by
+a sampling process whose output changes every time we query it, it may seem
+counterintuitive to take the derivatives of y with respect to the parameters of
+its distribution, µ and σ2 . However, we can rewrite the sampling process as
+687
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+transforming an underlying random value z ∼ N (z; 0, 1) to obtain a sample from
+the desired distribution:
+y = µ + σz
+(20.55)
+We are now able to back-propagate through the sampling operation, by regarding it as a deterministic operation with an extra input z. Crucially, the extra input
+is a random variable whose distribution is not a function of any of the variables
+whose derivatives we want to calculate. The result tells us how an in�?nitesimal
+change in µ or σ would change the output if we could repeat the sampling operation
+again with the same value of z.
+Being able to back-propagate through this sampling operation allows us to
+incorporate it into a larger graph. We can build elements of the graph on top of the
+output of the sampling distribution. For example, we can compute the derivatives
+of some loss function J(y). We can also build elements of the graph whose outputs
+are the inputs or the parameters of the sampling operation. For example, we could
+build a larger graph with µ = f (x; θ) and σ = g(x; θ). In this augmented graph,
+we can use back-propagation through these functions to derive ∇θJ (y).
+
+The principle used in this Gaussian sampling example is more generally applicable. We can express any probability distribution of the form p(y; θ) or p (y | x; θ)
+as p(y | ω ), where ω is a variable containing both parameters θ , and if applicable,
+the inputs x. Given a value y sampled from distribution p(y | ω), where ω may in
+turn be a function of other variables, we can rewrite
+y ∼ p(y | ω)
+
+(20.56)
+
+y = f (z; ω ),
+
+(20.57)
+
+as
+where z is a source of randomness. We may then compute the derivatives of y with
+respect to ω using traditional tools such as the back-propagation algorithm applied
+to f, so long as f is continuous and diﬀerentiable almost everywhere. Crucially, ω
+must not be a function of z , and z must not be a function of ω. This technique
+is often called the reparametrization trick, stochastic back-propagation or
+perturbation analysis.
+The requirement that f be continuous and diﬀerentiable of course requires y
+to be continuous. If we wish to back-propagate through a sampling process that
+produces discrete-valued samples, it may still be possible to estimate a gradient on
+ω, using reinforcement learning algorithms such as variants of the REINFORCE
+algorithm (Williams, 1992), discussed in section 20.9.1.
+688
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+In neural network applications, we typically choose z to be drawn from some
+simple distribution, such as a unit uniform or unit Gaussian distribution, and
+achieve more complex distributions by allowing the deterministic portion of the
+network to reshape its input.
+The idea of propagating gradients or optimizing through stochastic operations
+dates back to the mid-twentieth century (Price, 1958; Bonnet, 1964) and was
+�?rst used for machine learning in the context of reinforcement learning (Williams,
+1992). More recently, it has been applied to variational approximations (Opper
+and Archambeau, 2009) and stochastic or generative neural networks (Bengio
+et al., 2013b; Kingma, 2013; Kingma and Welling, 2014b,a; Rezende et al., 2014;
+Goodfellow et al., 2014c). Many networks, such as denoising autoencoders or
+networks regularized with dropout, are also naturally designed to take noise
+as an input without requiring any special reparametrization to make the noise
+independent from the model.
+
+20.9.1
+
+Back-Propagating through Discrete Stochastic Operations
+
+When a model emits a discrete variable y, the reparametrization trick is not
+applicable. Suppose that the model takes inputs x and parameters θ , both
+encapsulated in the vector ω , and combines them with random noise z to produce
+y:
+y = f (z; ω ).
+(20.58)
+Because y is discrete, f must be a step function. The derivatives of a step function
+are not useful at any point. Right at each step boundary, the derivatives are
+unde�?ned, but that is a small problem. The large problem is that the derivatives
+are zero almost everywhere, on the regions between step boundaries. The derivatives
+of any cost function J (y) therefore do not give any information for how to update
+the model parameters θ.
+The REINFORCE algorithm (REward Increment = Non-negative Factor ×
+Oﬀset Reinforcement × Characteristic Eligibility) provides a framework de�?ning a
+family of simple but powerful solutions (Williams, 1992). The core idea is that
+even though J (f (z; ω )) is a step function with useless derivatives, the expected
+cost Ez∼p(z)J (f (z; ω )) is often a smooth function amenable to gradient descent.
+Although that expectation is typically not tractable when y is high-dimensional
+(or is the result of the composition of many discrete stochastic decisions), it can be
+estimated without bias using a Monte Carlo average. The stochastic estimate of
+the gradient can be used with SGD or other stochastic gradient-based optimization
+techniques.
+689
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+The simplest version of REINFORCE can be derived by simply diﬀerentiating
+the expected cost:
+�?�
+E z [J (y)] =
+J ( y )p (y )
+(20.59)
+y
+
+∂ E[J (y )]
+=
+∂ω
+=
+
+�?�
+
+J (y)
+
+y
+
+�?�
+
+∂p(y)
+∂ω
+
+J ( y )p (y )
+
+y
+
+1
+≈
+m
+
+m
+�?�
+
+(20.60)
+
+∂ log p(y)
+∂ω
+J (y(i) )
+
+y(i) ∼p(y ), i=1
+
+∂ log p(y(i) )
+.
+∂ω
+
+(20.61)
+(20.62)
+
+Equation 20.60 relies on the assumption that J does not reference ω directly. It is
+trivial to extend the approach to relax this assumption. Equation 20.61 exploits
+y)
+the derivative rule for the logarithm, ∂ log∂ωp(y ) = p(1y ) ∂p(
+∂ω . Equation 20.62 gives
+an unbiased Monte Carlo estimator of the gradient.
+Anywhere we write p(y) in this section, one could equally write p(y | x). This
+is because p(y) is parametrized by ω, and ω contains both θ and x, if x is present.
+One issue with the above simple REINFORCE estimator is that it has a very
+high variance, so that many samples of y need to be drawn to obtain a good
+estimator of the gradient, or equivalently, if only one sample is drawn, SGD will
+converge very slowly and will require a smaller learning rate. It is possible to
+considerably reduce the variance of that estimator by using variance reduction
+methods (Wilson, 1984; L’Ecuyer, 1994). The idea is to modify the estimator so
+that its expected value remains unchanged but its variance get reduced. In the
+context of REINFORCE, the proposed variance reduction methods involve the
+computation of a baseline that is used to oﬀset J (y). Note that any oﬀset b(ω)
+that does not depend on y would not change the expectation of the estimated
+gradient because
+
+ �?�
+∂ log p(y)
+∂ log p(y)
+Ep(y )
+=
+p(y)
+(20.63)
+∂ω
+∂ω
+y
+=
+
+�?� ∂p(y)
+y
+
+=
+
+∂ω
+
+∂ �?�
+∂
+1 = 0,
+p(y) =
+∂ω y
+∂ω
+690
+
+(20.64)
+(20.65)
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+which means that
+
+
+
+
+
+
+∂ log p(y)
+∂ log p(y)
+∂ log p(y)
+− b(ω )Ep(y )
+Ep(y ) (J (y) − b(ω ))
+= Ep(y ) J (y)
+∂ω
+∂ω
+∂ω
+(20.66)
+
+
+∂ log p(y)
+= Ep(y ) J (y)
+.
+(20.67)
+∂ω
+Furthermore, we can obtain the optimal b(ω) by computing the variance of (J(y) −
+b(ω)) ∂ log∂ωp(y ) under p(y) and minimizing with respect to b (ω). What we �?nd is
+that this optimal baseline b∗ (ω)i is diﬀerent for each element ωi of the vector ω:
+�?�
+�?�
+∂ log p(y ) 2
+Ep(y ) J (y) ∂ω
+i
+�?�
+�?� .
+b ∗(ω)i =
+(20.68)
+∂ log p(y ) 2
+Ep(y )
+∂ωi
+
+The gradient estimator with respect to ωi then becomes
+(J (y ) − b (ω ) i )
+
+∂ log p(y)
+∂ωi
+
+(20.69)
+
+where b(ω )i estimates the above b∗(ω )i . The estimate b is usually obtained by
+adding extra outputs to the neural
+�?� network�?�and training the new outputs to estimate
+2
+
+2
+
+p(y )
+p(y )
+Ep(y ) [J(y) ∂ log
+] and Ep(y ) ∂ log
+for each element of ω. These extra
+∂ω i
+∂ω i
+outputs can be trained with the mean squared error objective, using respectively
+2
+
+2
+
+p (y )
+p (y )
+J(y) ∂ log
+and ∂ log
+as targets when y is sampled from p(y), for a given
+∂ω i
+∂ω i
+ω. The estimate b may then be recovered by substituting these estimates into
+equation 20.68. Mnih and Gregor (2014) preferred to use a single shared output
+(across all elements i of ω) trained with the target J(y), using as baseline b(ω) ≈
+Ep(y ) [J (y)].
+
+Variance reduction methods have been introduced in the reinforcement learning
+context (Sutton et al., 2000; Weaver and Tao, 2001), generalizing previous work
+on the case of binary reward by Dayan (1990). See Bengio et al. (2013b), Mnih
+and Gregor (2014), Ba et al. (2014), Mnih et al. (2014), or Xu et al. (2015) for
+examples of modern uses of the REINFORCE algorithm with reduced variance in
+the context of deep learning. In addition to the use of an input-dependent baseline
+b(ω), Mnih and Gregor (2014) found that the scale of ( J(y) − b(ω )) could be
+adjusted during training by dividing it by its standard deviation estimated by a
+moving average during training, as a kind of adaptive learning rate, to counter
+the eﬀect of important variations that occur during the course of training in the
+691
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+magnitude of this quantity. Mnih and Gregor (2014) called this heuristic variance
+normalization.
+REINFORCE-based estimators can be understood as estimating the gradient
+by correlating choices of y with corresponding values of J (y). If a good value of y
+is unlikely under the current parametrization, it might take a long time to obtain it
+by chance, and get the required signal that this con�?guration should be reinforced.
+
+20.10
+
+Directed Generative Nets
+
+As discussed in chapter 16, directed graphical models make up a prominent class
+of graphical models. While directed graphical models have been very popular
+within the greater machine learning community, within the smaller deep learning
+community they have until roughly 2013 been overshadowed by undirected models
+such as the RBM.
+In this section we review some of the standard directed graphical models that
+have traditionally been associated with the deep learning community.
+We have already described deep belief networks, which are a partially directed
+model. We have also already described sparse coding models, which can be thought
+of as shallow directed generative models. They are often used as feature learners
+in the context of deep learning, though they tend to perform poorly at sample
+generation and density estimation. We now describe a variety of deep, fully directed
+models.
+
+20.10.1
+
+Sigmoid Belief Nets
+
+Sigmoid belief networks (Neal, 1990) are a simple form of 

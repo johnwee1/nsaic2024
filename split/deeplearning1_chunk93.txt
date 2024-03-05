@@ -1,0 +1,334 @@
+ these
+is the problem of intractable inference, which we confront next.
+
+630
+
+Chapter 19
+
+Approximate Inference
+Many probabilistic models are diﬃcult to train because it is diﬃcult to perform
+inference in them. In the context of deep learning, we usually have a set of visible
+variables v and a set of latent variables h. The challenge of inference usually
+refers to the diﬃcult problem of computing p(h | v ) or taking expectations with
+respect to it. Such operations are often necessary for tasks like maximum likelihood
+learning.
+Many simple graphical models with only one hidden layer, such as restricted
+Boltzmann machines and probabilistic PCA, are de�?ned in a way that makes
+inference operations like computing p(h | v ), or taking expectations with respect
+to it, simple. Unfortunately, most graphical models with multiple layers of hidden
+variables have intractable posterior distributions. Exact inference requires an
+exponential amount of time in these models. Even some models with only a single
+layer, such as sparse coding, have this problem.
+In this chapter, we introduce several of the techniques for confronting these
+intractable inference problems. Later, in chapter 20, we will describe how to use
+these techniques to train probabilistic models that would otherwise be intractable,
+such as deep belief networks and deep Boltzmann machines.
+Intractable inference problems in deep learning usually arise from interactions
+between latent variables in a structured graphical model. See �?gure 19.1 for some
+examples. These interactions may be due to direct interactions in undirected
+models or “explaining away�? interactions between mutual ancestors of the same
+visible unit in directed models.
+
+631
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+Figure 19.1: Intractable inference problems in deep learning are usually the result of
+interactions between latent variables in a structured graphical model. These can be
+due to edges directly connecting one latent variable to another, or due to longer paths
+that are activated when the child of a V-structure is observed. (Left)Asemi-restricted
+Boltzmann machine (Osindero and Hinton, 2008) with connections between hidden
+units. These direct connections between latent variables make the posterior distribution
+intractable due to large cliques of latent variables. (Center)A deep Boltzmann machine,
+organized into layers of variables without intra-layer connections, still has an intractable
+posterior distribution due to the connections between layers. (Right)This directed model
+has interactions between latent variables when the visible variables are observed, because
+every two latent variables are co-parents. Some probabilistic models are able to provide
+tractable inference over the latent variables despite having one of the graph structures
+depicted above. This is possible if the conditional probability distributions are chosen to
+introduce additional independences beyond those described by the graph. For example,
+probabilistic PCA has the graph structure shown in the right, yet still has simple inference
+due to special properties of the speci�?c conditional distributions it uses (linear-Gaussian
+conditionals with mutually orthogonal basis vectors).
+
+632
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+19.1
+
+Inference as Optimization
+
+Many approaches to confronting the problem of diﬃcult inference make use of
+the observation that exact inference can be described as an optimization problem.
+Approximate inference algorithms may then be derived by approximating the
+underlying optimization problem.
+To construct the optimization problem, assume we have a probabilistic model
+consisting of observed variables v and latent variables h. We would like to compute
+the log probability of the observed data, log p(v; θ). Sometimes it is too diﬃcult
+to compute log p(v; θ) if it is costly to marginalize out h. Instead, we can compute
+a lower bound L(v, θ, q) on log p(v; θ). This bound is called the evidence lower
+bound (ELBO). Another commonly used name for this lower bound is the negative
+variational free energy. Speci�?cally, the evidence lower bound is de�?ned to be
+L(v, θ, q) = log p(v ; θ) − DKL (q(h | v)�?�p(h | v; θ))
+
+(19.1)
+
+where q is an arbitrary probability distribution over h.
+Because the diﬀerence between log p(v) and L(v, θ, q) is given by the KL
+divergence and because the KL divergence is always non-negative, we can see that
+L always has at most the same value as the desired log probability. The two are
+equal if and only if q is the same distribution as p(h | v).
+
+Surprisingly, L can be considerably easier to compute for some distributions q.
+Simple algebra shows that we can rearrange L into a much more convenient form:
+L(v, θ, q) = log p(v; θ) − DKL(q(h | v)�?�p(h | v; θ))
+= log p(v; θ) − Eh∼q log
+
+q(h | v)
+p(h | v )
+q(h | v)
+
+= log p(v; θ) − Eh∼q log p(h,v ;θ )
+
+(19.2)
+(19.3)
+(19.4)
+
+p(v ;θ )
+
+= log p(v; θ) − Eh∼q [log q(h | v) − log p(h, v; θ) + log p(v ; θ)] (19.5)
+= − Eh∼q [log q(h | v) − log p(h, v; θ)] .
+
+(19.6)
+
+This yields the more canonical de�?nition of the evidence lower bound,
+L(v, θ, q) = Eh∼q [log p(h, v)] + H (q).
+
+(19.7)
+
+For an appropriate choice of q, L is tractable to compute. For any choice
+of q, L provides a lower bound on the likelihood. For q(h | v) that are better
+633
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+approximations of p(h | v ), the lower bound L will be tighter, in other words,
+closer to log p(v). When q (h | v ) = p (h | v), the approximation is perfect, and
+L(v, θ, q) = log p(v ; θ).
+We can thus think of inference as the procedure for �?nding the q that maximizes
+L. Exact inference maximizes L perfectly by searching over a family of functions
+q that includes p(h | v ). Throughout this chapter, we will show how to derive
+diﬀerent forms of approximate inference by using approximate optimization to
+�?nd q. We can make the optimization procedure less expensive but approximate
+by restricting the family of distributions q the optimization is allowed to search
+over or by using an imperfect optimization procedure that may not completely
+maximize L but merely increase it by a signi�?cant amount.
+
+No matter what choice of q we use, L is a lower bound. We can get tighter
+or looser bounds that are cheaper or more expensive to compute depending on
+how we choose to approach this optimization problem. We can obtain a poorly
+matched q but reduce the computational cost by using an imperfect optimization
+procedure, or by using a perfect optimization procedure over a restricted family of
+q distributions.
+
+19.2
+
+Expectation Maximization
+
+The �?rst algorithm we introduce based on maximizing a lower bound L is the
+expectation maximization (EM) algorithm, a popular training algorithm for
+models with latent variables. We describe here a view on the EM algorithm
+developed by Neal and Hinton (1999). Unlike most of the other algorithms we
+describe in this chapter, EM is not an approach to approximate inference, but
+rather an approach to learning with an approximate posterior.
+The EM algorithm consists of alternating between two steps until convergence:
+• The E-step (Expectation step): Let θ (0) denote the value of the parameters
+at the beginning of the step. Set q(h(i) | v) = p(h(i) | v (i); θ (0)) for all
+indices i of the training examples v (i) we want to train on (both batch and
+minibatch variants are valid). By this we mean q is de�?ned in terms of the
+current parameter value of θ (0); if we vary θ then p(h | v; θ) will change but
+q(h | v) will remain equal to p(h | v ; θ(0) ).
+• The M-step (Maximization step): Completely or partially maximize
+�?�
+(19.8)
+L(v (i), θ, q)
+i
+
+634
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+with respect to θ using your optimization algorithm of choice.
+This can be viewed as a coordinate ascent algorithm to maximize L. On one
+step, we maximize L with respect to q , and on the other, we maximize L with
+respect to θ.
+Stochastic gradient ascent on latent variable models can be seen as a special
+case of the EM algorithm where the M step consists of taking a single gradient
+step. Other variants of the EM algorithm can make much larger steps. For some
+model families, the M step can even be performed analytically, jumping all the
+way to the optimal solution for θ given the current q.
+Even though the E-step involves exact inference, we can think of the EM
+algorithm as using approximate inference in some sense. Speci�?cally, the M-step
+assumes that the same value of q can be used for all values of θ. This will introduce
+a gap between L and the true log p(v ) as the M-step moves further and further
+away from the value θ (0) used in the E-step. Fortunately, the E-step reduces the
+gap to zero again as we enter the loop for the next time.
+The EM algorithm contains a few diﬀerent insights. First, there is the basic
+structure of the learning process, in which we update the model parameters to
+improve the likelihood of a completed dataset, where all missing variables have
+their values provided by an estimate of the posterior distribution. This particular
+insight is not unique to the EM algorithm. For example, using gradient descent to
+maximize the log-likelihood also has this same property; the log-likelihood gradient
+computations require taking expectations with respect to the posterior distribution
+over the hidden units. Another key insight in the EM algorithm is that we can
+continue to use one value of q even after we have moved to a diﬀerent value of θ.
+This particular insight is used throughout classical machine learning to derive large
+M-step updates. In the context of deep learning, most models are too complex
+to admit a tractable solution for an optimal large M-step update, so this second
+insight which is more unique to the EM algorithm is rarely used.
+
+19.3
+
+MAP Inference and Sparse Coding
+
+We usually use the term inference to refer to computing the probability distribution
+over one set of variables given another. When training probabilistic models with
+latent variables, we are usually interested in computing p(h | v ). An alternative
+form of inference is to compute the single most likely value of the missing variables,
+rather than to infer the entire distribution over their possible values. In the context
+635
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+of latent variable models, this means computing
+h ∗ = arg max p(h | v ).
+
+(19.9)
+
+h
+
+This is known as maximum a posteriori inference, abbreviated MAP inference.
+MAP inference is usually not thought of as approximate inference—it does
+compute the exact most likely value of h∗ . However, if we wish to develop a
+learning process based on maximizing L(v, h, q), then it is helpful to think of MAP
+inference as a procedure that provides a value of q. In this sense, we can think of
+MAP inference as approximate inference, because it does not provide the optimal
+q.
+Recall from section 19.1 that exact inference consists of maximizing
+L(v, θ, q) = Eh∼q [log p(h, v)] + H (q)
+
+(19.10)
+
+with respect to q over an unrestricted family of probability distributions, using
+an exact optimization algorithm. We can derive MAP inference as a form of
+approximate inference by restricting the family of distributions q may be drawn
+from. Speci�?cally, we require q to take on a Dirac distribution:
+q (h | v ) = δ (h − µ ).
+
+(19.11)
+
+This means that we can now control q entirely via µ. Dropping terms of L that
+do not vary with µ, we are left with the optimization problem
+µ ∗ = arg max log p(h = µ, v),
+
+(19.12)
+
+µ
+
+which is equivalent to the MAP inference problem
+h ∗ = arg max p(h | v ).
+
+(19.13)
+
+h
+
+We can thus justify a learning procedure similar to EM, in which we alternate
+between performing MAP inference to infer h ∗ and then update θ to increase
+log p(h∗, v). As with EM, this is a form of coordinate ascent on L, where we
+alternate between using inference to optimize L with respect to q and using
+parameter updates to optimize L with respect to θ. The procedure as a whole can
+be justi�?ed by the fact that L is a lower bound on log p(v). In the case of MAP
+inference, this justi�?cation is rather vacuous, because the bound is in�?nitely loose,
+due to the Dirac distribution’s diﬀerential entropy of negative in�?nity. However,
+adding noise to µ would make the bound meaningful again.
+636
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+MAP inference is commonly used in deep learning as both a feature extractor
+and a learning mechanism. It is primarily used for sparse coding models.
+Recall from section 13.4 that sparse coding is a linear factor model that imposes
+a sparsity-inducing prior on its hidden units. A common choice is a factorial Laplace
+prior, with
+λ
+(19.14)
+p(hi) = e−λ|hi | .
+2
+The visible units are then generated by performing a linear transformation and
+adding noise:
+p(x | h) = N (v; W h + b, β−1 I).
+(19.15)
+Computing or even representing p(h | v) is diﬃcult. Every pair of variables h i
+and hj are both parents of v. This means that when v is observed, the graphical
+model contains an active path connecting hi and h j . All of the hidden units thus
+participate in one massive clique in p(h | v). If the model were Gaussian then
+these interactions could be modeled eﬃciently via the covariance matrix, but the
+sparse prior makes these interactions non-Gaussian.
+Because p(h | v) is intractable, so is the computation of the log-likelihood and
+its gradient. We thus cannot use exact maximum likelihood learning. Instead, we
+use MAP inference and learn the parameters by maximizing the ELBO de�?ned by
+the Dirac distribution around the MAP estimate of h.
+If we concatenate all of the h vectors in the training set into a matrix H , and
+concatenate all of the v vectors into a matrix V , then the sparse coding learning
+process consists of minimizing
+J (H , W ) =
+
+�?�
+i,j
+
+|Hi,j | +
+
+�?��?
+i,j
+
+V − HW 
+
+2
+
+i,j
+
+.
+
+(19.16)
+
+Most applications of sparse coding also involve weight decay or a constraint on
+the norms of the columns of W, in order to prevent the pathological solution with
+extremely small H and large W .
+We can minimize J by alternating between minimization with respect to H
+and minimization with respect to W . Both sub-problems are convex. In fact,
+the minimization with respect to W is just a linear regression problem. However,
+minimization of J with respect to both arguments is usually not a convex problem.
+Minimization with respect to H requires specialized algorithms such as the
+feature-sign search algorithm (Lee et al., 2007).
+
+637
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+19.4
+
+Variational Inference and Learning
+
+We have seen how the evidence lower bound L (v, θ, q) is a lower bound on
+log p(v ;θ), how inference can be viewed as maximizing L with respect to q , and
+how learning can be viewed as maximizing L with respect to θ. We have seen
+that the EM algorithm allows us to make large learning steps with a �?xed q and
+that learning algorithms based on MAP inference allow us to learn using a point
+estimate of p(h | v) rather than inferring the entire distribution. Now we develop
+the more general approach to variational learning.
+The core idea behind variational learning is that we can maximize L over a
+restricted family of distributions q . This family should be chosen so that it is easy
+to compute Eq log p(h, v ). A typical way to do this is to introduce assumptions
+about how q factorizes.
+A common approach to variational learn

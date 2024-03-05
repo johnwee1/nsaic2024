@@ -1,0 +1,276 @@
+Cartesian product of diï¬€erent possibilities. It would be much more diï¬ƒcult to
+design end-to-end algorithms for every possible situation.
+
+16.5
+
+Learning about Dependencies
+
+A good generative model needs to accurately capture the distribution over the
+observed or â€œvisibleâ€? variables v . Often the diï¬€erent elements of v are highly
+dependent on each other. In the context of deep learning, the approach most
+commonly used to model these dependencies is to introduce several latent or
+â€œhiddenâ€? variables, h. The model can then capture dependencies between any pair
+of variables vi and vj indirectly, via direct dependencies between vi and h, and
+direct dependencies between h and vj .
+A good model of v which did not contain any latent variables would need to
+582
+
+CHAPTER 16. STRUCTURED PROBABILISTIC MODELS FOR DEEP LEARNING
+
+have very large numbers of parents per node in a Bayesian network or very large
+cliques in a Markov network. Just representing these higher order interactions is
+costlyâ€”both in a computational sense, because the number of parameters that
+must be stored in memory scales exponentially with the number of members in a
+clique, but also in a statistical sense, because this exponential number of parameters
+requires a wealth of data to estimate accurately.
+When the model is intended to capture dependencies between visible variables
+with direct connections, it is usually infeasible to connect all variables, so the
+graph must be designed to connect those variables that are tightly coupled and
+omit edges between other variables. An entire ï¬?eld of machine learning called
+structure learning is devoted to this problem For a good reference on structure
+learning, see (Koller and Friedman, 2009). Most structure learning techniques are
+a form of greedy search. A structure is proposed, a model with that structure
+is trained, then given a score. The score rewards high training set accuracy and
+penalizes model complexity. Candidate structures with a small number of edges
+added or removed are then proposed as the next step of the search. The search
+proceeds to a new structure that is expected to increase the score.
+Using latent variables instead of adaptive structure avoids the need to perform
+discrete searches and multiple rounds of training. A ï¬?xed structure over visible
+and hidden variables can use direct interactions between visible and hidden units
+to impose indirect interactions between visible units. Using simple parameter
+learning techniques we can learn a model with a ï¬?xed structure that imputes the
+right structure on the marginal p(v).
+Latent variables have advantages beyond their role in eï¬ƒciently capturing p(v).
+The new variables h also provide an alternative representation for v. For example,
+as discussed in section 3.9.6, the mixture of Gaussians model learns a latent variable
+that corresponds to which category of examples the input was drawn from. This
+means that the latent variable in a mixture of Gaussians model can be used to do
+classiï¬?cation. In chapter 14 we saw how simple probabilistic models like sparse
+coding learn latent variables that can be used as input features for a classiï¬?er,
+or as coordinates along a manifold. Other models can be used in this same way,
+but deeper models and models with diï¬€erent kinds of interactions can create even
+richer descriptions of the input. Many approaches accomplish feature learning
+by learning latent variables. Often, given some model of v and h, experimental
+observations show that E[h | v ] or argmax h p(h, v) is a good feature mapping for
+v.
+
+583
+
+CHAPTER 16. STRUCTURED PROBABILISTIC MODELS FOR DEEP LEARNING
+
+16.6
+
+Inference and Approximate Inference
+
+One of the main ways we can use a probabilistic model is to ask questions about
+how variables are related to each other. Given a set of medical tests, we can ask
+what disease a patient might have. In a latent variable model, we might want to
+extract features E[h | v ] describing the observed variables v. Sometimes we need
+to solve such problems in order to perform other tasks. We often train our models
+using the principle of maximum likelihood. Because
+log p(v) = Ehâˆ¼p(h|v) [log p(h, v) âˆ’ log p(h | v)] ,
+
+(16.9)
+
+we often want to compute p(h | v) in order to implement a learning rule. All of
+these are examples of inference problems in which we must predict the value of
+some variables given other variables, or predict the probability distribution over
+some variables given the value of other variables.
+Unfortunately, for most interesting deep models, these inference problems are
+intractable, even when we use a structured graphical model to simplify them. The
+graph structure allows us to represent complicated, high-dimensional distributions
+with a reasonable number of parameters, but the graphs used for deep learning are
+usually not restrictive enough to also allow eï¬ƒcient inference.
+It is straightforward to see that computing the marginal probability of a general
+graphical model is #P hard. The complexity class #P is a generalization of the
+complexity class NP. Problems in NP require determining only whether a problem
+has a solution and ï¬?nding a solution if one exists. Problems in #P require counting
+the number of solutions. To construct a worst-case graphical model, imagine that
+we deï¬?ne a graphical model over the binary variables in a 3-SAT problem. We
+can impose a uniform distribution over these variables. We can then add one
+binary latent variable per clause that indicates whether each clause is satisï¬?ed.
+We can then add another latent variable indicating whether all of the clauses are
+satisï¬?ed. This can be done without making a large clique, by building a reduction
+tree of latent variables, with each node in the tree reporting whether two other
+variables are satisï¬?ed. The leaves of this tree are the variables for each clause.
+The root of the tree reports whether the entire problem is satisï¬?ed. Due to the
+uniform distribution over the literals, the marginal distribution over the root of the
+reduction tree speciï¬?es what fraction of assignments satisfy the problem. While
+this is a contrived worst-case example, NP hard graphs commonly arise in practical
+real-world scenarios.
+This motivates the use of approximate inference. In the context of deep
+learning, this usually refers to variational inference, in which we approximate the
+584
+
+CHAPTER 16. STRUCTURED PROBABILISTIC MODELS FOR DEEP LEARNING
+
+true distribution p( h | v) by seeking an approximate distribution q (h|v) that is as
+close to the true one as possible. This and other techniques are described in depth
+in chapter 19.
+
+16.7
+
+The Deep Learning Approach to Structured Probabilistic Models
+
+Deep learning practitioners generally use the same basic computational tools as
+other machine learning practitioners who work with structured probabilistic models.
+However, in the context of deep learning, we usually make diï¬€erent design decisions
+about how to combine these tools, resulting in overall algorithms and models that
+have a very diï¬€erent ï¬‚avor from more traditional graphical models.
+Deep learning does not always involve especially deep graphical models. In the
+context of graphical models, we can deï¬?ne the depth of a model in terms of the
+graphical model graph rather than the computational graph. We can think of a
+latent variable hi as being at depth j if the shortest path from h i to an observed
+variable is j steps. We usually describe the depth of the model as being the greatest
+depth of any such hi. This kind of depth is diï¬€erent from the depth induced by
+the computational graph. Many generative models used for deep learning have no
+latent variables or only one layer of latent variables, but use deep computational
+graphs to deï¬?ne the conditional distributions within a model.
+Deep learning essentially always makes use of the idea of distributed representations. Even shallow models used for deep learning purposes (such as pretraining
+shallow models that will later be composed to form deep ones) nearly always
+have a single, large layer of latent variables. Deep learning models typically have
+more latent variables than observed variables. Complicated nonlinear interactions
+between variables are accomplished via indirect connections that ï¬‚ow through
+multiple latent variables.
+By contrast, traditional graphical models usually contain mostly variables that
+are at least occasionally observed, even if many of the variables are missing at
+random from some training examples. Traditional models mostly use higher-order
+terms and structure learning to capture complicated nonlinear interactions between
+variables. If there are latent variables, they are usually few in number.
+The way that latent variables are designed also diï¬€ers in deep learning. The
+deep learning practitioner typically does not intend for the latent variables to
+take on any speciï¬?c semantics ahead of timeâ€”the training algorithm is free to
+invent the concepts it needs to model a particular dataset. The latent variables are
+585
+
+CHAPTER 16. STRUCTURED PROBABILISTIC MODELS FOR DEEP LEARNING
+
+usually not very easy for a human to interpret after the fact, though visualization
+techniques may allow some rough characterization of what they represent. When
+latent variables are used in the context of traditional graphical models, they are
+often designed with some speciï¬?c semantics in mindâ€”the topic of a document,
+the intelligence of a student, the disease causing a patientâ€™s symptoms, etc. These
+models are often much more interpretable by human practitioners and often have
+more theoretical guarantees, yet are less able to scale to complex problems and are
+not reusable in as many diï¬€erent contexts as deep models.
+Another obvious diï¬€erence is the kind of connectivity typically used in the
+deep learning approach. Deep graphical models typically have large groups of units
+that are all connected to other groups of units, so that the interactions between
+two groups may be described by a single matrix. Traditional graphical models
+have very few connections and the choice of connections for each variable may be
+individually designed. The design of the model structure is tightly linked with
+the choice of inference algorithm. Traditional approaches to graphical models
+typically aim to maintain the tractability of exact inference. When this constraint
+is too limiting, a popular approximate inference algorithm is an algorithm called
+loopy belief propagation. Both of these approaches often work well with very
+sparsely connected graphs. By comparison, models used in deep learning tend to
+connect each visible unit vi to very many hidden units hj , so that h can provide a
+distributed representation of vi (and probably several other observed variables too).
+Distributed representations have many advantages, but from the point of view
+of graphical models and computational complexity, distributed representations
+have the disadvantage of usually yielding graphs that are not sparse enough for
+the traditional techniques of exact inference and loopy belief propagation to be
+relevant. As a consequence, one of the most striking diï¬€erences between the larger
+graphical models community and the deep graphical models community is that
+loopy belief propagation is almost never used for deep learning. Most deep models
+are instead designed to make Gibbs sampling or variational inference algorithms
+eï¬ƒcient. Another consideration is that deep learning models contain a very large
+number of latent variables, making eï¬ƒcient numerical code essential. This provides
+an additional motivation, besides the choice of high-level inference algorithm, for
+grouping the units into layers with a matrix describing the interaction between
+two layers. This allows the individual steps of the algorithm to be implemented
+with eï¬ƒcient matrix product operations, or sparsely connected generalizations, like
+block diagonal matrix products or convolutions.
+Finally, the deep learning approach to graphical modeling is characterized by
+a marked tolerance of the unknown. Rather than simplifying the model until
+all quantities we might want can be computed exactly, we increase the power of
+586
+
+CHAPTER 16. STRUCTURED PROBABILISTIC MODELS FOR DEEP LEARNING
+
+the model until it is just barely possible to train or use. We often use models
+whose marginal distributions cannot be computed, and are satisï¬?ed simply to draw
+approximate samples from these models. We often train models with an intractable
+objective function that we cannot even approximate in a reasonable amount of
+time, but we are still able to approximately train the model if we can eï¬ƒciently
+obtain an estimate of the gradient of such a function. The deep learning approach
+is often to ï¬?gure out what the minimum amount of information we absolutely
+need is, and then to ï¬?gure out how to get a reasonable approximation of that
+information as quickly as possible.
+
+16.7.1
+
+Example: The Restricted Boltzmann Machine
+
+The restricted Boltzmann machine (RBM) (Smolensky, 1986) or harmonium
+is the quintessential example of how graphical models are used for deep learning.
+The RBM is not itself a deep model. Instead, it has a single layer of latent variables
+that may be used to learn a representation for the input. In chapter 20, we will
+see how RBMs can be used to build many deeper models. Here, we show how the
+RBM exempliï¬?es many of the practices used in a wide variety of deep graphical
+models: its units are organized into large groups called layers, the connectivity
+between layers is described by a matrix, the connectivity is relatively dense, the
+model is designed to allow eï¬ƒcient Gibbs sampling, and the emphasis of the model
+design is on freeing the training algorithm to learn latent variables whose semantics
+were not speciï¬?ed by the designer. Later, in section 20.2, we will revisit the RBM
+in more detail.
+The canonical RBM is an energy-based model with binary visible and hidden
+units. Its energy function is
+E (v, h) = âˆ’bî€¾ v âˆ’ cî€¾ h âˆ’ v î€¾W h,
+
+(16.10)
+
+where b, c , and W are unconstrained, real-valued, learnable parameters. We can
+see that the model is divided into two groups of units: v and h, and the interaction
+between them is described by a matrix W . The model is depicted graphically
+in ï¬?gure 16.14. As this ï¬?gure makes clear, an important aspect of this model is
+that there are no direct interactions between any two visible units or between any
+two hidden units (hence the â€œrestricted,â€? a general Boltzmann machine may have
+arbitrary connections).
+The restrictions on the RBM structure yield the nice properties
+p(h | v) = Î  ip(h i | v)
+587
+
+(16.11)
+
+CHAPTER 16. STRUCTURED PROBABILISTIC MODELS FOR DEEP LEARNING
+
+h1
+
+h2
+
+v1
+
+h3
+
+v2
+
+h4
+
+v3
+
+Figure 16.14: An RBM drawn as a Markov network.
+
+and
+p(v | h) = Î  ip(v i | h).
+
+(16.12)
+
+The individual conditionals are simple to compute as well. For the binary RBM
+we obtain:
+î€?
+î€‘
+P (hi = 1 | v) = Ïƒ vî€¾W :,i + bi ,
+(16.13)
+î€?
+î€‘
+î€¾
+P (hi = 0 | v) = 1 âˆ’ Ïƒ v W:,i + bi .
+(16.14)
+
+Together these properties allow for eï¬ƒcient block Gibbs sampling, which alternates between sampling all of h simultaneously and sampling all of v simultaneously. Samples generated by Gibbs sampling from an RBM model are shown in
+ï¬?gure 16.15.
+Since the energy function itself is just a linear function of the parameters, it is
+easy to take its derivatives. For example,
+âˆ‚
+E (v, h) = âˆ’v ihj .

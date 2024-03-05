@@ -1,0 +1,345 @@
+ of this chapter deal with standard concepts in machine learning.
+If you are already familiar with these concepts, feel free to skip the relevant
+sections. However, most of this chapter is concerned with the extension of these
+basic concepts to the particular case of neural networks.
+In section 5.2.2, we de�?ned regularization as “any modi�?cation we make to
+a learning algorithm that is intended to reduce its generalization error but not
+its training error.�? There are many regularization strategies. Some put extra
+constraints on a machine learning model, such as adding restrictions on the
+parameter values. Some add extra terms in the objective function that can be
+thought of as corresponding to a soft constraint on the parameter values. If chosen
+carefully, these extra constraints and penalties can lead to improved performance
+228
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+on the test set. Sometimes these constraints and penalties are designed to encode
+speci�?c kinds of prior knowledge. Other times, these constraints and penalties
+are designed to express a generic preference for a simpler model class in order to
+promote generalization. Sometimes penalties and constraints are necessary to make
+an underdetermined problem determined. Other forms of regularization, known as
+ensemble methods, combine multiple hypotheses that explain the training data.
+In the context of deep learning, most regularization strategies are based on
+regularizing estimators. Regularization of an estimator works by trading increased
+bias for reduced variance. An eﬀective regularizer is one that makes a pro�?table
+trade, reducing variance signi�?cantly while not overly increasing the bias. When we
+discussed generalization and over�?tting in chapter 5, we focused on three situations,
+where the model family being trained either (1) excluded the true data generating
+process—corresponding to under�?tting and inducing bias, or (2) matched the true
+data generating process, or (3) included the generating process but also many
+other possible generating processes—the over�?tting regime where variance rather
+than bias dominates the estimation error. The goal of regularization is to take a
+model from the third regime into the second regime.
+In practice, an overly complex model family does not necessarily include the
+target function or the true data generating process, or even a close approximation
+of either. We almost never have access to the true data generating process so
+we can never know for sure if the model family being estimated includes the
+generating process or not. However, most applications of deep learning algorithms
+are to domains where the true data generating process is almost certainly outside
+the model family. Deep learning algorithms are typically applied to extremely
+complicated domains such as images, audio sequences and text, for which the true
+generation process essentially involves simulating the entire universe. To some
+extent, we are always trying to �?t a square peg (the data generating process) into
+a round hole (our model family).
+What this means is that controlling the complexity of the model is not a
+simple matter of �?nding the model of the right size, with the right number of
+parameters. Instead, we might �?nd—and indeed in practical deep learning scenarios,
+we almost always do �?nd—that the best �?tting model (in the sense of minimizing
+generalization error) is a large model that has been regularized appropriately.
+We now review several strategies for how to create such a large, deep, regularized
+model.
+
+229
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+7.1
+
+Parameter Norm Penalties
+
+Regularization has been used for decades prior to the advent of deep learning. Linear
+models such as linear regression and logistic regression allow simple, straightforward,
+and eﬀective regularization strategies.
+Many regularization approaches are based on limiting the capacity of models,
+such as neural networks, linear regression, or logistic regression, by adding a parameter norm penalty Ω(θ) to the objective function J. We denote the regularized
+˜
+objective function by J:
+J˜(θ; X , y) = J (θ; X , y) + αΩ(θ)
+
+(7.1)
+
+where α ∈ [0, ∞) is a hyperparameter that weights the relative contribution of the
+norm penalty term, Ω, relative to the standard objective function J . Setting α to 0
+results in no regularization. Larger values of α correspond to more regularization.
+When our training algorithm minimizes the regularized objective function J˜ it
+will decrease both the original objective J on the training data and some measure
+of the size of the parameters θ (or some subset of the parameters). Diﬀerent
+choices for the parameter norm Ω can result in diﬀerent solutions being preferred.
+In this section, we discuss the eﬀects of the various norms when used as penalties
+on the model parameters.
+Before delving into the regularization behavior of diﬀerent norms, we note that
+for neural networks, we typically choose to use a parameter norm penalty Ω that
+penalizes only the weights of the aﬃne transformation at each layer and leaves
+the biases unregularized. The biases typically require less data to �?t accurately
+than the weights. Each weight speci�?es how two variables interact. Fitting the
+weight well requires observing both variables in a variety of conditions. Each
+bias controls only a single variable. This means that we do not induce too much
+variance by leaving the biases unregularized. Also, regularizing the bias parameters
+can introduce a signi�?cant amount of under�?tting. We therefore use the vector w
+to indicate all of the weights that should be aﬀected by a norm penalty, while the
+vector θ denotes all of the parameters, including both w and the unregularized
+parameters.
+In the context of neural networks, it is sometimes desirable to use a separate
+penalty with a diﬀerent α coeﬃcient for each layer of the network. Because it can
+be expensive to search for the correct value of multiple hyperparameters, it is still
+reasonable to use the same weight decay at all layers just to reduce the size of
+search space.
+230
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+7.1.1
+
+L2 Parameter Regularization
+
+We have already seen, in section 5.2.2, one of the simplest and most common kinds
+of parameter norm penalty: the L2 parameter norm penalty commonly known as
+weight decay. This regularization strategy drives the weights closer to the origin1
+by adding a regularization term Ω(θ) = 12 �?�w�?�22 to the objective function. In other
+academic communities, L2 regularization is also known as ridge regression or
+Tikhonov regularization.
+We can gain some insight into the behavior of weight decay regularization
+by studying the gradient of the regularized objective function. To simplify the
+presentation, we assume no bias parameter, so θ is just w. Such a model has the
+following total objective function:
+α
+J˜(w ; X , y) = w w + J (w; X , y ),
+2
+
+(7.2)
+
+with the corresponding parameter gradient
+∇w J˜(w ; X , y) = αw + ∇w J (w; X , y).
+
+(7.3)
+
+To take a single gradient step to update the weights, we perform this update:
+w �? w − �? (αw + ∇w J (w; X , y)) .
+
+(7.4)
+
+Written another way, the update is:
+w �? (1 − �?α)w − �?∇ w J (w; X , y).
+
+(7.5)
+
+We can see that the addition of the weight decay term has modi�?ed the learning
+rule to multiplicatively shrink the weight vector by a constant factor on each step,
+just before performing the usual gradient update. This describes what happens in
+a single step. But what happens over the entire course of training?
+We will further simplify the analysis by making a quadratic approximation
+to the objective function in the neighborhood of the value of the weights that
+obtains minimal unregularized training cost, w∗ = arg minw J(w). If the objective
+function is truly quadratic, as in the case of �?tting a linear regression model with
+1
+
+More generally, we could regularize the parameters to be near any speci�?c point in space
+and, surprisingly, still get a regularization eﬀect, but better results will be obtained for a value
+closer to the true one, with zero being a default value that makes sense when we do not know if
+the correct value should be positive or negative. Since it is far more common to regularize the
+model parameters towards zero, we will focus on this special case in our exposition.
+231
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+mean squared error, then the approximation is perfect. The approximation Jˆ is
+given by
+1
+Jˆ(θ) = J (w∗) + (w − w∗ ) H (w − w∗),
+(7.6)
+2
+where H is the Hessian matrix of J with respect to w evaluated at w ∗. There is
+no �?rst-order term in this quadratic approximation, because w∗ is de�?ned to be a
+minimum, where the gradient vanishes. Likewise, because w∗ is the location of a
+minimum of J , we can conclude that H is positive semide�?nite.
+The minimum of Jˆ occurs where its gradient
+ˆ w ) = H (w − w ∗ )
+∇ w J(
+
+(7.7)
+
+is equal to 0.
+To study the eﬀect of weight decay, we modify equation 7.7 by adding the
+weight decay gradient. We can now solve for the minimum of the regularized
+version of Ĵ. We use the variable w̃ to represent the location of the minimum.
+αw̃ + H (w̃ − w∗ ) = 0
+
+(7.8)
+
+(H + αI ) w̃ = Hw∗
+
+(7.9)
+
+w̃ = (H + αI )−1 Hw ∗.
+
+(7.10)
+
+As α approaches 0, the regularized solution w̃ approaches w∗. But what
+happens as α grows? Because H is real and symmetric, we can decompose it
+into a diagonal matrix Λ and an orthonormal basis of eigenvectors, Q, such that
+H = QΛQ. Applying the decomposition to equation 7.10, we obtain:
+w̃ = (QΛQ  + αI )−1 QΛQ w ∗
+�?�
+�?� −1
+
+= Q (Λ + α I )Q
+QΛQ w∗
+= Q(Λ + αI )−1 ΛQ w∗ .
+
+(7.11)
+(7.12)
+(7.13)
+
+We see that the eﬀect of weight decay is to rescale w ∗ along the axes de�?ned by
+the eigenvectors of H. Speci�?cally, the component of w ∗ that is aligned with the
+i
+i-th eigenvector of H is rescaled by a factor of λiλ+α
+. (You may wish to review
+how this kind of scaling works, �?rst explained in �?gure 2.3).
+Along the directions where the eigenvalues of H are relatively large, for example,
+where λi �? α, the eﬀect of regularization is relatively small. However, components
+with λ i  α will be shrunk to have nearly zero magnitude. This eﬀect is illustrated
+in �?gure 7.1.
+232
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+w2
+
+w∗
+w̃
+
+w1
+
+Figure 7.1: An illustration of the eﬀect of L 2 (or weight decay) regularization on the value
+of the optimal w. The solid ellipses represent contours of equal value of the unregularized
+objective. The dotted circles represent contours of equal value of theL 2 regularizer. At
+the point w̃, these competing objectives reach an equilibrium. In the �?rst dimension, the
+eigenvalue of the Hessian of J is small. The objective function does not increase much
+when moving horizontally away from w ∗ . Because the objective function does not express
+a strong preference along this direction, the regularizer has a strong eﬀect on this axis.
+The regularizer pulls w 1 close to zero. In the second dimension, the objective function
+is very sensitive to movements away from w∗ . The corresponding eigenvalue is large,
+indicating high curvature. As a result, weight decay aﬀects the position ofw2 relatively
+little.
+
+Only directions along which the parameters contribute signi�?cantly to reducing
+the objective function are preserved relatively intact. In directions that do not
+contribute to reducing the objective function, a small eigenvalue of the Hessian
+tells us that movement in this direction will not signi�?cantly increase the gradient.
+Components of the weight vector corresponding to such unimportant directions
+are decayed away through the use of the regularization throughout training.
+So far we have discussed weight decay in terms of its eﬀect on the optimization
+of an abstract, general, quadratic cost function. How do these eﬀects relate to
+machine learning in particular? We can �?nd out by studying linear regression, a
+model for which the true cost function is quadratic and therefore amenable to the
+same kind of analysis we have used so far. Applying the analysis again, we will
+be able to obtain a special case of the same results, but with the solution now
+phrased in terms of the training data. For linear regression, the cost function is
+
+233
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+the sum of squared errors:
+(Xw − y )(Xw − y ).
+
+(7.14)
+
+When we add L2 regularization, the objective function changes to
+1
+(Xw − y ) (Xw − y ) + αw  w.
+2
+
+(7.15)
+
+This changes the normal equations for the solution from
+w = (X X)−1X y
+
+(7.16)
+
+w = (X  X + αI )−1X  y.
+
+(7.17)
+
+to
+The matrix X X in equation 7.16 is proportional to the covariance matrix m1 X X.
+
+�?−1
+Using L2 regularization replaces this matrix with X X + αI
+in equation 7.17.
+The new matrix is the same as the original one, but with the addition of α to the
+diagonal. The diagonal entries of this matrix correspond to the variance of each
+input feature. We can see that L2 regularization causes the learning algorithm
+to “perceive�? the input X as having higher variance, which makes it shrink the
+weights on features whose covariance with the output target is low compared to
+this added variance.
+
+7.1.2
+
+L1 Regularization
+
+While L 2 weight decay is the most common form of weight decay, there are other
+ways to penalize the size of the model parameters. Another option is to use L 1
+regularization.
+Formally, L1 regularization on the model parameter w is de�?ned as:
+�?�
+=
+Ω(θ) = ||w||1
+|w i |,
+
+(7.18)
+
+i
+
+that is, as the sum of absolute values of the individual parameters.2 We will
+now discuss the eﬀect of L1 regularization on the simple linear regression model,
+with no bias parameter, that we studied in our analysis of L2 regularization. In
+particular, we are interested in delineating the diﬀerences between L1 and L2 forms
+As with L2 regularization, we could regularize the parameters towards a value that is not
+(o )
+1
+zero, but instead towards some parameter value
+that case the L regularization would
+�?? w . (In
+o)
+(o)
+introduce the term Ω(θ ) = ||w − w ||1 = i |w i − w i |.
+2
+
+234
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+of regularization. As with L2 weight decay, L 1 weight decay controls the strength
+of the regularization by scaling the penalty Ω using a positive hyperparameter α.
+Thus, the regularized objective function J˜(w; X , y) is given by
+J̃ (w ; X , y) = α||w||1 + J (w; X , y),
+
+(7.19)
+
+with the corresponding gradient (actually, sub-gradient):
+∇w J˜(w; X , y) = αsign(w) + ∇w J (X , y; w)
+
+(7.20)
+
+where sign(w) is simply the sign of w applied element-wise.
+By inspecting equation 7.20, we can see immediately that the eﬀect of L 1
+regularization is quite diﬀerent from that of L2 regularization. Speci�?cally, we can
+see that the regularization contribution to the gradient no longer scales linearly
+with each wi; instead it is a constant factor with a sign equal to sign(wi). One
+consequence of this form of the gradient is that we will not necessarily see clean
+algebraic solutions to quadratic approximations of J(X , y ; w) as we did for L 2
+regularization.
+Our simple linear model has a quadratic cost function that we can represent
+via its Taylor s

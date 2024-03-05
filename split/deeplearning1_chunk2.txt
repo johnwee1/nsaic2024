@@ -1,0 +1,374 @@
+CHAPTER 1. INTRODUCTION
+
+î??î?¯î?¬î?¡î?²î€ î?£î?¯î?¯î?²î?¤î?©î?®î?¡î?´î?¥î?³
+
+î‚µ
+
+î?¹
+
+î?ƒî?¡î?²î?´î?¥î?³î?©î?¡î?®î€ î?£î?¯î?¯î?²î?¤î?©î?®î?¡î?´î?¥î?³
+
+î?¸
+
+î?²
+
+Figure 1.1: Example of diï¬€erent representations: suppose we want to separate two
+categories of data by drawing a line between them in a scatterplot. In the plot on the left,
+we represent some data using Cartesian coordinates, and the task is impossible. In the plot
+on the right, we represent the data with polar coordinates and the task becomes simple to
+solve with a vertical line. Figure produced in collaboration with David Warde-Farley.
+
+One solution to this problem is to use machine learning to discover not only
+the mapping from representation to output but also the representation itself.
+This approach is known as representation learning. Learned representations
+often result in much better performance than can be obtained with hand-designed
+representations. They also allow AI systems to rapidly adapt to new tasks, with
+minimal human intervention. A representation learning algorithm can discover a
+good set of features for a simple task in minutes, or a complex task in hours to
+months. Manually designing features for a complex task requires a great deal of
+human time and eï¬€ort; it can take decades for an entire community of researchers.
+The quintessential example of a representation learning algorithm is the autoencoder. An autoencoder is the combination of an encoder function that
+converts the input data into a diï¬€erent representation, and a decoder function
+that converts the new representation back into the original format. Autoencoders
+are trained to preserve as much information as possible when an input is run
+through the encoder and then the decoder, but are also trained to make the new
+representation have various nice properties. Diï¬€erent kinds of autoencoders aim to
+achieve diï¬€erent kinds of properties.
+When designing features or algorithms for learning features, our goal is usually
+to separate the factors of variation that explain the observed data. In this
+context, we use the word â€œfactorsâ€? simply to refer to separate sources of inï¬‚uence;
+the factors are usually not combined by multiplication. Such factors are often not
+4
+
+CHAPTER 1. INTRODUCTION
+
+quantities that are directly observed. Instead, they may exist either as unobserved
+objects or unobserved forces in the physical world that aï¬€ect observable quantities.
+They may also exist as constructs in the human mind that provide useful simplifying
+explanations or inferred causes of the observed data. They can be thought of as
+concepts or abstractions that help us make sense of the rich variability in the data.
+When analyzing a speech recording, the factors of variation include the speakerâ€™s
+age, their sex, their accent and the words that they are speaking. When analyzing
+an image of a car, the factors of variation include the position of the car, its color,
+and the angle and brightness of the sun.
+A major source of diï¬ƒculty in many real-world artiï¬?cial intelligence applications
+is that many of the factors of variation inï¬‚uence every single piece of data we are
+able to observe. The individual pixels in an image of a red car might be very close
+to black at night. The shape of the carâ€™s silhouette depends on the viewing angle.
+Most applications require us to disentangle the factors of variation and discard the
+ones that we do not care about.
+Of course, it can be very diï¬ƒcult to extract such high-level, abstract features
+from raw data. Many of these factors of variation, such as a speakerâ€™s accent,
+can be identiï¬?ed only using sophisticated, nearly human-level understanding of
+the data. When it is nearly as diï¬ƒcult to obtain a representation as to solve the
+original problem, representation learning does not, at ï¬?rst glance, seem to help us.
+Deep learning solves this central problem in representation learning by introducing representations that are expressed in terms of other, simpler representations.
+Deep learning allows the computer to build complex concepts out of simpler concepts. Figure 1.2 shows how a deep learning system can represent the concept of
+an image of a person by combining simpler concepts, such as corners and contours,
+which are in turn deï¬?ned in terms of edges.
+The quintessential example of a deep learning model is the feedforward deep
+network or multilayer perceptron (MLP). A multilayer perceptron is just a
+mathematical function mapping some set of input values to output values. The
+function is formed by composing many simpler functions. We can think of each
+application of a diï¬€erent mathematical function as providing a new representation
+of the input.
+The idea of learning the right representation for the data provides one perspective on deep learning. Another perspective on deep learning is that depth allows the
+computer to learn a multi-step computer program. Each layer of the representation
+can be thought of as the state of the computerâ€™s memory after executing another
+set of instructions in parallel. Networks with greater depth can execute more
+instructions in sequence. Sequential instructions oï¬€er great power because later
+5
+
+CHAPTER 1. INTRODUCTION
+
+CAR
+
+PERSON
+
+ANIMAL
+
+Output
+(object identity)
+
+3rd hidden layer
+(object parts)
+
+2nd hidden layer
+(corners and
+contours)
+
+1st hidden layer
+(edges)
+
+Visible layer
+(input pixels)
+
+Figure 1.2: Illustration of a deep learning model. It is diï¬ƒcult for a computer to understand
+the meaning of raw sensory input data, such as this image represented as a collection
+of pixel values. The function mapping from a set of pixels to an object identity is very
+complicated. Learning or evaluating this mapping seems insurmountable if tackled directly.
+Deep learning resolves this diï¬ƒculty by breaking the desired complicated mapping into a
+series of nested simple mappings, each described by a diï¬€erent layer of the model. The
+input is presented at the visible layer, so named because it contains the variables that
+we are able to observe. Then a series of hidden layers extracts increasingly abstract
+features from the image. These layers are called â€œhiddenâ€? because their values are not given
+in the data; instead the model must determine which concepts are useful for explaining
+the relationships in the observed data. The images here are visualizations of the kind
+of feature represented by each hidden unit. Given the pixels, the ï¬?rst layer can easily
+identify edges, by comparing the brightness of neighboring pixels. Given the ï¬?rst hidden
+layerâ€™s description of the edges, the second hidden layer can easily search for corners and
+extended contours, which are recognizable as collections of edges. Given the second hidden
+layerâ€™s description of the image in terms of corners and contours, the third hidden layer
+can detect entire parts of speciï¬?c objects, by ï¬?nding speciï¬?c collections of contours and
+corners. Finally, this description of the image in terms of the object parts it contains can
+be used to recognize the objects present in the image. Images reproduced with permission
+from Zeiler and Fergus (2014).
+6
+
+CHAPTER 1. INTRODUCTION
+
+Ïƒ
+
+Element
+Set
+
++
+Ã—
+Ïƒ
+
++
+
+Ã—
+w1
+
+Element
+Set
+
+x1
+
+Ã—
+w2
+
+Logistic
+Regression
+
+x2
+
+Logistic
+Regression
+
+w
+
+x
+
+Figure 1.3: Illustration of computational graphs mapping an input to an output where
+each node performs an operation. Depth is the length of the longest path from input to
+output but depends on the deï¬?nition of what constitutes a possible computational step.
+The computation depicted in these graphs is the output of a logistic regression model,
+Ïƒ(wT x), where Ïƒ is the logistic sigmoid function. If we use addition, multiplication and
+logistic sigmoids as the elements of our computer language, then this model has depth
+three. If we view logistic regression as an element itself, then this model has depth one.
+
+instructions can refer back to the results of earlier instructions. According to this
+view of deep learning, not all of the information in a layerâ€™s activations necessarily
+encodes factors of variation that explain the input. The representation also stores
+state information that helps to execute a program that can make sense of the input.
+This state information could be analogous to a counter or pointer in a traditional
+computer program. It has nothing to do with the content of the input speciï¬?cally,
+but it helps the model to organize its processing.
+There are two main ways of measuring the depth of a model. The ï¬?rst view is
+based on the number of sequential instructions that must be executed to evaluate
+the architecture. We can think of this as the length of the longest path through
+a ï¬‚ow chart that describes how to compute each of the modelâ€™s outputs given
+its inputs. Just as two equivalent computer programs will have diï¬€erent lengths
+depending on which language the program is written in, the same function may
+be drawn as a ï¬‚owchart with diï¬€erent depths depending on which functions we
+allow to be used as individual steps in the ï¬‚owchart. Figure 1.3 illustrates how this
+choice of language can give two diï¬€erent measurements for the same architecture.
+Another approach, used by deep probabilistic models, regards the depth of a
+model as being not the depth of the computational graph but the depth of the
+graph describing how concepts are related to each other. In this case, the depth
+7
+
+CHAPTER 1. INTRODUCTION
+
+of the ï¬‚owchart of the computations needed to compute the representation of
+each concept may be much deeper than the graph of the concepts themselves.
+This is because the systemâ€™s understanding of the simpler concepts can be reï¬?ned
+given information about the more complex concepts. For example, an AI system
+observing an image of a face with one eye in shadow may initially only see one eye.
+After detecting that a face is present, it can then infer that a second eye is probably
+present as well. In this case, the graph of concepts only includes two layersâ€”a
+layer for eyes and a layer for facesâ€”but the graph of computations includes 2n
+layers if we reï¬?ne our estimate of each concept given the other n times.
+Because it is not always clear which of these two viewsâ€”the depth of the
+computational graph, or the depth of the probabilistic modeling graphâ€”is most
+relevant, and because diï¬€erent people choose diï¬€erent sets of smallest elements
+from which to construct their graphs, there is no single correct value for the
+depth of an architecture, just as there is no single correct value for the length of
+a computer program. Nor is there a consensus about how much depth a model
+requires to qualify as â€œdeep.â€? However, deep learning can safely be regarded as the
+study of models that either involve a greater amount of composition of learned
+functions or learned concepts than traditional machine learning does.
+To summarize, deep learning, the subject of this book, is an approach to AI.
+Speciï¬?cally, it is a type of machine learning, a technique that allows computer
+systems to improve with experience and data. According to the authors of this
+book, machine learning is the only viable approach to building AI systems that
+can operate in complicated, real-world environments. Deep learning is a particular
+kind of machine learning that achieves great power and ï¬‚exibility by learning to
+represent the world as a nested hierarchy of concepts, with each concept deï¬?ned in
+relation to simpler concepts, and more abstract representations computed in terms
+of less abstract ones. Figure 1.4 illustrates the relationship between these diï¬€erent
+AI disciplines. Figure 1.5 gives a high-level schematic of how each works.
+
+1.1
+
+Who Should Read This Book?
+
+This book can be useful for a variety of readers, but we wrote it with two main
+target audiences in mind. One of these target audiences is university students
+(undergraduate or graduate) learning about machine learning, including those who
+are beginning a career in deep learning and artiï¬?cial intelligence research. The
+other target audience is software engineers who do not have a machine learning
+or statistics background, but want to rapidly acquire one and begin using deep
+learning in their product or platform. Deep learning has already proven useful in
+8
+
+CHAPTER 1. INTRODUCTION
+
+Deep learning
+Example:
+MLPs
+
+Example:
+Shallow
+autoencoders
+
+Example:
+Logistic
+regression
+
+Example:
+Knowledge
+bases
+
+Representation learning
+
+Machine learning
+
+AI
+
+Figure 1.4: A Venn diagram showing how deep learning is a kind of representation learning,
+which is in turn a kind of machine learning, which is used for many but not all approaches
+to AI. Each section of the Venn diagram includes an example of an AI technology.
+
+9
+
+CHAPTER 1. INTRODUCTION
+
+Output
+
+Output
+
+Output
+
+Mapping from
+features
+
+Output
+
+Mapping from
+features
+
+Mapping from
+features
+
+Additional
+layers of more
+abstract
+features
+
+Handdesigned
+program
+
+Handdesigned
+features
+
+Features
+
+Simple
+features
+
+Input
+
+Input
+
+Input
+
+Input
+
+Rule-based
+systems
+
+Classic
+machine
+learning
+
+Deep
+learning
+Representation
+learning
+
+Figure 1.5: Flowcharts showing how the diï¬€erent parts of an AI system relate to each
+other within diï¬€erent AI disciplines. Shaded boxes indicate components that are able to
+learn from data.
+
+10
+
+CHAPTER 1. INTRODUCTION
+
+many software disciplines including computer vision, speech and audio processing,
+natural language processing, robotics, bioinformatics and chemistry, video games,
+search engines, online advertising and ï¬?nance.
+This book has been organized into three parts in order to best accommodate a
+variety of readers. Part I introduces basic mathematical tools and machine learning
+concepts. Part II describes the most established deep learning algorithms that are
+essentially solved technologies. Part III describes more speculative ideas that are
+widely believed to be important for future research in deep learning.
+Readers should feel free to skip parts that are not relevant given their interests
+or background. Readers familiar with linear algebra, probability, and fundamental
+machine learning concepts can skip part I, for example, while readers who just want
+to implement a working system need not read beyond part II. To help choose which
+chapters to read, ï¬?gure 1.6 provides a ï¬‚owchart showing the high-level organization
+of the book.
+We do assume that all readers come from a computer science background. We
+assume familiarity with programming, a basic understanding of computational
+performance issues, complexity theory, introductory level calculus and some of the
+terminology of graph theory.
+
+1.2
+
+Historical Trends in Deep Learning
+
+It is easiest to understand deep learning with some historical context. Rather than
+providing a detailed history of deep learning, we identify a few key trends:
+â€¢ Deep learning has had a long and rich history, but has gone by many names
+reï¬‚ecting diï¬€erent philosophical viewpoints, and has waxed and waned in
+popularity.
+â€¢ Deep learning has become more useful as the amount of available training
+data has increased.
+â€¢ Deep learning models have grown in size over time as computer infrastructure
+(both hardware and software) for deep learning has improved.
+â€¢ Deep learning has solved increasingly complicated applications with increasing
+accuracy over time.
+
+11
+
+CHAPTER 1. INTRODUCTION
+
+1. Introduction
+
+Part I: Applied Math and Machine Learning Basics
+2. Linear Algebra
+
+3. Probabili

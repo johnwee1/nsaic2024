@@ -1,0 +1,268 @@
+a representation
+474
+
+CHAPTER 12. APPLICATIONS
+
+learning point of view, it can be useful to learn a representation in which sentences
+that have the same meaning have similar representations regardless of whether
+they were written in the source language or the target language. This strategy was
+explored ï¬?rst using a combination of convolutions and RNNs (Kalchbrenner and
+Blunsom, 2013). Later work introduced the use of an RNN for scoring proposed
+translations (Cho et al., 2014a) and for generating translated sentences (Sutskever
+et al., 2014). Jean et al. (2014) scaled these models to larger vocabularies.
+12.4.5.1
+
+Using an Attention Mechanism and Aligning Pieces of Data
+
+c
++
+
+Î± (tâˆ’1)
+
+Î± (t)
+
+Ã—
+h(tâˆ’1)
+
+Î±(t+1)
+Ã—
+
+h(t)
+
+Ã—
+h(t+1)
+
+Figure 12.6: A modern attention mechanism, as introduced by Bahdanau et al. (2015), is
+essentially a weighted average. A context vector c is formed by taking a weighted average
+of feature vectors h (t) with weights Î± (t) . In some applications, the feature vectorsh are
+hidden units of a neural network, but they may also be raw input to the model. The
+weights Î± (t) are produced by the model itself. They are usually values in the interval
+[0, 1] and are intended to concentrate around just one h(t) so that the weighted average
+approximates reading that one speciï¬?c time step precisely. The weightsÎ± (t) are usually
+produced by applying a softmax function to relevance scores emitted by another portion
+of the model. The attention mechanism is more expensive computationally than directly
+indexing the desired h(t), but direct indexing cannot be trained with gradient descent. The
+attention mechanism based on weighted averages is a smooth, diï¬€erentiable approximation
+that can be trained with existing optimization algorithms.
+
+Using a ï¬?xed-size representation to capture all the semantic details of a very
+long sentence of say 60 words is very diï¬ƒcult. It can be achieved by training a
+suï¬ƒciently large RNN well enough and for long enough, as demonstrated by Cho
+et al. (2014a) and Sutskever et al. (2014). However, a more eï¬ƒcient approach is
+to read the whole sentence or paragraph (to get the context and the gist of what
+475
+
+CHAPTER 12. APPLICATIONS
+
+is being expressed), then produce the translated words one at a time, each time
+focusing on a diï¬€erent part of the input sentence in order to gather the semantic
+details that are required to produce the next output word. That is exactly the
+idea that Bahdanau et al. (2015) ï¬?rst introduced. The attention mechanism used
+to focus on speciï¬?c parts of the input sequence at each time step is illustrated in
+ï¬?gure 12.6.
+We can think of an attention-based system as having three components:
+1. A process that â€œ readsâ€? raw data (such as source words in a source sentence),
+and converts them into distributed representations, with one feature vector
+associated with each word position.
+2. A list of feature vectors storing the output of the reader. This can be
+understood as a â€œ memoryâ€? containing a sequence of facts, which can be
+retrieved later, not necessarily in the same order, without having to visit all
+of them.
+3. A process that â€œ exploitsâ€? the content of the memory to sequentially perform
+a task, at each time step having the ability put attention on the content of
+one memory element (or a few, with a diï¬€erent weight).
+The third component generates the translated sentence.
+When words in a sentence written in one language are aligned with corresponding words in a translated sentence in another language, it becomes possible to relate
+the corresponding word embeddings. Earlier work showed that one could learn a
+kind of translation matrix relating the word embeddings in one language with the
+word embeddings in another (KoÄ?iskÃ½ et al., 2014), yielding lower alignment error
+rates than traditional approaches based on the frequency counts in the phrase table.
+There is even earlier work on learning cross-lingual word vectors (Klementiev et al.,
+2012). Many extensions to this approach are possible. For example, more eï¬ƒcient
+cross-lingual alignment (Gouws et al., 2014) allows training on larger datasets.
+
+12.4.6
+
+Historical Perspective
+
+The idea of distributed representations for symbols was introduced by Rumelhart
+et al. (1986a) in one of the ï¬?rst explorations of back-propagation, with symbols
+corresponding to the identity of family members and the neural network capturing
+the relationships between family members, with training examples forming triplets
+such as (Colin, Mother, Victoria). The ï¬?rst layer of the neural network learned
+a representation of each family member. For example, the features for Colin
+476
+
+CHAPTER 12. APPLICATIONS
+
+might represent which family tree Colin was in, what branch of that tree he was
+in, what generation he was from, etc. One can think of the neural network as
+computing learned rules relating these attributes together in order to obtain the
+desired predictions. The model can then make predictions such as inferring who is
+the mother of Colin.
+The idea of forming an embedding for a symbol was extended to the idea of an
+embedding for a word by Deerwester et al. (1990). These embeddings were learned
+using the SVD. Later, embeddings would be learned by neural networks.
+The history of natural language processing is marked by transitions in the
+popularity of diï¬€erent ways of representing the input to the model. Following
+this early work on symbols or words, some of the earliest applications of neural
+networks to NLP (Miikkulainen and Dyer, 1991; Schmidhuber, 1996) represented
+the input as a sequence of characters.
+Bengio et al. (2001) returned the focus to modeling words and introduced
+neural language models, which produce interpretable word embeddings. These
+neural models have scaled up from deï¬?ning representations of a small set of symbols
+in the 1980s to millions of words (including proper nouns and misspellings) in
+modern applications. This computational scaling eï¬€ort led to the invention of the
+techniques described above in section 12.4.3.
+Initially, the use of words as the fundamental units of language models yielded
+improved language modeling performance (Bengio et al., 2001). To this day,
+new techniques continually push both character-based models (Sutskever et al.,
+2011) and word-based models forward, with recent work (Gillick et al., 2015) even
+modeling individual bytes of Unicode characters.
+The ideas behind neural language models have been extended into several
+natural language processing applications, such as parsing (Henderson, 2003, 2004;
+Collobert, 2011), part-of-speech tagging, semantic role labeling, chunking, etc,
+sometimes using a single multi-task learning architecture (Collobert and Weston,
+2008a; Collobert et al., 2011a) in which the word embeddings are shared across
+tasks.
+Two-dimensional visualizations of embeddings became a popular tool for analyzing language models following the development of the t-SNE dimensionality
+reduction algorithm (van der Maaten and Hinton, 2008) and its high-proï¬?le application to visualization word embeddings by Joseph Turian in 2009.
+
+477
+
+CHAPTER 12. APPLICATIONS
+
+12.5
+
+Other Applications
+
+In this section we cover a few other types of applications of deep learning that
+are diï¬€erent from the standard object recognition, speech recognition and natural
+language processing tasks discussed above. Part III of this book will expand that
+scope even further to tasks that remain primarily research areas.
+
+12.5.1
+
+Recommender Systems
+
+One of the major families of applications of machine learning in the information
+technology sector is the ability to make recommendations of items to potential
+users or customers. Two major types of applications can be distinguished: online
+advertising and item recommendations (often these recommendations are still for
+the purpose of selling a product). Both rely on predicting the association between
+a user and an item, either to predict the probability of some action (the user
+buying the product, or some proxy for this action) or the expected gain (which
+may depend on the value of the product) if an ad is shown or a recommendation is
+made regarding that product to that user. The internet is currently ï¬?nanced in
+great part by various forms of online advertising. There are major parts of the
+economy that rely on online shopping. Companies including Amazon and eBay
+use machine learning, including deep learning, for their product recommendations.
+Sometimes, the items are not products that are actually for sale. Examples include
+selecting posts to display on social network news feeds, recommending movies to
+watch, recommending jokes, recommending advice from experts, matching players
+for video games, or matching people in dating services.
+Often, this association problem is handled like a supervised learning problem:
+given some information about the item and about the user, predict the proxy of
+interest (user clicks on ad, user enters a rating, user clicks on a â€œlikeâ€? button, user
+buys product, user spends some amount of money on the product, user spends
+time visiting a page for the product, etc). This often ends up being either a
+regression problem (predicting some conditional expected value) or a probabilistic
+classiï¬?cation problem (predicting the conditional probability of some discrete
+event).
+The early work on recommender systems relied on minimal information as
+inputs for these predictions: the user ID and the item ID. In this context, the
+only way to generalize is to rely on the similarity between the patterns of values of
+the target variable for diï¬€erent users or for diï¬€erent items. Suppose that user 1
+and user 2 both like items A, B and C. From this, we may infer that user 1 and
+478
+
+CHAPTER 12. APPLICATIONS
+
+user 2 have similar tastes. If user 1 likes item D, then this should be a strong
+cue that user 2 will also like D. Algorithms based on this principle come under
+the name of collaborative ï¬?ltering. Both non-parametric approaches (such as
+nearest-neighbor methods based on the estimated similarity between patterns of
+preferences) and parametric methods are possible. Parametric methods often rely
+on learning a distributed representation (also called an embedding) for each user
+and for each item. Bilinear prediction of the target variable (such as a rating) is a
+simple parametric method that is highly successful and often found as a component
+of state-of-the-art systems. The prediction is obtained by the dot product between
+the user embedding and the item embedding (possibly corrected by constants that
+depend only on either the user ID or the item ID). Let RÌ‚ be the matrix containing
+our predictions, A a matrix with user embeddings in its rows and B a matrix with
+item embeddings in its columns. Let b and c be vectors that contain respectively
+a kind of bias for each user (representing how grumpy or positive that user is
+in general) and for each item (representing its general popularity). The bilinear
+prediction is thus obtained as follows:
+î?˜
+RÌ‚u,i = bu + c i +
+A u,j Bj,i.
+(12.20)
+j
+
+Typically one wants to minimize the squared error between predicted ratings
+RÌ‚u,i and actual ratings Ru,i . User embeddings and item embeddings can then be
+conveniently visualized when they are ï¬?rst reduced to a low dimension (two or
+three), or they can be used to compare users or items against each other, just
+like word embeddings. One way to obtain these embeddings is by performing a
+singular value decomposition of the matrix R of actual targets (such as ratings).
+This corresponds to factorizing R = U DV î€° (or a normalized variant) into the
+product of two factors, the lower rank matrices A = U D and B = V î€° . One
+problem with the SVD is that it treats the missing entries in an arbitrary way,
+as if they corresponded to a target value of 0. Instead we would like to avoid
+paying any cost for the predictions made on missing entries. Fortunately, the sum
+of squared errors on the observed ratings can also be easily minimized by gradientbased optimization. The SVD and the bilinear prediction of equation 12.20 both
+performed very well in the competition for the Netï¬‚ix prize (Bennett and Lanning,
+2007), aiming at predicting ratings for ï¬?lms, based only on previous ratings by
+a large set of anonymous users. Many machine learning experts participated in
+this competition, which took place between 2006 and 2009. It raised the level of
+research in recommender systems using advanced machine learning and yielded
+improvements in recommender systems. Even though it did not win by itself,
+the simple bilinear prediction or SVD was a component of the ensemble models
+479
+
+CHAPTER 12. APPLICATIONS
+
+presented by most of the competitors, including the winners (TÃ¶scher et al., 2009;
+Koren, 2009).
+Beyond these bilinear models with distributed representations, one of the ï¬?rst
+uses of neural networks for collaborative ï¬?ltering is based on the RBM undirected
+probabilistic model (Salakhutdinov et al., 2007). RBMs were an important element
+of the ensemble of methods that won the Netï¬‚ix competition (TÃ¶scher et al., 2009;
+Koren, 2009). More advanced variants on the idea of factorizing the ratings matrix
+have also been explored in the neural networks community (Salakhutdinov and
+Mnih, 2008).
+However, there is a basic limitation of collaborative ï¬?ltering systems: when a
+new item or a new user is introduced, its lack of rating history means that there
+is no way to evaluate its similarity with other items or users (respectively), or
+the degree of association between, say, that new user and existing items. This
+is called the problem of cold-start recommendations. A general way of solving
+the cold-start recommendation problem is to introduce extra information about
+the individual users and items. For example, this extra information could be user
+proï¬?le information or features of each item. Systems that use such information
+are called content-based recommender systems. The mapping from a rich
+set of user features or item features to an embedding can be learned through a
+deep learning architecture (Huang et al., 2013; Elkahky et al., 2015).
+Specialized deep learning architectures such as convolutional networks have also
+been applied to learn to extract features from rich content such as from musical
+audio tracks, for music recommendation (van den OÃ¶rd et al., 2013). In that work,
+the convolutional net takes acoustic features as input and computes an embedding
+for the associated song. The dot product between this song embedding and the
+embedding for a user is then used to predict whether a user will listen to the song.
+12.5.1.1
+
+Exploration Versus Exploitation
+
+When making recommendations to users, an issue arises that goes beyond ordinary
+supervised learning and into the realm of reinforcement learning. Many recommendation problems are most accurately described theoretically as contextual
+bandits (Langford and Zhang, 2008; Lu et al., 2010). The issue is that when we
+use the recommendation system to collect data, we get a biased and incomplete
+view of the preferences of users: we only see the responses of users to the items
+they were recommended and not to the other items. In addition, in some cases
+we may not get any information on users for whom no recommendation has been
+made (for example, with ad auctions, it may be that the price proposed for an
+480
+
+CHAPTER 12. APPLICATIONS
+
+ad was below a minimum price threshold, or d

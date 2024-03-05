@@ -1,0 +1,242 @@
+in a model of a small patch, as Coates et al. (2011) do with k-means.
+We can then use the parameters from this patch-based model to deï¬?ne the kernels
+of a convolutional layer. This means that it is possible to use unsupervised learning
+to train a convolutional network without ever using convolution during the training
+process. Using this approach, we can train very large models and incur a high
+computational cost only at inference time (Ranzato et al., 2007b; Jarrett et al.,
+2009; Kavukcuoglu et al., 2010; Coates et al., 2013). This approach was popular
+from roughly 2007â€“2013, when labeled datasets were small and computational
+power was more limited. Today, most convolutional networks are trained in a
+purely supervised fashion, using full forward and back-propagation through the
+entire network on each training iteration.
+As with other approaches to unsupervised pretraining, it remains diï¬ƒcult to
+tease apart the cause of some of the beneï¬?ts seen with this approach. Unsupervised
+pretraining may oï¬€er some regularization relative to supervised training, or it may
+simply allow us to train much larger architectures due to the reduced computational
+cost of the learning rule.
+
+9.10
+
+The Neuroscientiï¬?c Basis for Convolutional Networks
+
+Convolutional networks are perhaps the greatest success story of biologically
+inspired artiï¬?cial intelligence. Though convolutional networks have been guided
+by many other ï¬?elds, some of the key design principles of neural networks were
+drawn from neuroscience.
+The history of convolutional networks begins with neuroscientiï¬?c experiments
+long before the relevant computational models were developed. Neurophysiologists
+David Hubel and Torsten Wiesel collaborated for several years to determine many
+of the most basic facts about how the mammalian vision system works (Hubel and
+Wiesel, 1959, 1962, 1968). Their accomplishments were eventually recognized with
+a Nobel prize. Their ï¬?ndings that have had the greatest inï¬‚uence on contemporary
+deep learning models were based on recording the activity of individual neurons in
+cats. They observed how neurons in the catâ€™s brain responded to images projected
+in precise locations on a screen in front of the cat. Their great discovery was
+that neurons in the early visual system responded most strongly to very speciï¬?c
+patterns of light, such as precisely oriented bars, but responded hardly at all to
+other patterns.
+364
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Their work helped to characterize many aspects of brain function that are
+beyond the scope of this book. From the point of view of deep learning, we can
+focus on a simpliï¬?ed, cartoon view of brain function.
+In this simpliï¬?ed view, we focus on a part of the brain called V1, also known
+as the primary visual cortex. V1 is the ï¬?rst area of the brain that begins to
+perform signiï¬?cantly advanced processing of visual input. In this cartoon view,
+images are formed by light arriving in the eye and stimulating the retina, the
+light-sensitive tissue in the back of the eye. The neurons in the retina perform
+some simple preprocessing of the image but do not substantially alter the way it is
+represented. The image then passes through the optic nerve and a brain region
+called the lateral geniculate nucleus. The main role, as far as we are concerned
+here, of both of these anatomical regions is primarily just to carry the signal from
+the eye to V1, which is located at the back of the head.
+A convolutional network layer is designed to capture three properties of V1:
+1. V1 is arranged in a spatial map. It actually has a two-dimensional structure
+mirroring the structure of the image in the retina. For example, light
+arriving at the lower half of the retina aï¬€ects only the corresponding half of
+V1. Convolutional networks capture this property by having their features
+deï¬?ned in terms of two dimensional maps.
+2. V1 contains many simple cells. A simple cellâ€™s activity can to some extent
+be characterized by a linear function of the image in a small, spatially
+localized receptive ï¬?eld. The detector units of a convolutional network are
+designed to emulate these properties of simple cells.
+3. V1 also contains many complex cells. These cells respond to features that
+are similar to those detected by simple cells, but complex cells are invariant
+to small shifts in the position of the feature. This inspires the pooling units
+of convolutional networks. Complex cells are also invariant to some changes
+in lighting that cannot be captured simply by pooling over spatial locations.
+These invariances have inspired some of the cross-channel pooling strategies
+in convolutional networks, such as maxout units (Goodfellow et al., 2013a).
+Though we know the most about V1, it is generally believed that the same
+basic principles apply to other areas of the visual system. In our cartoon view of
+the visual system, the basic strategy of detection followed by pooling is repeatedly
+applied as we move deeper into the brain. As we pass through multiple anatomical
+layers of the brain, we eventually ï¬?nd cells that respond to some speciï¬?c concept
+and are invariant to many transformations of the input. These cells have been
+365
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+nicknamed â€œgrandmother cellsâ€?â€”the idea is that a person could have a neuron that
+activates when seeing an image of their grandmother, regardless of whether she
+appears in the left or right side of the image, whether the image is a close-up of
+her face or zoomed out shot of her entire body, whether she is brightly lit, or in
+shadow, etc.
+These grandmother cells have been shown to actually exist in the human brain,
+in a region called the medial temporal lobe (Quiroga et al., 2005). Researchers
+tested whether individual neurons would respond to photos of famous individuals.
+They found what has come to be called the â€œHalle Berry neuronâ€?: an individual
+neuron that is activated by the concept of Halle Berry. This neuron ï¬?res when a
+person sees a photo of Halle Berry, a drawing of Halle Berry, or even text containing
+the words â€œHalle Berry.â€? Of course, this has nothing to do with Halle Berry herself;
+other neurons responded to the presence of Bill Clinton, Jennifer Aniston, etc.
+These medial temporal lobe neurons are somewhat more general than modern
+convolutional networks, which would not automatically generalize to identifying
+a person or object when reading its name. The closest analog to a convolutional
+networkâ€™s last layer of features is a brain area called the inferotemporal cortex
+(IT). When viewing an object, information ï¬‚ows from the retina, through the
+LGN, to V1, then onward to V2, then V4, then IT. This happens within the ï¬?rst
+100ms of glimpsing an object. If a person is allowed to continue looking at the
+object for more time, then information will begin to ï¬‚ow backwards as the brain
+uses top-down feedback to update the activations in the lower level brain areas.
+However, if we interrupt the personâ€™s gaze, and observe only the ï¬?ring rates that
+result from the ï¬?rst 100ms of mostly feedforward activation, then IT proves to be
+very similar to a convolutional network. Convolutional networks can predict IT
+ï¬?ring rates, and also perform very similarly to (time limited) humans on object
+recognition tasks (DiCarlo, 2013).
+That being said, there are many diï¬€erences between convolutional networks
+and the mammalian vision system. Some of these diï¬€erences are well known
+to computational neuroscientists, but outside the scope of this book. Some of
+these diï¬€erences are not yet known, because many basic questions about how the
+mammalian vision system works remain unanswered. As a brief list:
+â€¢ The human eye is mostly very low resolution, except for a tiny patch called the
+fovea. The fovea only observes an area about the size of a thumbnail held at
+arms length. Though we feel as if we can see an entire scene in high resolution,
+this is an illusion created by the subconscious part of our brain, as it stitches
+together several glimpses of small areas. Most convolutional networks actually
+receive large full resolution photographs as input. The human brain makes
+366
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+several eye movements called saccades to glimpse the most visually salient
+or task-relevant parts of a scene. Incorporating similar attention mechanisms
+into deep learning models is an active research direction. In the context of
+deep learning, attention mechanisms have been most successful for natural
+language processing, as described in section 12.4.5.1. Several visual models
+with foveation mechanisms have been developed but so far have not become
+the dominant approach (Larochelle and Hinton, 2010; Denil et al., 2012).
+â€¢ The human visual system is integrated with many other senses, such as
+hearing, and factors like our moods and thoughts. Convolutional networks
+so far are purely visual.
+â€¢ The human visual system does much more than just recognize objects. It is
+able to understand entire scenes including many objects and relationships
+between objects, and processes rich 3-D geometric information needed for
+our bodies to interface with the world. Convolutional networks have been
+applied to some of these problems but these applications are in their infancy.
+â€¢ Even simple brain areas like V1 are heavily impacted by feedback from higher
+levels. Feedback has been explored extensively in neural network models but
+has not yet been shown to oï¬€er a compelling improvement.
+â€¢ While feedforward IT ï¬?ring rates capture much of the same information as
+convolutional network features, it is not clear how similar the intermediate
+computations are. The brain probably uses very diï¬€erent activation and
+pooling functions. An individual neuronâ€™s activation probably is not wellcharacterized by a single linear ï¬?lter response. A recent model of V1 involves
+multiple quadratic ï¬?lters for each neuron (Rust et al., 2005). Indeed our
+cartoon picture of â€œsimple cellsâ€? and â€œcomplex cellsâ€? might create a nonexistent distinction; simple cells and complex cells might both be the same
+kind of cell but with their â€œparametersâ€? enabling a continuum of behaviors
+ranging from what we call â€œsimpleâ€? to what we call â€œcomplex.â€?
+It is also worth mentioning that neuroscience has told us relatively little
+about how to train convolutional networks. Model structures with parameter
+sharing across multiple spatial locations date back to early connectionist models
+of vision (Marr and Poggio, 1976), but these models did not use the modern
+back-propagation algorithm and gradient descent. For example, the Neocognitron
+(Fukushima, 1980) incorporated most of the model architecture design elements of
+the modern convolutional network but relied on a layer-wise unsupervised clustering
+algorithm.
+367
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Lang and Hinton (1988) introduced the use of back-propagation to train
+time-delay neural networks (TDNNs). To use contemporary terminology,
+TDNNs are one-dimensional convolutional networks applied to time series. Backpropagation applied to these models was not inspired by any neuroscientiï¬?c observation and is considered by some to be biologically implausible. Following the success
+of back-propagation-based training of TDNNs, (LeCun et al., 1989) developed
+the modern convolutional network by applying the same training algorithm to 2-D
+convolution applied to images.
+So far we have described how simple cells are roughly linear and selective for
+certain features, complex cells are more nonlinear and become invariant to some
+transformations of these simple cell features, and stacks of layers that alternate
+between selectivity and invariance can yield grandmother cells for very speciï¬?c
+phenomena. We have not yet described precisely what these individual cells detect.
+In a deep, nonlinear network, it can be diï¬ƒcult to understand the function of
+individual cells. Simple cells in the ï¬?rst layer are easier to analyze, because their
+responses are driven by a linear function. In an artiï¬?cial neural network, we can
+just display an image of the convolution kernel to see what the corresponding
+channel of a convolutional layer responds to. In a biological neural network, we
+do not have access to the weights themselves. Instead, we put an electrode in the
+neuron itself, display several samples of white noise images in front of the animalâ€™s
+retina, and record how each of these samples causes the neuron to activate. We can
+then ï¬?t a linear model to these responses in order to obtain an approximation of
+the neuronâ€™s weights. This approach is known as reverse correlation (Ringach
+and Shapley, 2004).
+Reverse correlation shows us that most V1 cells have weights that are described
+by Gabor functions. The Gabor function describes the weight at a 2-D point
+in the image. We can think of an image as being a function of 2-D coordinates,
+I(x, y). Likewise, we can think of a simple cell as sampling the image at a set of
+locations, deï¬?ned by a set of x coordinates X and a set of y coordinates, Y , and
+applying weights that are also a function of the location, w(x, y). From this point
+of view, the response of a simple cell to an image is given by
+î?˜î?˜
+s (I ) =
+w (x, y )I (x, y ).
+(9.15)
+xâˆˆX yâˆˆY
+
+Speciï¬?cally, w (x, y ) takes the form of a Gabor function:
+î€€
+î€?
+w (x, y ; Î±, Î²x , Î²y , f, Ï†, x 0, y 0, Ï„ ) = Î± exp âˆ’Î²x x î€°2 âˆ’ Î² y yî€°2 cos(f xî€° + Ï†),
+
+where
+
+xî€° = (x âˆ’ x0 ) cos(Ï„ ) + (y âˆ’ y0) sin(Ï„ )
+368
+
+(9.16)
+(9.17)
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+and
+y î€° = âˆ’(x âˆ’ x 0) sin(Ï„ ) + (y âˆ’ y0) cos(Ï„ ).
+
+(9.18)
+
+Here, Î±, Î² x , Î²y , f, Ï†, x 0 , y0, and Ï„ are parameters that control the properties
+of the Gabor function. Figure 9.18 shows some examples of Gabor functions with
+diï¬€erent settings of these parameters.
+The parameters x0, y0 , and Ï„ deï¬?ne a coordinate system. We translate and
+rotate x and y to form xî€° and yî€° . Speciï¬?cally, the simple cell will respond to image
+features centered at the point (x0, y 0), and it will respond to changes in brightness
+as we move along a line rotated Ï„ radians from the horizontal.
+Viewed as a function of xî€° and yî€° , the function w then responds to changes in
+brightness as we move along the xî€° axis. It has two important factors: one is a
+Gaussian function and the other is a cosine function.
+î€€
+î€?
+The Gaussian factor Î± exp âˆ’Î²x xî€°2 âˆ’ Î² yy î€°2 can be seen as a gating term that
+ensures the simple cell will only respond to values near where x î€° and yî€° are both
+zero, in other words, near the center of the cellâ€™s receptive ï¬?eld. The scaling factor
+Î± adjusts the total magnitude of the simple cellâ€™s response, while Î² x and Î² y control
+how quickly its receptive ï¬?eld falls oï¬€.
+The cosine factor cos(f xî€° + Ï†) controls how the simple cell responds to changing
+brightness along the xî€° axis. The parameter f controls the frequency of the cosine
+and Ï† controls its phase oï¬€set.
+Altogether, this cartoon view of simple cells means that a simple cell responds
+to a speciï¬?c spatial frequency of brightness in a speciï¬?c direction at a speciï¬?c
+location. Simple cells are most excited when the wave of brightness in the image
+has the same phase as the weights. This occurs when the image is bright where the
+weights are positive and dark where the weights are negative. Simple cells are most
+inhibited when the wave of brightness is ful

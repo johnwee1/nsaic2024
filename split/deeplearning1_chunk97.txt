@@ -1,0 +1,433 @@
+etworks
+
+Deep belief networks (DBNs) were one of the ï¬?rst non-convolutional models
+to successfully admit training of deep architectures (Hinton et al., 2006; Hinton,
+2007b). The introduction of deep belief networks in 2006 began the current deep
+learning renaissance. Prior to the introduction of deep belief networks, deep models
+were considered too diï¬ƒcult to optimize. Kernel machines with convex objective
+functions dominated the research landscape. Deep belief networks demonstrated
+that deep architectures can be successful, by outperforming kernelized support
+vector machines on the MNIST dataset (Hinton et al., 2006). Today, deep belief
+networks have mostly fallen out of favor and are rarely used, even compared to
+other unsupervised or generative learning algorithms, but they are still deservedly
+recognized for their important role in deep learning history.
+Deep belief networks are generative models with several layers of latent variables.
+The latent variables are typically binary, while the visible units may be binary
+or real. There are no intralayer connections. Usually, every unit in each layer is
+connected to every unit in each neighboring layer, though it is possible to construct
+more sparsely connected DBNs. The connections between the top two layers are
+undirected. The connections between all other layers are directed, with the arrows
+pointed toward the layer that is closest to the data. See ï¬?gure 20.1b for an example.
+A DBN with l hidden layers contains l weight matrices: W (1) , . . . , W (l). It
+also contains l+ 1 bias vectors: b (0), . . . , b(l) , with b(0) providing the biases for the
+visible layer. The probability distribution represented by the DBN is given by
+î€? î€¾
+î€‘
+(l)
+(l)
+(l)
+( l ) ( l)
+(lâˆ’1)
+(lâˆ’1)î€¾ (lâˆ’1)
+(lâˆ’1)î€¾
+P (h , h
+h +b
+h
++h
+W h
+,
+(20.17)
+) âˆ? exp b
+î€?
+î€‘
+(k )
+(k+1)î€¾ (k+1)
+bi + W:,i
+h
+âˆ€i, âˆ€k âˆˆ 1, . . . , l âˆ’ 2,
+î€?
+î€‘
+(0)
+(1)î€¾
+P (v i = 1 | h (1)) = Ïƒ bi + W :,i h(1) âˆ€i.
+
+(k)
+P (h i = 1 | h(k+1) ) = Ïƒ
+
+In the case of real-valued visible units, substitute
+î€?
+î€‘
+(0)
+(1)î€¾ (1)
+âˆ’1
+h ,Î²
+v âˆ¼ N v; b + W
+660
+
+(20.18)
+(20.19)
+
+(20.20)
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+with Î² diagonal for tractability. Generalizations to other exponential family visible
+units are straightforward, at least in theory. A DBN with only one hidden layer is
+just an RBM.
+To generate a sample from a DBN, we ï¬?rst run several steps of Gibbs sampling
+on the top two hidden layers. This stage is essentially drawing a sample from
+the RBM deï¬?ned by the top two hidden layers. We can then use a single pass of
+ancestral sampling through the rest of the model to draw a sample from the visible
+units.
+Deep belief networks incur many of the problems associated with both directed
+models and undirected models.
+Inference in a deep belief network is intractable due to the explaining away
+eï¬€ect within each directed layer, and due to the interaction between the two hidden
+layers that have undirected connections. Evaluating or maximizing the standard
+evidence lower bound on the log-likelihood is also intractable, because the evidence
+lower bound takes the expectation of cliques whose size is equal to the network
+width.
+Evaluating or maximizing the log-likelihood requires not just confronting the
+problem of intractable inference to marginalize out the latent variables, but also
+the problem of an intractable partition function within the undirected model of
+the top two layers.
+To train a deep belief network, one begins by training an RBM to maximize
+Evâˆ¼p data log p(v) using contrastive divergence or stochastic maximum likelihood.
+The parameters of the RBM then deï¬?ne the parameters of the ï¬?rst layer of the
+DBN. Next, a second RBM is trained to approximately maximize
+Evâˆ¼pdata Eh(1)âˆ¼p (1)(h(1)|v) log p(2) (h (1))
+
+(20.21)
+
+where p (1) is the probability distribution represented by the ï¬?rst RBM and p (2)
+is the probability distribution represented by the second RBM. In other words,
+the second RBM is trained to model the distribution deï¬?ned by sampling the
+hidden units of the ï¬?rst RBM, when the ï¬?rst RBM is driven by the data. This
+procedure can be repeated indeï¬?nitely, to add as many layers to the DBN as
+desired, with each new RBM modeling the samples of the previous one. Each RBM
+deï¬?nes another layer of the DBN. This procedure can be justiï¬?ed as increasing a
+variational lower bound on the log-likelihood of the data under the DBN (Hinton
+et al., 2006).
+In most applications, no eï¬€ort is made to jointly train the DBN after the greedy
+layer-wise procedure is complete. However, it is possible to perform generative
+ï¬?ne-tuning using the wake-sleep algorithm.
+661
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+The trained DBN may be used directly as a generative model, but most of the
+interest in DBNs arose from their ability to improve classiï¬?cation models. We can
+take the weights from the DBN and use them to deï¬?ne an MLP:
+î€?
+î€‘
+h(1) = Ïƒ b (1) + v î€¾W (1) .
+(20.22)
+h
+
+( l)
+
+=Ïƒ
+
+î€?
+
+b(i l) + h (lâˆ’1)î€¾W (l)
+
+î€‘
+
+âˆ€l âˆˆ 2, . . . , m,
+
+(20.23)
+
+After initializing this MLP with the weights and biases learned via generative
+training of the DBN, we may train the MLP to perform a classiï¬?cation task. This
+additional training of the MLP is an example of discriminative ï¬?ne-tuning.
+This speciï¬?c choice of MLP is somewhat arbitrary, compared to many of the
+inference equations in chapter 19 that are derived from ï¬?rst principles. This MLP
+is a heuristic choice that seems to work well in practice and is used consistently
+in the literature. Many approximate inference techniques are motivated by their
+ability to ï¬?nd a maximally tight variational lower bound on the log-likelihood
+under some set of constraints. One can construct a variational lower bound on the
+log-likelihood using the hidden unit expectations deï¬?ned by the DBNâ€™s MLP, but
+this is true of any probability distribution over the hidden units, and there is no
+reason to believe that this MLP provides a particularly tight bound. In particular,
+the MLP ignores many important interactions in the DBN graphical model. The
+MLP propagates information upward from the visible units to the deepest hidden
+units, but does not propagate any information downward or sideways. The DBN
+graphical model has explaining away interactions between all of the hidden units
+within the same layer as well as top-down interactions between layers.
+While the log-likelihood of a DBN is intractable, it may be approximated with
+AIS (Salakhutdinov and Murray, 2008). This permits evaluating its quality as a
+generative model.
+The term â€œdeep belief networkâ€? is commonly used incorrectly to refer to any
+kind of deep neural network, even networks without latent variable semantics.
+The term â€œdeep belief networkâ€? should refer speciï¬?cally to models with undirected
+connections in the deepest layer and directed connections pointing downward
+between all other pairs of consecutive layers.
+The term â€œdeep belief networkâ€? may also cause some confusion because the
+term â€œbelief networkâ€? is sometimes used to refer to purely directed models, while
+deep belief networks contain an undirected layer. Deep belief networks also share
+the acronym DBN with dynamic Bayesian networks (Dean and Kanazawa, 1989),
+which are Bayesian networks for representing Markov chains.
+662
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+h(2)
+1
+
+h(1)
+1
+
+h3
+
+(1)
+
+h(1)
+2
+
+v1
+
+(2)
+
+h(2)
+2
+
+h(1)
+4
+
+h3
+
+v2
+
+v3
+
+Figure 20.2: The graphical model for a deep Boltzmann machine with one visible layer
+(bottom) and two hidden layers. Connections are only between units in neighboring layers.
+There are no intralayer layer connections.
+
+20.4
+
+Deep Boltzmann Machines
+
+A deep Boltzmann machine or DBM (Salakhutdinov and Hinton, 2009a) is
+another kind of deep, generative model. Unlike the deep belief network (DBN),
+it is an entirely undirected model. Unlike the RBM, the DBM has several layers
+of latent variables (RBMs have just one). But like the RBM, within each layer,
+each of the variables are mutually independent, conditioned on the variables in
+the neighboring layers. See ï¬?gure 20.2 for the graph structure. Deep Boltzmann
+machines have been applied to a variety of tasks including document modeling
+(Srivastava et al., 2013).
+Like RBMs and DBNs, DBMs typically contain only binary unitsâ€”as we
+assume for simplicity of our presentation of the modelâ€”but it is straightforward
+to include real-valued visible units.
+A DBM is an energy-based model, meaning that the the joint probability
+distribution over the model variables is parametrized by an energy function E. In
+the case of a deep Boltzmann machine with one visible layer, v, and three hidden
+layers, h(1) , h (2) and h(3) , the joint probability is given by:
+î€?
+î€‘
+î€?
+î€‘
+1
+(1)
+(2)
+(3)
+(1)
+(2) (3)
+P v, h , h , h
+=
+exp âˆ’E (v, h , h , h ; Î¸) .
+(20.24)
+Z(Î¸)
+To simplify our presentation, we omit the bias parameters below. The DBM energy
+function is then deï¬?ned as follows:
+E (v, h(1) , h(2) , h (3); Î¸) = âˆ’v î€¾ W (1) h (1) âˆ’ h(1)î€¾ W (2) h(2) âˆ’ h(2)î€¾ W (3) h(3) .
+(20.25)
+663
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+h(3)
+1
+
+h(2)
+1
+
+h(2)
+1
+
+h(3)
+1
+
+h(2)
+2
+
+h(3)
+2
+
+h(3)
+2
+
+(2)
+
+h(2)
+2
+
+h3
+
+(2)
+
+h3
+
+h(1)
+1
+h(1)
+1
+
+(1)
+
+h(1)
+2
+
+v1
+
+h3
+
+v2
+
+v1
+
+h(1)
+2
+
+v2
+
+h3
+
+(1)
+
+Figure 20.3: A deep Boltzmann machine, re-arranged to reveal its bipartite graph structure.
+
+In comparison to the RBM energy function (equation 20.5), the DBM energy
+function includes connections between the hidden units (latent variables) in the
+form of the weight matrices (W (2) and W (3)). As we will see, these connections
+have signiï¬?cant consequences for both the model behavior as well as how we go
+about performing inference in the model.
+In comparison to fully connected Boltzmann machines (with every unit connected to every other unit), the DBM oï¬€ers some advantages that are similar
+to those oï¬€ered by the RBM. Speciï¬?cally, as illustrated in ï¬?gure 20.3, the DBM
+layers can be organized into a bipartite graph, with odd layers on one side and
+even layers on the other. This immediately implies that when we condition on the
+variables in the even layer, the variables in the odd layers become conditionally
+independent. Of course, when we condition on the variables in the odd layers, the
+variables in the even layers also become conditionally independent.
+The bipartite structure of the DBM means that we can apply the same equations we have previously used for the conditional distributions of an RBM to
+determine the conditional distributions in a DBM. The units within a layer are
+conditionally independent from each other given the values of the neighboring
+layers, so the distributions over binary variables can be fully described by the
+Bernoulli parameters giving the probability of each unit being active. In our
+example with two hidden layers, the activation probabilities are given by:
+î€?
+î€‘
+(1) (1)
+(1)
+P (vi = 1 | h ) = Ïƒ Wi,: h
+,
+(20.26)
+664
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+(1)
+
+P (h i
+and
+
+î€?
+î€‘
+(1)
+(2)
+= 1 | v, h (2) ) = Ïƒ vî€¾ W:,i + Wi,: h(2)
+
+(2)
+P (h k = 1 | h (1) ) = Ïƒ
+
+î€?
+î€‘
+(2)
+(1)î€¾
+h
+W:,k .
+
+(20.27)
+(20.28)
+
+The bipartite structure makes Gibbs sampling in a deep Boltzmann machine
+eï¬ƒcient. The naive approach to Gibbs sampling is to update only one variable
+at a time. RBMs allow all of the visible units to be updated in one block and all
+of the hidden units to be updated in a second block. One might naively assume
+that a DBM with l layers requires l + 1 updates, with each iteration updating a
+block consisting of one layer of units. Instead, it is possible to update all of the
+units in only two iterations. Gibbs sampling can be divided into two blocks of
+updates, one including all even layers (including the visible layer) and the other
+including all odd layers. Due to the bipartite DBM connection pattern, given
+the even layers, the distribution over the odd layers is factorial and thus can be
+sampled simultaneously and independently as a block. Likewise, given the odd
+layers, the even layers can be sampled simultaneously and independently as a
+block. Eï¬ƒcient sampling is especially important for training with the stochastic
+maximum likelihood algorithm.
+
+20.4.1
+
+Interesting Properties
+
+Deep Boltzmann machines have many interesting properties.
+DBMs were developed after DBNs. Compared to DBNs, the posterior distribution P (h | v ) is simpler for DBMs. Somewhat counterintuitively, the simplicity of
+this posterior distribution allows richer approximations of the posterior. In the case
+of the DBN, we perform classiï¬?cation using a heuristically motivated approximate
+inference procedure, in which we guess that a reasonable value for the mean ï¬?eld
+expectation of the hidden units can be provided by an upward pass through the
+network in an MLP that uses sigmoid activation functions and the same weights as
+the original DBN. Any distribution Q(h) may be used to obtain a variational lower
+bound on the log-likelihood. This heuristic procedure therefore allows us to obtain
+such a bound. However, the bound is not explicitly optimized in any way, so the
+bound may be far from tight. In particular, the heuristic estimate of Q ignores
+interactions between hidden units within the same layer as well as the top-down
+feedback inï¬‚uence of hidden units in deeper layers on hidden units that are closer
+to the input. Because the heuristic MLP-based inference procedure in the DBN
+is not able to account for these interactions, the resulting Q is presumably far
+665
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+from optimal. In DBMs, all of the hidden units within a layer are conditionally
+independent given the other layers. This lack of intralayer interaction makes it
+possible to use ï¬?xed point equations to actually optimize the variational lower
+bound and ï¬?nd the true optimal mean ï¬?eld expectations (to within some numerical
+tolerance).
+The use of proper mean ï¬?eld allows the approximate inference procedure for
+DBMs to capture the inï¬‚uence of top-down feedback interactions. This makes
+DBMs interesting from the point of view of neuroscience, because the human brain
+is known to use many top-down feedback connections. Because of this property,
+DBMs have been used as computational models of real neuroscientiï¬?c phenomena
+(Series et al., 2010; Reichert et al., 2011).
+One unfortunate property of DBMs is that sampling from them is relatively
+diï¬ƒcult. DBNs only need to use MCMC sampling in their top pair of layers. The
+other layers are used only at the end of the sampling process, in one eï¬ƒcient
+ancestral sampling pass. To generate a sample from a DBM, it is necessary to
+use MCMC across all layers, with every layer of the model participating in every
+Markov chain transition.
+
+20.4.2
+
+DBM Mean Field Inference
+
+The conditional distribution over one DBM layer given the neighboring layers is
+factorial. In the example of the DBM with two hidden layers, these distributions
+are P (v | h(1) ), P (h(1) | v, h(2)) and P (h(2) | h(1) ). The distribution over all
+hidden layers generally does not factorize because of interactions between layers.
+In the example with two hidden layers, P (h(1) , h(2) | v) does not factorize due due
+to the interaction weights W (2) between h(1) and h(2) which render these variables
+mutually dependent.
+As was the case with the DBN, we are left to seek out methods to approximate
+the DBM posterior distribution. However, unlike the DBN, the DBM posterior
+distribu

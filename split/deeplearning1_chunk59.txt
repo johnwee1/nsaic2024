@@ -1,0 +1,404 @@
+ a
+small initial variation can turn into a large variation after several steps. One
+diﬀerence between the purely linear case and the nonlinear case is that the use of
+a squashing nonlinearity such as tanh can cause the recurrent dynamics to become
+bounded. Note that it is possible for back-propagation to retain unbounded
+dynamics even when forward propagation has bounded dynamics, for example,
+when a sequence of tanh units are all in the middle of their linear regime and are
+connected by weight matrices with spectral radius greater than 1. However, it is
+rare for all of the tanh units to simultaneously lie at their linear activation point.
+The strategy of echo state networks is simply to �?x the weights to have some
+spectral radius such as 3, where information is carried forward through time but
+does not explode due to the stabilizing eﬀect of saturating nonlinearities like tanh.
+More recently, it has been shown that the techniques used to set the weights
+in ESNs could be used to initialize the weights in a fully trainable recurrent network (with the hidden-to-hidden recurrent weights trained using back-propagation
+through time), helping to learn long-term dependencies (Sutskever, 2012; Sutskever
+et al., 2013). In this setting, an initial spectral radius of 1.2 performs well, combined
+with the sparse initialization scheme described in section 8.4.
+
+10.9
+
+Leaky Units and Other Strategies for Multiple
+Time Scales
+
+One way to deal with long-term dependencies is to design a model that operates
+at multiple time scales, so that some parts of the model operate at �?ne-grained
+time scales and can handle small details, while other parts operate at coarse time
+scales and transfer information from the distant past to the present more eﬃciently.
+Various strategies for building both �?ne and coarse time scales are possible. These
+include the addition of skip connections across time, “leaky units�? that integrate
+signals with diﬀerent time constants, and the removal of some of the connections
+406
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+used to model �?ne-grained time scales.
+
+10.9.1
+
+Adding Skip Connections through Time
+
+One way to obtain coarse time scales is to add direct connections from variables in
+the distant past to variables in the present. The idea of using such skip connections
+dates back to Lin et al. (1996) and follows from the idea of incorporating delays in
+feedforward neural networks (Lang and Hinton, 1988). In an ordinary recurrent
+network, a recurrent connection goes from a unit at time t to a unit at time t + 1.
+It is possible to construct recurrent networks with longer delays (Bengio, 1991).
+As we have seen in section 8.2.5, gradients may vanish or explode exponentially
+with respect to the number of time steps. Lin et al. (1996) introduced recurrent
+connections with a time-delay of d to mitigate this problem. Gradients now
+diminish exponentially as a function of τd rather than τ. Since there are both
+delayed and single step connections, gradients may still explode exponentially in τ.
+This allows the learning algorithm to capture longer dependencies although not all
+long-term dependencies may be represented well in this way.
+
+10.9.2
+
+Leaky Units and a Spectrum of Diﬀerent Time Scales
+
+Another way to obtain paths on which the product of derivatives is close to one is to
+have units with linear self-connections and a weight near one on these connections.
+When we accumulate a running average µ(t) of some value v(t) by applying the
+update µ (t) �? αµ (t−1) + (1 − α)v(t) the α parameter is an example of a linear selfconnection from µ(t−1) to µ(t) . When α is near one, the running average remembers
+information about the past for a long time, and when α is near zero, information
+about the past is rapidly discarded. Hidden units with linear self-connections can
+behave similarly to such running averages. Such hidden units are called leaky
+units.
+Skip connections through d time steps are a way of ensuring that a unit can
+always learn to be inﬂuenced by a value from d time steps earlier. The use of a
+linear self-connection with a weight near one is a diﬀerent way of ensuring that the
+unit can access values from the past. The linear self-connection approach allows
+this eﬀect to be adapted more smoothly and ﬂexibly by adjusting the real-valued
+α rather than by adjusting the integer-valued skip length.
+These ideas were proposed by Mozer (1992) and by El Hihi and Bengio (1996).
+Leaky units were also found to be useful in the context of echo state networks
+(Jaeger et al., 2007).
+407
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+There are two basic strategies for setting the time constants used by leaky
+units. One strategy is to manually �?x them to values that remain constant, for
+example by sampling their values from some distribution once at initialization time.
+Another strategy is to make the time constants free parameters and learn them.
+Having such leaky units at diﬀerent time scales appears to help with long-term
+dependencies (Mozer, 1992; Pascanu et al., 2013).
+
+10.9.3
+
+Removing Connections
+
+Another approach to handle long-term dependencies is the idea of organizing
+the state of the RNN at multiple time-scales (El Hihi and Bengio, 1996), with
+information ﬂowing more easily through long distances at the slower time scales.
+This idea diﬀers from the skip connections through time discussed earlier
+because it involves actively removing length-one connections and replacing them
+with longer connections. Units modi�?ed in such a way are forced to operate on a
+long time scale. Skip connections through time add edges. Units receiving such
+new connections may learn to operate on a long time scale but may also choose to
+focus on their other short-term connections.
+There are diﬀerent ways in which a group of recurrent units can be forced to
+operate at diﬀerent time scales. One option is to make the recurrent units leaky,
+but to have diﬀerent groups of units associated with diﬀerent �?xed time scales.
+This was the proposal in Mozer (1992) and has been successfully used in Pascanu
+et al. (2013). Another option is to have explicit and discrete updates taking place
+at diﬀerent times, with a diﬀerent frequency for diﬀerent groups of units. This is
+the approach of El Hihi and Bengio (1996) and Koutnik et al. (2014). It worked
+well on a number of benchmark datasets.
+
+10.10
+
+The Long Short-Term Memory and Other Gated
+RNNs
+
+As of this writing, the most eﬀective sequence models used in practical applications
+are called gated RNNs. These include the long short-term memory and
+networks based on the gated recurrent unit.
+Like leaky units, gated RNNs are based on the idea of creating paths through
+time that have derivatives that neither vanish nor explode. Leaky units did
+this with connection weights that were either manually chosen constants or were
+parameters. Gated RNNs generalize this to connection weights that may change
+408
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+at each time step.
+
+output
+
+×
+
+self-loop
+
++
+
+×
+state
+
+×
+
+input
+
+input gate
+
+forget gate
+
+output gate
+
+Figure 10.16: Block diagram of the LSTM recurrent network “cell.�? Cells are connected
+recurrently to each other, replacing the usual hidden units of ordinary recurrent networks.
+An input feature is computed with a regular arti�?cial neuron unit. Its value can be
+accumulated into the state if the sigmoidal input gate allows it. The state unit has a
+linear self-loop whose weight is controlled by the forget gate. The output of the cell can
+be shut oﬀ by the output gate. All the gating units have a sigmoid nonlinearity, while the
+input unit can have any squashing nonlinearity. The state unit can also be used as an
+extra input to the gating units. The black square indicates a delay of a single time step.
+
+Leaky units allow the network to accumulate information (such as evidence
+for a particular feature or category) over a long duration. However, once that
+information has been used, it might be useful for the neural network to forget the
+old state. For example, if a sequence is made of sub-sequences and we want a leaky
+unit to accumulate evidence inside each sub-subsequence, we need a mechanism to
+forget the old state by setting it to zero. Instead of manually deciding when to
+clear the state, we want the neural network to learn to decide when to do it. This
+409
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+is what gated RNNs do.
+
+10.10.1
+
+LSTM
+
+The clever idea of introducing self-loops to produce paths where the gradient
+can ﬂow for long durations is a core contribution of the initial long short-term
+memory (LSTM) model (Hochreiter and Schmidhuber, 1997). A crucial addition
+has been to make the weight on this self-loop conditioned on the context, rather than
+�?xed (Gers et al., 2000). By making the weight of this self-loop gated (controlled
+by another hidden unit), the time scale of integration can be changed dynamically.
+In this case, we mean that even for an LSTM with �?xed parameters, the time scale
+of integration can change based on the input sequence, because the time constants
+are output by the model itself. The LSTM has been found extremely successful
+in many applications, such as unconstrained handwriting recognition (Graves
+et al., 2009), speech recognition (Graves et al., 2013; Graves and Jaitly, 2014),
+handwriting generation (Graves, 2013), machine translation (Sutskever et al., 2014),
+image captioning (Kiros et al., 2014b; Vinyals et al., 2014b; Xu et al., 2015) and
+parsing (Vinyals et al., 2014a).
+The LSTM block diagram is illustrated in �?gure 10.16. The corresponding
+forward propagation equations are given below, in the case of a shallow recurrent
+network architecture. Deeper architectures have also been successfully used (Graves
+et al., 2013; Pascanu et al., 2014a). Instead of a unit that simply applies an elementwise nonlinearity to the aﬃne transformation of inputs and recurrent units, LSTM
+recurrent networks have “LSTM cells�? that have an internal recurrence (a self-loop),
+in addition to the outer recurrence of the RNN. Each cell has the same inputs
+and outputs as an ordinary recurrent network, but has more parameters and a
+system of gating units that controls the ﬂow of information. The most important
+( t)
+component is the state unit si that has a linear self-loop similar to the leaky
+units described in the previous section. However, here, the self-loop weight (or the
+associated time constant) is controlled by a forget gate unit f(i t) (for time step t
+and cell i), that sets this weight to a value between 0 and 1 via a sigmoid unit:
+
+
+�?�
+�?�
+(t)
+f (t)
+f (t−1) 
+fi = σ bfi +
+Ui,j
+xj +
+Wi,j
+hj
+,
+(10.40)
+j
+
+j
+
+where x (t) is the current input vector and h(t) is the current hidden layer vector,
+containing the outputs of all the LSTM cells, and bf ,Uf , W f are respectively
+biases, input weights and recurrent weights for the forget gates. The LSTM cell
+410
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+internal state is thus updated as follows, but with a conditional self-loop weight
+fi(t):
+
+
+�?�
+�?�
+s(i t) = f i(t) s(i t−1) + g (i t)σ b i +
+Ui,jx (jt) +
+Wi,j h(jt−1)  ,
+(10.41)
+j
+
+j
+
+where b, U and W respectively denote the biases, input weights and recurrent
+(t)
+weights into the LSTM cell. The external input gate unit gi is computed
+similarly to the forget gate (with a sigmoid unit to obtain a gating value between
+0 and 1), but with its own parameters:
+
+
+�?� g (t) �?� g (t−1)
+( t)
+.
+gi = σ bgi +
+Ui,jx j +
+Wi,jh j
+(10.42)
+j
+
+j
+
+(t)
+
+( t)
+
+The output hi of the LSTM cell can also be shut oﬀ, via the output gate q i ,
+which also uses a sigmoid unit for gating:
+�? 
+(t)
+(t)
+( t)
+h i = tanh si qi
+(10.43)
+
+
+�?�
+�?�
+o (t)
+o (t−1) 
+qi(t) = σ boi +
+Ui,j
+xj +
+Wi,j
+hj
+(10.44)
+j
+
+j
+
+which has parameters bo , U o , W o for its biases, input weights and recurrent
+(t)
+weights, respectively. Among the variants, one can choose to use the cell state s i
+as an extra input (with its weight) into the three gates of the i-th unit, as shown
+in �?gure 10.16. This would require three additional parameters.
+
+LSTM networks have been shown to learn long-term dependencies more easily
+than the simple recurrent architectures, �?rst on arti�?cial data sets designed for
+testing the ability to learn long-term dependencies (Bengio et al., 1994; Hochreiter
+and Schmidhuber, 1997; Hochreiter et al., 2001), then on challenging sequence
+processing tasks where state-of-the-art performance was obtained (Graves, 2012;
+Graves et al., 2013; Sutskever et al., 2014). Variants and alternatives to the LSTM
+have been studied and used and are discussed next.
+
+10.10.2
+
+Other Gated RNNs
+
+Which pieces of the LSTM architecture are actually necessary? What other
+successful architectures could be designed that allow the network to dynamically
+control the time scale and forgetting behavior of diﬀerent units?
+411
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+Some answers to these questions are given with the recent work on gated RNNs,
+whose units are also known as gated recurrent units or GRUs (Cho et al., 2014b;
+Chung et al., 2014, 2015a; Jozefowicz et al., 2015; Chrupala et al., 2015). The main
+diﬀerence with the LSTM is that a single gating unit simultaneously controls the
+forgetting factor and the decision to update the state unit. The update equations
+are the following:
+
+
+�?�
+�?�
+(t)
+(t−1) (t−1)
+(t−1)
+(t−1) (t−1) 
++ (1 − u (i t−1))σ bi +
+h i = ui
+hi
+Ui,j x j
++
+Wi,j rj
+hj
+,
+j
+
+j
+
+(10.45)
+where u stands for “update�? gate and r for “reset�? gate. Their value is de�?ned as
+usual:
+
+
+�?�
+�?�
+(t)
+u (t)
+u ( t) 
+ui = σ bui +
+Ui,j
+xj +
+Wi,j
+hj
+(10.46)
+j
+
+and
+
+
+
+ri(t) = σ b ri +
+
+�?�
+
+j
+
+r ( t)
+U i,j
+xj +
+
+j
+
+�?�
+j
+
+
+
+r (t) 
+Wi,j
+hj
+.
+
+(10.47)
+
+The reset and updates gates can individually “ignore�? parts of the state vector.
+The update gates act like conditional leaky integrators that can linearly gate any
+dimension, thus choosing to copy it (at one extreme of the sigmoid) or completely
+ignore it (at the other extreme) by replacing it by the new “target state�? value
+(towards which the leaky integrator wants to converge). The reset gates control
+which parts of the state get used to compute the next target state, introducing an
+additional nonlinear eﬀect in the relationship between past state and future state.
+Many more variants around this theme can be designed. For example the
+reset gate (or forget gate) output could be shared across multiple hidden units.
+Alternately, the product of a global gate (covering a whole group of units, such as
+an entire layer) and a local gate (per unit) could be used to combine global control
+and local control. However, several investigations over architectural variations
+of the LSTM and GRU found no variant that would clearly beat both of these
+across a wide range of tasks (Greﬀ et al., 2015; Jozefowicz et al., 2015). Greﬀ
+et al. (2015) found that a crucial ingredient is the forget gate, while Jozefowicz
+et al. (2015) found that adding a bias of 1 to the LSTM forget gate, a practice
+advocated by Gers et al. (2000), makes the LSTM as strong as the best of the
+explored architectural variants.
+
+412
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE

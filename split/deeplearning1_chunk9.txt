@@ -1,0 +1,429 @@
+lity distribution
+can be expressed as a product of two factors, one involving only x and one involving
+only y:
+∀x ∈ x, y ∈ y, p(x = x, y = y ) = p(x = x)p(y = y).
+
+(3.7)
+
+Two random variables x and y are conditionally independent given a random
+variable z if the conditional probability distribution over x and y factorizes in this
+way for every value of z:
+
+∀x ∈ x, y ∈ y, z ∈ z, p(x = x, y = y | z = z) = p(x = x | z = z )p(y = y | z = z).
+(3.8)
+We can denote independence and conditional independence with compact
+notation: x⊥y means that x and y are independent, while x⊥y | z means that x
+and y are conditionally independent given z.
+
+3.8
+
+Expectation, Variance and Covariance
+
+The expectation or expected value of some function f(x) with respect to a
+probability distribution P (x) is the average or mean value that f takes on when x
+is drawn from P . For discrete variables this can be computed with a summation:
+�?�
+P ( x )f (x ) ,
+(3.9)
+Ex∼P [f (x)] =
+x
+
+while for continuous variables, it is computed with an integral:
+�?�
+Ex∼p [f (x)] = p(x)f (x)dx.
+60
+
+(3.10)
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+When the identity of the distribution is clear from the context, we may simply
+write the name of the random variable that the expectation is over, as in Ex [f(x)].
+If it is clear which random variable the expectation is over, we may omit the
+subscript entirely, as in E[f (x)]. By default, we can assume that E[·] averages over
+the values of all the random variables inside the brackets. Likewise, when there is
+no ambiguity, we may omit the square brackets.
+Expectations are linear, for example,
+Ex[αf (x) + βg(x)] = αEx [f (x)] + βE x[g(x)],
+
+(3.11)
+
+when α and β are not dependent on x.
+The variance gives a measure of how much the values of a function of a random
+variable x vary as we sample diﬀerent values of x from its probability distribution:
+�?�
+�?�
+Var(f (x)) = E (f (x) − E[f (x)])2 .
+(3.12)
+When the variance is low, the values of f (x) cluster near their expected value. The
+square root of the variance is known as the standard deviation.
+
+The covariance gives some sense of how much two values are linearly related
+to each other, as well as the scale of these variables:
+Cov(f (x), g(y)) = E [(f (x) − E [f (x)]) (g (y) − E [g(y)])] .
+
+(3.13)
+
+High absolute values of the covariance mean that the values change very much
+and are both far from their respective means at the same time. If the sign of the
+covariance is positive, then both variables tend to take on relatively high values
+simultaneously. If the sign of the covariance is negative, then one variable tends to
+take on a relatively high value at the times that the other takes on a relatively
+low value and vice versa. Other measures such as correlation normalize the
+contribution of each variable in order to measure only how much the variables are
+related, rather than also being aﬀected by the scale of the separate variables.
+The notions of covariance and dependence are related, but are in fact distinct
+concepts. They are related because two variables that are independent have zero
+covariance, and two variables that have non-zero covariance are dependent. However, independence is a distinct property from covariance. For two variables to have
+zero covariance, there must be no linear dependence between them. Independence
+is a stronger requirement than zero covariance, because independence also excludes
+nonlinear relationships. It is possible for two variables to be dependent but have
+zero covariance. For example, suppose we �?rst sample a real number x from a
+uniform distribution over the interval [−1, 1]. We next sample a random variable
+61
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+s. With probability 12 , we choose the value of s to be 1. Otherwise, we choose
+the value of s to be −1. We can then generate a random variable y by assigning
+y = sx. Clearly, x and y are not independent, because x completely determines
+the magnitude of y. However, Cov(x, y) = 0.
+The covariance matrix of a random vector x ∈ Rn is an n × n matrix, such
+that
+Cov(x) i,j = Cov(xi, x j).
+(3.14)
+The diagonal elements of the covariance give the variance:
+Cov(xi , xi) = Var(xi ).
+
+3.9
+
+(3.15)
+
+Common Probability Distributions
+
+Several simple probability distributions are useful in many contexts in machine
+learning.
+
+3.9.1
+
+Bernoulli Distribution
+
+The Bernoulli distribution is a distribution over a single binary random variable.
+It is controlled by a single parameter φ ∈ [0, 1], which gives the probability of the
+random variable being equal to 1. It has the following properties:
+P (x = 1) = φ
+
+(3.16)
+
+P (x = 0) = 1 − φ
+
+(3.17)
+
+P (x = x) = φx (1 − φ)1−x
+
+3.9.2
+
+(3.18)
+
+Ex[x] = φ
+
+(3.19)
+
+Var x(x) = φ(1 − φ)
+
+(3.20)
+
+Multinoulli Distribution
+
+The multinoulli or categorical distribution is a distribution over a single discrete
+variable with k diﬀerent states, where k is �?nite.1 The multinoulli distribution is
+1
+
+“Multinoulli�? is a term that was recently coined by Gustavo Lacerdo and popularized by
+Murphy (2012). The multinoulli distribution is a special case of the multinomial distribution.
+A multinomial distribution is the distribution over vectors in {0, . . . , n} k representing how many
+times each of the k categories is visited when n samples are drawn from a multinoulli distribution.
+Many texts use the term “multinomial�? to refer to multinoulli distributions without clarifying
+that they refer only to the n = 1 case.
+62
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+parametrized by a vector p ∈ [0, 1] k−1, where p i gives the probability of the i-th
+state. The �?nal, k-th state’s probability is given by 1− 1  p. Note that we must
+constrain 1 p ≤ 1. Multinoulli distributions are often used to refer to distributions
+over categories of objects, so we do not usually assume that state 1 has numerical
+value 1, etc. For this reason, we do not usually need to compute the expectation
+or variance of multinoulli-distributed random variables.
+The Bernoulli and multinoulli distributions are suﬃcient to describe any distribution over their domain. They are able to describe any distribution over their
+domain not so much because they are particularly powerful but rather because
+their domain is simple; they model discrete variables for which it is feasible to
+enumerate all of the states. When dealing with continuous variables, there are
+uncountably many states, so any distribution described by a small number of
+parameters must impose strict limits on the distribution.
+
+3.9.3
+
+Gaussian Distribution
+
+The most commonly used distribution over real numbers is the normal distribution, also known as the Gaussian distribution:
+2
+
+N (x; µ, σ ) =
+
+�?�
+
+
+
+1
+1
+2
+exp − 2 (x − µ) .
+2πσ2
+2σ
+
+(3.21)
+
+See �?gure 3.1 for a plot of the density function.
+The two parameters µ ∈ R and σ ∈ (0, ∞) control the normal distribution.
+The parameter µ gives the coordinate of the central peak. This is also the mean of
+the distribution: E[x] = µ. The standard deviation of the distribution is given by
+σ, and the variance by σ2 .
+When we evaluate the PDF, we need to square and invert σ. When we need to
+frequently evaluate the PDF with diﬀerent parameter values, a more eﬃcient way
+of parametrizing the distribution is to use a parameter β ∈ (0, ∞) to control the
+precision or inverse variance of the distribution:
+N (x; µ, β −1 ) =
+
+�?�
+
+
+
+β
+1
+exp − β (x − µ)2 .
+2π
+2
+
+(3.22)
+
+Normal distributions are a sensible choice for many applications. In the absence
+of prior knowledge about what form a distribution over the real numbers should
+take, the normal distribution is a good default choice for two major reasons.
+63
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+0.40
+
+p(x)
+
+0.35
+0.30
+
+Maximum at x = µ
+
+0.25
+
+Inﬂection points at
+x=µ±σ
+
+0.20
+0.15
+0.10
+0.05
+0.00
+− 2. 0
+
+−1.5
+
+− 1. 0
+
+−0.5
+
+0. 0
+
+0. 5
+
+1.0
+
+1.5
+
+2.0
+
+Figure 3.1: The normal distribution: The normal distribution N (x ; µ, σ 2 ) exhibits
+a classic “bell curve�? shape, with the x coordinate of its central peak given by µ, and
+the width of its peak controlled by σ. In this example, we depict the standard normal
+distribution, with µ = 0 and σ = 1.
+
+First, many distributions we wish to model are truly close to being normal
+distributions. The central limit theorem shows that the sum of many independent random variables is approximately normally distributed. This means that
+in practice, many complicated systems can be modeled successfully as normally
+distributed noise, even if the system can be decomposed into parts with more
+structured behavior.
+Second, out of all possible probability distributions with the same variance,
+the normal distribution encodes the maximum amount of uncertainty over the
+real numbers. We can thus think of the normal distribution as being the one
+that inserts the least amount of prior knowledge into a model. Fully developing
+and justifying this idea requires more mathematical tools, and is postponed to
+section 19.4.2.
+The normal distribution generalizes to R n , in which case it is known as the
+multivariate normal distribution. It may be parametrized with a positive
+de�?nite symmetric matrix Σ:
+�?�
+
+
+1
+1
+ −1
+exp − (x − µ) Σ (x − µ) .
+(3.23)
+N (x; µ, Σ) =
+(2π) ndet(Σ)
+2
+64
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+The parameter µ still gives the mean of the distribution, though now it is
+vector-valued. The parameter Σ gives the covariance matrix of the distribution.
+As in the univariate case, when we wish to evaluate the PDF several times for
+many diﬀerent values of the parameters, the covariance is not a computationally
+eﬃcient way to parametrize the distribution, since we need to invert Σ to evaluate
+the PDF. We can instead use a precision matrix β:
+N (x; µ, β−1) =
+
+�?�
+
+
+
+det(β)
+1
+exp − (x − µ) β(x − µ) .
+(2π) n
+2
+
+(3.24)
+
+We often �?x the covariance matrix to be a diagonal matrix. An even simpler
+version is the isotropic Gaussian distribution, whose covariance matrix is a scalar
+times the identity matrix.
+
+3.9.4
+
+Exponential and Laplace Distributions
+
+In the context of deep learning, we often want to have a probability distribution
+with a sharp point at x = 0. To accomplish this, we can use the exponential
+distribution:
+p(x; λ) = λ1 x≥0 exp (−λx) .
+(3.25)
+The exponential distribution uses the indicator function 1 x≥0 to assign probability
+zero to all negative values of x.
+A closely related probability distribution that allows us to place a sharp peak
+of probability mass at an arbitrary point µ is the Laplace distribution
+
+
+1
+|x − µ|
+Laplace(x; µ, γ ) =
+exp −
+.
+(3.26)
+2γ
+γ
+
+3.9.5
+
+The Dirac Distribution and Empirical Distribution
+
+In some cases, we wish to specify that all of the mass in a probability distribution
+clusters around a single point. This can be accomplished by de�?ning a PDF using
+the Dirac delta function, δ(x):
+p(x ) = δ (x − µ ) .
+
+(3.27)
+
+The Dirac delta function is de�?ned such that it is zero-valued everywhere except
+0, yet integrates to 1. The Dirac delta function is not an ordinary function that
+associates each value x with a real-valued output, instead it is a diﬀerent kind of
+65
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+mathematical object called a generalized function that is de�?ned in terms of its
+properties when integrated. We can think of the Dirac delta function as being the
+limit point of a series of functions that put less and less mass on all points other
+than zero.
+By de�?ning p(x) to be δ shifted by −µ we obtain an in�?nitely narrow and
+in�?nitely high peak of probability mass where x = µ.
+A common use of the Dirac delta distribution is as a component of an empirical
+distribution,
+m
+1 �?�
+(3.28)
+δ(x − x(i))
+p̂(x) =
+m i=1
+
+which puts probability mass 1m on each of the m points x(1) , . . . , x(m) forming a
+given dataset or collection of samples. The Dirac delta distribution is only necessary
+to de�?ne the empirical distribution over continuous variables. For discrete variables,
+the situation is simpler: an empirical distribution can be conceptualized as a
+multinoulli distribution, with a probability associated to each possible input value
+that is simply equal to the empirical frequency of that value in the training set.
+We can view the empirical distribution formed from a dataset of training
+examples as specifying the distribution that we sample from when we train a model
+on this dataset. Another important perspective on the empirical distribution is
+that it is the probability density that maximizes the likelihood of the training data
+(see section 5.5).
+
+3.9.6
+
+Mixtures of Distributions
+
+It is also common to de�?ne probability distributions by combining other simpler
+probability distributions. One common way of combining distributions is to
+construct a mixture distribution. A mixture distribution is made up of several
+component distributions. On each trial, the choice of which component distribution
+generates the sample is determined by sampling a component identity from a
+multinoulli distribution:
+�?�
+P ( x) =
+P ( c = i)P (x | c = i)
+(3.29)
+i
+
+where P (c) is the multinoulli distribution over component identities.
+We have already seen one example of a mixture distribution: the empirical
+distribution over real-valued variables is a mixture distribution with one Dirac
+component for each training example.
+66
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+The mixture model is one simple strategy for combining probability distributions
+to create a richer distribution. In chapter 16, we explore the art of building complex
+probability distributions from simple ones in more detail.
+The mixture model allows us to brieﬂy glimpse a concept that will be of
+paramount importance later—the latent variable. A latent variable is a random
+variable that we cannot observe directly. The component identity variable c of the
+mixture model provides an example. Latent variables may be related to x through
+the joint distribution, in this case, P (x, c) = P (x | c )P (c). The distribution P (c)
+over the latent variable and the distribution P (x | c) relating the latent variables
+to the visible variables determines the shape of the distribution P (x) even though
+it is possible to describe P (x) without reference to the latent variable. Latent
+variables are discussed further in section 16.5.
+A very powerful and common type of mixture model is the Gaussian mixture
+model, in which the components p(x | c = i) are Gaussians. Each component has
+a separately parametrized mean µ(i) and covariance Σ (i). Some mixtures can have
+more constraints. For example, the covariances could be shared across components
+via the constraint Σ (i) = Σ, ∀i . As with a single Gaussian distribution, the mixture
+of Gaussians might constrain the covariance matrix for each component to be
+diagonal or isotropic.
+In addition to the means and covariances, the parameters of a Gaussian mixture
+specify the prior probability αi = P ( c = i) given to each component i. The word
+“prior�? indicates that it expresses the model’s beliefs about c before it has observed
+x. By comparison, P( c | x) is a posterior probability, because it is computed
+after observation of x. A Gaussian mixture model is a universal approximator
+of densities, in the sense that any smooth density can be approxima

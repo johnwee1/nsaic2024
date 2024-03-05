@@ -1,0 +1,301 @@
+ 1 | x) = max 0, min 1, w h + b
+
+This would indeed de�?ne a valid conditional distribution, but we would not be able
+to train it very eﬀectively with gradient descent. Any time that wh + b strayed
+outside the unit interval, the gradient of the output of the model with respect to
+its parameters would be 0. A gradient of 0 is typically problematic because the
+learning algorithm no longer has a guide for how to improve the corresponding
+parameters.
+Instead, it is better to use a diﬀerent approach that ensures there is always a
+strong gradient whenever the model has the wrong answer. This approach is based
+on using sigmoid output units combined with maximum likelihood.
+A sigmoid output unit is de�?ned by
+�?
+
+
+ŷ = σ w h + b
+182
+
+(6.19)
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+where σ is the logistic sigmoid function described in section 3.10.
+We can think of the sigmoid output unit as having two components. First, it
+uses a linear layer to compute z = w h + b. Next, it uses the sigmoid activation
+function to convert z into a probability.
+We omit the dependence on x for the moment to discuss how to de�?ne a
+probability distribution over y using the value z. The sigmoid can be motivated
+by constructing an unnormalized probability distribution P˜(y), which does not
+sum to 1. We can then divide by an appropriate constant to obtain a valid
+probability distribution. If we begin with the assumption that the unnormalized log
+probabilities are linear in y and z, we can exponentiate to obtain the unnormalized
+probabilities. We then normalize to see that this yields a Bernoulli distribution
+controlled by a sigmoidal transformation of z :
+log P˜(y ) = yz
+P˜(y ) = exp(yz )
+P (y ) = �?? 1
+
+exp(yz )
+
+
+y =0 exp(y z)
+
+P (y ) = σ ((2y − 1)z ) .
+
+(6.20)
+(6.21)
+(6.22)
+(6.23)
+
+Probability distributions based on exponentiation and normalization are common
+throughout the statistical modeling literature. The z variable de�?ning such a
+distribution over binary variables is called a logit.
+This approach to predicting the probabilities in log-space is natural to use
+with maximum likelihood learning. Because the cost function used with maximum
+likelihood is − log P (y | x), the log in the cost function undoes the exp of the
+sigmoid. Without this eﬀect, the saturation of the sigmoid could prevent gradientbased learning from making good progress. The loss function for maximum
+likelihood learning of a Bernoulli parametrized by a sigmoid is
+J (θ ) = − log P (y | x)
+
+= − log σ ((2y − 1)z )
+= ζ ((1 − 2y )z ) .
+
+(6.24)
+(6.25)
+(6.26)
+
+This derivation makes use of some properties from section 3.10. By rewriting
+the loss in terms of the softplus function, we can see that it saturates only when
+(1 − 2y )z is very negative. Saturation thus occurs only when the model already
+has the right answer—when y = 1 and z is very positive, or y = 0 and z is very
+negative. When z has the wrong sign, the argument to the softplus function,
+183
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+(1 − 2y)z, may be simpli�?ed to |z |. As |z | becomes large while z has the wrong sign,
+the softplus function asymptotes toward simply returning its argument |z |. The
+derivative with respect to z asymptotes to sign(z), so, in the limit of extremely
+incorrect z, the softplus function does not shrink the gradient at all. This property
+is very useful because it means that gradient-based learning can act to quickly
+correct a mistaken z .
+When we use other loss functions, such as mean squared error, the loss can
+saturate anytime σ(z) saturates. The sigmoid activation function saturates to 0
+when z becomes very negative and saturates to 1 when z becomes very positive.
+The gradient can shrink too small to be useful for learning whenever this happens,
+whether the model has the correct answer or the incorrect answer. For this reason,
+maximum likelihood is almost always the preferred approach to training sigmoid
+output units.
+Analytically, the logarithm of the sigmoid is always de�?ned and �?nite, because
+the sigmoid returns values restricted to the open interval (0, 1), rather than using
+the entire closed interval of valid probabilities [0, 1]. In software implementations,
+to avoid numerical problems, it is best to write the negative log-likelihood as a
+function of z, rather than as a function of ŷ = σ(z ). If the sigmoid function
+underﬂows to zero, then taking the logarithm of ŷ yields negative in�?nity.
+6.2.2.3
+
+Softmax Units for Multinoulli Output Distributions
+
+Any time we wish to represent a probability distribution over a discrete variable
+with n possible values, we may use the softmax function. This can be seen as a
+generalization of the sigmoid function which was used to represent a probability
+distribution over a binary variable.
+Softmax functions are most often used as the output of a classi�?er, to represent
+the probability distribution over n diﬀerent classes. More rarely, softmax functions
+can be used inside the model itself, if we wish the model to choose between one of
+n diﬀerent options for some internal variable.
+In the case of binary variables, we wished to produce a single number
+ŷ = P (y = 1 | x).
+
+(6.27)
+
+Because this number needed to lie between 0 and 1, and because we wanted the
+logarithm of the number to be well-behaved for gradient-based optimization of
+the log-likelihood, we chose to instead predict a number z = log P̃ (y = 1 | x).
+Exponentiating and normalizing gave us a Bernoulli distribution controlled by the
+sigmoid function.
+184
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+To generalize to the case of a discrete variable with n values, we now need
+to produce a vector ŷ, with yˆi = P (y = i | x). We require not only that each
+element of yˆi be between 0 and 1, but also that the entire vector sums to 1 so that
+it represents a valid probability distribution. The same approach that worked for
+the Bernoulli distribution generalizes to the multinoulli distribution. First, a linear
+layer predicts unnormalized log probabilities:
+z = W  h + b,
+
+(6.28)
+
+where zi = log P˜(y = i | x). The softmax function can then exponentiate and
+normalize z to obtain the desired ŷ. Formally, the softmax function is given by
+exp(zi)
+softmax(z )i = �??
+.
+j exp(zj )
+
+(6.29)
+
+As with the logistic sigmoid, the use of the exp function works very well when
+training the softmax to output a target value y using maximum log-likelihood. In
+this case, we wish to maximize log P (y = i; z) = log softmax (z)i. De�?ning the
+softmax in terms of exp is natural because the log in the log-likelihood can undo
+the exp of the softmax:
+�?�
+log softmax(z ) i = zi − log
+exp(zj ).
+(6.30)
+j
+
+The �?rst term of equation 6.30 shows that the input z i always has a direct
+contribution to the cost function. Because this term cannot saturate, we know
+that learning can proceed, even if the contribution of z i to the second term of
+equation 6.30 becomes very small. When maximizing the log-likelihood, the �?rst
+term encourages z i to be pushed up, while the second term encourages
+all of z to be
+�??
+pushed down. To gain some intuition for the second term, log j exp(zj ), observe
+that this term can be roughly approximated by maxj zj . This approximation is
+based on the idea that exp(zk ) is insigni�?cant for any zk that is noticeably less than
+maxj zj . The intuition we can gain from this approximation is that the negative
+log-likelihood cost function always strongly penalizes the most active incorrect
+prediction. If the correct answer
+already has the largest input to the softmax, then
+�??
+the −z i term and the log j exp(z j ) ≈ maxj zj = zi terms will roughly cancel.
+This example will then contribute little to the overall training cost, which will be
+dominated by other examples that are not yet correctly classi�?ed.
+So far we have discussed only a single example. Overall, unregularized maximum
+likelihood will drive the model to learn parameters that drive the softmax to predict
+185
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+the fraction of counts of each outcome observed in the training set:
+�??m
+j=1 1y (j ) =i,x (j ) =x
+�??m
+softmax(z (x; θ )) i ≈
+.
+j=1 1x (j ) =x
+
+(6.31)
+
+Because maximum likelihood is a consistent estimator, this is guaranteed to happen
+so long as the model family is capable of representing the training distribution. In
+practice, limited model capacity and imperfect optimization will mean that the
+model is only able to approximate these fractions.
+Many objective functions other than the log-likelihood do not work as well
+with the softmax function. Speci�?cally, objective functions that do not use a log to
+undo the exp of the softmax fail to learn when the argument to the exp becomes
+very negative, causing the gradient to vanish. In particular, squared error is a
+poor loss function for softmax units, and can fail to train the model to change its
+output, even when the model makes highly con�?dent incorrect predictions (Bridle,
+1990). To understand why these other loss functions can fail, we need to examine
+the softmax function itself.
+Like the sigmoid, the softmax activation can saturate. The sigmoid function has
+a single output that saturates when its input is extremely negative or extremely
+positive. In the case of the softmax, there are multiple output values. These
+output values can saturate when the diﬀerences between input values become
+extreme. When the softmax saturates, many cost functions based on the softmax
+also saturate, unless they are able to invert the saturating activating function.
+To see that the softmax function responds to the diﬀerence between its inputs,
+observe that the softmax output is invariant to adding the same scalar to all of its
+inputs:
+softmax(z ) = softmax(z + c).
+(6.32)
+Using this property, we can derive a numerically stable variant of the softmax:
+softmax(z ) = softmax(z − max zi ).
+i
+
+(6.33)
+
+The reformulated version allows us to evaluate softmax with only small numerical
+errors even when z contains extremely large or extremely negative numbers. Examining the numerically stable variant, we see that the softmax function is driven
+by the amount that its arguments deviate from maxi zi .
+An output softmax(z) i saturates to 1 when the corresponding input is maximal
+(zi = maxi zi ) and zi is much greater than all of the other inputs. The output
+softmax(z)i can also saturate to 0 when zi is not maximal and the maximum is
+much greater. This is a generalization of the way that sigmoid units saturate, and
+186
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+can cause similar diﬃculties for learning if the loss function is not designed to
+compensate for it.
+The argument z to the softmax function can be produced in two diﬀerent ways.
+The most common is simply to have an earlier layer of the neural network output
+every element of z, as described above using the linear layer z = W h + b. While
+straightforward, this approach actually overparametrizes the distribution. The
+constraint that the n outputs must sum to 1 means that only n − 1 parameters are
+necessary; the probability of the n-th value may be obtained by subtracting the
+�?rst n − 1 probabilities from 1. We can thus impose a requirement that one element
+of z be �?xed. For example, we can require that zn = 0. Indeed, this is exactly
+what the sigmoid unit does. De�?ning P (y = 1 | x) = σ(z) is equivalent to de�?ning
+P (y = 1 | x) = softmax(z)1 with a two-dimensional z and z1 = 0. Both the n − 1
+argument and the n argument approaches to the softmax can describe the same
+set of probability distributions, but have diﬀerent learning dynamics. In practice,
+there is rarely much diﬀerence between using the overparametrized version or the
+restricted version, and it is simpler to implement the overparametrized version.
+From a neuroscienti�?c point of view, it is interesting to think of the softmax as
+a way to create a form of competition between the units that participate in it: the
+softmax outputs always sum to 1 so an increase in the value of one unit necessarily
+corresponds to a decrease in the value of others. This is analogous to the lateral
+inhibition that is believed to exist between nearby neurons in the cortex. At the
+extreme (when the diﬀerence between the maximal ai and the others is large in
+magnitude) it becomes a form of winner-take-all (one of the outputs is nearly 1
+and the others are nearly 0).
+The name “softmax�? can be somewhat confusing. The function is more closely
+related to the arg max function than the max function. The term “soft�? derives
+from the fact that the softmax function is continuous and diﬀerentiable. The
+arg max function, with its result represented as a one-hot vector, is not continuous
+or diﬀerentiable. The softmax function thus provides a “softened�? version of the
+arg max. The corresponding soft version of the maximum function is softmax(z)  z.
+It would perhaps be better to call the softmax function “softargmax,�? but the
+current name is an entrenched convention.
+6.2.2.4
+
+Other Output Types
+
+The linear, sigmoid, and softmax output units described above are the most
+common. Neural networks can generalize to almost any kind of output layer that
+we wish. The principle of maximum likelihood provides a guide for how to design
+187
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+a good cost function for nearly any kind of output layer.
+In general, if we de�?ne a conditional distribution p(y | x; θ), the principle of
+maximum likelihood suggests we use − log p(y | x; θ ) as our cost function.
+
+In general, we can think of the neural network as representing a function f (x;θ ).
+The outputs of this function are not direct predictions of the value y. Instead,
+f (x;θ) = ω provides the parameters for a distribution over y. Our loss function
+can then be interpreted as − log p(y ; ω (x)).
+
+For example, we may wish to learn the variance of a conditional Gaussian for y,
+given x. In the simple case, where the variance σ 2 is a constant, there is a closed
+form expression because the maximum likelihood estimator of variance is simply the
+empirical mean of the squared diﬀerence between observations y and their expected
+value. A computationally more expensive approach that does not require writing
+special-case code is to simply include the variance as one of the properties of the
+distribution p(y | x) that is controlled by ω = f (x; θ). The negative log-likelihood
+− log p(y; ω (x)) will then provide a cost function with the appropriate terms
+necessary to make our optimization procedure incrementally learn the variance. In
+the simple case where the standard deviation does not depend on the input, we
+can make a new parameter in the network that is copied directly into ω . This new
+parameter might be σ itself or could be a parameter v representing σ2 or it could
+be a parameter β representing σ12 , depending on how we choose to parametrize
+the distribution. We may wish our model to predict a diﬀerent amount of variance
+in y for diﬀerent values of x. This is called a heteroscedastic model. In the
+heteroscedastic case, we simply make the speci�?cation of the variance be one of
+the values output by f (x;θ). A typical way to do this is to formulate the Gaussian
+distribution using precision, rather than variance, as described in equation 3.22.
+In the multivariate case it is most common to use a diagonal precision matrix
+diag(β ).
+
+(6.34)
+
+This formulation works well with gradient d

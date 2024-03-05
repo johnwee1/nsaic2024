@@ -1,0 +1,317 @@
+alized kind of feedforward network. Feedforward networks are a conceptual
+stepping stone on the path to recurrent networks, which power many natural
+language applications.
+Feedforward neural networks are called networks because they are typically
+represented by composing together many diﬀerent functions. The model is associated with a directed acyclic graph describing how the functions are composed
+together. For example, we might have three functions f (1) , f (2) , and f (3) connected
+in a chain, to form f(x) = f (3) (f (2) (f (1) (x))). These chain structures are the most
+commonly used structures of neural networks. In this case, f (1) is called the �?rst
+layer of the network, f (2) is called the second layer, and so on. The overall
+168
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+length of the chain gives the depth of the model. It is from this terminology that
+the name “deep learning�? arises. The �?nal layer of a feedforward network is called
+the output layer. During neural network training, we drive f(x) to match f ∗ (x).
+The training data provides us with noisy, approximate examples of f ∗(x) evaluated
+at diﬀerent training points. Each example x is accompanied by a label y ≈ f ∗ (x).
+The training examples specify directly what the output layer must do at each point
+x; it must produce a value that is close to y. The behavior of the other layers is
+not directly speci�?ed by the training data. The learning algorithm must decide
+how to use those layers to produce the desired output, but the training data does
+not say what each individual layer should do. Instead, the learning algorithm must
+decide how to use these layers to best implement an approximation of f ∗ . Because
+the training data does not show the desired output for each of these layers, these
+layers are called hidden layers.
+Finally, these networks are called neural because they are loosely inspired by
+neuroscience. Each hidden layer of the network is typically vector-valued. The
+dimensionality of these hidden layers determines the width of the model. Each
+element of the vector may be interpreted as playing a role analogous to a neuron.
+Rather than thinking of the layer as representing a single vector-to-vector function,
+we can also think of the layer as consisting of many units that act in parallel,
+each representing a vector-to-scalar function. Each unit resembles a neuron in
+the sense that it receives input from many other units and computes its own
+activation value. The idea of using many layers of vector-valued representation
+is drawn from neuroscience. The choice of the functions f (i) (x) used to compute
+these representations is also loosely guided by neuroscienti�?c observations about
+the functions that biological neurons compute. However, modern neural network
+research is guided by many mathematical and engineering disciplines, and the
+goal of neural networks is not to perfectly model the brain. It is best to think of
+feedforward networks as function approximation machines that are designed to
+achieve statistical generalization, occasionally drawing some insights from what we
+know about the brain, rather than as models of brain function.
+One way to understand feedforward networks is to begin with linear models
+and consider how to overcome their limitations. Linear models, such as logistic
+regression and linear regression, are appealing because they may be �?t eﬃciently
+and reliably, either in closed form or with convex optimization. Linear models also
+have the obvious defect that the model capacity is limited to linear functions, so
+the model cannot understand the interaction between any two input variables.
+To extend linear models to represent nonlinear functions of x, we can apply
+the linear model not to x itself but to a transformed input φ(x), where φ is a
+169
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+nonlinear transformation. Equivalently, we can apply the kernel trick described in
+section 5.7.2, to obtain a nonlinear learning algorithm based on implicitly applying
+the φ mapping. We can think of φ as providing a set of features describing x, or
+as providing a new representation for x.
+The question is then how to choose the mapping φ.
+1. One option is to use a very generic φ, such as the in�?nite-dimensional φ that
+is implicitly used by kernel machines based on the RBF kernel. If φ(x) is
+of high enough dimension, we can always have enough capacity to �?t the
+training set, but generalization to the test set often remains poor. Very
+generic feature mappings are usually based only on the principle of local
+smoothness and do not encode enough prior information to solve advanced
+problems.
+2. Another option is to manually engineer φ. Until the advent of deep learning,
+this was the dominant approach. This approach requires decades of human
+eﬀort for each separate task, with practitioners specializing in diﬀerent
+domains such as speech recognition or computer vision, and with little
+transfer between domains.
+3. The strategy of deep learning is to learn φ. In this approach, we have a model
+y = f (x; θ , w) = φ(x; θ) w. We now have parameters θ that we use to learn
+φ from a broad class of functions, and parameters w that map from φ(x) to
+the desired output. This is an example of a deep feedforward network, with
+φ de�?ning a hidden layer. This approach is the only one of the three that
+gives up on the convexity of the training problem, but the bene�?ts outweigh
+the harms. In this approach, we parametrize the representation as φ(x; θ)
+and use the optimization algorithm to �?nd the θ that corresponds to a good
+representation. If we wish, this approach can capture the bene�?t of the �?rst
+approach by being highly generic—we do so by using a very broad family
+φ(x; θ). This approach can also capture the bene�?t of the second approach.
+Human practitioners can encode their knowledge to help generalization by
+designing families φ(x; θ) that they expect will perform well. The advantage
+is that the human designer only needs to �?nd the right general function
+family rather than �?nding precisely the right function.
+This general principle of improving models by learning features extends beyond
+the feedforward networks described in this chapter. It is a recurring theme of deep
+learning that applies to all of the kinds of models described throughout this book.
+Feedforward networks are the application of this principle to learning deterministic
+170
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+mappings from x to y that lack feedback connections. Other models presented
+later will apply these principles to learning stochastic mappings, learning functions
+with feedback, and learning probability distributions over a single vector.
+We begin this chapter with a simple example of a feedforward network. Next,
+we address each of the design decisions needed to deploy a feedforward network.
+First, training a feedforward network requires making many of the same design
+decisions as are necessary for a linear model: choosing the optimizer, the cost
+function, and the form of the output units. We review these basics of gradient-based
+learning, then proceed to confront some of the design decisions that are unique
+to feedforward networks. Feedforward networks have introduced the concept of a
+hidden layer, and this requires us to choose the activation functions that will
+be used to compute the hidden layer values. We must also design the architecture
+of the network, including how many layers the network should contain, how these
+layers should be connected to each other, and how many units should be in
+each layer. Learning in deep neural networks requires computing the gradients
+of complicated functions. We present the back-propagation algorithm and its
+modern generalizations, which can be used to eﬃciently compute these gradients.
+Finally, we close with some historical perspective.
+
+6.1
+
+Example: Learning XOR
+
+To make the idea of a feedforward network more concrete, we begin with an
+example of a fully functioning feedforward network on a very simple task: learning
+the XOR function.
+The XOR function (“exclusive or�?) is an operation on two binary values, x1
+and x2. When exactly one of these binary values is equal to 1, the XOR function
+returns 1. Otherwise, it returns 0. The XOR function provides the target function
+y = f ∗(x) that we want to learn. Our model provides a function y = f(x;θ ) and
+our learning algorithm will adapt the parameters θ to make f as similar as possible
+to f ∗.
+In this simple example, we will not be concerned with statistical generalization.
+We want our network to perform correctly on the four points X = {[0, 0] , [0,1] ,
+[1, 0] , and [1, 1] }. We will train the network on all four of these points. The
+only challenge is to �?t the training set.
+We can treat this problem as a regression problem and use a mean squared
+error loss function. We choose this loss function to simplify the math for this
+example as much as possible. In practical applications, MSE is usually not an
+171
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+appropriate cost function for modeling binary data. More appropriate approaches
+are described in section 6.2.2.2.
+Evaluated on our whole training set, the MSE loss function is
+J(θ ) =
+
+1�?� ∗
+(f (x) − f (x; θ ))2 .
+4 x∈X
+
+(6.1)
+
+Now we must choose the form of our model, f (x; θ). Suppose that we choose
+a linear model, with θ consisting of w and b. Our model is de�?ned to be
+f (x; w , b) = x w + b.
+
+(6.2)
+
+We can minimize J(θ) in closed form with respect to w and b using the normal
+equations.
+After solving the normal equations, we obtain w = 0 and b = 12. The linear
+model simply outputs 0.5 everywhere. Why does this happen? Figure 6.1 shows
+how a linear model is not able to represent the XOR function. One way to solve
+this problem is to use a model that learns a diﬀerent feature space in which a
+linear model is able to represent the solution.
+Speci�?cally, we will introduce a very simple feedforward network with one
+hidden layer containing two hidden units. See �?gure 6.2 for an illustration of
+this model. This feedforward network has a vector of hidden units h that are
+computed by a function f (1) (x; W , c). The values of these hidden units are then
+used as the input for a second layer. The second layer is the output layer of the
+network. The output layer is still just a linear regression model, but now it is
+applied to h rather than to x. The network now contains two functions chained
+together: h = f (1) (x; W , c ) and y = f (2) (h; w, b), with the complete model being
+f (x; W , c, w, b) = f (2) (f (1) (x)).
+What function should f (1) compute? Linear models have served us well so far,
+and it may be tempting to make f (1) be linear as well. Unfortunately, if f (1) were
+linear, then the feedforward network as a whole would remain a linear function of
+its input. Ignoring the intercept terms for the moment, suppose f (1) (x) = W  x
+and f (2)(h) = h w. Then f (x) = w W x. We could represent this function as
+f (x) = x w where w = W w.
+Clearly, we must use a nonlinear function to describe the features. Most neural
+networks do so using an aﬃne transformation controlled by learned parameters,
+followed by a �?xed, nonlinear function called an activation function. We use that
+strategy here, by de�?ning h = g(W  x + c), where W provides the weights of a
+linear transformation and c the biases. Previously, to describe a linear regression
+172
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Original x space
+
+Learned h space
+
+h2
+
+1
+
+x2
+
+1
+
+0
+
+0
+0
+
+1
+
+0
+
+x1
+
+1
+h1
+
+2
+
+Figure 6.1: Solving the XOR problem by learning a representation. The bold numbers
+printed on the plot indicate the value that the learned function must output at each point.
+(Left)A linear model applied directly to the original input cannot implement the XOR
+function. When x1 = 0, the model’s output must increase as x2 increases. When x1 = 1,
+the model’s output must decrease as x2 increases. A linear model must apply a �?xed
+coeﬃcient w 2 to x2. The linear model therefore cannot use the value of x1 to change
+the coeﬃcient on x2 and cannot solve this problem. (Right)In the transformed space
+represented by the features extracted by a neural network, a linear model can now solve
+the problem. In our example solution, the two points that must have output 1 have been
+collapsed into a single point in feature space. In other words, the nonlinear features have
+mapped both x = [1, 0]  and x = [0,1]  to a single point in feature space, h = [1 ,0] .
+The linear model can now describe the function as increasing in h1 and decreasing in h2.
+In this example, the motivation for learning the feature space is only to make the model
+capacity greater so that it can �?t the training set. In more realistic applications, learned
+representations can also help the model to generalize.
+
+173
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+y
+
+y
+
+w
+
+h1
+
+h2
+
+h
+W
+
+x1
+
+x
+
+x2
+
+Figure 6.2: An example of a feedforward network, drawn in two diﬀerent styles. Speci�?cally,
+this is the feedforward network we use to solve the XOR example. It has a single hidden
+layer containing two units. (Left)In this style, we draw every unit as a node in the graph.
+This style is very explicit and unambiguous but for networks larger than this example
+it can consume too much space. (Right)In this style, we draw a node in the graph for
+each entire vector representing a layer’s activations. This style is much more compact.
+Sometimes we annotate the edges in this graph with the name of the parameters that
+describe the relationship between two layers. Here, we indicate that a matrixW describes
+the mapping from x to h, and a vector w describes the mapping from h to y. We
+typically omit the intercept parameters associated with each layer when labeling this kind
+of drawing.
+
+model, we used a vector of weights and a scalar bias parameter to describe an
+aﬃne transformation from an input vector to an output scalar. Now, we describe
+an aﬃne transformation from a vector x to a vector h, so an entire vector of bias
+parameters is needed. The activation function g is typically chosen to be a function
+that is applied element-wise, with hi = g(x W:,i + c i). In modern neural networks,
+the default recommendation is to use the recti�?ed linear unit or ReLU (Jarrett
+et al., 2009; Nair and Hinton, 2010; Glorot et al., 2011a) de�?ned by the activation
+function g (z ) = max{0, z } depicted in �?gure 6.3.
+We can now specify our complete network as
+
+f (x; W , c, w, b) = w max{0, W  x + c} + b.
+We can now specify a solution to the XOR problem. Let
+
+
+1 1
+W =
+,
+1 1
+c=
+
+
+
+0
+−1
+
+174
+
+
+
+,
+
+(6.3)
+
+(6.4)
+
+(6.5)
+
+g (z ) = max{0, z}
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+0
+0
+z
+
+Figure 6.3: The recti�?ed linear activation function. This activation function is the default
+activation function recommended for use with most feedforward neural networks. Applying
+this function to the output of a linear transformation yields a nonlinear transformation.
+However, the function remains very close to linear, in the sense that is a piecewise linear
+function with two linear pieces. Because recti�?ed linear units are nearly linear, they
+preserve many of the properties that make linear models easy to optimize with gradientbased methods. They also preserve many of the properties that make linear models
+generalize well. A common principle thr

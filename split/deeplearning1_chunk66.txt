@@ -1,0 +1,308 @@
+acting negatively on the
+quality of the approximation.
+Another kind of dynamic structure is a switch, where a hidden unit can
+receive input from diï¬€erent units depending on the context. This dynamic routing
+approach can be interpreted as an attention mechanism (Olshausen et al., 1993).
+So far, the use of a hard switch has not proven eï¬€ective on large-scale applications.
+Contemporary approaches instead use a weighted average over many possible inputs,
+and thus do not achieve all of the possible computational beneï¬?ts of dynamic
+structure. Contemporary attention mechanisms are described in section 12.4.5.1.
+One major obstacle to using dynamically structured systems is the decreased
+degree of parallelism that results from the system following diï¬€erent code branches
+for diï¬€erent inputs. This means that few operations in the network can be described
+as matrix multiplication or batch convolution on a minibatch of examples. We
+can write more specialized sub-routines that convolve each example with diï¬€erent
+kernels or multiply each row of a design matrix by a diï¬€erent set of columns
+of weights. Unfortunately, these more specialized subroutines are diï¬ƒcult to
+implement eï¬ƒciently. CPU implementations will be slow due to the lack of cache
+450
+
+CHAPTER 12. APPLICATIONS
+
+coherence and GPU implementations will be slow due to the lack of coalesced
+memory transactions and the need to serialize warps when members of a warp take
+diï¬€erent branches. In some cases, these issues can be mitigated by partitioning the
+examples into groups that all take the same branch, and processing these groups
+of examples simultaneously. This can be an acceptable strategy for minimizing
+the time required to process a ï¬?xed amount of examples in an oï¬„ine setting. In
+a real-time setting where examples must be processed continuously, partitioning
+the workload can result in load-balancing issues. For example, if we assign one
+machine to process the ï¬?rst step in a cascade and another machine to process
+the last step in a cascade, then the ï¬?rst will tend to be overloaded and the last
+will tend to be underloaded. Similar issues arise if each machine is assigned to
+implement diï¬€erent nodes of a neural decision tree.
+
+12.1.6
+
+Specialized Hardware Implementations of Deep Networks
+
+Since the early days of neural networks research, hardware designers have worked
+on specialized hardware implementations that could speed up training and/or
+inference of neural network algorithms. See early and more recent reviews of
+specialized hardware for deep networks (Lindsey and Lindblad, 1994; Beiu et al.,
+2003; Misra and Saha, 2010).
+Diï¬€erent forms of specialized hardware (Graf and Jackel, 1989; Mead and
+Ismail, 2012; Kim et al., 2009; Pham et al., 2012; Chen et al., 2014a,b) have
+been developed over the last decades, either with ASICs (application-speciï¬?c integrated circuit), either with digital (based on binary representations of numbers),
+analog (Graf and Jackel, 1989; Mead and Ismail, 2012) (based on physical implementations of continuous values as voltages or currents) or hybrid implementations
+(combining digital and analog components). In recent years more ï¬‚exible FPGA
+(ï¬?eld programmable gated array) implementations (where the particulars of the
+circuit can be written on the chip after it has been built) have been developed.
+Though software implementations on general-purpose processing units (CPUs
+and GPUs) typically use 32 or 64 bits of precision to represent ï¬‚oating point
+numbers, it has long been known that it was possible to use less precision, at
+least at inference time (Holt and Baker, 1991; Holi and Hwang, 1993; Presley
+and Haggard, 1994; Simard and Graf, 1994; Wawrzynek et al., 1996; Savich et al.,
+2007). This has become a more pressing issue in recent years as deep learning
+has gained in popularity in industrial products, and as the great impact of faster
+hardware was demonstrated with GPUs. Another factor that motivates current
+research on specialized hardware for deep networks is that the rate of progress of
+a single CPU or GPU core has slowed down, and most recent improvements in
+451
+
+CHAPTER 12. APPLICATIONS
+
+computing speed have come from parallelization across cores (either in CPUs or
+GPUs). This is very diï¬€erent from the situation of the 1990s (the previous neural
+network era) where the hardware implementations of neural networks (which might
+take two years from inception to availability of a chip) could not keep up with
+the rapid progress and low prices of general-purpose CPUs. Building specialized
+hardware is thus a way to push the envelope further, at a time when new hardware
+designs are being developed for low-power devices such as phones, aiming for
+general-public applications of deep learning (e.g., with speech, computer vision or
+natural language).
+Recent work on low-precision implementations of backprop-based neural nets
+(Vanhoucke et al., 2011; Courbariaux et al., 2015; Gupta et al., 2015) suggests
+that between 8 and 16 bits of precision can suï¬ƒce for using or training deep
+neural networks with back-propagation. What is clear is that more precision is
+required during training than at inference time, and that some forms of dynamic
+ï¬?xed point representation of numbers can be used to reduce how many bits are
+required per number. Traditional ï¬?xed point numbers are restricted to a ï¬?xed
+range (which corresponds to a given exponent in a ï¬‚oating point representation).
+Dynamic ï¬?xed point representations share that range among a set of numbers
+(such as all the weights in one layer). Using ï¬?xed point rather than ï¬‚oating point
+representations and using less bits per number reduces the hardware surface area,
+power requirements and computing time needed for performing multiplications,
+and multiplications are the most demanding of the operations needed to use or
+train a modern deep network with backprop.
+
+12.2
+
+Computer Vision
+
+Computer vision has traditionally been one of the most active research areas for
+deep learning applications, because vision is a task that is eï¬€ortless for humans
+and many animals but challenging for computers (Ballard et al., 1983). Many of
+the most popular standard benchmark tasks for deep learning algorithms are forms
+of object recognition or optical character recognition.
+Computer vision is a very broad ï¬?eld encompassing a wide variety of ways
+of processing images, and an amazing diversity of applications. Applications of
+computer vision range from reproducing human visual abilities, such as recognizing
+faces, to creating entirely new categories of visual abilities. As an example of
+the latter category, one recent computer vision application is to recognize sound
+waves from the vibrations they induce in objects visible in a video (Davis et al.,
+2014). Most deep learning research on computer vision has not focused on such
+452
+
+CHAPTER 12. APPLICATIONS
+
+exotic applications that expand the realm of what is possible with imagery but
+rather a small core of AI goals aimed at replicating human abilities. Most deep
+learning for computer vision is used for object recognition or detection of some
+form, whether this means reporting which object is present in an image, annotating
+an image with bounding boxes around each object, transcribing a sequence of
+symbols from an image, or labeling each pixel in an image with the identity of the
+object it belongs to. Because generative modeling has been a guiding principle
+of deep learning research, there is also a large body of work on image synthesis
+using deep models. While image synthesis ex nihilo is usually not considered a
+computer vision endeavor, models capable of image synthesis are usually useful for
+image restoration, a computer vision task involving repairing defects in images or
+removing objects from images.
+
+12.2.1
+
+Preprocessing
+
+Many application areas require sophisticated preprocessing because the original
+input comes in a form that is diï¬ƒcult for many deep learning architectures to
+represent. Computer vision usually requires relatively little of this kind of preprocessing. The images should be standardized so that their pixels all lie in the
+same, reasonable range, like [0,1] or [-1, 1]. Mixing images that lie in [0,1] with
+images that lie in [0, 255] will usually result in failure. Formatting images to have
+the same scale is the only kind of preprocessing that is strictly necessary. Many
+computer vision architectures require images of a standard size, so images must be
+cropped or scaled to ï¬?t that size. Even this rescaling is not always strictly necessary.
+Some convolutional models accept variably-sized inputs and dynamically adjust
+the size of their pooling regions to keep the output size constant (Waibel et al.,
+1989). Other convolutional models have variable-sized output that automatically
+scales in size with the input, such as models that denoise or label each pixel in an
+image (Hadsell et al., 2007).
+Dataset augmentation may be seen as a way of preprocessing the training set
+only. Dataset augmentation is an excellent way to reduce the generalization error
+of most computer vision models. A related idea applicable at test time is to show
+the model many diï¬€erent versions of the same input (for example, the same image
+cropped at slightly diï¬€erent locations) and have the diï¬€erent instantiations of the
+model vote to determine the output. This latter idea can be interpreted as an
+ensemble approach, and helps to reduce generalization error.
+Other kinds of preprocessing are applied to both the train and the test set with
+the goal of putting each example into a more canonical form in order to reduce the
+amount of variation that the model needs to account for. Reducing the amount of
+453
+
+CHAPTER 12. APPLICATIONS
+
+variation in the data can both reduce generalization error and reduce the size of
+the model needed to ï¬?t the training set. Simpler tasks may be solved by smaller
+models, and simpler solutions are more likely to generalize well. Preprocessing
+of this kind is usually designed to remove some kind of variability in the input
+data that is easy for a human designer to describe and that the human designer
+is conï¬?dent has no relevance to the task. When training with large datasets and
+large models, this kind of preprocessing is often unnecessary, and it is best to just
+let the model learn which kinds of variability it should become invariant to. For
+example, the AlexNet system for classifying ImageNet only has one preprocessing
+step: subtracting the mean across training examples of each pixel (Krizhevsky
+et al., 2012).
+12.2.1.1
+
+Contrast Normalization
+
+One of the most obvious sources of variation that can be safely removed for
+many tasks is the amount of contrast in the image. Contrast simply refers to the
+magnitude of the diï¬€erence between the bright and the dark pixels in an image.
+There are many ways of quantifying the contrast of an image. In the context of
+deep learning, contrast usually refers to the standard deviation of the pixels in an
+image or region of an image. Suppose we have an image represented by a tensor
+X âˆˆ R rÃ—cÃ—3 , with X i,j,1 being the red intensity at row i and column j , Xi,j,2 giving
+the green intensity and Xi,j,3 giving the blue intensity. Then the contrast of the
+entire image is given by
+î?¶
+î?µ
+r î?˜
+c î?˜
+3
+î?µ 1 î?˜
+î€€
+î€?
+î?´
+Â¯ 2
+(12.1)
+X i,j,k âˆ’ X
+3rc
+i=1 j=1 k=1
+
+where XÌ„ is the mean intensity of the entire image:
+r
+
+c
+
+3
+
+1 î?˜î?˜î?˜
+Xi,j,k .
+XÌ„ =
+3rc i=1 j=1 k=1
+
+(12.2)
+
+Global contrast normalization (GCN) aims to prevent images from having
+varying amounts of contrast by subtracting the mean from each image, then
+rescaling it so that the standard deviation across its pixels is equal to some
+constant s. This approach is complicated by the fact that no scaling factor can
+change the contrast of a zero-contrast image (one whose pixels all have equal
+intensity). Images with very low but non-zero contrast often have little information
+content. Dividing by the true standard deviation usually accomplishes nothing
+454
+
+CHAPTER 12. APPLICATIONS
+
+more than amplifying sensor noise or compression artifacts in such cases. This
+motivates introducing a small, positive regularization parameter Î» to bias the
+estimate of the standard deviation. Alternately, one can constrain the denominator
+to be at least î€?. Given an input image X, GCN produces an output image Xî€° ,
+deï¬?ned such that
+î€°
+=s
+Xi,j,k
+
+Xi,j,k âˆ’ XÌ„
+î€š î?±
+î€›.
+î€?2
+î??c î??3 î€€
+1 î??r
+max î€?, Î» + 3rc i=1 j=1 k=1 Xi,j,k âˆ’ XÌ„
+
+(12.3)
+
+Datasets consisting of large images cropped to interesting objects are unlikely
+to contain any images with nearly constant intensity. In these cases, it is safe
+to practically ignore the small denominator problem by setting Î» = 0 and avoid
+division by 0 in extremely rare cases by setting î€? to an extremely low value like
+10 âˆ’8 . This is the approach used by Goodfellow et al. (2013a) on the CIFAR-10
+dataset. Small images cropped randomly are more likely to have nearly constant
+intensity, making aggressive regularization more useful. Coates et al. (2011) used
+î€? = 0 and Î» = 10 on small, randomly selected patches drawn from CIFAR-10.
+The scale parameter s can usually be set to 1, as done by Coates et al. (2011),
+or chosen to make each individual pixel have standard deviation across examples
+close to 1, as done by Goodfellow et al. (2013a).
+The standard deviation in equation 12.3 is just a rescaling of the L2 norm
+of the image (assuming the mean of the image has already been removed). It is
+preferable to deï¬?ne GCN in terms of standard deviation rather than L2 norm
+because the standard deviation includes division by the number of pixels, so GCN
+based on standard deviation allows the same s to be used regardless of image
+size. However, the observation that the L2 norm is proportional to the standard
+deviation can help build a useful intuition. One can understand GCN as mapping
+examples to a spherical shell. See ï¬?gure 12.1 for an illustration. This can be a
+useful property because neural networks are often better at responding to directions
+in space rather than exact locations. Responding to multiple distances in the
+same direction requires hidden units with collinear weight vectors but diï¬€erent
+biases. Such coordination can be diï¬ƒcult for the learning algorithm to discover.
+Additionally, many shallow graphical models have problems with representing
+multiple separated modes along the same line. GCN avoids these problems by
+reducing each example to a direction rather than a direction and a distance.
+Counterintuitively, there is a preprocessing operation known as sphering and
+it is not the same operation as GCN. Sphering does not refer to making the data
+lie on a spherical shell, but rather to rescaling the principal components to have
+455
+
+CHAPTER 12. APPLICATIONS
+
+Raw input
+
+GCN, Î» = 0
+
+GCN, Î» = 10âˆ’2
+
+x1
+
+1.5
+
+0.0
+
+âˆ’1.5
+âˆ’1.5
+
+0 .0
+x0
+
+1.5
+
+âˆ’1.5
+
+0.0
+x0
+
+1.5
+
+âˆ’1.5
+
+0 .0
+x0
+
+1.5
+
+Figure 12.1: GCN maps examples onto a sphere. (Left)Raw input data may have any norm.
+(Center)GCN with Î» = 0 maps all non-zero examples perfectly onto a sphere. Here we use
+s = 1 and î€? = 10âˆ’8. Because we use GCN based on normalizing the standard deviation
+rather than the L 2 norm, the resulting sphere is not the unit sphere. (Right)Regularized
+GCN, with Î» > 0, draws examples toward the sphere but does not completely discard the
+variation in their norm. We leave s and î€? the sa

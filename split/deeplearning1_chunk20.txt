@@ -1,0 +1,324 @@
+ µm ) Λ−1
+(5.78)
+m (w − µ m) .
+2
+All terms that do not include the parameter vector w have been omitted; they
+are implied by the fact that the distribution must be normalized to integrate to 1.
+Equation 3.23 shows how to normalize a multivariate Gaussian distribution.
+Examining this posterior distribution allows us to gain some intuition for the
+eﬀect of Bayesian inference. In most situations, we set µ0 to 0. If we set Λ0 = 1α I,
+then µm gives the same estimate of w as does frequentist linear regression with a
+weight decay penalty of αww. One diﬀerence is that the Bayesian estimate is
+unde�?ned if α is set to zero—-we are not allowed to begin the Bayesian learning
+process with an in�?nitely wide prior on w. The more important diﬀerence is that
+the Bayesian estimate provides a covariance matrix, showing how likely all the
+diﬀerent values of w are, rather than providing only the estimate µm.
+
+5.6.1
+
+Maximum A Posteriori (MAP) Estimation
+
+While the most principled approach is to make predictions using the full Bayesian
+posterior distribution over the parameter θ , it is still often desirable to have a
+1
+
+Unless there is a reason to assume a particular covariance structure, we typically assume a
+diagonal covariance matrix Λ0 = diag(λ 0).
+138
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+single point estimate. One common reason for desiring a point estimate is that
+most operations involving the Bayesian posterior for most interesting models are
+intractable, and a point estimate oﬀers a tractable approximation. Rather than
+simply returning to the maximum likelihood estimate, we can still gain some of
+the bene�?t of the Bayesian approach by allowing the prior to inﬂuence the choice
+of the point estimate. One rational way to do this is to choose the maximum
+a posteriori (MAP) point estimate. The MAP estimate chooses the point of
+maximal posterior probability (or maximal probability density in the more common
+case of continuous θ):
+θMAP = arg max p(θ | x) = arg max log p(x | θ ) + log p(θ).
+θ
+
+(5.79)
+
+θ
+
+We recognize, above on the right hand side, log p(x | θ), i.e. the standard loglikelihood term, and log p(θ ), corresponding to the prior distribution.
+As an example, consider a linear regression model with a Gaussian prior on
+the weights w . If this prior is given by N (w ; 0, 1λ I 2), then the log-prior term in
+equation 5.79 is proportional to the familiar λw w weight decay penalty, plus a
+term that does not depend on w and does not aﬀect the learning process. MAP
+Bayesian inference with a Gaussian prior on the weights thus corresponds to weight
+decay.
+As with full Bayesian inference, MAP Bayesian inference has the advantage of
+leveraging information that is brought by the prior and cannot be found in the
+training data. This additional information helps to reduce the variance in the
+MAP point estimate (in comparison to the ML estimate). However, it does so at
+the price of increased bias.
+Many regularized estimation strategies, such as maximum likelihood learning
+regularized with weight decay, can be interpreted as making the MAP approximation to Bayesian inference. This view applies when the regularization consists of
+adding an extra term to the objective function that corresponds to log p(θ ). Not
+all regularization penalties correspond to MAP Bayesian inference. For example,
+some regularizer terms may not be the logarithm of a probability distribution.
+Other regularization terms depend on the data, which of course a prior probability
+distribution is not allowed to do.
+MAP Bayesian inference provides a straightforward way to design complicated
+yet interpretable regularization terms. For example, a more complicated penalty
+term can be derived by using a mixture of Gaussians, rather than a single Gaussian
+distribution, as the prior (Nowlan and Hinton, 1992).
+
+139
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+5.7
+
+Supervised Learning Algorithms
+
+Recall from section 5.1.3 that supervised learning algorithms are, roughly speaking,
+learning algorithms that learn to associate some input with some output, given a
+training set of examples of inputs x and outputs y. In many cases the outputs
+y may be diﬃcult to collect automatically and must be provided by a human
+“supervisor,�? but the term still applies even when the training set targets were
+collected automatically.
+
+5.7.1
+
+Probabilistic Supervised Learning
+
+Most supervised learning algorithms in this book are based on estimating a
+probability distribution p(y | x). We can do this simply by using maximum
+likelihood estimation to �?nd the best parameter vector θ for a parametric family
+of distributions p(y | x; θ).
+We have already seen that linear regression corresponds to the family
+p(y | x; θ) = N (y; θ x, I ).
+
+(5.80)
+
+We can generalize linear regression to the classi�?cation scenario by de�?ning a
+diﬀerent family of probability distributions. If we have two classes, class 0 and
+class 1, then we need only specify the probability of one of these classes. The
+probability of class 1 determines the probability of class 0, because these two values
+must add up to 1.
+The normal distribution over real-valued numbers that we used for linear
+regression is parametrized in terms of a mean. Any value we supply for this mean
+is valid. A distribution over a binary variable is slightly more complicated, because
+its mean must always be between 0 and 1. One way to solve this problem is to use
+the logistic sigmoid function to squash the output of the linear function into the
+interval (0, 1) and interpret that value as a probability:
+p(y = 1 | x; θ) = σ (θ x).
+
+(5.81)
+
+This approach is known as logistic regression (a somewhat strange name since
+we use the model for classi�?cation rather than regression).
+In the case of linear regression, we were able to �?nd the optimal weights by
+solving the normal equations. Logistic regression is somewhat more diﬃcult. There
+is no closed-form solution for its optimal weights. Instead, we must search for
+them by maximizing the log-likelihood. We can do this by minimizing the negative
+log-likelihood (NLL) using gradient descent.
+140
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+This same strategy can be applied to essentially any supervised learning problem,
+by writing down a parametric family of conditional probability distributions over
+the right kind of input and output variables.
+
+5.7.2
+
+Support Vector Machines
+
+One of the most inﬂuential approaches to supervised learning is the support vector
+machine (Boser et al., 1992; Cortes and Vapnik, 1995). This model is similar to
+logistic regression in that it is driven by a linear function w x + b. Unlike logistic
+regression, the support vector machine does not provide probabilities, but only
+outputs a class identity. The SVM predicts that the positive class is present when
+w x + b is positive. Likewise, it predicts that the negative class is present when
+w x + b is negative.
+One key innovation associated with support vector machines is the kernel
+trick. The kernel trick consists of observing that many machine learning algorithms
+can be written exclusively in terms of dot products between examples. For example,
+it can be shown that the linear function used by the support vector machine can
+be re-written as
+m
+�?�
+
+w x+b = b+
+α ixx(i)
+(5.82)
+i=1
+
+where x(i) is a training example and α is a vector of coeﬃcients. Rewriting the
+learning algorithm this way allows us to replace x by the output of a given feature
+function φ(x) and the dot product with a function k(x, x(i)) = φ(x)· φ(x(i) ) called
+a kernel. The · operator represents an inner product analogous to φ(x)φ(x(i)).
+For some feature spaces, we may not use literally the vector inner product. In
+some in�?nite dimensional spaces, we need to use other kinds of inner products, for
+example, inner products based on integration rather than summation. A complete
+development of these kinds of inner products is beyond the scope of this book.
+After replacing dot products with kernel evaluations, we can make predictions
+using the function
+�?�
+f (x ) = b +
+α ik(x, x(i) ).
+(5.83)
+i
+
+This function is nonlinear with respect to x, but the relationship between φ(x)
+and f (x) is linear. Also, the relationship between α and f(x) is linear. The
+kernel-based function is exactly equivalent to preprocessing the data by applying
+φ(x) to all inputs, then learning a linear model in the new transformed space.
+The kernel trick is powerful for two reasons. First, it allows us to learn models
+that are nonlinear as a function of x using convex optimization techniques that are
+141
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+guaranteed to converge eﬃciently. This is possible because we consider φ �?xed and
+optimize only α, i.e., the optimization algorithm can view the decision function
+as being linear in a diﬀerent space. Second, the kernel function k often admits
+an implementation that is signi�?cantly more computational eﬃcient than naively
+constructing two φ(x) vectors and explicitly taking their dot product.
+In some cases, φ(x) can even be in�?nite dimensional, which would result in
+an in�?nite computational cost for the naive, explicit approach. In many cases,
+k(x, x ) is a nonlinear, tractable function of x even when φ(x) is intractable. As
+an example of an in�?nite-dimensional feature space with a tractable kernel, we
+construct a feature mapping φ(x) over the non-negative integers x. Suppose that
+this mapping returns a vector containing x ones followed by in�?nitely many zeros.
+We can write a kernel function k(x, x (i) ) = min(x, x(i)) that is exactly equivalent
+to the corresponding in�?nite-dimensional dot product.
+The most commonly used kernel is the Gaussian kernel
+k(u, v) = N (u − v ; 0, σ2I)
+
+(5.84)
+
+where N (x; µ, Σ) is the standard normal density. This kernel is also known as
+the radial basis function (RBF) kernel, because its value decreases along lines
+in v space radiating outward from u. The Gaussian kernel corresponds to a dot
+product in an in�?nite-dimensional space, but the derivation of this space is less
+straightforward than in our example of the min kernel over the integers.
+We can think of the Gaussian kernel as performing a kind of template matching. A training example x associated with training label y becomes a template
+for class y. When a test point x is near x according to Euclidean distance, the
+Gaussian kernel has a large response, indicating that x is very similar to the x
+template. The model then puts a large weight on the associated training label y.
+Overall, the prediction will combine many such training labels weighted by the
+similarity of the corresponding training examples.
+Support vector machines are not the only algorithm that can be enhanced
+using the kernel trick. Many other linear models can be enhanced in this way. The
+category of algorithms that employ the kernel trick is known as kernel machines
+or kernel methods (Williams and Rasmussen, 1996; Schölkopf et al., 1999).
+A major drawback to kernel machines is that the cost of evaluating the decision
+function is linear in the number of training examples, because the i-th example
+contributes a term αik(x, x(i)) to the decision function. Support vector machines
+are able to mitigate this by learning an α vector that contains mostly zeros.
+Classifying a new example then requires evaluating the kernel function only for
+the training examples that have non-zero α i. These training examples are known
+142
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+as support vectors.
+Kernel machines also suﬀer from a high computational cost of training when
+the dataset is large. We will revisit this idea in section 5.9. Kernel machines with
+generic kernels struggle to generalize well. We will explain why in section 5.11. The
+modern incarnation of deep learning was designed to overcome these limitations of
+kernel machines. The current deep learning renaissance began when Hinton et al.
+(2006) demonstrated that a neural network could outperform the RBF kernel SVM
+on the MNIST benchmark.
+
+5.7.3
+
+Other Simple Supervised Learning Algorithms
+
+We have already brieﬂy encountered another non-probabilistic supervised learning
+algorithm, nearest neighbor regression. More generally, k-nearest neighbors is
+a family of techniques that can be used for classi�?cation or regression. As a
+non-parametric learning algorithm, k-nearest neighbors is not restricted to a �?xed
+number of parameters. We usually think of the k-nearest neighbors algorithm
+as not having any parameters, but rather implementing a simple function of the
+training data. In fact, there is not even really a training stage or learning process.
+Instead, at test time, when we want to produce an output y for a new test input x,
+we �?nd the k-nearest neighbors to x in the training data X. We then return the
+average of the corresponding y values in the training set. This works for essentially
+any kind of supervised learning where we can de�?ne an average over y values. In
+the case of classi�?cation, we can average over one-hot code vectors c with cy = 1
+and c i = 0 for all other values of i. We can then interpret the average over these
+one-hot codes as giving a probability distribution over classes. As a non-parametric
+learning algorithm, k-nearest neighbor can achieve very high capacity. For example,
+suppose we have a multiclass classi�?cation task and measure performance with 0-1
+loss. In this setting, 1-nearest neighbor converges to double the Bayes error as the
+number of training examples approaches in�?nity. The error in excess of the Bayes
+error results from choosing a single neighbor by breaking ties between equally
+distant neighbors randomly. When there is in�?nite training data, all test points x
+will have in�?nitely many training set neighbors at distance zero. If we allow the
+algorithm to use all of these neighbors to vote, rather than randomly choosing one
+of them, the procedure converges to the Bayes error rate. The high capacity of
+k-nearest neighbors allows it to obtain high accuracy given a large training set.
+However, it does so at high computational cost, and it may generalize very badly
+given a small, �?nite training set. One weakness of k-nearest neighbors is that it
+cannot learn that one feature is more discriminative than another. For example,
+imagine we have a regression task with x ∈ R 100 drawn from an isotropic Gaussian
+143
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+distribution, but only a single variable x1 is relevant to the output. Suppose
+further that this feature simply encodes the output directly, i.e. that y = x 1 in all
+cases. Nearest neighbor regression will not be able to detect this simple pattern.
+The nearest neighbor of most points x will be determined by the large number of
+features x2 through x 100 , not by the lone feature x1 . Thus the output on small
+training sets will essentially be random.
+
+144
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+0
+
+00
+
+1
+10
+
+01
+
+010
+
+11
+
+011
+
+110
+
+111
+
+1110
+
+1111
+
+010
+
+00
+
+01
+0
+011
+
+110
+
+1
+11
+10
+1110
+
+111
+
+1111
+
+Figure 5.7: Diagrams describing how a decision tree works. (Top)Each node of the tree
+chooses to send the input example to the child node on the left (0) or or the child node on
+the right (1). Internal nodes are drawn as circles and leaf nodes as squares. Each node is
+displayed with a binary string identi�?er corresponding to its position in the tree, obtained
+by appending a bit 

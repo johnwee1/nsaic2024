@@ -1,0 +1,322 @@
+any disciplines of science and
+engineering. We provide this chapter to ensure that readers whose background is
+primarily in software engineering with limited exposure to probability theory can
+understand the material in this book.
+While probability theory allows us to make uncertain statements and reason in
+the presence of uncertainty, information theory allows us to quantify the amount
+of uncertainty in a probability distribution.
+If you are already familiar with probability theory and information theory, you
+may wish to skip all of this chapter except for section 3.14, which describes the
+graphs we use to describe structured probabilistic models for machine learning. If
+you have absolutely no prior experience with these subjects, this chapter should
+be suï¬ƒcient to successfully carry out deep learning research projects, but we do
+suggest that you consult an additional resource, such as Jaynes (2003).
+
+53
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+3.1
+
+Why Probability?
+
+Many branches of computer science deal mostly with entities that are entirely
+deterministic and certain. A programmer can usually safely assume that a CPU will
+execute each machine instruction ï¬‚awlessly. Errors in hardware do occur, but are
+rare enough that most software applications do not need to be designed to account
+for them. Given that many computer scientists and software engineers work in a
+relatively clean and certain environment, it can be surprising that machine learning
+makes heavy use of probability theory.
+This is because machine learning must always deal with uncertain quantities,
+and sometimes may also need to deal with stochastic (non-deterministic) quantities.
+Uncertainty and stochasticity can arise from many sources. Researchers have made
+compelling arguments for quantifying uncertainty using probability since at least
+the 1980s. Many of the arguments presented here are summarized from or inspired
+by Pearl (1988).
+Nearly all activities require some ability to reason in the presence of uncertainty.
+In fact, beyond mathematical statements that are true by deï¬?nition, it is diï¬ƒcult
+to think of any proposition that is absolutely true or any event that is absolutely
+guaranteed to occur.
+There are three possible sources of uncertainty:
+1. Inherent stochasticity in the system being modeled. For example, most
+interpretations of quantum mechanics describe the dynamics of subatomic
+particles as being probabilistic. We can also create theoretical scenarios that
+we postulate to have random dynamics, such as a hypothetical card game
+where we assume that the cards are truly shuï¬„ed into a random order.
+2. Incomplete observability. Even deterministic systems can appear stochastic
+when we cannot observe all of the variables that drive the behavior of the
+system. For example, in the Monty Hall problem, a game show contestant is
+asked to choose between three doors and wins a prize held behind the chosen
+door. Two doors lead to a goat while a third leads to a car. The outcome
+given the contestantâ€™s choice is deterministic, but from the contestantâ€™s point
+of view, the outcome is uncertain.
+3. Incomplete modeling. When we use a model that must discard some of
+the information we have observed, the discarded information results in
+uncertainty in the modelâ€™s predictions. For example, suppose we build a
+robot that can exactly observe the location of every object around it. If the
+54
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+robot discretizes space when predicting the future location of these objects,
+then the discretization makes the robot immediately become uncertain about
+the precise position of objects: each object could be anywhere within the
+discrete cell that it was observed to occupy.
+In many cases, it is more practical to use a simple but uncertain rule rather
+than a complex but certain one, even if the true rule is deterministic and our
+modeling system has the ï¬?delity to accommodate a complex rule. For example, the
+simple rule â€œMost birds ï¬‚yâ€? is cheap to develop and is broadly useful, while a rule
+of the form, â€œBirds ï¬‚y, except for very young birds that have not yet learned to
+ï¬‚y, sick or injured birds that have lost the ability to ï¬‚y, ï¬‚ightless species of birds
+including the cassowary, ostrich and kiwi. . . â€? is expensive to develop, maintain and
+communicate, and after all of this eï¬€ort is still very brittle and prone to failure.
+While it should be clear that we need a means of representing and reasoning
+about uncertainty, it is not immediately obvious that probability theory can provide
+all of the tools we want for artiï¬?cial intelligence applications. Probability theory
+was originally developed to analyze the frequencies of events. It is easy to see
+how probability theory can be used to study events like drawing a certain hand of
+cards in a game of poker. These kinds of events are often repeatable. When we
+say that an outcome has a probability p of occurring, it means that if we repeated
+the experiment (e.g., draw a hand of cards) inï¬?nitely many times, then proportion
+p of the repetitions would result in that outcome. This kind of reasoning does not
+seem immediately applicable to propositions that are not repeatable. If a doctor
+analyzes a patient and says that the patient has a 40% chance of having the ï¬‚u,
+this means something very diï¬€erentâ€”we can not make inï¬?nitely many replicas of
+the patient, nor is there any reason to believe that diï¬€erent replicas of the patient
+would present with the same symptoms yet have varying underlying conditions. In
+the case of the doctor diagnosing the patient, we use probability to represent a
+degree of belief, with 1 indicating absolute certainty that the patient has the ï¬‚u
+and 0 indicating absolute certainty that the patient does not have the ï¬‚u. The
+former kind of probability, related directly to the rates at which events occur, is
+known as frequentist probability, while the latter, related to qualitative levels
+of certainty, is known as Bayesian probability.
+If we list several properties that we expect common sense reasoning about
+uncertainty to have, then the only way to satisfy those properties is to treat
+Bayesian probabilities as behaving exactly the same as frequentist probabilities.
+For example, if we want to compute the probability that a player will win a poker
+game given that she has a certain set of cards, we use exactly the same formulas
+as when we compute the probability that a patient has a disease given that she
+55
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+has certain symptoms. For more details about why a small set of common sense
+assumptions implies that the same axioms must control both kinds of probability,
+see Ramsey (1926).
+Probability can be seen as the extension of logic to deal with uncertainty. Logic
+provides a set of formal rules for determining what propositions are implied to
+be true or false given the assumption that some other set of propositions is true
+or false. Probability theory provides a set of formal rules for determining the
+likelihood of a proposition being true given the likelihood of other propositions.
+
+3.2
+
+Random Variables
+
+A random variable is a variable that can take on diï¬€erent values randomly. We
+typically denote the random variable itself with a lower case letter in plain typeface,
+and the values it can take on with lower case script letters. For example, x1 and x2
+are both possible values that the random variable x can take on. For vector-valued
+variables, we would write the random variable as x and one of its values as x. On
+its own, a random variable is just a description of the states that are possible; it
+must be coupled with a probability distribution that speciï¬?es how likely each of
+these states are.
+Random variables may be discrete or continuous. A discrete random variable
+is one that has a ï¬?nite or countably inï¬?nite number of states. Note that these
+states are not necessarily the integers; they can also just be named states that
+are not considered to have any numerical value. A continuous random variable is
+associated with a real value.
+
+3.3
+
+Probability Distributions
+
+A probability distribution is a description of how likely a random variable or
+set of random variables is to take on each of its possible states. The way we
+describe probability distributions depends on whether the variables are discrete or
+continuous.
+
+3.3.1
+
+Discrete Variables and Probability Mass Functions
+
+A probability distribution over discrete variables may be described using a probability mass function (PMF). We typically denote probability mass functions with
+a capital P . Often we associate each random variable with a diï¬€erent probability
+56
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+mass function and the reader must infer which probability mass function to use
+based on the identity of the random variable, rather than the name of the function;
+P (x) is usually not the same as P (y).
+The probability mass function maps from a state of a random variable to
+the probability of that random variable taking on that state. The probability
+that x = x is denoted as P (x), with a probability of 1 indicating that x = x is
+certain and a probability of 0 indicating that x = x is impossible. Sometimes
+to disambiguate which PMF to use, we write the name of the random variable
+explicitly: P (x = x). Sometimes we deï¬?ne a variable ï¬?rst, then use âˆ¼ notation to
+specify which distribution it follows later: x âˆ¼ P (x).
+Probability mass functions can act on many variables at the same time. Such
+a probability distribution over many variables is known as a joint probability
+distribution. P (x = x, y = y ) denotes the probability that x = x and y = y
+simultaneously. We may also write P (x, y) for brevity.
+
+To be a probability mass function on a random variable x, a function P must
+satisfy the following properties:
+â€¢ The domain of P must be the set of all possible states of x.
+â€¢ âˆ€x âˆˆ x,0 â‰¤ P (x) â‰¤ 1. An impossible event has probability 0 and no state can
+be less probable than that. Likewise, an event that is guaranteed to happen
+has probability 1, and no state can have a greater chance of occurring.
+î??
+â€¢ xâˆˆx P (x) = 1. We refer to this property as being normalized. Without
+this property, we could obtain probabilities greater than one by computing
+the probability of one of many events occurring.
+For example, consider a single discrete random variable x with k diï¬€erent
+states. We can place a uniform distribution on xâ€”that is, make each of its
+states equally likelyâ€”by setting its probability mass function to
+P (x = x i ) =
+
+1
+k
+
+(3.1)
+
+for all i. We can see that this ï¬?ts the requirements for a probability mass function.
+The value 1k is positive because k is a positive integer. We also see that
+î?˜
+
+P (x = xi ) =
+
+i
+
+î?˜1
+i
+
+so the distribution is properly normalized.
+57
+
+k
+
+=
+
+k
+= 1,
+k
+
+(3.2)
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+3.3.2
+
+Continuous Variables and Probability Density Functions
+
+When working with continuous random variables, we describe probability distributions using a probability density function (PDF) rather than a probability
+mass function. To be a probability density function, a function p must satisfy the
+following properties:
+â€¢ The domain of p must be the set of all possible states of x.
+â€¢ âˆ€x âˆˆ x, p(x) â‰¥ 0. Note that we do not require p(x) â‰¤ 1.
+î?’
+â€¢ p(x)dx = 1.
+
+A probability density function p(x) does not give the probability of a speciï¬?c
+state directly, instead the probability of landing inside an inï¬?nitesimal region with
+volume Î´x is given by p(x)Î´x.
+We can integrate the density function to ï¬?nd the actual probability mass of a
+set of points. Speciï¬?cally, the probability that x lies in some set S is given by the
+integral of p (x) over that set. In the
+î?’ univariate example, the probability that x
+lies in the interval [a, b] is given by [a,b] p(x)dx.
+
+For an example of a probability density function corresponding to a speciï¬?c
+probability density over a continuous random variable, consider a uniform distribution on an interval of the real numbers. We can do this with a function u(x; a, b),
+where a and b are the endpoints of the interval, with b > a. The â€œ;â€? notation means
+â€œparametrized byâ€?; we consider x to be the argument of the function, while a and
+b are parameters that deï¬?ne the function. To ensure that there is no probability
+mass outside the interval, we say u(x; a, b) = 0 for all x î€¶âˆˆ [a, b]. Within [ a, b],
+u(x; a, b) = bâˆ’1 a . We can see that this is nonnegative everywhere. Additionally, it
+integrates to 1. We often denote that x follows the uniform distribution on [a, b]
+by writing x âˆ¼ U (a, b).
+
+3.4
+
+Marginal Probability
+
+Sometimes we know the probability distribution over a set of variables and we want
+to know the probability distribution over just a subset of them. The probability
+distribution over the subset is known as the marginal probability distribution.
+For example, suppose we have discrete random variables x and y, and we know
+P (x, y). We can ï¬?nd P (x) with the sum rule:
+î?˜
+âˆ€ x âˆˆ x , P (x = x ) =
+P (x = x, y = y ).
+(3.3)
+y
+
+58
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+The name â€œmarginal probabilityâ€? comes from the process of computing marginal
+probabilities on paper. When the values of P (x, y ) are written in a grid with
+diï¬€erent values of x in rows and diï¬€erent values of y in columns, it is natural to
+sum across a row of the grid, then write P(x) in the margin of the paper just to
+the right of the row.
+For continuous variables, we need to use integration instead of summation:
+î?š
+p(x) = p(x, y )dy.
+(3.4)
+
+3.5
+
+Conditional Probability
+
+In many cases, we are interested in the probability of some event, given that some
+other event has happened. This is called a conditional probability. We denote
+the conditional probability that y = y given x = x as P(y = y | x = x). This
+conditional probability can be computed with the formula
+P (y = y | x = x) =
+
+P (y = y, x = x)
+.
+P (x = x)
+
+(3.5)
+
+The conditional probability is only deï¬?ned when P( x = x) > 0. We cannot compute
+the conditional probability conditioned on an event that never happens.
+It is important not to confuse conditional probability with computing what
+would happen if some action were undertaken. The conditional probability that
+a person is from Germany given that they speak German is quite high, but if
+a randomly selected person is taught to speak German, their country of origin
+does not change. Computing the consequences of an action is called making an
+intervention query. Intervention queries are the domain of causal modeling,
+which we do not explore in this book.
+
+3.6
+
+The Chain Rule of Conditional Probabilities
+
+Any joint probability distribution over many random variables may be decomposed
+into conditional distributions over only one variable:
+P (x(1) , . . . , x(n) ) = P (x(1) )Î ni=2 P (x(i) | x (1) , . . . , x(iâˆ’1) ).
+
+(3.6)
+
+This observation is known as the chain rule or product rule of probability.
+It follows immediately from the deï¬?nition of conditional probability in equation 3.5.
+59
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+For example, applying the deï¬?nition twice, we get
+P (a, b, c) = P (a | b, c)P (b, c)
+P (b, c) = P (b | c)P (c)
+
+P (a, b, c) = P (a | b, c)P (b | c)P (c).
+
+3.7
+
+Independence and Conditional Independence
+
+Two random variables x and y are independent if their probabi

@@ -1,0 +1,358 @@
+ell in practice for many models. See Koller
+and Friedman (2009) for more information about choosing the degree of synchrony
+and damping strategies in message passing algorithms.
+
+19.4.2
+
+Calculus of Variations
+
+Before continuing with our presentation of variational learning, we must brieﬂy
+introduce an important set of mathematical tools used in variational learning:
+calculus of variations.
+Many machine learning techniques are based on minimizing a function J (θ) by
+�?nding the input vector θ ∈ Rn for which it takes on its minimal value. This can
+be accomplished with multivariate calculus and linear algebra, by solving for the
+critical points where ∇θ J(θ) = 0. In some cases, we actually want to solve for a
+function f(x), such as when we want to �?nd the probability density function over
+some random variable. This is what calculus of variations enables us to do.
+A function of a function f is known as a functional J [f ]. Much as we
+can take partial derivatives of a function with respect to elements of its vectorvalued argument, we can take functional derivatives, also known as variational
+derivatives, of a functional J [ f] with respect to individual values of the function
+f (x) at any speci�?c value of x. The functional derivative of the functional J with
+respect to the value of the function f at point x is denoted δfδ(x) J .
+A complete formal development of functional derivatives is beyond the scope of
+this book. For our purposes, it is suﬃcient to state that for diﬀerentiable functions
+f (x) and diﬀerentiable functions g (y, x) with continuous derivatives, that
+�?�
+δ
+∂
+g (f (x), x) dx =
+g(f (x), x).
+(19.46)
+δf (x)
+∂y
+645
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+To gain some intuition for this identity, one can think of f(x) as being a vector
+with uncountably many elements, indexed by a real vector x. In this (somewhat
+incomplete view), the identity providing the functional derivatives is the same as
+we would obtain for a vector θ ∈ R n indexed by positive integers:
+∂ �?�
+∂
+g(θj, j) =
+g(θi , i).
+∂θ i j
+∂θ i
+
+(19.47)
+
+Many results in other machine learning publications are presented using the more
+general Euler-Lagrange equation which allows g to depend on the derivatives
+of f as well as the value of f , but we do not need this fully general form for the
+results presented in this book.
+To optimize a function with respect to a vector, we take the gradient of the
+function with respect to the vector and solve for the point where every element of
+the gradient is equal to zero. Likewise, we can optimize a functional by solving for
+the function where the functional derivative at every point is equal to zero.
+As an example of how this process works, consider the problem of �?nding the
+probability distribution function over x ∈ R that has maximal diﬀerential entropy.
+Recall that the entropy of a probability distribution p(x) is de�?ned as
+H [p] = −Ex log p(x).
+For continuous values, the expectation is an integral:
+�?�
+H [p] = − p(x) log p(x)dx.
+
+(19.48)
+
+(19.49)
+
+We cannot simply maximize H[p ] with respect to the function p(x ), because the
+result might not be a probability distribution. Instead, we need to use Lagrange
+multipliers to add a constraint that p(x) integrates to 1. Also, the entropy
+increases without bound as the variance increases. This makes the question of
+which distribution has the greatest entropy uninteresting. Instead, we ask which
+distribution has maximal entropy for �?xed variance σ 2 . Finally, the problem
+is underdetermined because the distribution can be shifted arbitrarily without
+changing the entropy. To impose a unique solution, we add a constraint that the
+mean of the distribution be µ. The Lagrangian functional for this optimization
+problem is
+�?�
+
+
+�?
+L[p] = λ1
+p(x)dx − 1 + λ 2 (E[x] − µ)+ λ3 E[(x − µ) 2] − σ2 + H [p] (19.50)
+646
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+=
+
+�?�
+
+
+�?
+λ1 p(x) + λ2 p(x)x + λ3p(x)(x − µ)2 − p(x) log p(x) dx − λ1 − µλ2 − σ 2λ 3.
+
+(19.51)
+
+To minimize the Lagrangian with respect to p, we set the functional derivatives
+equal to 0:
+∀x,
+
+δ
+L = λ1 + λ2 x + λ3(x − µ) 2 − 1 − log p(x) = 0.
+δp(x)
+
+(19.52)
+
+This condition now tells us the functional form of p(x ). By algebraically
+re-arranging the equation, we obtain
+
+�?
+p(x) = exp λ 1 + λ2x + λ3 (x − µ)2 − 1 .
+(19.53)
+
+We never assumed directly that p(x) would take this functional form; we
+obtained the expression itself by analytically minimizing a functional. To �?nish
+the minimization problem, we must choose the λ values to ensure that all of our
+constraints are satis�?ed. We are free to choose any λ values, because the gradient
+of the Lagrangian with respect to the λ variables is zero so long as the constraints
+√
+are satis�?ed. To satisfy all of the constraints, we may set λ 1 = 1 − log σ 2π ,
+λ 2 = 0, and λ3 = − 2σ12 to obtain
+p(x) = N (x; µ, σ2 ).
+
+(19.54)
+
+This is one reason for using the normal distribution when we do not know the
+true distribution. Because the normal distribution has the maximum entropy, we
+impose the least possible amount of structure by making this assumption.
+While examining the critical points of the Lagrangian functional for the entropy,
+we found only one critical point, corresponding to maximizing the entropy for
+�?xed variance. What about the probability distribution function that minimizes
+the entropy? Why did we not �?nd a second critical point corresponding to the
+minimum? The reason is that there is no speci�?c function that achieves minimal
+entropy. As functions place more probability density on the two points x = µ + σ
+and x = µ − σ, and place less probability density on all other values of x, they lose
+entropy while maintaining the desired variance. However, any function placing
+exactly zero mass on all but two points does not integrate to one, and is not a
+valid probability distribution. There thus is no single minimal entropy probability
+distribution function, much as there is no single minimal positive real number.
+Instead, we can say that there is a sequence of probability distributions converging
+toward putting mass only on these two points. This degenerate scenario may be
+647
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+described as a mixture of Dirac distributions. Because Dirac distributions are
+not described by a single probability distribution function, no Dirac or mixture of
+Dirac distribution corresponds to a single speci�?c point in function space. These
+distributions are thus invisible to our method of solving for a speci�?c point where
+the functional derivatives are zero. This is a limitation of the method. Distributions
+such as the Dirac must be found by other methods, such as guessing the solution
+and then proving that it is correct.
+
+19.4.3
+
+Continuous Latent Variables
+
+When our graphical model contains continuous latent variables, we may still
+perform variational inference and learning by maximizing L. However, we must
+now use calculus of variations when maximizing L with respect to q(h | v).
+
+In most cases, practitioners need not solve any calculus of variations problems
+themselves. Instead, there is a general equation for the mean �?eld �?xed point
+updates. If we make the mean �?eld approximation
+�?�
+q(h i | v),
+q(h | v) =
+(19.55)
+i
+
+and �?x q(hj | v) for all j  = i, then the optimal q(h i | v) may be obtained by
+normalizing the unnormalized distribution
+
+�?
+q̃(hi | v) = exp Eh −i ∼q(h−i |v) log p̃(v, h)
+(19.56)
+
+so long as p does not assign 0 probability to any joint con�?guration of variables.
+Carrying out the expectation inside the equation will yield the correct functional
+form of q(hi | v). It is only necessary to derive functional forms of q directly using
+calculus of variations if one wishes to develop a new form of variational learning;
+equation 19.56 yields the mean �?eld approximation for any probabilistic model.
+Equation 19.56 is a �?xed point equation, designed to be iteratively applied for
+each value of i repeatedly until convergence. However, it also tells us more than
+that. It tells us the functional form that the optimal solution will take, whether
+we arrive there by �?xed point equations or not. This means we can take the
+functional form from that equation but regard some of the values that appear in it
+as parameters, that we can optimize with any optimization algorithm we like.
+As an example, consider a very simple probabilistic model, with latent variables
+h ∈ R2 and just one visible variable, v. Suppose that p(h) = N (h; 0, I) and
+p(v | h) = N (v ;w  h; 1). We could actually simplify this model by integrating
+out h; the result is just a Gaussian distribution over v. The model itself is not
+648
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+interesting; we have constructed it only to provide a simple demonstration of how
+calculus of variations may be applied to probabilistic modeling.
+The true posterior is given, up to a normalizing constant, by
+p(h | v )
+
+(19.57)
+
+�?p(h, v)
+
+(19.58)
+
+=p(h1 )p(h2)p(v | h)
+(19.59)
+
+
+
+1
+(19.60)
+�? exp − h21 + h22 + (v − h 1w 1 − h2w2 )2
+2
+
+
+
+1 2
+2
+2
+2 2
+2 2
+= exp − h1 + h2 + v + h1w 1 + h2 w2 − 2vh 1w 1 − 2vh 2w2 + 2h1w1 h 2w 2 .
+2
+(19.61)
+Due to the presence of the terms multiplying h 1 and h2 together, we can see that
+the true posterior does not factorize over h1 and h 2 .
+Applying equation 19.56, we �?nd that
+q̃(h1 | v)
+
+�?
+= exp Eh 2∼q(h2 |v) log p̃(v, h)
+
+
+1
+= exp − E h2∼q(h2 |v) h21 + h22 + v 2 + h21w 21 + h22 w22
+2
+
+−2vh 1 w1 − 2vh 2 w 2 + 2h 1w 1h 2 w2] .
+
+(19.62)
+(19.63)
+(19.64)
+(19.65)
+
+From this, we can see that there are eﬀectively only two values we need to obtain
+from q(h 2 | v ): Eh 2∼q(h|v)[h 2] and Eh2∼q(h|v) [h22]. Writing these as �?�h2�?� and �?�h22�?�,
+we obtain
+
+1
+q̃(h1 | v) = exp − h 21 + �?�h 22�?� + v2 + h 21w12 + �?�h22�?�w 22
+(19.66)
+2
+
+(19.67)
+−2vh1 w 1 − 2v�?�h2 �?�w 2 + 2h 1w 1 �?�h2 �?�w2] .
+From this, we can see that q̃ has the functional form of a Gaussian. We can
+thus conclude q (h | v ) = N (h; µ, β −1 ) where µ and diagonal β are variational
+parameters that we can optimize using any technique we choose. It is important
+to recall that we did not ever assume that q would be Gaussian; its Gaussian
+form was derived automatically by using calculus of variations to maximize q with
+649
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+respect to L . Using the same approach on a diﬀerent model could yield a diﬀerent
+functional form of q .
+This was of course, just a small case constructed for demonstration purposes.
+For examples of real applications of variational learning with continuous variables
+in the context of deep learning, see Goodfellow et al. (2013d).
+
+19.4.4
+
+Interactions between Learning and Inference
+
+Using approximate inference as part of a learning algorithm aﬀects the learning
+process, and this in turn aﬀects the accuracy of the inference algorithm.
+Speci�?cally, the training algorithm tends to adapt the model in a way that makes
+the approximating assumptions underlying the approximate inference algorithm
+become more true. When training the parameters, variational learning increases
+Eh∼q log p(v, h).
+
+(19.68)
+
+For a speci�?c v, this increases p(h | v) for values of h that have high probability
+under q(h | v ) and decreases p(h | v) for values of h that have low probability
+under q(h | v).
+
+This behavior causes our approximating assumptions to become self-ful�?lling
+prophecies. If we train the model with a unimodal approximate posterior, we will
+obtain a model with a true posterior that is far closer to unimodal than we would
+have obtained by training the model with exact inference.
+Computing the true amount of harm imposed on a model by a variational
+approximation is thus very diﬃcult. There exist several methods for estimating
+log p(v). We often estimate log p(v; θ) after training the model, and �?nd that
+the gap with L(v, θ, q) is small. From this, we can conclude that our variational
+approximation is accurate for the speci�?c value of θ that we obtained from the
+learning process. We should not conclude that our variational approximation is
+accurate in general or that the variational approximation did little harm to the
+learning process. To measure the true amount of harm induced by the variational
+approximation, we would need to know θ ∗ = maxθ log p(v; θ). It is possible for
+L(v, θ, q) ≈ log p(v; θ) and log p(v; θ)  log p(v; θ∗) to hold simultaneously. If
+max q L(v, θ∗ , q)  log p(v ; θ∗ ), because θ∗ induces too complicated of a posterior
+distribution for our q family to capture, then the learning process will never
+approach θ∗. Such a problem is very diﬃcult to detect, because we can only know
+for sure that it happened if we have a superior learning algorithm that can �?nd θ∗
+for comparison.
+650
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+19.5
+
+Learned Approximate Inference
+
+We have seen that inference can be thought of as an optimization procedure
+that increases the value of a function L . Explicitly performing optimization via
+iterative procedures such as �?xed point equations or gradient-based optimization
+is often very expensive and time-consuming. Many approaches to inference avoid
+this expense by learning to perform approximate inference. Speci�?cally, we can
+think of the optimization process as a function f that maps an input v to an
+approximate distribution q ∗ = arg maxq L(v, q). Once we think of the multi-step
+iterative optimization process as just being a function, we can approximate it with
+a neural network that implements an approximation fˆ(v; θ).
+
+19.5.1
+
+Wake-Sleep
+
+One of the main diﬃculties with training a model to infer h from v is that we
+do not have a supervised training set with which to train the model. Given a v ,
+we do not know the appropriate h. The mapping from v to h depends on the
+choice of model family, and evolves throughout the learning process as θ changes.
+The wake-sleep algorithm (Hinton et al., 1995b; Frey et al., 1996) resolves this
+problem by drawing samples of both h and v from the model distribution. For
+example, in a directed model, this can be done cheaply by performing ancestral
+sampling beginning at h and ending at v. The inference network can then be
+trained to perform the reverse mapping: predicting which h caused the present
+v. The main drawback to this approach is that we will only be able to train the
+inference network on values of v that have high probability under the model. Early
+in learning, the model distribution will not resemble the data distribution, so the
+inference network will not have an opportunity to learn on samples that resemble
+data.
+In section 18.2 we saw that one possible explanation for the role of dream sleep
+in human beings and animals is that dreams could provide the negative phase
+samples that Monte Carlo training algorithms use to approximate the negative
+gradient of the log partition function of undirected models. Another possible
+explanation for biological dreaming is that it is providing samples from p(h, v)
+which can be used to train an inference network to predict h given v. In some
+senses, this explanation is more satisfying than the partition function explanation.
+Monte Carlo algorithms generally do not perform well if they are run using only
+the positive phase of the gradient for sev

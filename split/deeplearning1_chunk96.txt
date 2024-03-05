@@ -1,0 +1,456 @@
+eral steps then with only the negative
+phase of the gradient for several steps. Human beings and animals are usually
+awake for several consecutive hours then asleep for several consecutive hours. It is
+651
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+not readily apparent how this schedule could support Monte Carlo training of an
+undirected model. Learning algorithms based on maximizing L can be run with
+prolonged periods of improving q and prolonged periods of improving Î¸, however.
+If the role of biological dreaming is to train networks for predicting q , then this
+explains how animals are able to remain awake for several hours (the longer they
+are awake, the greater the gap between L and log p(v), but L will remain a lower
+bound) and to remain asleep for several hours (the generative model itself is not
+modiï¬?ed during sleep) without damaging their internal models. Of course, these
+ideas are purely speculative, and there is no hard evidence to suggest that dreaming
+accomplishes either of these goals. Dreaming may also serve reinforcement learning
+rather than probabilistic modeling, by sampling synthetic experiences from the
+animalâ€™s transition model, on which to train the animalâ€™s policy. Or sleep may
+serve some other purpose not yet anticipated by the machine learning community.
+
+19.5.2
+
+Other Forms of Learned Inference
+
+This strategy of learned approximate inference has also been applied to other
+models. Salakhutdinov and Larochelle (2010) showed that a single pass in a
+learned inference network could yield faster inference than iterating the mean ï¬?eld
+ï¬?xed point equations in a DBM. The training procedure is based on running the
+inference network, then applying one step of mean ï¬?eld to improve its estimates,
+and training the inference network to output this reï¬?ned estimate instead of its
+original estimate.
+We have already seen in section 14.8 that the predictive sparse decomposition
+model trains a shallow encoder network to predict a sparse code for the input.
+This can be seen as a hybrid between an autoencoder and sparse coding. It is
+possible to devise probabilistic semantics for the model, under which the encoder
+may be viewed as performing learned approximate MAP inference. Due to its
+shallow encoder, PSD is not able to implement the kind of competition between
+units that we have seen in mean ï¬?eld inference. However, that problem can be
+remedied by training a deep encoder to perform learned approximate inference, as
+in the ISTA technique (Gregor and LeCun, 2010b).
+Learned approximate inference has recently become one of the dominant
+approaches to generative modeling, in the form of the variational autoencoder
+(Kingma, 2013; Rezende et al., 2014). In this elegant approach, there is no need to
+construct explicit targets for the inference network. Instead, the inference network
+is simply used to deï¬?ne L, and then the parameters of the inference network are
+adapted to increase L. This model is described in depth later, in section 20.10.3.
+652
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+Using approximate inference, it is possible to train and use a wide variety of
+models. Many of these models are described in the next chapter.
+
+653
+
+Chapter 20
+
+Deep Generative Models
+In this chapter, we present several of the speciï¬?c kinds of generative models that
+can be built and trained using the techniques presented in chapters16â€“19. All of
+these models represent probability distributions over multiple variables in some
+way. Some allow the probability distribution function to be evaluated explicitly.
+Others do not allow the evaluation of the probability distribution function, but
+support operations that implicitly require knowledge of it, such as drawing samples
+from the distribution. Some of these models are structured probabilistic models
+described in terms of graphs and factors, using the language of graphical models
+presented in chapter 16. Others can not easily be described in terms of factors,
+but represent probability distributions nonetheless.
+
+20.1
+
+Boltzmann Machines
+
+Boltzmann machines were originally introduced as a general â€œconnectionistâ€? approach to learning arbitrary probability distributions over binary vectors (Fahlman
+et al., 1983; Ackley et al., 1985; Hinton et al., 1984; Hinton and Sejnowski, 1986).
+Variants of the Boltzmann machine that include other kinds of variables have long
+ago surpassed the popularity of the original. In this section we brieï¬‚y introduce
+the binary Boltzmann machine and discuss the issues that come up when trying to
+train and perform inference in the model.
+We deï¬?ne the Boltzmann machine over a d-dimensional binary random vector
+x âˆˆ {0, 1}d . The Boltzmann machine is an energy-based model (section 16.2.4),
+
+654
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+meaning we deï¬?ne the joint probability distribution using an energy function:
+P (x ) =
+
+exp (âˆ’E (x))
+,
+Z
+
+(20.1)
+
+whereî??E (x) is the energy function and Z is the partition function that ensures
+that x P (x) = 1. The energy function of the Boltzmann machine is given by
+E(x) = âˆ’xî€¾U x âˆ’ b î€¾x,
+
+(20.2)
+
+where U is the â€œweightâ€? matrix of model parameters and b is the vector of bias
+parameters.
+In the general setting of the Boltzmann machine, we are given a set of training
+examples, each of which are n-dimensional. Equation 20.1 describes the joint
+probability distribution over the observed variables. While this scenario is certainly
+viable, it does limit the kinds of interactions between the observed variables to
+those described by the weight matrix. Speciï¬?cally, it means that the probability of
+one unit being on is given by a linear model (logistic regression) from the values of
+the other units.
+The Boltzmann machine becomes more powerful when not all the variables are
+observed. In this case, the latent variables, can act similarly to hidden units in a
+multi-layer perceptron and model higher-order interactions among the visible units.
+Just as the addition of hidden units to convert logistic regression into an MLP results
+in the MLP being a universal approximator of functions, a Boltzmann machine
+with hidden units is no longer limited to modeling linear relationships between
+variables. Instead, the Boltzmann machine becomes a universal approximator of
+probability mass functions over discrete variables (Le Roux and Bengio, 2008).
+Formally, we decompose the units x into two subsets: the visible units v and
+the latent (or hidden) units h. The energy function becomes
+E (v, h) = âˆ’vî€¾ Rv âˆ’ v î€¾ W h âˆ’ hî€¾ Sh âˆ’ bî€¾ v âˆ’ cî€¾h.
+
+(20.3)
+
+Boltzmann Machine Learning Learning algorithms for Boltzmann machines
+are usually based on maximum likelihood. All Boltzmann machines have an
+intractable partition function, so the maximum likelihood gradient must be approximated using the techniques described in chapter 18.
+One interesting property of Boltzmann machines when trained with learning
+rules based on maximum likelihood is that the update for a particular weight
+connecting two units depends only the statistics of those two units, collected
+under diï¬€erent distributions: P model(v) and PÌ‚data (v)Pmodel (h | v ). The rest of the
+655
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+network participates in shaping those statistics, but the weight can be updated
+without knowing anything about the rest of the network or how those statistics were
+produced. This means that the learning rule is â€œlocal,â€? which makes Boltzmann
+machine learning somewhat biologically plausible. It is conceivable that if each
+neuron were a random variable in a Boltzmann machine, then the axons and
+dendrites connecting two random variables could learn only by observing the ï¬?ring
+pattern of the cells that they actually physically touch. In particular, in the
+positive phase, two units that frequently activate together have their connection
+strengthened. This is an example of a Hebbian learning rule (Hebb, 1949) often
+summarized with the mnemonic â€œï¬?re together, wire together.â€? Hebbian learning
+rules are among the oldest hypothesized explanations for learning in biological
+systems and remain relevant today (Giudice et al., 2009).
+Other learning algorithms that use more information than local statistics seem
+to require us to hypothesize the existence of more machinery than this. For
+example, for the brain to implement back-propagation in a multilayer perceptron,
+it seems necessary for the brain to maintain a secondary communication network for
+transmitting gradient information backwards through the network. Proposals for
+biologically plausible implementations (and approximations) of back-propagation
+have been made (Hinton, 2007a; Bengio, 2015) but remain to be validated, and
+Bengio (2015) links back-propagation of gradients to inference in energy-based
+models similar to the Boltzmann machine (but with continuous latent variables).
+The negative phase of Boltzmann machine learning is somewhat harder to
+explain from a biological point of view. As argued in section 18.2, dream sleep
+may be a form of negative phase sampling. This idea is more speculative though.
+
+20.2
+
+Restricted Boltzmann Machines
+
+Invented under the name harmonium (Smolensky, 1986), restricted Boltzmann
+machines are some of the most common building blocks of deep probabilistic models.
+We have brieï¬‚y described RBMs previously, in section 16.7.1. Here we review the
+previous information and go into more detail. RBMs are undirected probabilistic
+graphical models containing a layer of observable variables and a single layer of
+latent variables. RBMs may be stacked (one on top of the other) to form deeper
+models. See ï¬?gure 20.1 for some examples. In particular, ï¬?gure 20.1a shows the
+graph structure of the RBM itself. It is a bipartite graph, with no connections
+permitted between any variables in the observed layer or between any units in the
+latent layer.
+656
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+h(2)
+1
+
+h1
+
+h2
+
+v1
+
+h3
+
+v2
+
+h(1)
+1
+
+h4
+
+v3
+
+(2)
+
+h(2)
+2
+
+(1)
+
+h(1)
+2
+
+v1
+
+h(1)
+4
+
+h3
+
+v2
+
+(a)
+
+h3
+
+v3
+
+(b)
+(2)
+
+(2)
+
+h1
+
+(1)
+
+(1)
+
+h1
+
+h3
+
+(1)
+
+h2
+
+v1
+
+(2)
+
+h2
+
+(1)
+
+h3
+
+v2
+
+h4
+
+v3
+
+(c)
+Figure 20.1: Examples of models that may be built with restricted Boltzmann machines.
+(a)The restricted Boltzmann machine itself is an undirected graphical model based on
+a bipartite graph, with visible units in one part of the graph and hidden units in the
+other part. There are no connections among the visible units, nor any connections among
+the hidden units. Typically every visible unit is connected to every hidden unit but it
+is possible to construct sparsely connected RBMs such as convolutional RBMs. (b)A
+deep belief network is a hybrid graphical model involving both directed and undirected
+connections. Like an RBM, it has no intralayer connections. However, a DBN has multiple
+hidden layers, and thus there are connections between hidden units that are in separate
+layers. All of the local conditional probability distributions needed by the deep belief
+network are copied directly from the local conditional probability distributions of its
+constituent RBMs. Alternatively, we could also represent the deep belief network with
+a completely undirected graph, but it would need intralayer connections to capture the
+dependencies between parents. (c)A deep Boltzmann machine is an undirected graphical
+model with several layers of latent variables. Like RBMs and DBNs, DBMs lack intralayer
+connections. DBMs are less closely tied to RBMs than DBNs are. When initializing a
+DBM from a stack of RBMs, it is necessary to modify the RBM parameters slightly. Some
+kinds of DBMs may be trained without ï¬?rst training a set of RBMs.
+
+657
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+We begin with the binary version of the restricted Boltzmann machine, but as
+we see later there are extensions to other types of visible and hidden units.
+More formally, let the observed layer consist of a set of n v binary random
+variables which we refer to collectively with the vector v. We refer to the latent or
+hidden layer of nh binary random variables as h.
+Like the general Boltzmann machine, the restricted Boltzmann machine is an
+energy-based model with the joint probability distribution speciï¬?ed by its energy
+function:
+1
+(20.4)
+P (v = v , h = h) = exp (âˆ’E (v, h)) .
+Z
+The energy function for an RBM is given by
+E (v, h) = âˆ’b î€¾v âˆ’ cî€¾ h âˆ’ vî€¾W h,
+and Z is the normalizing constant known as the partition function:
+î?˜î?˜
+exp {âˆ’E (v, h)} .
+Z=
+v
+
+(20.5)
+
+(20.6)
+
+h
+
+It is apparent from the deï¬?nition of the partition function Z that the naive method
+of computing Z (exhaustively summing over all states) could be computationally
+intractable, unless a cleverly designed algorithm could exploit regularities in the
+probability distribution to compute Z faster. In the case of restricted Boltzmann
+machines, Long and Servedio (2010) formally proved that the partition function Z
+is intractable. The intractable partition function Z implies that the normalized
+joint probability distribution P (v) is also intractable to evaluate.
+
+20.2.1
+
+Conditional Distributions
+
+Though P (v) is intractable, the bipartite graph structure of the RBM has the
+very special property that its conditional distributions P (h | v) and P (v | h) are
+factorial and relatively simple to compute and to sample from.
+Deriving the conditional distributions from the joint distribution is straightforward:
+P (h, v)
+P (v )
+î?®
+î?¯
+1 1
+=
+exp bî€¾v + c î€¾h + v î€¾W h
+P (v ) Z
+î?®
+î?¯
+1
+î€¾
+î€¾
+= î€° exp c h + v W h
+Z
+
+P (h | v ) =
+
+658
+
+(20.7)
+(20.8)
+(20.9)
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+=
+
+ï£±
+nh
+ï£²î?˜
+
+ï£¼
+ï£½
+
+nh
+î?˜
+
+1
+exp
+cj hj +
+vî€¾ W:,j hj
+î€°
+ï£³
+ï£¾
+Z
+j=1
+j=1
+
+î?®
+î?¯
+1 î?™
+= î€°
+exp c j hj + v î€¾W:,j hj
+Z j=1
+nh
+
+(20.10)
+
+(20.11)
+
+Since we are conditioning on the visible units v , we can treat these as constant
+with respect to the distribution P (h | v ). The factorial nature of the conditional
+P (h | v) follows immediately from our ability to write the joint probability over
+the vector h as the product of (unnormalized) distributions over the individual
+elements, h j . It is now a simple matter of normalizing the distributions over the
+individual binary hj .
+P (h j = 1 | v ) =
+
+PËœ(h j = 1 | v)
+
+PËœ(h j = 0 | v) + PÌƒ (hj = 1 | v)
+î€ˆ
+î€‰
+exp cj + vî€¾ W:,j
+=
+exp {0} + exp {cj + vî€¾ W:,j }
+î€?
+î€‘
+= Ïƒ cj + vî€¾ W:,j .
+
+(20.12)
+(20.13)
+(20.14)
+
+We can now express the full conditional over the hidden layer as the factorial
+distribution:
+nh
+î€?
+î€‘
+î?™
+Ïƒ (2h âˆ’ 1) î€Œ (c + W î€¾ v) .
+(20.15)
+P (h | v ) =
+j
+
+j=1
+
+A similar derivation will show that the other condition of interest to us, P (v | h),
+is also a factorial distribution:
+P (v | h) =
+
+20.2.2
+
+nv
+î?™
+i=1
+
+Ïƒ ((2v âˆ’ 1) î€Œ (b + W h))i .
+
+(20.16)
+
+Training Restricted Boltzmann Machines
+
+Because the RBM admits eï¬ƒcient evaluation and diï¬€erentiation of PËœ (v) and
+eï¬ƒcient MCMC sampling in the form of block Gibbs sampling, it can readily be
+trained with any of the techniques described in chapter 18 for training models
+that have intractable partition functions. This includes CD, SML (PCD), ratio
+matching and so on. Compared to other undirected models used in deep learning,
+the RBM is relatively straightforward to train because we can compute P(h | v)
+659
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+exactly in closed form. Some other deep models, such as the deep Boltzmann
+machine, combine both the diï¬ƒculty of an intractable partition function and the
+diï¬ƒculty of intractable inference.
+
+20.3
+
+Deep Belief N

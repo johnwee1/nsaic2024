@@ -1,0 +1,550 @@
+ion we discuss several methods for directly estimating
+the partition function.
+Estimating the partition function can be important because we require it if
+we wish to compute the normalized likelihood of data. This is often important in
+evaluating the model, monitoring training performance, and comparing models to
+each other.
+For example, imagine we have two models: model MA de�?ning a probability distribution p A(x;θ A ) = Z1A p̃A (x; θA ) and model MB de�?ning a probability
+distribution p B (x;θ B ) = Z1B p̃B (x; θB ). A common way to compare the models
+is to evaluate and compare the likelihood that both models assign to an i.i.d.
+test
+Suppose
+the test set consists of m examples {x(1) , . . . , x(m) }. If
+�?� dataset.
+�?�
+( i)
+( i)
+i pA (x ; θ A ) >
+i pB (x ; θB ) or equivalently if
+�?�
+�?�
+log pA (x(i); θA ) −
+log pB (x(i); θB ) > 0,
+(18.38)
+i
+
+i
+
+then we say that M A is a better model than M B (or, at least, it is a better model
+of the test set), in the sense that it has a better test log-likelihood. Unfortunately,
+testing whether this condition holds requires knowledge of the partition function.
+Unfortunately, equation 18.38 seems to require evaluating the log probability that
+the model assigns to each point, which in turn requires evaluating the partition
+function. We can simplify the situation slightly by re-arranging equation 18.38
+into a form where we need to know only the ratio of the two model’s partition
+functions:
+
+
+(
+i
+)
+�?�
+�?�
+�?�
+p̃A (x ; θA )
+Z(θA )
+log p A (x(i); θA )−
+log p B (x(i); θB ) =
+log
+.
+−m log
+(
+i
+)
+p̃
+(x
+;
+θ
+)
+Z(θ
+)
+B
+B
+B
+i
+i
+i
+(18.39)
+623
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+We can thus determine whether M A is a better model than M B without knowing
+the partition function of either model but only their ratio. As we will see shortly,
+we can estimate this ratio using importance sampling, provided that the two models
+are similar.
+If, however, we wanted to compute the actual probability of the test data under
+either MA or M B , we would need to compute the actual value of the partition
+Z (θ )
+functions. That said, if we knew the ratio of two partition functions, r = Z (θ B
+,
+A)
+and we knew the actual value of just one of the two, say Z (θA ), we could compute
+the value of the other:
+Z(θB ) = rZ (θA) =
+
+Z(θB )
+Z(θA).
+Z(θA )
+
+(18.40)
+
+A simple way to estimate the partition function is to use a Monte Carlo
+method such as simple importance sampling. We present the approach in terms
+of continuous variables using integrals, but it can be readily applied to discrete
+variables by replacing the integrals with summation. We use a proposal distribution
+p0(x) = Z10 p̃0(x) which supports tractable sampling and tractable evaluation of
+both the partition function Z0 and the unnormalized distribution p̃ 0(x).
+�?�
+Z1 = p̃ 1 (x) dx
+(18.41)
+�?�
+p0(x)
+=
+p̃1(x) dx
+(18.42)
+p0(x)
+�?�
+p̃ (x)
+= Z 0 p0 (x) 1
+dx
+(18.43)
+p̃ 0(x)
+K
+
+Z 0 �?� p̃1 (x(k) )
+Ẑ1 =
+K
+p̃0 (x(k) )
+k=1
+
+s.t. : x(k) ∼ p 0
+
+(18.44)
+
+In the last line, we make a Monte Carlo estimator, Ẑ 1 , of the integral using samples
+drawn from p 0(x) and then weight each sample with the ratio of the unnormalized
+p̃1 and the proposal p0 .
+We see also that this approach allows us to estimate the ratio between the
+partition functions as
+K
+
+1 �?� p̃1(x (k))
+K
+p̃0(x (k))
+k=1
+
+s.t. : x(k) ∼ p 0.
+
+(18.45)
+
+This value can then be used directly to compare two models as described in
+equation 18.39.
+624
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+If the distribution p0 is close to p1, equation 18.44 can be an eﬀective way of
+estimating the partition function (Minka, 2005). Unfortunately, most of the time
+p1 is both complicated (usually multimodal) and de�?ned over a high dimensional
+space. It is diﬃcult to �?nd a tractable p0 that is simple enough to evaluate while
+still being close enough to p1 to result in a high quality approximation. If p0 and
+p1 are not close, most samples from p0 will have low probability under p 1 and
+therefore make (relatively) negligible contribution to the sum in equation 18.44.
+Having few samples with signi�?cant weights in this sum will result in an
+estimator that is of poor quality due to high variance. This can be understood
+quantitatively through an estimate of the variance of our estimate Ẑ1 :
+
+2
+K
+�? 
+(
+k
+)
+�?�
+p̃ 1(x )
+ˆ Ẑ1 = Z0
+Var
+(18.46)
+− Ẑ1 .
+2
+(k) )
+K
+p̃
+(x
+0
+k=1
+
+This quantity is largest when there is signi�?cant deviation in the values of the
+(k) )
+importance weights p̃p̃1(x
+.
+(x(k) )
+0
+
+We now turn to two related strategies developed to cope with the challenging task of estimating partition functions for complex distributions over highdimensional spaces: annealed importance sampling and bridge sampling. Both
+start with the simple importance sampling strategy introduced above and both
+attempt to overcome the problem of the proposal p0 being too far from p 1 by
+introducing intermediate distributions that attempt to bridge the gap between p0
+and p1.
+
+18.7.1
+
+Annealed Importance Sampling
+
+In situations where D KL(p0�?�p1) is large (i.e., where there is little overlap between
+p0 and p1), a strategy called annealed importance sampling (AIS) attempts
+to bridge the gap by introducing intermediate distributions (Jarzynski, 1997; Neal,
+2001). Consider a sequence of distributions p η0 , . . . , pηn , with 0 = η0 < η1 < · · · <
+ηn−1 < η n = 1 so that the �?rst and last distributions in the sequence are p0 and p1
+respectively.
+This approach allows us to estimate the partition function of a multimodal
+distribution de�?ned over a high-dimensional space (such as the distribution de�?ned
+by a trained RBM). We begin with a simpler model with a known partition function
+(such as an RBM with zeroes for weights) and estimate the ratio between the two
+model’s partition functions. The estimate of this ratio is based on the estimate
+of the ratios of a sequence of many similar distributions, such as the sequence of
+RBMs with weights interpolating between zero and the learned weights.
+625
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+1
+We can now write the ratio Z
+Z 0 as
+
+Zη
+Z1
+Z1 Zη 1
+· · · n−1
+=
+Z0
+Z0 Zη 1
+Z ηn−1
+Zη Zη
+Zη
+Z1
+= 1 2 · · · n−1
+Z 0 Zη 1
+Zηn−2 Z ηn−1
+=
+
+n−1
+�?�
+
+Zηj+1
+Zηj
+j=0
+
+(18.47)
+(18.48)
+(18.49)
+
+Provided the distributions pηj and pηj +1 , for all 0 ≤ j ≤ n − 1, are suﬃciently
+
+Zη j+1
+Z ηj using simple importance
+1
+sampling and then use these to obtain an estimate of Z
+Z0 .
+
+close, we can reliably estimate each of the factors
+
+Where do these intermediate distributions come from? Just as the original
+proposal distribution p0 is a design choice, so is the sequence of distributions
+pη1 . . . pηn−1. That is, it can be speci�?cally constructed to suit the problem domain.
+One general-purpose and popular choice for the intermediate distributions is to
+use the weighted geometric average of the target distribution p1 and the starting
+proposal distribution (for which the partition function is known) p0:
+η
+
+1−η j
+
+pη j �? p 1j p0
+
+(18.50)
+
+In order to sample from these intermediate distributions, we de�?ne a series of
+Markov chain transition functions T η j(x | x) that de�?ne the conditional probability
+distribution of transitioning to x given we are currently at x. The transition
+operator Tηj (x | x) is de�?ned to leave p ηj (x) invariant:
+�?�
+pηj (x) = p ηj(x  )T ηj (x | x ) dx
+(18.51)
+These transitions may be constructed as any Markov chain Monte Carlo method
+(e.g., Metropolis-Hastings, Gibbs), including methods involving multiple passes
+through all of the random variables or other kinds of iterations.
+The AIS sampling strategy is then to generate samples from p0 and then use
+the transition operators to sequentially generate samples from the intermediate
+distributions until we arrive at samples from the target distribution p1:
+• for k = 1 . . . K
+
+(k )
+
+– Sample xη1 ∼ p 0 (x)
+626
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+(k )
+
+(k )
+
+(k)
+
+– Sample xη2 ∼ Tη1 (xη2 | xη1 )
+– ...
+
+(k )
+
+(k )
+
+(k )
+
+– Sample xηn−1 ∼ Tηn−2(x ηn−1 | x ηn−2)
+(k )
+
+(k )
+
+(k)
+
+– Sample xηn ∼ Tηn−1 (xηn | x ηn−1 )
+• end
+For sample k, we can derive the importance weight by chaining together the
+importance weights for the jumps between the intermediate distributions given in
+equation 18.49:
+p̃η1 (x (η1k) ) p̃η2(x (ηk2) )
+p̃1 (x(1k))
+(k )
+w =
+...
+.
+(18.52)
+(k )
+(k )
+(k )
+p̃0(x η1 ) p̃η1(x η2 )
+p̃ ηn−1(x ηn )
+To avoid numerical issues such as overﬂow, it is probably best to compute log w(k) by
+adding and subtracting log probabilities, rather than computing w(k) by multiplying
+and dividing probabilities.
+With the sampling procedure thus de�?ned and the importance weights given
+in equation 18.52, the estimate of the ratio of partition functions is given by:
+K
+
+Z1
+1 �?� (k )
+w
+≈
+Z0
+K
+
+(18.53)
+
+k=1
+
+In order to verify that this procedure de�?nes a valid importance sampling
+scheme, we can show (Neal, 2001) that the AIS procedure corresponds to simple
+importance sampling on an extended state space with points sampled over the
+product space [xη1 , . . . , xηn−1 , x1]. To do this, we de�?ne the distribution over the
+extended space as:
+p̃(xη1 , . . . , x ηn−1, x1 )
+
+(18.54)
+
+=p̃ 1(x1)T̃ηn−1(x ηn−1 | x 1) T̃ηn−2 (xηn−2 | xηn−1 ) . . . T̃η 1 (xη1 | xη2 ),
+
+(18.55)
+
+where T̃a is the reverse of the transition operator de�?ned by T a (via an application
+of Bayes’ rule):
+p a (x )
+p̃a (x)
+
+T̃ a (x | x) =
+T a(x | x ) =
+Ta (x | x ).
+pa (x)
+p̃ a (x)
+
+
+(18.56)
+
+Plugging the above into the expression for the joint distribution on the extended
+state space given in equation 18.55, we get:
+p̃(x η1 , . . . , xηn−1 , x 1 )
+
+(18.57)
+627
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+n−2
+�?� p̃ η (x η )
+p̃η n−1(x ηn−1 )
+i
+i
+= p̃ 1(x 1)
+T ηn−1(x 1 | xηn−1 )
+Tη i (xηi+1 | xηi )
+p̃η n−1(x1 )
+p̃
+(x
+)
+η
+η
+i
+i+1
+i=1
+
+(18.58)
+
+n−2
+�?� p̃ηi+1 (x ηi+1 )
+p̃1(x 1 )
+|
+x
+=
+T η (x1 ηn−1 ) p̃η1 (xη 1)
+Tη i(x η i+1 | xηi ).
+p̃ηn−1 (x1 ) n−1
+p̃
+(x
+)
+η
+η
+i
+i+1
+i=1
+
+(18.59)
+
+We now have means of generating samples from the joint proposal distribution
+q over the extended sample via a sampling scheme given above, with the joint
+distribution given by:
+q(xη 1 , . . . , xηn−1 , x 1) = p 0(x η1 )Tη1 (x η2 | x η1) . . . T ηn−1 (x1 | x ηn−1 ).
+
+(18.60)
+
+We have a joint distribution on the extended space given by equation 18.59. Taking
+q(xη1 , . . . , xη n−1, x 1 ) as the proposal distribution on the extended state space from
+which we will draw samples, it remains to determine the importance weights:
+w
+
+(k )
+
+(k )
+(k )
+(k )
+p̃(xη1 , . . . , x ηn−1, x 1)
+p̃1(x1 )
+p̃η2 (x η2 ) p̃η1 (x η1 )
+=
+=
+...
+.
+(k )
+(k)
+(k )
+q(x η1 , . . . , xη n−1, x1)
+p̃ηn−1 (x ηn−1 )
+p̃1(x η ) p̃ 0(x )
+1
+
+(18.61)
+
+0
+
+These weights are the same as proposed for AIS. Thus we can interpret AIS as
+simple importance sampling applied to an extended state and its validity follows
+immediately from the validity of importance sampling.
+Annealed importance sampling (AIS) was �?rst discovered by Jarzynski (1997)
+and then again, independently, by Neal (2001). It is currently the most common
+way of estimating the partition function for undirected probabilistic models. The
+reasons for this may have more to do with the publication of an inﬂuential paper
+(Salakhutdinov and Murray, 2008) describing its application to estimating the
+partition function of restricted Boltzmann machines and deep belief networks than
+with any inherent advantage the method has over the other method described
+below.
+A discussion of the properties of the AIS estimator (e.g.. its variance and
+eﬃciency) can be found in Neal (2001).
+
+18.7.2
+
+Bridge Sampling
+
+Bridge sampling Bennett (1976) is another method that, like AIS, addresses the
+shortcomings of importance sampling. Rather than chaining together a series of
+628
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+intermediate distributions, bridge sampling relies on a single distribution p ∗ , known
+as the bridge, to interpolate between a distribution with known partition function,
+p0, and a distribution p1 for which we are trying to estimate the partition function
+Z1 .
+Bridge sampling estimates the ratio Z1 /Z0 as the ratio of the expected importance weights between p̃0 and p̃ ∗ and between p̃1 and p̃∗ :
+ K
+K
+(k )
+�?�
+�?� p̃∗ (x(k) )
+Z1
+p̃∗ (x0 )
+1
+(18.62)
+≈
+(
+k
+)
+(k )
+Z0
+p̃0 (x )
+p̃1 (x )
+k=1
+
+0
+
+k=1
+
+1
+
+If the bridge distribution p∗ is chosen carefully to have a large overlap of support
+with both p0 and p 1, then bridge sampling can allow the distance between two
+distributions (or more formally, DKL (p0�?�p 1)) to be much larger than with standard
+importance sampling.
+It can be shown that the optimal bridging distribution is given by p(∗opt) (x) �?
+p̃0 (x)p˜1 (x)
+rp̃ 0(x)+p˜1 (x) where r = Z1 /Z 0 . At �?rst, this appears to be an unworkable solution
+as it would seem to require the very quantity we are trying to estimate, Z1 /Z0 .
+However, it is possible to start with a coarse estimate of r and use the resulting
+bridge distribution to re�?ne our estimate iteratively (Neal, 2005). That is, we
+iteratively re-estimate the ratio and use each iteration to update the value of r.
+Linked importance sampling Both AIS and bridge sampling have their advantages. If DKL (p 0�?�p1) is not too large (because p0 and p 1 are suﬃciently close)
+bridge sampling can be a more eﬀective means of estimating the ratio of partition
+functions than AIS. If, however, the two distributions are too far apart for a single
+distribution p ∗ to bridge the gap then one can at least use AIS with potentially
+many intermediate distributions to span the distance between p0 and p 1. Neal
+(2005) showed how his linked importance sampling method leveraged the power of
+the bridge sampling strategy to bridge the intermediate distributions used in AIS
+to signi�?cantly improve the overall partition function estimates.
+Estimating the partition function while training While AIS has become
+accepted as the standard method for estimating the partition function for many
+undirected models, it is suﬃciently computationally intensive that it remains
+infeasible to use during training. However, alternative strategies that have been
+explored to maintain an estimate of the partition function throughout training
+Using a combination of bridge sampling, short-chain AIS and parallel tempering,
+Desjardins et al. (2011) devised a scheme to track the partition function of an
+629
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+RBM throughout the training process. The strategy is based on the maintenance of
+independent estimates of the partition functions of the RBM at every temperature
+operating in the parallel tempering scheme. The authors combined bridge sampling
+estimates of the ratios of partition functions of neighboring chains (i.e. from
+parallel tempering) with AIS estimates across time to come up with a low variance
+estimate of the partition functions at every iteration of learning.
+The tools described in this chapter provide many diﬀerent ways of overcoming
+the problem of intractable partition functions, but there can be several other
+diﬃculties involved in training and using generative models. Foremost among

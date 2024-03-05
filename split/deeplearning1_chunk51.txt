@@ -1,0 +1,541 @@
+arate stride for each direction of motion. See ï¬?gure 9.12 for an
+illustration.
+One essential feature of any convolutional network implementation is the ability
+to implicitly zero-pad the input V in order to make it wider. Without this feature,
+the width of the representation shrinks by one pixel less than the kernel width
+at each layer. Zero padding the input allows us to control the kernel width and
+the size of the output independently. Without zero padding, we are forced to
+choose between shrinking the spatial extent of the network rapidly and using small
+kernelsâ€”both scenarios that signiï¬?cantly limit the expressive power of the network.
+See ï¬?gure 9.13 for an example.
+Three special cases of the zero-padding setting are worth mentioning. One is
+the extreme case in which no zero-padding is used whatsoever, and the convolution
+kernel is only allowed to visit positions where the entire kernel is contained entirely
+within the image. In MATLAB terminology, this is called valid convolution. In
+this case, all pixels in the output are a function of the same number of pixels in
+the input, so the behavior of an output pixel is somewhat more regular. However,
+the size of the output shrinks at each layer. If the input image has width m and
+the kernel has width k, the output will be of width m âˆ’ k + 1. The rate of this
+shrinkage can be dramatic if the kernels used are large. Since the shrinkage is
+greater than 0, it limits the number of convolutional layers that can be included
+in the network. As layers are added, the spatial dimension of the network will
+eventually drop to 1 Ã— 1, at which point additional layers cannot meaningfully
+be considered convolutional. Another special case of the zero-padding setting is
+when just enough zero-padding is added to keep the size of the output equal to
+the size of the input. MATLAB calls this same convolution. In this case, the
+network can contain as many convolutional layers as the available hardware can
+support, since the operation of convolution does not modify the architectural
+possibilities available to the next layer. However, the input pixels near the border
+inï¬‚uence fewer output pixels than the input pixels near the center. This can make
+the border pixels somewhat underrepresented in the model. This motivates the
+other extreme case, which MATLAB refers to as full convolution, in which enough
+zeroes are added for every pixel to be visited k times in each direction, resulting
+in an output image of width m + k âˆ’ 1. In this case, the output pixels near the
+border are a function of fewer pixels than the output pixels near the center. This
+can make it diï¬ƒcult to learn a single kernel that performs well at all positions in
+the convolutional feature map. Usually the optimal amount of zero padding (in
+terms of test set classiï¬?cation accuracy) lies somewhere between â€œvalidâ€? and â€œsameâ€?
+convolution.
+349
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+s1
+
+s2
+
+s3
+
+Strided
+convolution
+x1
+
+x2
+
+x3
+
+s1
+
+x4
+
+s2
+
+x5
+
+s3
+
+Downsampling
+
+z1
+
+z2
+
+z3
+
+z4
+
+z5
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+Convolution
+
+Figure 9.12: Convolution with a stride. In this example, we use a stride of two.
+(Top)Convolution with a stride length of two implemented in a single operation. (Bottom)Convolution with a stride greater than one pixel is mathematically equivalent to
+convolution with unit stride followed by downsampling. Obviously, the two-step approach
+involving downsampling is computationally wasteful, because it computes many values
+that are then discarded.
+
+350
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+...
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+...
+
+Figure 9.13: The eï¬€ect of zero padding on network size: Consider a convolutional network
+with a kernel of width six at every layer. In this example, we do not use any pooling, so
+only the convolution operation itself shrinks the network size. (Top)In this convolutional
+network, we do not use any implicit zero padding. This causes the representation to
+shrink by ï¬?ve pixels at each layer. Starting from an input of sixteen pixels, we are only
+able to have three convolutional layers, and the last layer does not ever move the kernel,
+so arguably only two of the layers are truly convolutional. The rate of shrinking can
+be mitigated by using smaller kernels, but smaller kernels are less expressive and some
+shrinking is inevitable in this kind of architecture. (Bottom)By adding ï¬?ve implicit zeroes
+to each layer, we prevent the representation from shrinking with depth. This allows us to
+make an arbitrarily deep convolutional network.
+
+351
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+In some cases, we do not actually want to use convolution, but rather locally
+connected layers (LeCun, 1986, 1989). In this case, the adjacency matrix in the
+graph of our MLP is the same, but every connection has its own weight, speciï¬?ed
+by a 6-D tensor W. The indices into W are respectively: i, the output channel,
+j, the output row, k, the output column, l, the input channel, m, the row oï¬€set
+within the input, and n, the column oï¬€set within the input. The linear part of a
+locally connected layer is then given by
+î?˜
+[Vl,j +mâˆ’1,k +nâˆ’1wi,j,k,l,m,n ] .
+(9.9)
+Zi,j,k =
+l,m,n
+
+This is sometimes also called unshared convolution, because it is a similar operation to discrete convolution with a small kernel, but without sharing parameters
+across locations. Figure 9.14 compares local connections, convolution, and full
+connections.
+Locally connected layers are useful when we know that each feature should be
+a function of a small part of space, but there is no reason to think that the same
+feature should occur across all of space. For example, if we want to tell if an image
+is a picture of a face, we only need to look for the mouth in the bottom half of the
+image.
+It can also be useful to make versions of convolution or locally connected layers
+in which the connectivity is further restricted, for example to constrain each output
+channel i to be a function of only a subset of the input channels l. A common
+way to do this is to make the ï¬?rst m output channels connect to only the ï¬?rst
+n input channels, the second m output channels connect to only the second n
+input channels, and so on. See ï¬?gure 9.15 for an example. Modeling interactions
+between few channels allows the network to have fewer parameters in order to
+reduce memory consumption and increase statistical eï¬ƒciency, and also reduces
+the amount of computation needed to perform forward and back-propagation. It
+accomplishes these goals without reducing the number of hidden units.
+Tiled convolution (Gregor and LeCun, 2010a; Le et al., 2010) oï¬€ers a compromise between a convolutional layer and a locally connected layer. Rather than
+learning a separate set of weights at every spatial location, we learn a set of kernels
+that we rotate through as we move through space. This means that immediately
+neighboring locations will have diï¬€erent ï¬?lters, like in a locally connected layer,
+but the memory requirements for storing the parameters will increase only by a
+factor of the size of this set of kernels, rather than the size of the entire output
+feature map. See ï¬?gure 9.16 for a comparison of locally connected layers, tiled
+convolution, and standard convolution.
+352
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+s1
+
+a
+
+s2
+
+b
+
+c
+
+s3
+
+d
+
+e
+
+s4
+
+f
+
+g
+
+s5
+
+h
+
+i
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+s1
+
+s2
+
+s3
+
+s4
+
+s5
+
+a
+
+b
+
+a
+
+b
+
+a
+
+b
+
+a
+
+b
+
+a
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+s1
+
+s2
+
+s3
+
+s4
+
+s5
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+Figure 9.14: Comparison of local connections, convolution, and full connections.
+(Top)A locally connected layer with a patch size of two pixels. Each edge is labeled with
+a unique letter to show that each edge is associated with its own weight parameter.
+(Center)A convolutional layer with a kernel width of two pixels. This model has exactly
+the same connectivity as the locally connected layer. The diï¬€erence lies not in which units
+interact with each other, but in how the parameters are shared. The locally connected layer
+has no parameter sharing. The convolutional layer uses the same two weights repeatedly
+across the entire input, as indicated by the repetition of the letters labeling each edge.
+(Bottom)A fully connected layer resembles a locally connected layer in the sense that each
+edge has its own parameter (there are too many to label explicitly with letters in this
+diagram). However, it does not have the restricted connectivity of the locally connected
+layer.
+
+353
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Output Tensor
+
+Channel coordinates
+
+Input Tensor
+
+Spatial coordinates
+
+Figure 9.15: A convolutional network with the ï¬?rst two output channels connected to
+only the ï¬?rst two input channels, and the second two output channels connected to only
+the second two input channels.
+354
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+s1
+
+a
+
+s2
+
+b
+
+c
+
+s3
+
+d
+
+e
+
+s4
+
+f
+
+g
+
+s5
+
+h
+
+i
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+s1
+
+s2
+
+s3
+
+s4
+
+s5
+
+a
+
+b
+
+c
+
+d
+
+a
+
+b
+
+c
+
+d
+
+a
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+s1
+
+s2
+
+s3
+
+s4
+
+s5
+
+a
+
+b
+x1
+
+a
+
+b
+x2
+
+a
+
+b
+x3
+
+a
+
+b
+x4
+
+a
+x5
+
+Figure 9.16: A comparison of locally connected layers, tiled convolution, and standard
+convolution. All three have the same sets of connections between units, when the same
+size of kernel is used. This diagram illustrates the use of a kernel that is two pixels wide.
+The diï¬€erences between the methods lies in how they share parameters. (Top)A locally
+connected layer has no sharing at all. We indicate that each connection has its own weight
+by labeling each connection with a unique letter. (Center)Tiled convolution has a set of
+t diï¬€erent kernels. Here we illustrate the case of t = 2. One of these kernels has edges
+labeled â€œaâ€? and â€œb,â€? while the other has edges labeled â€œcâ€? and â€œd.â€? Each time we move one
+pixel to the right in the output, we move on to using a diï¬€erent kernel. This means that,
+like the locally connected layer, neighboring units in the output have diï¬€erent parameters.
+Unlike the locally connected layer, after we have gone through all t available kernels,
+we cycle back to the ï¬?rst kernel. If two output units are separated by a multiple of t
+steps, then they share parameters. (Bottom)Traditional convolution is equivalent to tiled
+convolution with t = 1. There is only one kernel and it is applied everywhere, as indicated
+in the diagram by using the kernel with weights labeled â€œaâ€? and â€œbâ€? everywhere.
+
+355
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+To deï¬?ne tiled convolution algebraically, let k be a 6-D tensor, where two of
+the dimensions correspond to diï¬€erent locations in the output map. Rather than
+having a separate index for each location in the output map, output locations cycle
+through a set of t diï¬€erent choices of kernel stack in each direction. If t is equal to
+the output width, this is the same as a locally connected layer.
+î?˜
+(9.10)
+Zi,j,k =
+Vl,j +mâˆ’1,k +nâˆ’1Ki,l,m,n,j %t+1,k %t+1 ,
+l,m,n
+
+where % is the modulo operation, with t%t = 0, (t + 1)%t = 1, etc. It is
+straightforward to generalize this equation to use a diï¬€erent tiling range for each
+dimension.
+Both locally connected layers and tiled convolutional layers have an interesting
+interaction with max-pooling: the detector units of these layers are driven by
+diï¬€erent ï¬?lters. If these ï¬?lters learn to detect diï¬€erent transformed versions of
+the same underlying features, then the max-pooled units become invariant to the
+learned transformation (see ï¬?gure 9.9). Convolutional layers are hard-coded to be
+invariant speciï¬?cally to translation.
+Other operations besides convolution are usually necessary to implement a
+convolutional network. To perform learning, one must be able to compute the
+gradient with respect to the kernel, given the gradient with respect to the outputs.
+In some simple cases, this operation can be performed using the convolution
+operation, but many cases of interest, including the case of stride greater than 1,
+do not have this property.
+Recall that convolution is a linear operation and can thus be described as a
+matrix multiplication (if we ï¬?rst reshape the input tensor into a ï¬‚at vector). The
+matrix involved is a function of the convolution kernel. The matrix is sparse and
+each element of the kernel is copied to several elements of the matrix. This view
+helps us to derive some of the other operations needed to implement a convolutional
+network.
+Multiplication by the transpose of the matrix deï¬?ned by convolution is one
+such operation. This is the operation needed to back-propagate error derivatives
+through a convolutional layer, so it is needed to train convolutional networks
+that have more than one hidden layer. This same operation is also needed if we
+wish to reconstruct the visible units from the hidden units (Simard et al., 1992).
+Reconstructing the visible units is an operation commonly used in the models
+described in part III of this book, such as autoencoders, RBMs, and sparse coding.
+Transpose convolution is necessary to construct convolutional versions of those
+models. Like the kernel gradient operation, this input gradient operation can be
+356
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+implemented using a convolution in some cases, but in the general case requires
+a third operation to be implemented. Care must be taken to coordinate this
+transpose operation with the forward propagation. The size of the output that the
+transpose operation should return depends on the zero padding policy and stride of
+the forward propagation operation, as well as the size of the forward propagationâ€™s
+output map. In some cases, multiple sizes of input to forward propagation can
+result in the same size of output map, so the transpose operation must be explicitly
+told what the size of the original input was.
+These three operationsâ€”convolution, backprop from output to weights, and
+backprop from output to inputsâ€”are suï¬ƒcient to compute all of the gradients
+needed to train any depth of feedforward convolutional network, as well as to train
+convolutional networks with reconstruction functions based on the transpose of
+convolution. See Goodfellow (2010) for a full derivation of the equations in the
+fully general multi-dimensional, multi-example case. To give a sense of how these
+equations work, we present the two dimensional, single example version here.
+Suppose we want to train a convolutional network that incorporates strided
+convolution of kernel stack K applied to multi-channel image V with stride s as
+deï¬?ned by c(K, V , s) as in equation 9.8. Suppose we want to minimize some loss
+function J (V, K ). During forward propagation, we will need to use c itself to
+output Z, which is then propagated through the rest of the network and used to
+compute the cost function J . During back-propagation, we will receive a tensor G
+such that G i,j,k = âˆ‚Zâˆ‚ J (V , K).
+i,j,k
+
+To train the network, we need to compute the derivatives with respect to the
+weights in the kernel. To do so, we can use a function
+î?˜
+âˆ‚
+Gi,m,n Vj,(mâˆ’1)Ã—s+k,(nâˆ’1)Ã—s+l.
+g (G, V , s)i,j,k,l =
+J (V , K) =
+(9.11)
+âˆ‚Ki,j,k,l
+m,n
+If this layer is not the bottom layer of the network, we will need to compute
+the gradient with respect to V in order to back-propagate the error farther down.
+To do so, we can use a function
+h(K, G, s) i,j,k =
+=
+
+âˆ‚
+J (V , K)
+âˆ‚Vi,j,k
+î?˜
+
+(9.12)
+î?˜
+
+î?˜
+
+Kq,i,m,pG q,l,n.
+
+(9.13)
+
+n,p
+q
+l,m
+s.t.
+s.t.
+(lâˆ’1)Ã—s+m=j (nâˆ’1)Ã—s+p=k
+
+Autoencoder networks, described in chapter 14, are feedforward networks
+trained to copy their input to their output. A simpl

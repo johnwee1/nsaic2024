@@ -1,0 +1,503 @@
+nih et al., 2015). Deep learning has
+also signi�?cantly improved the performance of reinforcement learning for robotics
+(Finn et al., 2015).
+Many of these applications of deep learning are highly pro�?table. Deep learning
+is now used by many top technology companies including Google, Microsoft,
+Facebook, IBM, Baidu, Apple, Adobe, Netﬂix, NVIDIA and NEC.
+Advances in deep learning have also depended heavily on advances in software
+infrastructure. Software libraries such as Theano (Bergstra et al., 2010; Bastien
+et al., 2012), PyLearn2 (Goodfellow et al., 2013c), Torch (Collobert et al., 2011b),
+DistBelief (Dean et al., 2012), Caﬀe (Jia, 2013), MXNet (Chen et al., 2015), and
+TensorFlow (Abadi et al., 2015) have all supported important research projects or
+commercial products.
+Deep learning has also made contributions back to other sciences. Modern
+convolutional networks for object recognition provide a model of visual processing
+25
+
+CHAPTER 1. INTRODUCTION
+
+that neuroscientists can study (DiCarlo, 2013). Deep learning also provides useful
+tools for processing massive amounts of data and making useful predictions in
+scienti�?c �?elds. It has been successfully used to predict how molecules will interact
+in order to help pharmaceutical companies design new drugs (Dahl et al., 2014),
+to search for subatomic particles (Baldi et al., 2014), and to automatically parse
+microscope images used to construct a 3-D map of the human brain (KnowlesBarley et al., 2014). We expect deep learning to appear in more and more scienti�?c
+�?elds in the future.
+In summary, deep learning is an approach to machine learning that has drawn
+heavily on our knowledge of the human brain, statistics and applied math as it
+developed over the past several decades. In recent years, it has seen tremendous
+growth in its popularity and usefulness, due in large part to more powerful computers, larger datasets and techniques to train deeper networks. The years ahead
+are full of challenges and opportunities to improve deep learning even further and
+bring it to new frontiers.
+
+26
+
+Number of neurons (logarithmic scale)
+
+CHAPTER 1. INTRODUCTION
+
+1011
+1010
+109
+108
+107
+106
+105
+104
+103
+102
+101
+100
+10−1
+10−2
+
+Human
+17
+
+8
+
+19
+
+16
+
+20
+
+Octopus
+
+18
+
+14
+11
+
+Frog
+Bee
+
+3
+
+Ant
+Leech
+
+13
+1
+
+2
+4
+
+1950
+
+12
+
+6
+
+1985
+
+2000
+
+5
+
+9
+7
+
+15
+
+Roundworm
+
+10
+
+2015
+
+2056
+
+Sponge
+
+Figure 1.11: Since the introduction of hidden units, arti�?cial neural networks have doubled
+in size roughly every 2.4 years. Biological neural network sizes from Wikipedia (2015).
+1. Perceptron (Rosenblatt, 1958, 1962)
+2. Adaptive linear element (Widrow and Hoﬀ, 1960)
+3. Neocognitron (Fukushima, 1980)
+4. Early back-propagation network (Rumelhart et al., 1986b)
+5. Recurrent neural network for speech recognition (Robinson and Fallside, 1991)
+6. Multilayer perceptron for speech recognition (Bengio et al., 1991)
+7. Mean �?eld sigmoid belief network (Saul et al., 1996)
+8. LeNet-5 (LeCun et al., 1998b)
+9. Echo state network (Jaeger and Haas, 2004)
+10. Deep belief network (Hinton et al., 2006)
+11. GPU-accelerated convolutional network (Chellapilla et al., 2006)
+12. Deep Boltzmann machine (Salakhutdinov and Hinton, 2009a)
+13. GPU-accelerated deep belief network (Raina et al., 2009)
+14. Unsupervised convolutional network (Jarrett et al., 2009)
+15. GPU-accelerated multilayer perceptron (Ciresan et al., 2010)
+16. OMP-1 network (Coates and Ng, 2011)
+17. Distributed autoencoder (Le et al., 2012)
+18. Multi-GPU convolutional network (Krizhevsky et al., 2012)
+19. COTS HPC unsupervised convolutional network (Coates et al., 2013)
+20. GoogLeNet (Szegedy et al., 2014a)
+
+27
+
+ILSVRC classi�?cation error rate
+
+CHAPTER 1. INTRODUCTION
+
+0.30
+0.25
+0.20
+0.15
+0.10
+0.05
+0.00
+2010
+
+2011
+
+2012
+
+2013
+
+2014
+
+2015
+
+Figure 1.12: Since deep networks reached the scale necessary to compete in the ImageNet
+Large Scale Visual Recognition Challenge, they have consistently won the competition
+every year, and yielded lower and lower error rates each time. Data from Russakovsky
+et al. (2014b) and He et al. (2015).
+
+28
+
+Part I
+
+Applied Math and Machine
+Learning Basics
+
+29
+
+This part of the book introduces the basic mathematical concepts needed to
+understand deep learning. We begin with general ideas from applied math that
+allow us to de�?ne functions of many variables, �?nd the highest and lowest points
+on these functions and quantify degrees of belief.
+Next, we describe the fundamental goals of machine learning. We describe how
+to accomplish these goals by specifying a model that represents certain beliefs,
+designing a cost function that measures how well those beliefs correspond with
+reality and using a training algorithm to minimize that cost function.
+This elementary framework is the basis for a broad variety of machine learning
+algorithms, including approaches to machine learning that are not deep. In the
+subsequent parts of the book, we develop deep learning algorithms within this
+framework.
+
+30
+
+Chapter 2
+
+Linear Algebra
+Linear algebra is a branch of mathematics that is widely used throughout science
+and engineering. However, because linear algebra is a form of continuous rather
+than discrete mathematics, many computer scientists have little experience with it.
+A good understanding of linear algebra is essential for understanding and working
+with many machine learning algorithms, especially deep learning algorithms. We
+therefore precede our introduction to deep learning with a focused presentation of
+the key linear algebra prerequisites.
+If you are already familiar with linear algebra, feel free to skip this chapter. If
+you have previous experience with these concepts but need a detailed reference
+sheet to review key formulas, we recommend The Matrix Cookbook (Petersen and
+Pedersen, 2006). If you have no exposure at all to linear algebra, this chapter
+will teach you enough to read this book, but we highly recommend that you also
+consult another resource focused exclusively on teaching linear algebra, such as
+Shilov (1977). This chapter will completely omit many important linear algebra
+topics that are not essential for understanding deep learning.
+
+2.1
+
+Scalars, Vectors, Matrices and Tensors
+
+The study of linear algebra involves several types of mathematical objects:
+• Scalars: A scalar is just a single number, in contrast to most of the other
+objects studied in linear algebra, which are usually arrays of multiple numbers.
+We write scalars in italics. We usually give scalars lower-case variable names.
+When we introduce them, we specify what kind of number they are. For
+31
+
+CHAPTER 2. LINEAR ALGEBRA
+
+example, we might say “Let s ∈ R be the slope of the line,�? while de�?ning a
+real-valued scalar, or “Let n ∈ N be the number of units,�? while de�?ning a
+natural number scalar.
+• Vectors: A vector is an array of numbers. The numbers are arranged in
+order. We can identify each individual number by its index in that ordering.
+Typically we give vectors lower case names written in bold typeface, such
+as x. The elements of the vector are identi�?ed by writing its name in italic
+typeface, with a subscript. The �?rst element of x is x1, the second element
+is x 2 and so on. We also need to say what kind of numbers are stored in
+the vector. If each element is in R, and the vector has n elements, then the
+vector lies in the set formed by taking the Cartesian product of R n times,
+denoted as R n. When we need to explicitly identify the elements of a vector,
+we write them as a column enclosed in square brackets:
+
+
+x1
+ x2 
+
+
+x =  ..  .
+(2.1)
+ . 
+xn
+
+We can think of vectors as identifying points in space, with each element
+giving the coordinate along a diﬀerent axis.
+Sometimes we need to index a set of elements of a vector. In this case, we
+de�?ne a set containing the indices and write the set as a subscript. For
+example, to access x 1, x3 and x6 , we de�?ne the set S = {1, 3, 6} and write
+xS . We use the − sign to index the complement of a set. For example x−1 is
+the vector containing all elements of x except for x1 , and x−S is the vector
+containing all of the elements of x except for x1, x3 and x6 .
+• Matrices: A matrix is a 2-D array of numbers, so each element is identi�?ed
+by two indices instead of just one. We usually give matrices upper-case
+variable names with bold typeface, such as A. If a real-valued matrix A has
+a height of m and a width of n, then we say that A ∈ R m×n. We usually
+identify the elements of a matrix using its name in italic but not bold font,
+and the indices are listed with separating commas. For example, A1,1 is the
+upper left entry of A and Am,n is the bottom right entry. We can identify all
+of the numbers with vertical coordinate i by writing a “ :�? for the horizontal
+coordinate. For example, Ai,: denotes the horizontal cross section of A with
+vertical coordinate i. This is known as the i-th row of A. Likewise, A:,i is
+32
+
+CHAPTER 2. LINEAR ALGEBRA
+
+
+
+A 1,1
+A =  A 2,1
+A 3,1
+
+
+
+A 1,2
+A 1,1
+A 2,2  ⇒ A  =
+A 1,2
+A 3,2
+
+A 2,1
+A 2,2
+
+A3,1
+A3,2
+
+
+
+Figure 2.1: The transpose of the matrix can be thought of as a mirror image across the
+main diagonal.
+
+the i-th column of A. When we need to explicitly identify the elements of
+a matrix, we write them as an array enclosed in square brackets:
+
+
+A 1,1 A 1,2
+.
+(2.2)
+A 2,1 A 2,2
+Sometimes we may need to index matrix-valued expressions that are not just
+a single letter. In this case, we use subscripts after the expression, but do
+not convert anything to lower case. For example, f (A)i,j gives element (i, j)
+of the matrix computed by applying the function f to A.
+• Tensors: In some cases we will need an array with more than two axes.
+In the general case, an array of numbers arranged on a regular grid with a
+variable number of axes is known as a tensor. We denote a tensor named “A�?
+with this typeface: A. We identify the element of A at coordinates (i, j, k)
+by writing Ai,j,k.
+One important operation on matrices is the transpose. The transpose of a
+matrix is the mirror image of the matrix across a diagonal line, called the main
+diagonal, running down and to the right, starting from its upper left corner. See
+�?gure 2.1 for a graphical depiction of this operation. We denote the transpose of a
+matrix A as A, and it is de�?ned such that
+(A )i,j = Aj,i.
+
+(2.3)
+
+Vectors can be thought of as matrices that contain only one column. The
+transpose of a vector is therefore a matrix with only one row. Sometimes we
+33
+
+CHAPTER 2. LINEAR ALGEBRA
+
+de�?ne a vector by writing out its elements in the text inline as a row matrix,
+then using the transpose operator to turn it into a standard column vector, e.g.,
+x = [x1, x2, x3 ] .
+A scalar can be thought of as a matrix with only a single entry. From this, we
+can see that a scalar is its own transpose: a = a .
+We can add matrices to each other, as long as they have the same shape, just
+by adding their corresponding elements: C = A + B where Ci,j = Ai,j + B i,j.
+We can also add a scalar to a matrix or multiply a matrix by a scalar, just
+by performing that operation on each element of a matrix: D = a · B + c where
+Di,j = a · Bi,j + c.
+
+In the context of deep learning, we also use some less conventional notation.
+We allow the addition of matrix and a vector, yielding another matrix: C = A + b,
+where Ci,j = Ai,j + b j. In other words, the vector b is added to each row of the
+matrix. This shorthand eliminates the need to de�?ne a matrix with b copied into
+each row before doing the addition. This implicit copying of b to many locations
+is called broadcasting.
+
+2.2
+
+Multiplying Matrices and Vectors
+
+One of the most important operations involving matrices is multiplication of two
+matrices. The matrix product of matrices A and B is a third matrix C. In
+order for this product to be de�?ned, A must have the same number of columns as
+B has rows. If A is of shape m × n and B is of shape n × p, then C is of shape
+m × p. We can write the matrix product just by placing two or more matrices
+together, e.g.
+C = AB .
+(2.4)
+The product operation is de�?ned by
+�?�
+Ci,j =
+Ai,k B k,j.
+
+(2.5)
+
+k
+
+Note that the standard product of two matrices is not just a matrix containing
+the product of the individual elements. Such an operation exists and is called the
+element-wise product or Hadamard product, and is denoted as A  B.
+
+The dot product between two vectors x and y of the same dimensionality
+is the matrix product x y. We can think of the matrix product C = AB as
+computing Ci,j as the dot product between row i of A and column j of B .
+34
+
+CHAPTER 2. LINEAR ALGEBRA
+
+Matrix product operations have many useful properties that make mathematical
+analysis of matrices more convenient. For example, matrix multiplication is
+distributive:
+A(B + C ) = AB + AC .
+(2.6)
+It is also associative:
+A(BC ) = (AB )C .
+
+(2.7)
+
+Matrix multiplication is not commutative (the condition AB = BA does not
+always hold), unlike scalar multiplication. However, the dot product between two
+vectors is commutative:
+x y = y x.
+(2.8)
+The transpose of a matrix product has a simple form:
+(AB ) = B A  .
+
+(2.9)
+
+This allows us to demonstrate equation 2.8, by exploiting the fact that the value
+of such a product is a scalar and therefore equal to its own transpose:
+�?
+
+x y = x y
+= yx.
+(2.10)
+Since the focus of this textbook is not linear algebra, we do not attempt to
+develop a comprehensive list of useful properties of the matrix product here, but
+the reader should be aware that many more exist.
+We now know enough linear algebra notation to write down a system of linear
+equations:
+Ax = b
+(2.11)
+where A ∈ Rm×n is a known matrix, b ∈ R m is a known vector, and x ∈ Rn is a
+vector of unknown variables we would like to solve for. Each element x i of x is one
+of these unknown variables. Each row of A and each element of b provide another
+constraint. We can rewrite equation 2.11 as:
+A1,:x = b1
+
+(2.12)
+
+A2,:x = b2
+
+(2.13)
+
+...
+
+(2.14)
+
+Am,:x = bm
+
+(2.15)
+
+A1,1 x1 + A1,2 x2 + · · · + A1,nxn = b1
+
+(2.16)
+
+or, even more explicitly, as:
+
+35
+
+CHAPTER 2. LINEAR ALGEBRA
+
+
+
+
+1 0 0
+0 1 0 
+0 0 1
+Figure 2.2: Example identity matrix: This is I3 .
+
+A2,1 x1 + A2,2 x2 + · · · + A2,nxn = b2
+
+(2.17)
+
+...
+
+(2.18)
+
+A m,1x1 + Am,2x2 + · · · + A m,nxn = bm .
+
+(2.19)
+
+Matrix-vector product notation provides a more compact representation for
+equations of this form.
+
+2.3
+
+Identity and Inverse Matrices
+
+Linear algebra oﬀers a powerful tool called matrix inversion that allows us to
+analytically solve equation 2.11 for many values of A.
+To describe matrix inversion, we �?rst need to de�?ne the concept of an identity
+matrix. An identity matrix is a matrix that does not change any vector when we
+multiply that vector by that matrix. We denote the identity matrix that preserves
+n-dimensional vectors as I n. Formally, I n ∈ Rn×n, and
+∀x ∈ Rn, I nx = x.
+
+(2.20)
+
+The structure of the identity matrix is simple: all of the entries along the main
+diagonal are 1, while all of the other entries are zero. See �?gure 2.2 for an example.
+The matrix inverse of A is denoted as A −1, and it is de�?ned as the matrix
+such that
+A−1 A = In.
+(2.21)
+We can now solve equation 2.11 by the following steps:
+Ax = b
+
+(2.22)
+
+A−1 Ax = A −1b
+
+(2.23)
+
+In x = A−1 b
+
+(2.24)
+
+36
+
+CHAPTER 2. LINEAR ALGEBRA
+
+x = A−1 b.
+
+(2.25)
+
+Of course, this process depends on it bein

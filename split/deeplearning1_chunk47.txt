@@ -1,0 +1,322 @@
+nce. In a deep neural
+network with nonlinear activation functions, the lower layers can perform nonlinear
+transformations of the data, so they remain useful. Batch normalization acts to
+standardize only the mean and variance of each unit in order to stabilize learning,
+but allows the relationships between units and the nonlinear statistics of a single
+unit to change.
+Because the ï¬?nal layer of the network is able to learn a linear transformation,
+we may actually wish to remove all linear relationships between units within a
+layer. Indeed, this is the approach taken by Desjardins et al. (2015), who provided
+the inspiration for batch normalization. Unfortunately, eliminating all linear
+interactions is much more expensive than standardizing the mean and standard
+deviation of each individual unit, and so far batch normalization remains the most
+practical approach.
+Normalizing the mean and standard deviation of a unit can reduce the expressive
+power of the neural network containing that unit. In order to maintain the
+expressive power of the network, it is common to replace the batch of hidden unit
+activations H with Î³H î€° +Î² rather than simply the normalized H î€°. The variables
+Î³ and Î² are learned parameters that allow the new variable to have any mean
+and standard deviation. At ï¬?rst glance, this may seem uselessâ€”why did we set
+the mean to 0 , and then introduce a parameter that allows it to be set back to
+any arbitrary value Î²? The answer is that the new parametrization can represent
+the same family of functions of the input as the old parametrization, but the new
+parametrization has diï¬€erent learning dynamics. In the old parametrization, the
+mean of H was determined by a complicated interaction between the parameters
+in the layers below H. In the new parametrization, the mean of Î³H î€° + Î² is
+determined solely by Î². The new parametrization is much easier to learn with
+gradient descent.
+Most neural network layers take the form of Ï†(XW + b) where Ï† is some
+ï¬?xed nonlinear activation function such as the rectiï¬?ed linear transformation. It
+is natural to wonder whether we should apply batch normalization to the input
+X, or to the transformed value XW + b. Ioï¬€e and Szegedy (2015) recommend
+320
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+the latter. More speciï¬?cally, XW + b should be replaced by a normalized version
+of XW . The bias term should be omitted because it becomes redundant with
+the Î² parameter applied by the batch normalization reparametrization. The input
+to a layer is usually the output of a nonlinear activation function such as the
+rectiï¬?ed linear function in a previous layer. The statistics of the input are thus
+more non-Gaussian and less amenable to standardization by linear operations.
+In convolutional networks, described in chapter 9, it is important to apply the
+same normalizing Âµ and Ïƒ at every spatial location within a feature map, so that
+the statistics of the feature map remain the same regardless of spatial location.
+
+8.7.2
+
+Coordinate Descent
+
+In some cases, it may be possible to solve an optimization problem quickly by
+breaking it into separate pieces. If we minimize f (x) with respect to a single
+variable x i , then minimize it with respect to another variable x j and so on,
+repeatedly cycling through all variables, we are guaranteed to arrive at a (local)
+minimum. This practice is known as coordinate descent, because we optimize
+one coordinate at a time. More generally, block coordinate descent refers to
+minimizing with respect to a subset of the variables simultaneously. The term
+â€œcoordinate descentâ€? is often used to refer to block coordinate descent as well as
+the strictly individual coordinate descent.
+Coordinate descent makes the most sense when the diï¬€erent variables in the
+optimization problem can be clearly separated into groups that play relatively
+isolated roles, or when optimization with respect to one group of variables is
+signiï¬?cantly more eï¬ƒcient than optimization with respect to all of the variables.
+For example, consider the cost function
+J (H , W ) =
+
+î?˜
+i,j
+
+|H i,j| +
+
+î?˜î€?
+i,j
+
+X âˆ’ W î€¾H
+
+î€‘2
+
+i,j
+
+.
+
+(8.38)
+
+This function describes a learning problem called sparse coding, where the goal is
+to ï¬?nd a weight matrix W that can linearly decode a matrix of activation values
+H to reconstruct the training set X. Most applications of sparse coding also
+involve weight decay or a constraint on the norms of the columns of W , in order
+to prevent the pathological solution with extremely small H and large W .
+The function J is not convex. However, we can divide the inputs to the
+training algorithm into two sets: the dictionary parameters W and the code
+representations H . Minimizing the objective function with respect to either one of
+these sets of variables is a convex problem. Block coordinate descent thus gives
+321
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+us an optimization strategy that allows us to use eï¬ƒcient convex optimization
+algorithms, by alternating between optimizing W with H ï¬?xed, then optimizing
+H with W ï¬?xed.
+Coordinate descent is not a very good strategy when the value of one variable
+strongly inï¬‚uences
+value of another variable, as in the function f (x) =
+î€€ 2 the2optimal
+î€?
+2
+(x1 âˆ’ x2 ) + Î± x1 + x 2 where Î± is a positive constant. The ï¬?rst term encourages
+the two variables to have similar value, while the second term encourages them
+to be near zero. The solution is to set both to zero. Newtonâ€™s method can solve
+the problem in a single step because it is a positive deï¬?nite quadratic problem.
+However, for small Î±, coordinate descent will make very slow progress because the
+ï¬?rst term does not allow a single variable to be changed to a value that diï¬€ers
+signiï¬?cantly from the current value of the other variable.
+
+8.7.3
+
+Polyak Averaging
+
+Polyak averaging (Polyak and Juditsky, 1992) consists of averaging together several
+points in the trajectory through parameter space visited by an optimization
+algorithm. If t iterations of gradient descent visit points Î¸ (1) , . . . , Î¸ (t), then the
+î??
+output of the Polyak averaging algorithm is Î¸Ë†(t) = 1t i Î¸ (i). On some problem
+classes, such as gradient descent applied to convex problems, this approach has
+strong convergence guarantees. When applied to neural networks, its justiï¬?cation
+is more heuristic, but it performs well in practice. The basic idea is that the
+optimization algorithm may leap back and forth across a valley several times
+without ever visiting a point near the bottom of the valley. The average of all of
+the locations on either side should be close to the bottom of the valley though.
+In non-convex problems, the path taken by the optimization trajectory can be
+very complicated and visit many diï¬€erent regions. Including points in parameter
+space from the distant past that may be separated from the current point by large
+barriers in the cost function does not seem like a useful behavior. As a result,
+when applying Polyak averaging to non-convex problems, it is typical to use an
+exponentially decaying running average:
+Î¸Ì‚(t) = Î±Î¸Ì‚(tâˆ’1) + (1 âˆ’ Î±)Î¸ (t).
+
+(8.39)
+
+The running average approach is used in numerous applications. See Szegedy
+et al. (2015) for a recent example.
+
+322
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+8.7.4
+
+Supervised Pretraining
+
+Sometimes, directly training a model to solve a speciï¬?c task can be too ambitious
+if the model is complex and hard to optimize or if the task is very diï¬ƒcult. It is
+sometimes more eï¬€ective to train a simpler model to solve the task, then make
+the model more complex. It can also be more eï¬€ective to train the model to solve
+a simpler task, then move on to confront the ï¬?nal task. These strategies that
+involve training simple models on simple tasks before confronting the challenge of
+training the desired model to perform the desired task are collectively known as
+pretraining.
+Greedy algorithms break a problem into many components, then solve for
+the optimal version of each component in isolation. Unfortunately, combining the
+individually optimal components is not guaranteed to yield an optimal complete
+solution. However, greedy algorithms can be computationally much cheaper than
+algorithms that solve for the best joint solution, and the quality of a greedy solution
+is often acceptable if not optimal. Greedy algorithms may also be followed by a
+ï¬?ne-tuning stage in which a joint optimization algorithm searches for an optimal
+solution to the full problem. Initializing the joint optimization algorithm with a
+greedy solution can greatly speed it up and improve the quality of the solution it
+ï¬?nds.
+Pretraining, and especially greedy pretraining, algorithms are ubiquitous in
+deep learning. In this section, we describe speciï¬?cally those pretraining algorithms
+that break supervised learning problems into other simpler supervised learning
+problems. This approach is known as greedy supervised pretraining.
+In the original (Bengio et al., 2007) version of greedy supervised pretraining,
+each stage consists of a supervised learning training task involving only a subset of
+the layers in the ï¬?nal neural network. An example of greedy supervised pretraining
+is illustrated in ï¬?gure 8.7, in which each added hidden layer is pretrained as part
+of a shallow supervised MLP, taking as input the output of the previously trained
+hidden layer. Instead of pretraining one layer at a time, Simonyan and Zisserman
+(2015) pretrain a deep convolutional network (eleven weight layers) and then use
+the ï¬?rst four and last three layers from this network to initialize even deeper
+networks (with up to nineteen layers of weights). The middle layers of the new,
+very deep network are initialized randomly. The new network is then jointly trained.
+Another option, explored by Yu et al. (2010) is to use the outputs of the previously
+trained MLPs, as well as the raw input, as inputs for each added stage.
+Why would greedy supervised pretraining help? The hypothesis initially
+discussed by Bengio et al. (2007) is that it helps to provide better guidance to the
+323
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+y
+
+U(1)
+h(1)
+
+h(1)
+
+W (1)
+
+W (1)
+x
+
+x
+
+(a)
+
+(b)
+
+U (1)
+
+y
+
+U (1)
+
+y
+
+y
+U (2)
+h(2)
+W (2)
+
+h(2)
+U(2)
+
+W (2)
+
+y
+
+h(1)
+
+h(1)
+U(1)
+
+W (1)
+
+y
+
+W (1)
+
+x
+
+x
+
+(c)
+
+(d)
+
+Figure 8.7: Illustration of one form of greedy supervised pretraining (Bengio et al., 2007).
+(a)We start by training a suï¬ƒciently shallow architecture. (b)Another drawing of the
+same architecture. (c)We keep only the input-to-hidden layer of the original network and
+discard the hidden-to-output layer. We send the output of the ï¬?rst hidden layer as input
+to another supervised single hidden layer MLP that is trained with the same objective
+as the ï¬?rst network was, thus adding a second hidden layer. This can be repeated for as
+many layers as desired. (d)Another drawing of the result, viewed as a feedforward network.
+To further improve the optimization, we can jointly ï¬?ne-tune all the layers, either only at
+the end or at each stage of this process.
+
+324
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+intermediate levels of a deep hierarchy. In general, pretraining may help both in
+terms of optimization and in terms of generalization.
+An approach related to supervised pretraining extends the idea to the context
+of transfer learning: Yosinski et al. (2014) pretrain a deep convolutional net with 8
+layers of weights on a set of tasks (a subset of the 1000 ImageNet object categories)
+and then initialize a same-size network with the ï¬?rst k layers of the ï¬?rst net. All
+the layers of the second network (with the upper layers initialized randomly) are
+then jointly trained to perform a diï¬€erent set of tasks (another subset of the 1000
+ImageNet object categories), with fewer training examples than for the ï¬?rst set of
+tasks. Other approaches to transfer learning with neural networks are discussed in
+section 15.2.
+Another related line of work is the FitNets (Romero et al., 2015) approach.
+This approach begins by training a network that has low enough depth and great
+enough width (number of units per layer) to be easy to train. This network then
+becomes a teacher for a second network, designated the student. The student
+network is much deeper and thinner (eleven to nineteen layers) and would be
+diï¬ƒcult to train with SGD under normal circumstances. The training of the
+student network is made easier by training the student network not only to predict
+the output for the original task, but also to predict the value of the middle layer
+of the teacher network. This extra task provides a set of hints about how the
+hidden layers should be used and can simplify the optimization problem. Additional
+parameters are introduced to regress the middle layer of the 5-layer teacher network
+from the middle layer of the deeper student network. However, instead of predicting
+the ï¬?nal classiï¬?cation target, the objective is to predict the middle hidden layer
+of the teacher network. The lower layers of the student networks thus have two
+objectives: to help the outputs of the student network accomplish their task, as
+well as to predict the intermediate layer of the teacher network. Although a thin
+and deep network appears to be more diï¬ƒcult to train than a wide and shallow
+network, the thin and deep network may generalize better and certainly has lower
+computational cost if it is thin enough to have far fewer parameters. Without
+the hints on the hidden layer, the student network performs very poorly in the
+experiments, both on the training and test set. Hints on middle layers may thus
+be one of the tools to help train neural networks that otherwise seem diï¬ƒcult to
+train, but other optimization techniques or changes in the architecture may also
+solve the problem.
+
+325
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+8.7.5
+
+Designing Models to Aid Optimization
+
+To improve optimization, the best strategy is not always to improve the optimization
+algorithm. Instead, many improvements in the optimization of deep models have
+come from designing the models to be easier to optimize.
+In principle, we could use activation functions that increase and decrease in
+jagged non-monotonic patterns. However, this would make optimization extremely
+diï¬ƒcult. In practice, it is more important to choose a model family that is easy to
+optimize than to use a powerful optimization algorithm. Most of the advances in
+neural network learning over the past 30 years have been obtained by changing
+the model family rather than changing the optimization procedure. Stochastic
+gradient descent with momentum, which was used to train neural networks in the
+1980s, remains in use in modern state of the art neural network applications.
+Speciï¬?cally, modern neural networks reï¬‚ect a design choice to use linear transformations between layers and activation functions that are diï¬€erentiable almost
+everywhere and have signiï¬?cant slope in large portions of their domain. In particular, model innovations like the LSTM, rectiï¬?ed linear units and maxout units
+have all moved toward using more linear functions than previous models like deep
+networks based on sigmoidal units. These models have nice properties that make
+optimization easier. The gradient ï¬‚ows through many layers provided that the
+Jacobian of the linear transformation has reasonable singular values. Moreover,
+line

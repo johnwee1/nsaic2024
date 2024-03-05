@@ -1,0 +1,293 @@
+xamples of some per-example loss function. For example, the
+negative conditional log-likelihood of the training data can be written as
+m
+
+1 î?˜
+J(Î¸) = Ex,yâˆ¼pÌ‚data L(x, y, Î¸) =
+L(x(i) , y(i), Î¸)
+m i=1
+
+(5.96)
+
+where L is the per-example loss L(x, y, Î¸) = âˆ’ log p(y | x; Î¸).
+
+For these additive cost functions, gradient descent requires computing
+m
+
+1 î?˜
+âˆ‡Î¸ J(Î¸) =
+âˆ‡Î¸ L(x(i), y(i), Î¸).
+m i=1
+
+(5.97)
+
+The computational cost of this operation is O(m). As the training set size grows to
+billions of examples, the time to take a single gradient step becomes prohibitively
+long.
+The insight of stochastic gradient descent is that the gradient is an expectation.
+The expectation may be approximately estimated using a small set of samples.
+Speciï¬?cally, on each step of the algorithm, we can sample a minibatch of examples
+î€°
+B = {x(1), . . . , x (m ) } drawn uniformly from the training set. The minibatch size
+mî€° is typically chosen to be a relatively small number of examples, ranging from
+1 to a few hundred. Crucially, mî€° is usually held ï¬?xed as the training set size m
+grows. We may ï¬?t a training set with billions of examples using updates computed
+on only a hundred examples.
+The estimate of the gradient is formed as
+î€°
+
+m
+î?˜
+1
+g = î€° âˆ‡Î¸
+L(x(i) , y(i) , Î¸).
+m
+i=1
+
+(5.98)
+
+using examples from the minibatch B. The stochastic gradient descent algorithm
+then follows the estimated gradient downhill:
+Î¸ â†? Î¸ âˆ’ î€?g ,
+where î€? is the learning rate.
+152
+
+(5.99)
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+Gradient descent in general has often been regarded as slow or unreliable. In
+the past, the application of gradient descent to non-convex optimization problems
+was regarded as foolhardy or unprincipled. Today, we know that the machine
+learning models described in part II work very well when trained with gradient
+descent. The optimization algorithm may not be guaranteed to arrive at even a
+local minimum in a reasonable amount of time, but it often ï¬?nds a very low value
+of the cost function quickly enough to be useful.
+Stochastic gradient descent has many important uses outside the context of
+deep learning. It is the main way to train large linear models on very large
+datasets. For a ï¬?xed model size, the cost per SGD update does not depend on the
+training set size m. In practice, we often use a larger model as the training set size
+increases, but we are not forced to do so. The number of updates required to reach
+convergence usually increases with training set size. However, as m approaches
+inï¬?nity, the model will eventually converge to its best possible test error before
+SGD has sampled every example in the training set. Increasing m further will not
+extend the amount of training time needed to reach the modelâ€™s best possible test
+error. From this point of view, one can argue that the asymptotic cost of training
+a model with SGD is O(1) as a function of m.
+Prior to the advent of deep learning, the main way to learn nonlinear models
+was to use the kernel trick in combination with a linear model. Many kernel learning
+algorithms require constructing an m Ã— m matrix Gi,j = k(x(i), x(j) ). Constructing
+this matrix has computational cost O(m 2), which is clearly undesirable for datasets
+with billions of examples. In academia, starting in 2006, deep learning was
+initially interesting because it was able to generalize to new examples better
+than competing algorithms when trained on medium-sized datasets with tens of
+thousands of examples. Soon after, deep learning garnered additional interest in
+industry, because it provided a scalable way of training nonlinear models on large
+datasets.
+Stochastic gradient descent and many enhancements to it are described further
+in chapter 8.
+
+5.10
+
+Building a Machine Learning Algorithm
+
+Nearly all deep learning algorithms can be described as particular instances of
+a fairly simple recipe: combine a speciï¬?cation of a dataset, a cost function, an
+optimization procedure and a model.
+For example, the linear regression algorithm combines a dataset consisting of
+153
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+X and y, the cost function
+J (w, b) = âˆ’Ex,yâˆ¼pÌ‚data log pmodel (y | x),
+
+(5.100)
+
+the model speciï¬?cation p model(y | x) = N (y; xî€¾ w + b, 1), and, in most cases, the
+optimization algorithm deï¬?ned by solving for where the gradient of the cost is zero
+using the normal equations.
+By realizing that we can replace any of these components mostly independently
+from the others, we can obtain a very wide variety of algorithms.
+The cost function typically includes at least one term that causes the learning
+process to perform statistical estimation. The most common cost function is the
+negative log-likelihood, so that minimizing the cost function causes maximum
+likelihood estimation.
+The cost function may also include additional terms, such as regularization
+terms. For example, we can add weight decay to the linear regression cost function
+to obtain
+J (w, b) = Î»||w||22 âˆ’ Ex,yâˆ¼pÌ‚data log pmodel (y | x).
+(5.101)
+This still allows closed-form optimization.
+If we change the model to be nonlinear, then most cost functions can no longer
+be optimized in closed form. This requires us to choose an iterative numerical
+optimization procedure, such as gradient descent.
+The recipe for constructing a learning algorithm by combining models, costs, and
+optimization algorithms supports both supervised and unsupervised learning. The
+linear regression example shows how to support supervised learning. Unsupervised
+learning can be supported by deï¬?ning a dataset that contains only X and providing
+an appropriate unsupervised cost and model. For example, we can obtain the ï¬?rst
+PCA vector by specifying that our loss function is
+J(w) = Exâˆ¼pÌ‚data ||x âˆ’ r(x; w )||22
+
+(5.102)
+
+while our model is deï¬?ned to have w with norm one and reconstruction function
+r(x) = w î€¾xw.
+In some cases, the cost function may be a function that we cannot actually
+evaluate, for computational reasons. In these cases, we can still approximately
+minimize it using iterative numerical optimization so long as we have some way of
+approximating its gradients.
+Most machine learning algorithms make use of this recipe, though it may not
+immediately be obvious. If a machine learning algorithm seems especially unique or
+154
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+hand-designed, it can usually be understood as using a special-case optimizer. Some
+models such as decision trees or k-means require special-case optimizers because
+their cost functions have ï¬‚at regions that make them inappropriate for minimization
+by gradient-based optimizers. Recognizing that most machine learning algorithms
+can be described using this recipe helps to see the diï¬€erent algorithms as part of a
+taxonomy of methods for doing related tasks that work for similar reasons, rather
+than as a long list of algorithms that each have separate justiï¬?cations.
+
+5.11
+
+Challenges Motivating Deep Learning
+
+The simple machine learning algorithms described in this chapter work very well on
+a wide variety of important problems. However, they have not succeeded in solving
+the central problems in AI, such as recognizing speech or recognizing objects.
+The development of deep learning was motivated in part by the failure of
+traditional algorithms to generalize well on such AI tasks.
+This section is about how the challenge of generalizing to new examples becomes
+exponentially more diï¬ƒcult when working with high-dimensional data, and how
+the mechanisms used to achieve generalization in traditional machine learning
+are insuï¬ƒcient to learn complicated functions in high-dimensional spaces. Such
+spaces also often impose high computational costs. Deep learning was designed to
+overcome these and other obstacles.
+
+5.11.1
+
+The Curse of Dimensionality
+
+Many machine learning problems become exceedingly diï¬ƒcult when the number
+of dimensions in the data is high. This phenomenon is known as the curse of
+dimensionality. Of particular concern is that the number of possible distinct
+conï¬?gurations of a set of variables increases exponentially as the number of variables
+increases.
+
+155
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+Figure 5.9: As the number of relevant dimensions of the data increases (from left to
+right), the number of conï¬?gurations of interest may grow exponentially. (Left)In this
+one-dimensional example, we have one variable for which we only care to distinguish 10
+regions of interest. With enough examples falling within each of these regions (each region
+corresponds to a cell in the illustration), learning algorithms can easily generalize correctly.
+A straightforward way to generalize is to estimate the value of the target function within
+each region (and possibly interpolate between neighboring regions). (Center)With 2
+dimensions it is more diï¬ƒcult to distinguish 10 diï¬€erent values of each variable. We need
+to keep track of up to 10Ã—10=100 regions, and we need at least that many examples to
+cover all those regions. (Right)With 3 dimensions this grows to 103 = 1000 regions and at
+least that many examples. For d dimensions and v values to be distinguished along each
+axis, we seem to need O(v d ) regions and examples. This is an instance of the curse of
+dimensionality. Figure graciously provided by Nicolas Chapados.
+
+The curse of dimensionality arises in many places in computer science, and
+especially so in machine learning.
+One challenge posed by the curse of dimensionality is a statistical challenge.
+As illustrated in ï¬?gure 5.9, a statistical challenge arises because the number of
+possible conï¬?gurations of x is much larger than the number of training examples.
+To understand the issue, let us consider that the input space is organized into a
+grid, like in the ï¬?gure. We can describe low-dimensional space with a low number
+of grid cells that are mostly occupied by the data. When generalizing to a new data
+point, we can usually tell what to do simply by inspecting the training examples
+that lie in the same cell as the new input. For example, if estimating the probability
+density at some point x, we can just return the number of training examples in
+the same unit volume cell as x, divided by the total number of training examples.
+If we wish to classify an example, we can return the most common class of training
+examples in the same cell. If we are doing regression we can average the target
+values observed over the examples in that cell. But what about the cells for which
+we have seen no example? Because in high-dimensional spaces the number of
+conï¬?gurations is huge, much larger than our number of examples, a typical grid cell
+has no training example associated with it. How could we possibly say something
+156
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+meaningful about these new conï¬?gurations? Many traditional machine learning
+algorithms simply assume that the output at a new point should be approximately
+the same as the output at the nearest training point.
+
+5.11.2
+
+Local Constancy and Smoothness Regularization
+
+In order to generalize well, machine learning algorithms need to be guided by prior
+beliefs about what kind of function they should learn. Previously, we have seen
+these priors incorporated as explicit beliefs in the form of probability distributions
+over parameters of the model. More informally, we may also discuss prior beliefs as
+directly inï¬‚uencing the function itself and only indirectly acting on the parameters
+via their eï¬€ect on the function. Additionally, we informally discuss prior beliefs as
+being expressed implicitly, by choosing algorithms that are biased toward choosing
+some class of functions over another, even though these biases may not be expressed
+(or even possible to express) in terms of a probability distribution representing our
+degree of belief in various functions.
+Among the most widely used of these implicit â€œpriorsâ€? is the smoothness
+prior or local constancy prior. This prior states that the function we learn
+should not change very much within a small region.
+Many simpler algorithms rely exclusively on this prior to generalize well, and
+as a result they fail to scale to the statistical challenges involved in solving AIlevel tasks. Throughout this book, we will describe how deep learning introduces
+additional (explicit and implicit) priors in order to reduce the generalization
+error on sophisticated tasks. Here, we explain why the smoothness prior alone is
+insuï¬ƒcient for these tasks.
+There are many diï¬€erent ways to implicitly or explicitly express a prior belief
+that the learned function should be smooth or locally constant. All of these diï¬€erent
+methods are designed to encourage the learning process to learn a function f âˆ— that
+satisï¬?es the condition
+fâˆ— (x) â‰ˆ f âˆ—(x + î€?)
+(5.103)
+for most conï¬?gurations x and small change î€?. In other words, if we know a good
+answer for an input x (for example, if x is a labeled training example) then that
+answer is probably good in the neighborhood of x. If we have several good answers
+in some neighborhood we would combine them (by some form of averaging or
+interpolation) to produce an answer that agrees with as many of them as much as
+possible.
+An extreme example of the local constancy approach is the k-nearest neighbors
+family of learning algorithms. These predictors are literally constant over each
+157
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+region containing all the points x that have the same set of k nearest neighbors in
+the training set. For k = 1, the number of distinguishable regions cannot be more
+than the number of training examples.
+While the k-nearest neighbors algorithm copies the output from nearby training
+examples, most kernel machines interpolate between training set outputs associated
+with nearby training examples. An important class of kernels is the family of local
+kernels where k(u, v ) is large when u = v and decreases as u and v grow farther
+apart from each other. A local kernel can be thought of as a similarity function
+that performs template matching, by measuring how closely a test example x
+resembles each training example x (i). Much of the modern motivation for deep
+learning is derived from studying the limitations of local template matching and
+how deep models are able to succeed in cases where local template matching fails
+(Bengio et al., 2006b).
+Decision trees also suï¬€er from the limitations of exclusively smoothness-based
+learning because they break the input space into as many regions as there are
+leaves and use a separate parameter (or sometimes many parameters for extensions
+of decision trees) in each region. If the target function requires a tree with at
+least n leaves to be represented accurately, then at least n training examples are
+required to ï¬?t the tree. A multiple of n is needed to achieve some level of statistical
+conï¬?dence in the predicted output.
+In general, to distinguish O(k ) regions in input space, all of these methods
+require O(k) examples. Typically there are O (k) parameters, with O(1) parameters
+associated with each of the O(k) regions. The case of a nearest neighbor scenario,
+where each training example can be used to deï¬?ne at most one region, is illustrated
+in ï¬?gure 5.10.
+Is there a way to represent a complex function that has many more regions
+to be distinguished than the number of training examples? Clearly, assuming
+only smoothness of the underlying function will not allow a learner to do that.
+For

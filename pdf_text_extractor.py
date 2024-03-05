@@ -13,10 +13,5 @@ def extract(pdf_path):
     return str(txt_path)
 
 
-<<<<<<< HEAD
-dest = os.path.join("textbooks", "reinforcement_learning.pdf")
+dest = os.path.join("textbooks", "deeplearning1.pdf")
 extract(dest)
-=======
-dest = os.path.join("textbooks", "nlp.pdf")
-extract(dest)
->>>>>>> 8a5606603468172b6566e3558c80ea04159807b9

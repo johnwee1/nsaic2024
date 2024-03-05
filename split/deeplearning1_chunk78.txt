@@ -1,0 +1,245 @@
+tuned function. The number
+of stages is m.
+f â†? Identity function
+XÌƒ = X
+for k = 1, . . . , m do
+f (k) = L(XÌƒ)
+f â†? f (k) â—¦ f
+XÌƒ â†? f (k)(XÌƒ)
+end for
+if ï¬?ne-tuning then
+f â†? T (f, X , Y )
+end if
+Return f
+2006; Bengio et al., 2007; Ranzato et al., 2007a). On many other tasks, however,
+unsupervised pretraining either does not confer a beneï¬?t or even causes noticeable
+harm. Ma et al. (2015) studied the eï¬€ect of pretraining on machine learning
+models for chemical activity prediction and found that, on average, pretraining was
+slightly harmful, but for many tasks was signiï¬?cantly helpful. Because unsupervised
+pretraining is sometimes helpful but often harmful it is important to understand
+when and why it works in order to determine whether it is applicable to a particular
+task.
+At the outset, it is important to clarify that most of this discussion is restricted
+to greedy unsupervised pretraining in particular. There are other, completely
+diï¬€erent paradigms for performing semi-supervised learning with neural networks,
+such as virtual adversarial training described in section 7.13. It is also possible to
+train an autoencoder or generative model at the same time as the supervised model.
+Examples of this single-stage approach include the discriminative RBM (Larochelle
+and Bengio, 2008) and the ladder network (Rasmus et al., 2015), in which the total
+objective is an explicit sum of the two terms (one using the labels and one only
+using the input).
+Unsupervised pretraining combines two diï¬€erent ideas. First, it makes use of
+530
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+the idea that the choice of initial parameters for a deep neural network can have
+a signiï¬?cant regularizing eï¬€ect on the model (and, to a lesser extent, that it can
+improve optimization). Second, it makes use of the more general idea that learning
+about the input distribution can help to learn about the mapping from inputs to
+outputs.
+Both of these ideas involve many complicated interactions between several
+parts of the machine learning algorithm that are not entirely understood.
+The ï¬?rst idea, that the choice of initial parameters for a deep neural network
+can have a strong regularizing eï¬€ect on its performance, is the least well understood.
+At the time that pretraining became popular, it was understood as initializing the
+model in a location that would cause it to approach one local minimum rather than
+another. Today, local minima are no longer considered to be a serious problem
+for neural network optimization. We now know that our standard neural network
+training procedures usually do not arrive at a critical point of any kind. It remains
+possible that pretraining initializes the model in a location that would otherwise
+be inaccessibleâ€”for example, a region that is surrounded by areas where the cost
+function varies so much from one example to another that minibatches give only
+a very noisy estimate of the gradient, or a region surrounded by areas where the
+Hessian matrix is so poorly conditioned that gradient descent methods must use
+very small steps. However, our ability to characterize exactly what aspects of the
+pretrained parameters are retained during the supervised training stage is limited.
+This is one reason that modern approaches typically use simultaneous unsupervised
+learning and supervised learning rather than two sequential stages. One may
+also avoid struggling with these complicated ideas about how optimization in the
+supervised learning stage preserves information from the unsupervised learning
+stage by simply freezing the parameters for the feature extractors and using
+supervised learning only to add a classiï¬?er on top of the learned features.
+The other idea, that a learning algorithm can use information learned in the
+unsupervised phase to perform better in the supervised learning stage, is better
+understood. The basic idea is that some features that are useful for the unsupervised
+task may also be useful for the supervised learning task. For example, if we train
+a generative model of images of cars and motorcycles, it will need to know about
+wheels, and about how many wheels should be in an image. If we are fortunate,
+the representation of the wheels will take on a form that is easy for the supervised
+learner to access. This is not yet understood at a mathematical, theoretical level,
+so it is not always possible to predict which tasks will beneï¬?t from unsupervised
+learning in this way. Many aspects of this approach are highly dependent on
+the speciï¬?c models used. For example, if we wish to add a linear classiï¬?er on
+531
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+top of pretrained features, the features must make the underlying classes linearly
+separable. These properties often occur naturally but do not always do so. This
+is another reason that simultaneous supervised and unsupervised learning can be
+preferableâ€”the constraints imposed by the output layer are naturally included
+from the start.
+From the point of view of unsupervised pretraining as learning a representation,
+we can expect unsupervised pretraining to be more eï¬€ective when the initial
+representation is poor. One key example of this is the use of word embeddings.
+Words represented by one-hot vectors are not very informative because every two
+distinct one-hot vectors are the same distance from each other (squared L2 distance
+of 2). Learned word embeddings naturally encode similarity between words by their
+distance from each other. Because of this, unsupervised pretraining is especially
+useful when processing words. It is less useful when processing images, perhaps
+because images already lie in a rich vector space where distances provide a low
+quality similarity metric.
+From the point of view of unsupervised pretraining as a regularizer, we can
+expect unsupervised pretraining to be most helpful when the number of labeled
+examples is very small. Because the source of information added by unsupervised
+pretraining is the unlabeled data, we may also expect unsupervised pretraining
+to perform best when the number of unlabeled examples is very large. The
+advantage of semi-supervised learning via unsupervised pretraining with many
+unlabeled examples and few labeled examples was made particularly clear in
+2011 with unsupervised pretraining winning two international transfer learning
+competitions (Mesnil et al., 2011; Goodfellow et al., 2011), in settings where the
+number of labeled examples in the target task was small (from a handful to dozens
+of examples per class). These eï¬€ects were also documented in carefully controlled
+experiments by Paine et al. (2014).
+Other factors are likely to be involved. For example, unsupervised pretraining
+is likely to be most useful when the function to be learned is extremely complicated.
+Unsupervised learning diï¬€ers from regularizers like weight decay because it does not
+bias the learner toward discovering a simple function but rather toward discovering
+feature functions that are useful for the unsupervised learning task. If the true
+underlying functions are complicated and shaped by regularities of the input
+distribution, unsupervised learning can be a more appropriate regularizer.
+These caveats aside, we now analyze some success cases where unsupervised
+pretraining is known to cause an improvement, and explain what is known about
+why this improvement occurs. Unsupervised pretraining has usually been used
+to improve classiï¬?ers, and is usually most interesting from the point of view of
+532
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+î€±î€µî€°î€°
+
+î?—î?©î?´î?¨î€ î?°î?²î?¥î?´î?²î?¡î?©î?®î?©î?®î?§
+î?—î?©î?´î?¨î?¯î?µî?´î€ î?°î?²î?¥î?´î?²î?¡î?©î?®î?©î?®î?§
+
+î€±î€°î€°î€°
+î€µî€°î€°
+î€°
+ó°¤“î€µî€°î€°
+ó°¤“î€±î€°î€°î€°
+ó°¤“î€±î€µî€°î€°
+ó°¤“î€´î€°î€°î€° ó°¤“î€³î€°î€°î€° ó°¤“î€²î€°î€°î€° ó°¤“î€±î€°î€°î€°
+
+î€°
+
+î€±î€°î€°î€°
+
+î€²î€°î€°î€°
+
+î€³î€°î€°î€°
+
+î€´î€°î€°î€°
+
+Figure 15.1: Visualization via nonlinear projection of the learning trajectories of diï¬€erent
+neural networks in function space (not parameter space, to avoid the issue of many-to-one
+mappings from parameter vectors to functions), with diï¬€erent random initializations
+and with or without unsupervised pretraining. Each point corresponds to a diï¬€erent
+neural network, at a particular time during its training process. This ï¬?gure is adapted
+with permission from Erhan et al. (2010). A coordinate in function space is an inï¬?nitedimensional vector associating every input x with an output y. Erhan et al. (2010) made
+a linear projection to high-dimensional space by concatenating the y for many speciï¬?c x
+points. They then made a further nonlinear projection to 2-D by Isomap (Tenenbaum
+et al., 2000). Color indicates time. All networks are initialized near the center of the plot
+(corresponding to the region of functions that produce approximately uniform distributions
+over the class y for most inputs). Over time, learning moves the function outward, to
+points that make strong predictions. Training consistently terminates in one region when
+using pretraining and in another, non-overlapping region when not using pretraining.
+Isomap tries to preserve global relative distances (and hence volumes) so the small region
+corresponding to pretrained models may indicate that the pretraining-based estimator
+has reduced variance.
+
+533
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+reducing test set error. However, unsupervised pretraining can help tasks other
+than classiï¬?cation, and can act to improve optimization rather than being merely
+a regularizer. For example, it can improve both train and test reconstruction error
+for deep autoencoders (Hinton and Salakhutdinov, 2006).
+Erhan et al. (2010) performed many experiments to explain several successes of
+unsupervised pretraining. Both improvements to training error and improvements
+to test error may be explained in terms of unsupervised pretraining taking the
+parameters into a region that would otherwise be inaccessible. Neural network
+training is non-deterministic, and converges to a diï¬€erent function every time it
+is run. Training may halt at a point where the gradient becomes small, a point
+where early stopping ends training to prevent overï¬?tting, or at a point where the
+gradient is large but it is diï¬ƒcult to ï¬?nd a downhill step due to problems such as
+stochasticity or poor conditioning of the Hessian. Neural networks that receive
+unsupervised pretraining consistently halt in the same region of function space,
+while neural networks without pretraining consistently halt in another region. See
+ï¬?gure 15.1 for a visualization of this phenomenon. The region where pretrained
+networks arrive is smaller, suggesting that pretraining reduces the variance of the
+estimation process, which can in turn reduce the risk of severe over-ï¬?tting. In
+other words, unsupervised pretraining initializes neural network parameters into
+a region that they do not escape, and the results following this initialization are
+more consistent and less likely to be very bad than without this initialization.
+Erhan et al. (2010) also provide some answers as to when pretraining works
+bestâ€”the mean and variance of the test error were most reduced by pretraining for
+deeper networks. Keep in mind that these experiments were performed before the
+invention and popularization of modern techniques for training very deep networks
+(rectiï¬?ed linear units, dropout and batch normalization) so less is known about the
+eï¬€ect of unsupervised pretraining in conjunction with contemporary approaches.
+An important question is how unsupervised pretraining can act as a regularizer.
+One hypothesis is that pretraining encourages the learning algorithm to discover
+features that relate to the underlying causes that generate the observed data.
+This is an important idea motivating many other algorithms besides unsupervised
+pretraining, and is described further in section 15.3.
+Compared to other forms of unsupervised learning, unsupervised pretraining
+has the disadvantage that it operates with two separate training phases. Many
+regularization strategies have the advantage of allowing the user to control the
+strength of the regularization by adjusting the value of a single hyperparameter.
+Unsupervised pretraining does not oï¬€er a clear way to adjust the the strength
+of the regularization arising from the unsupervised stage. Instead, there are
+534
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+very many hyperparameters, whose eï¬€ect may be measured after the fact but
+is often diï¬ƒcult to predict ahead of time. When we perform unsupervised and
+supervised learning simultaneously, instead of using the pretraining strategy, there
+is a single hyperparameter, usually a coeï¬ƒcient attached to the unsupervised
+cost, that determines how strongly the unsupervised objective will regularize
+the supervised model. One can always predictably obtain less regularization by
+decreasing this coeï¬ƒcient. In the case of unsupervised pretraining, there is not a
+way of ï¬‚exibly adapting the strength of the regularizationâ€”either the supervised
+model is initialized to pretrained parameters, or it is not.
+Another disadvantage of having two separate training phases is that each phase
+has its own hyperparameters. The performance of the second phase usually cannot
+be predicted during the ï¬?rst phase, so there is a long delay between proposing
+hyperparameters for the ï¬?rst phase and being able to update them using feedback
+from the second phase. The most principled approach is to use validation set error
+in the supervised phase in order to select the hyperparameters of the pretraining
+phase, as discussed in Larochelle et al. (2009). In practice, some hyperparameters,
+like the number of pretraining iterations, are more conveniently set during the
+pretraining phase, using early stopping on the unsupervised objective, which is
+not ideal but computationally much cheaper than using the supervised objective.
+Today, unsupervised pretraining has been largely abandoned, except in the
+ï¬?eld of natural language processing, where the natural representation of words as
+one-hot vectors conveys no similarity information and where very large unlabeled
+sets are available. In that case, the advantage of pretraining is that one can pretrain
+once on a huge unlabeled set (for example with a corpus containing billions of
+words), learn a good representation (typically of words, but also of sentences), and
+then use this representation or ï¬?ne-tune it for a supervised task for which the
+training set contains substantially fewer examples. This approach was pioneered
+by by Collobert and Weston (2008b), Turian et al. (2010), and Collobert et al.
+(2011a) and remains in common use today.
+Deep learning techniques based on supervised learning, regularized with dropout
+or batch normalization, are able to achieve human-level performance on very many
+tasks, but only with extremely large labeled datasets. These same techniques outperform unsupervised pretraining on medium-sized datasets such as CIFAR-10 and
+MNIST, which have roughly 5,000 labeled examples per class. On extremely small
+datasets, such as the alternative splicing dataset, Bayesian methods outperform
+methods based on unsupervised pretraining (Srivastava, 2013). For these reasons,
+the popularity of unsupervised pretraining has declined. Nevertheless, unsupervised
+pretraining remains an important milestone in the history of deep learning research
+535
+
+CHAPTER 15. REPRESENTATION LEARNING

@@ -1,0 +1,379 @@
+ design an alternative criterion that still corresponds to the design objectives,
+or design a good approximation to the desired criterion.
+
+5.1.3
+
+The Experience, E
+
+Machine learning algorithms can be broadly categorized as unsupervised or
+supervised by what kind of experience they are allowed to have during the
+learning process.
+Most of the learning algorithms in this book can be understood as being allowed
+to experience an entire dataset. A dataset is a collection of many examples, as
+104
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+de�?ned in section 5.1.1. Sometimes we will also call examples data points.
+One of the oldest datasets studied by statisticians and machine learning researchers is the Iris dataset (Fisher, 1936). It is a collection of measurements of
+diﬀerent parts of 150 iris plants. Each individual plant corresponds to one example.
+The features within each example are the measurements of each of the parts of the
+plant: the sepal length, sepal width, petal length and petal width. The dataset
+also records which species each plant belonged to. Three diﬀerent species are
+represented in the dataset.
+Unsupervised learning algorithms experience a dataset containing many
+features, then learn useful properties of the structure of this dataset. In the context
+of deep learning, we usually want to learn the entire probability distribution that
+generated a dataset, whether explicitly as in density estimation or implicitly for
+tasks like synthesis or denoising. Some other unsupervised learning algorithms
+perform other roles, like clustering, which consists of dividing the dataset into
+clusters of similar examples.
+Supervised learning algorithms experience a dataset containing features,
+but each example is also associated with a label or target. For example, the Iris
+dataset is annotated with the species of each iris plant. A supervised learning
+algorithm can study the Iris dataset and learn to classify iris plants into three
+diﬀerent species based on their measurements.
+Roughly speaking, unsupervised learning involves observing several examples
+of a random vector x, and attempting to implicitly or explicitly learn the probability distribution p(x), or some interesting properties of that distribution, while
+supervised learning involves observing several examples of a random vector x and
+an associated value or vector y, and learning to predict y from x, usually by
+estimating p(y | x ). The term supervised learning originates from the view of
+the target y being provided by an instructor or teacher who shows the machine
+learning system what to do. In unsupervised learning, there is no instructor or
+teacher, and the algorithm must learn to make sense of the data without this guide.
+Unsupervised learning and supervised learning are not formally de�?ned terms.
+The lines between them are often blurred. Many machine learning technologies can
+be used to perform both tasks. For example, the chain rule of probability states
+that for a vector x ∈ Rn, the joint distribution can be decomposed as
+p(x) =
+
+n
+�?�
+i=1
+
+p(xi | x 1, . . . , xi−1).
+
+(5.1)
+
+This decomposition means that we can solve the ostensibly unsupervised problem of
+modeling p(x) by splitting it into n supervised learning problems. Alternatively, we
+105
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+can solve the supervised learning problem of learning p(y | x) by using traditional
+unsupervised learning technologies to learn the joint distribution p(x, y) and
+inferring
+p(x, y)
+p(y | x) = �??
+(5.2)
+ .
+y p(x, y )
+
+Though unsupervised learning and supervised learning are not completely formal or
+distinct concepts, they do help to roughly categorize some of the things we do with
+machine learning algorithms. Traditionally, people refer to regression, classi�?cation
+and structured output problems as supervised learning. Density estimation in
+support of other tasks is usually considered unsupervised learning.
+Other variants of the learning paradigm are possible. For example, in semisupervised learning, some examples include a supervision target but others do
+not. In multi-instance learning, an entire collection of examples is labeled as
+containing or not containing an example of a class, but the individual members
+of the collection are not labeled. For a recent example of multi-instance learning
+with deep models, see Kotzias et al. (2015).
+Some machine learning algorithms do not just experience a �?xed dataset. For
+example, reinforcement learning algorithms interact with an environment, so
+there is a feedback loop between the learning system and its experiences. Such
+algorithms are beyond the scope of this book. Please see Sutton and Barto (1998)
+or Bertsekas and Tsitsiklis (1996) for information about reinforcement learning,
+and Mnih et al. (2013) for the deep learning approach to reinforcement learning.
+Most machine learning algorithms simply experience a dataset. A dataset can
+be described in many ways. In all cases, a dataset is a collection of examples,
+which are in turn collections of features.
+One common way of describing a dataset is with a design matrix. A design
+matrix is a matrix containing a diﬀerent example in each row. Each column of the
+matrix corresponds to a diﬀerent feature. For instance, the Iris dataset contains
+150 examples with four features for each example. This means we can represent
+the dataset with a design matrix X ∈ R150×4 , where Xi,1 is the sepal length of
+plant i, X i,2 is the sepal width of plant i, etc. We will describe most of the learning
+algorithms in this book in terms of how they operate on design matrix datasets.
+Of course, to describe a dataset as a design matrix, it must be possible to
+describe each example as a vector, and each of these vectors must be the same size.
+This is not always possible. For example, if you have a collection of photographs
+with diﬀerent widths and heights, then diﬀerent photographs will contain diﬀerent
+numbers of pixels, so not all of the photographs may be described with the same
+length of vector. Section 9.7 and chapter 10 describe how to handle diﬀerent
+106
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+types of such heterogeneous data. In cases like these, rather than describing the
+dataset as a matrix with m rows, we will describe it as a set containing m elements:
+{x(1) , x(2) , . . . , x (m)}. This notation does not imply that any two example vectors
+x(i) and x(j) have the same size.
+In the case of supervised learning, the example contains a label or target as
+well as a collection of features. For example, if we want to use a learning algorithm
+to perform object recognition from photographs, we need to specify which object
+appears in each of the photos. We might do this with a numeric code, with 0
+signifying a person, 1 signifying a car, 2 signifying a cat, etc. Often when working
+with a dataset containing a design matrix of feature observations X, we also
+provide a vector of labels y, with yi providing the label for example i.
+Of course, sometimes the label may be more than just a single number. For
+example, if we want to train a speech recognition system to transcribe entire
+sentences, then the label for each example sentence is a sequence of words.
+Just as there is no formal de�?nition of supervised and unsupervised learning,
+there is no rigid taxonomy of datasets or experiences. The structures described here
+cover most cases, but it is always possible to design new ones for new applications.
+
+5.1.4
+
+Example: Linear Regression
+
+Our de�?nition of a machine learning algorithm as an algorithm that is capable
+of improving a computer program’s performance at some task via experience is
+somewhat abstract. To make this more concrete, we present an example of a
+simple machine learning algorithm: linear regression. We will return to this
+example repeatedly as we introduce more machine learning concepts that help to
+understand its behavior.
+As the name implies, linear regression solves a regression problem. In other
+words, the goal is to build a system that can take a vector x ∈ Rn as input and
+predict the value of a scalar y ∈ R as its output. In the case of linear regression,
+the output is a linear function of the input. Let ŷ be the value that our model
+predicts y should take on. We de�?ne the output to be
+ŷ = w x
+where w ∈ Rn is a vector of parameters.
+
+(5.3)
+
+Parameters are values that control the behavior of the system. In this case, wi is
+the coeﬃcient that we multiply by feature x i before summing up the contributions
+from all the features. We can think of w as a set of weights that determine how
+each feature aﬀects the prediction. If a feature xi receives a positive weight wi ,
+107
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+then increasing the value of that feature increases the value of our prediction ŷ.
+If a feature receives a negative weight, then increasing the value of that feature
+decreases the value of our prediction. If a feature’s weight is large in magnitude,
+then it has a large eﬀect on the prediction. If a feature’s weight is zero, it has no
+eﬀect on the prediction.
+We thus have a de�?nition of our task T : to predict y from x by outputting
+ŷ = w x. Next we need a de�?nition of our performance measure, P .
+Suppose that we have a design matrix of m example inputs that we will not
+use for training, only for evaluating how well the model performs. We also have
+a vector of regression targets providing the correct value of y for each of these
+examples. Because this dataset will only be used for evaluation, we call it the test
+set. We refer to the design matrix of inputs as X (test) and the vector of regression
+targets as y(test) .
+One way of measuring the performance of the model is to compute the mean
+squared error of the model on the test set. If ŷ(test) gives the predictions of the
+model on the test set, then the mean squared error is given by
+MSEtest =
+
+1 �?� (test)
+− y(test))2i .
+(ŷ
+m i
+
+(5.4)
+
+Intuitively, one can see that this error measure decreases to 0 when ŷ (test) = y(test).
+We can also see that
+MSEtest =
+
+1 (test)
+||ŷ
+− y (test)||22 ,
+m
+
+(5.5)
+
+so the error increases whenever the Euclidean distance between the predictions
+and the targets increases.
+To make a machine learning algorithm, we need to design an algorithm that
+will improve the weights w in a way that reduces MSEtest when the algorithm
+is allowed to gain experience by observing a training set (X(train), y (train) ). One
+intuitive way of doing this (which we will justify later, in section 5.5.1) is just to
+minimize the mean squared error on the training set, MSEtrain .
+To minimize MSE train, we can simply solve for where its gradient is 0:
+∇w MSEtrain = 0
+
+1 (train)
+||ŷ
+− y (train)|| 22 = 0
+m
+
+(5.7)
+
+1
+∇w ||X(train)w − y (train)|| 22 = 0
+m
+
+(5.8)
+
+⇒ ∇w
+⇒
+
+(5.6)
+
+108
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+3
+
+Linear regression example
+
+0.55
+0.50
+
+2
+MSE(train)
+
+y
+
+1
+0
+−1
+−2
+−3
+
+Optimization of w
+
+0.45
+0.40
+0.35
+0.30
+0.25
+
+− 1 .0 − 0.5
+
+0 .0
+x1
+
+0 .5
+
+0.20
+
+1 .0
+
+0 .5
+
+1 .0
+w1
+
+1 .5
+
+Figure 5.1: A linear regression problem, with a training set consisting of ten data points,
+each containing one feature. Because there is only one feature, the weight vector w
+contains only a single parameter to learn, w 1 . (Left)Observe that linear regression learns
+to set w 1 such that the line y = w 1 x comes as close as possible to passing through all the
+training points. (Right)The plotted point indicates the value of w1 found by the normal
+equations, which we can see minimizes the mean squared error on the training set.
+
+�?
+ �?
+
+X(train) w − y(train) = 0
+⇒ ∇w X (train)w − y(train)
+
+(5.9)
+
+�?
+
+⇒ ∇w w X (train)X (train) w − 2w  X(train)y (train) + y (train)y(train) = 0
+⇒ 2X
+
+(train)
+
+(train) (train)
+
+(train)
+
+y
+=0
+w − 2X
+�?
+−1
+(train) (train)
+X
+X (train)y(train)
+⇒w= X
+X
+
+(5.10)
+(5.11)
+(5.12)
+
+The system of equations whose solution is given by equation 5.12 is known as
+the normal equations. Evaluating equation 5.12 constitutes a simple learning
+algorithm. For an example of the linear regression learning algorithm in action,
+see �?gure 5.1.
+It is worth noting that the term linear regression is often used to refer to
+a slightly more sophisticated model with one additional parameter—an intercept
+term b. In this model
+ŷ = w x + b
+(5.13)
+so the mapping from parameters to predictions is still a linear function but the
+mapping from features to predictions is now an aﬃne function. This extension to
+aﬃne functions means that the plot of the model’s predictions still looks like a
+line, but it need not pass through the origin. Instead of adding the bias parameter
+109
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+b, one can continue to use the model with only weights but augment x with an
+extra entry that is always set to 1. The weight corresponding to the extra 1 entry
+plays the role of the bias parameter. We will frequently use the term “linear�? when
+referring to aﬃne functions throughout this book.
+The intercept term b is often called the bias parameter of the aﬃne transformation. This terminology derives from the point of view that the output of the
+transformation is biased toward being b in the absence of any input. This term
+is diﬀerent from the idea of a statistical bias, in which a statistical estimation
+algorithm’s expected estimate of a quantity is not equal to the true quantity.
+Linear regression is of course an extremely simple and limited learning algorithm,
+but it provides an example of how a learning algorithm can work. In the subsequent
+sections we will describe some of the basic principles underlying learning algorithm
+design and demonstrate how these principles can be used to build more complicated
+learning algorithms.
+
+5.2
+
+Capacity, Over�?tting and Under�?tting
+
+The central challenge in machine learning is that we must perform well on new,
+previously unseen inputs—not just those on which our model was trained. The
+ability to perform well on previously unobserved inputs is called generalization.
+Typically, when training a machine learning model, we have access to a training
+set, we can compute some error measure on the training set called the training
+error, and we reduce this training error. So far, what we have described is simply
+an optimization problem. What separates machine learning from optimization is
+that we want the generalization error, also called the test error, to be low as
+well. The generalization error is de�?ned as the expected value of the error on a
+new input. Here the expectation is taken across diﬀerent possible inputs, drawn
+from the distribution of inputs we expect the system to encounter in practice.
+We typically estimate the generalization error of a machine learning model by
+measuring its performance on a test set of examples that were collected separately
+from the training set.
+In our linear regression example, we trained the model by minimizing the
+training error,
+1
+(5.14)
+||X (train)w − y(train)||22 ,
+(
+train
+)
+m
+1
+(test) w − y(test) ||2
+but we actually care about the test error, m(test
+) ||X
+2.
+
+How can we aﬀect performance on the test set when we get to observe only the
+110
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+training set? The �?eld of statistical learning theory provides some answers. If
+the training and the test set are collected arbitrarily, there is indeed little we can
+do. If we are allowed to make some assum

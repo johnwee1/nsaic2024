@@ -1,0 +1,362 @@
+e sentence. Instead, we must use the marginal probability over words at the start of the sentence. We thus evaluate P3(THE DOG RAN).
+Finally, the last word may be predicted using the typical case, of using the conditional distribution P (AWAY | DOG RAN ). Putting this together with equation 12.6,
+we obtain:
+P (THE DOG RAN AWAY) = P3 (THE DOG RAN)P3(DOG RAN AWAY)/P 2(DOG RAN).
+(12.7)
+A fundamental limitation of maximum likelihood for n-gram models is that Pn
+as estimated from training set counts is very likely to be zero in many cases, even
+though the tuple (x t−n+1, . . . , xt ) may appear in the test set. This can cause two
+diﬀerent kinds of catastrophic outcomes. When P n−1 is zero, the ratio is unde�?ned,
+so the model does not even produce a sensible output. When P n−1 is non-zero but
+Pn is zero, the test log-likelihood is −∞. To avoid such catastrophic outcomes,
+most n-gram models employ some form of smoothing. Smoothing techniques
+462
+
+CHAPTER 12. APPLICATIONS
+
+shift probability mass from the observed tuples to unobserved ones that are similar.
+See Chen and Goodman (1999) for a review and empirical comparisons. One basic
+technique consists of adding non-zero probability mass to all of the possible next
+symbol values. This method can be justi�?ed as Bayesian inference with a uniform
+or Dirichlet prior over the count parameters. Another very popular idea is to form
+a mixture model containing higher-order and lower-order n-gram models, with the
+higher-order models providing more capacity and the lower-order models being
+more likely to avoid counts of zero. Back-oﬀ methods look-up the lower-order
+n-grams if the frequency of the context xt−1, . . . , x t−n+1 is too small to use the
+higher-order model. More formally, they estimate the distribution over xt by using
+contexts xt−n+k, . . . , xt−1, for increasing k, until a suﬃciently reliable estimate is
+found.
+Classical n-gram models are particularly vulnerable to the curse of dimensionality. There are |V|n possible n-grams and |V| is often very large. Even with a
+massive training set and modest n, most n-grams will not occur in the training set.
+One way to view a classical n-gram model is that it is performing nearest-neighbor
+lookup. In other words, it can be viewed as a local non-parametric predictor,
+similar to k-nearest neighbors. The statistical problems facing these extremely
+local predictors are described in section 5.11.2. The problem for a language model
+is even more severe than usual, because any two diﬀerent words have the same distance from each other in one-hot vector space. It is thus diﬃcult to leverage much
+information from any “neighbors�?—only training examples that repeat literally the
+same context are useful for local generalization. To overcome these problems, a
+language model must be able to share knowledge between one word and other
+semantically similar words.
+To improve the statistical eﬃciency of n-gram models, class-based language
+models (Brown et al., 1992; Ney and Kneser, 1993; Niesler et al., 1998) introduce
+the notion of word categories and then share statistical strength between words that
+are in the same category. The idea is to use a clustering algorithm to partition the
+set of words into clusters or classes, based on their co-occurrence frequencies with
+other words. The model can then use word class IDs rather than individual word
+IDs to represent the context on the right side of the conditioning bar. Composite
+models combining word-based and class-based models via mixing or back-oﬀ are
+also possible. Although word classes provide a way to generalize between sequences
+in which some word is replaced by another of the same class, much information is
+lost in this representation.
+
+463
+
+CHAPTER 12. APPLICATIONS
+
+12.4.2
+
+Neural Language Models
+
+Neural language models or NLMs are a class of language model designed
+to overcome the curse of dimensionality problem for modeling natural language
+sequences by using a distributed representation of words (Bengio et al., 2001).
+Unlike class-based n-gram models, neural language models are able to recognize
+that two words are similar without losing the ability to encode each word as distinct
+from the other. Neural language models share statistical strength between one
+word (and its context) and other similar words and contexts. The distributed
+representation the model learns for each word enables this sharing by allowing the
+model to treat words that have features in common similarly. For example, if the
+word dog and the word cat map to representations that share many attributes, then
+sentences that contain the word cat can inform the predictions that will be made by
+the model for sentences that contain the word dog, and vice-versa. Because there
+are many such attributes, there are many ways in which generalization can happen,
+transferring information from each training sentence to an exponentially large
+number of semantically related sentences. The curse of dimensionality requires the
+model to generalize to a number of sentences that is exponential in the sentence
+length. The model counters this curse by relating each training sentence to an
+exponential number of similar sentences.
+We sometimes call these word representations word embeddings. In this
+interpretation, we view the raw symbols as points in a space of dimension equal
+to the vocabulary size. The word representations embed those points in a feature
+space of lower dimension. In the original space, every word is represented
+by
+√
+a one-hot vector, so every pair of words is at Euclidean distance 2 from each
+other. In the embedding space, words that frequently appear in similar contexts
+(or any pair of words sharing some “features�? learned by the model) are close to
+each other. This often results in words with similar meanings being neighbors.
+Figure 12.3 zooms in on speci�?c areas of a learned word embedding space to show
+how semantically similar words map to representations that are close to each other.
+Neural networks in other domains also de�?ne embeddings. For example, a
+hidden layer of a convolutional network provides an “image embedding.�? Usually
+NLP practitioners are much more interested in this idea of embeddings because
+natural language does not originally lie in a real-valued vector space. The hidden
+layer has provided a more qualitatively dramatic change in the way the data is
+represented.
+The basic idea of using distributed representations to improve models for
+natural language processing is not restricted to neural networks. It may also be
+used with graphical models that have distributed representations in the form of
+464
+
+CHAPTER 12. APPLICATIONS
+
+multiple latent variables (Mnih and Hinton, 2007).
+−6
+−7
+−8
+
+22
+France
+China
+Russian
+French
+English
+
+21
+
+−9
+−10
+−11
+−12
+
+20
+Germany Iraq
+Ontario
+Europe
+EU
+Union
+Africa
+Assembly
+African
+
+Japan
+
+European
+18
+BritishNorth
+Canada
+Canadian
+
+−13
+−14
+
+19
+
+−34
+
+−32
+
+−30
+
+South
+−28 −26
+
+2009
+2008
+2004
+2003
+
+2006
+
+2007
+2001
+
+2000
+2005 1999
+1995 2002
+1997
+19981996
+
+17
+35.0 35.5 36.0 36.5 37.0 37.5 38.0
+
+Figure 12.3: Two-dimensional visualizations of word embeddings obtained from a neural
+machine translation model (Bahdanau et al., 2015), zooming in on speci�?c areas where
+semantically related words have embedding vectors that are close to each other. Countries
+appear on the left and numbers on the right. Keep in mind that these embeddings are 2-D
+for the purpose of visualization. In real applications, embeddings typically have higher
+dimensionality and can simultaneously capture many kinds of similarity between words.
+
+12.4.3
+
+High-Dimensional Outputs
+
+In many natural language applications, we often want our models to produce
+words (rather than characters) as the fundamental unit of the output. For large
+vocabularies, it can be very computationally expensive to represent an output
+distribution over the choice of a word, because the vocabulary size is large. In many
+applications, V contains hundreds of thousands of words. The naive approach to
+representing such a distribution is to apply an aﬃne transformation from a hidden
+representation to the output space, then apply the softmax function. Suppose
+we have a vocabulary V with size |V|. The weight matrix describing the linear
+component of this aﬃne transformation is very large, because its output dimension
+is |V|. This imposes a high memory cost to represent the matrix, and a high
+computational cost to multiply by it. Because the softmax is normalized across all
+|V| outputs, it is necessary to perform the full matrix multiplication at training
+time as well as test time—we cannot calculate only the dot product with the weight
+vector for the correct output. The high computational costs of the output layer
+thus arise both at training time (to compute the likelihood and its gradient) and
+at test time (to compute probabilities for all or selected words). For specialized
+465
+
+CHAPTER 12. APPLICATIONS
+
+loss functions, the gradient can be computed eﬃciently (Vincent et al., 2015), but
+the standard cross-entropy loss applied to a traditional softmax output layer poses
+many diﬃculties.
+Suppose that h is the top hidden layer used to predict the output probabilities
+ŷ. If we parametrize the transformation from h to ŷ with learned weights W
+and learned biases b, then the aﬃne-softmax output layer performs the following
+computations:
+�?�
+(12.8)
+ai = bi +
+W ij hj ∀i ∈ {1, . . . , |V|},
+j
+ai
+
+e
+ŷi = �??|V|
+
+i =1
+
+ea i
+
+(12.9)
+
+.
+
+If h contains n h elements then the above operation is O(|V|n h). With nh in the
+thousands and |V| in the hundreds of thousands, this operation dominates the
+computation of most neural language models.
+12.4.3.1
+
+Use of a Short List
+
+The �?rst neural language models (Bengio et al., 2001, 2003) dealt with the high cost
+of using a softmax over a large number of output words by limiting the vocabulary
+size to 10,000 or 20,000 words. Schwenk and Gauvain (2002) and Schwenk (2007)
+built upon this approach by splitting the vocabulary V into a shortlist L of most
+frequent words (handled by the neural net) and a tail T = V\L of more rare words
+(handled by an n-gram model). To be able to combine the two predictions, the
+neural net also has to predict the probability that a word appearing after context
+C belongs to the tail list. This may be achieved by adding an extra sigmoid output
+unit to provide an estimate of P (i ∈ T | C ). The extra output can then be used to
+achieve an estimate of the probability distribution over all words in V as follows:
+P (y = i | C ) =1i∈L P (y = i | C, i ∈ L)(1 − P (i ∈ T | C ))
++ 1i∈TP (y = i | C, i ∈ T)P (i ∈ T | C )
+
+(12.10)
+
+where P (y = i | C, i ∈ L) is provided by the neural language model and P (y = i |
+C, i ∈ T) is provided by the n-gram model. With slight modi�?cation, this approach
+can also work using an extra output value in the neural language model’s softmax
+layer, rather than a separate sigmoid unit.
+An obvious disadvantage of the short list approach is that the potential generalization advantage of the neural language models is limited to the most frequent
+466
+
+CHAPTER 12. APPLICATIONS
+
+words, where, arguably, it is the least useful. This disadvantage has stimulated
+the exploration of alternative methods to deal with high-dimensional outputs,
+described below.
+12.4.3.2
+
+Hierarchical Softmax
+
+A classical approach (Goodman, 2001) to reducing the computational burden
+of high-dimensional output layers over large vocabulary sets V is to decompose
+probabilities hierarchically. Instead of necessitating a number of computations
+proportional to |V| (and also proportional to the number of hidden units, nh ),
+the |V| factor can be reduced to as low as log |V|. Bengio (2002) and Morin and
+Bengio (2005) introduced this factorized approach to the context of neural language
+models.
+One can think of this hierarchy as building categories of words, then categories
+of categories of words, then categories of categories of categories of words, etc.
+These nested categories form a tree, with words at the leaves. In a balanced tree,
+the tree has depth O(log |V|). The probability of a choosing a word is given by
+the product of the probabilities of choosing the branch leading to that word at
+every node on a path from the root of the tree to the leaf containing the word.
+Figure 12.4 illustrates a simple example. Mnih and Hinton (2009) also describe
+how to use multiple paths to identify a single word in order to better model words
+that have multiple meanings. Computing the probability of a word then involves
+summation over all of the paths that lead to that word.
+To predict the conditional probabilities required at each node of the tree, we
+typically use a logistic regression model at each node of the tree, and provide the
+same context C as input to all of these models. Because the correct output is
+encoded in the training set, we can use supervised learning to train the logistic
+regression models. This is typically done using a standard cross-entropy loss,
+corresponding to maximizing the log-likelihood of the correct sequence of decisions.
+Because the output log-likelihood can be computed eﬃciently (as low as log |V|
+rather than |V|), its gradients may also be computed eﬃciently. This includes not
+only the gradient with respect to the output parameters but also the gradients
+with respect to the hidden layer activations.
+It is possible but usually not practical to optimize the tree structure to minimize
+the expected number of computations. Tools from information theory specify how
+to choose the optimal binary code given the relative frequencies of the words. To
+do so, we could structure the tree so that the number of bits associated with a word
+is approximately equal to the logarithm of the frequency of that word. However, in
+467
+
+CHAPTER 12. APPLICATIONS
+
+(0)
+
+(1)
+
+(0,0)
+
+(0,1)
+
+(1,0)
+
+(1,1)
+
+w0
+
+w1
+
+w2
+
+w3
+
+w4
+
+w5
+
+w6
+
+w7
+
+(0,0,0)
+
+(0,0,1)
+
+(0,1,0)
+
+(0,1,1)
+
+(1,0,0)
+
+(1,0,1)
+
+(1,1,0)
+
+(1,1,1)
+
+Figure 12.4: Illustration of a simple hierarchy of word categories, with 8 wordsw0 , . . . , w7
+organized into a three level hierarchy. The leaves of the tree represent actual speci�?c words.
+Internal nodes represent groups of words. Any node can be indexed by the sequence
+of binary decisions (0=left, 1=right) to reach the node from the root. Super-class (0)
+contains the classes (0, 0) and (0, 1), which respectively contain the sets of words{w 0, w1 }
+and {w 2, w3 } , and similarly super-class (1) contains the classes (1,0) and (1, 1), which
+respectively contain the words (w 4, w 5 ) and (w 6, w 7). If the tree is suﬃciently balanced,
+the maximum depth (number of binary decisions) is on the order of the logarithm of
+the number of words |V|: the choice of one out of |V| words can be obtained by doing
+O(log |V|) operations (one for each of the nodes on the path from the root). In this example,
+computing the probability of a word y can be done by multiplying three probabilities,
+associated with the binary decisions to move left or right at each node on the path from
+the root to a node y . Let bi(y ) be the i-th binary decision when traversing the tree
+towards the value y . The probability of sampling an output y decomposes into a product
+of conditional probabilities, using the chain rule for conditional probabilities, with each
+node indexed by the pre�?x of these bits. For example, node (1, 0) corr

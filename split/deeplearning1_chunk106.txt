@@ -1,0 +1,244 @@
+ltiple samples for evaluation. Each of these
+three schemes yields wildly diﬀerent likelihood numbers, and when comparing
+diﬀerent models it is important that both models use the same binarization scheme
+for training and for evaluation. In fact, researchers who apply a single random
+718
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+binarization step share a �?le containing the results of the random binarization, so
+that there is no diﬀerence in results based on diﬀerent outcomes of the binarization
+step.
+Because being able to generate realistic samples from the data distribution
+is one of the goals of a generative model, practitioners often evaluate generative
+models by visually inspecting the samples. In the best case, this is done not by the
+researchers themselves, but by experimental subjects who do not know the source
+of the samples (Denton et al., 2015). Unfortunately, it is possible for a very poor
+probabilistic model to produce very good samples. A common practice to verify if
+the model only copies some of the training examples is illustrated in �?gure 16.1.
+The idea is to show for some of the generated samples their nearest neighbor in
+the training set, according to Euclidean distance in the space of x. This test is
+intended to detect the case where the model over�?ts the training set and just
+reproduces training instances. It is even possible to simultaneously under�?t and
+over�?t yet still produce samples that individually look good. Imagine a generative
+model trained on images of dogs and cats that simply learns to reproduce the
+training images of dogs. Such a model has clearly over�?t, because it does not
+produces images that were not in the training set, but it has also under�?t, because
+it assigns no probability to the training images of cats. Yet a human observer
+would judge each individual image of a dog to be high quality. In this simple
+example, it would be easy for a human observer who can inspect many samples to
+determine that the cats are absent. In more realistic settings, a generative model
+trained on data with tens of thousands of modes may ignore a small number of
+modes, and a human observer would not easily be able to inspect or remember
+enough images to detect the missing variation.
+Since the visual quality of samples is not a reliable guide, we often also
+evaluate the log-likelihood that the model assigns to the test data, when this is
+computationally feasible. Unfortunately, in some cases the likelihood seems not
+to measure any attribute of the model that we really care about. For example,
+real-valued models of MNIST can obtain arbitrarily high likelihood by assigning
+arbitrarily low variance to background pixels that never change. Models and
+algorithms that detect these constant features can reap unlimited rewards, even
+though this is not a very useful thing to do. The potential to achieve a cost
+approaching negative in�?nity is present for any kind of maximum likelihood
+problem with real values, but it is especially problematic for generative models of
+MNIST because so many of the output values are trivial to predict. This strongly
+suggests a need for developing other ways of evaluating generative models.
+Theis et al. (2015) review many of the issues involved in evaluating generative
+719
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+models, including many of the ideas described above. They highlight the fact
+that there are many diﬀerent uses of generative models and that the choice of
+metric must match the intended use of the model. For example, some generative
+models are better at assigning high probability to most realistic points while other
+generative models are better at rarely assigning high probability to unrealistic
+points. These diﬀerences can result from whether a generative model is designed
+to minimize D KL(p data�?�pmodel ) or D KL(pmodel �?�pdata ), as illustrated in �?gure 3.6.
+Unfortunately, even when we restrict the use of each metric to the task it is most
+suited for, all of the metrics currently in use continue to have serious weaknesses.
+One of the most important research topics in generative modeling is therefore not
+just how to improve generative models, but in fact, designing new techniques to
+measure our progress.
+
+20.15
+
+Conclusion
+
+Training generative models with hidden units is a powerful way to make models
+understand the world represented in the given training data. By learning a model
+pmodel (x) and a representation pmodel (h | x ), a generative model can provide
+answers to many inference problems about the relationships between input variables
+in x and can provide many diﬀerent ways of representing x by taking expectations
+of h at diﬀerent layers of the hierarchy. Generative models hold the promise to
+provide AI systems with a framework for all of the many diﬀerent intuitive concepts
+they need to understand, and the ability to reason about these concepts in the
+face of uncertainty. We hope that our readers will �?nd new ways to make these
+approaches more powerful and continue the journey to understanding the principles
+that underlie learning and intelligence.
+
+720
+
+Bibliography
+Abadi, M., Agarwal, A., Barham, P., Brevdo, E., Chen, Z., Citro, C., Corrado, G. S., Davis,
+A., Dean, J., Devin, M., Ghemawat, S., Goodfellow, I., Harp, A., Irving, G., Isard, M.,
+Jia, Y., Jozefowicz, R., Kaiser, L., Kudlur, M., Levenberg, J., Mané, D., Monga, R.,
+Moore, S., Murray, D., Olah, C., Schuster, M., Shlens, J., Steiner, B., Sutskever, I.,
+Talwar, K., Tucker, P., Vanhoucke, V., Vasudevan, V., Viégas, F., Vinyals, O., Warden,
+P., Wattenberg, M., Wicke, M., Yu, Y., and Zheng, X. (2015). TensorFlow: Large-scale
+machine learning on heterogeneous systems. Software available from tensorﬂow.org. 25,
+214, 446
+Ackley, D. H., Hinton, G. E., and Sejnowski, T. J. (1985). A learning algorithm for
+Boltzmann machines. Cognitive Science, 9, 147–169. 570, 654
+Alain, G. and Bengio, Y. (2013). What regularized auto-encoders learn from the data
+generating distribution. In ICLR’2013, arXiv:1211.4246 . 507, 513, 514, 521
+Alain, G., Bengio, Y., Yao, L., Éric Thibodeau-Laufer, Yosinski, J., and Vincent, P. (2015).
+GSNs: Generative stochastic networks. arXiv:1503.05571. 510, 713
+Anderson, E. (1935). The Irises of the Gaspé Peninsula. Bulletin of the American Iris
+Society , 59, 2–5. 21
+Ba, J., Mnih, V., and Kavukcuoglu, K. (2014). Multiple object recognition with visual
+attention. arXiv:1412.7755 . 691
+Bachman, P. and Precup, D. (2015). Variational generative stochastic networks with
+collaborative shaping. In Proceedings of the 32nd International Conference on Machine
+Learning, ICML 2015, Lille, France, 6-11 July 2015 , pages 1964–1972. 717
+Bacon, P.-L., Bengio, E., Pineau, J., and Precup, D. (2015). Conditional computation in
+neural networks using a decision-theoretic approach. In 2nd Multidisciplinary Conference
+on Reinforcement Learning and Decision Making (RLDM 2015). 450
+Bagnell, J. A. and Bradley, D. M. (2009). Diﬀerentiable sparse coding. In D. Koller,
+D. Schuurmans, Y. Bengio, and L. Bottou, editors, Advances in Neural Information
+Processing Systems 21 (NIPS’08), pages 113–120. 498
+
+721
+
+BIBLIOGRAPHY
+
+Bahdanau, D., Cho, K., and Bengio, Y. (2015). Neural machine translation by jointly
+learning to align and translate. In ICLR’2015, arXiv:1409.0473 . 25, 101, 397, 418, 420,
+465, 475, 476
+Bahl, L. R., Brown, P., de Souza, P. V., and Mercer, R. L. (1987). Speech recognition
+with continuous-parameter hidden Markov models. Computer, Speech and Language ,2,
+219–234. 458
+Baldi, P. and Hornik, K. (1989). Neural networks and principal component analysis:
+Learning from examples without local minima. Neural Networks, 2, 53–58. 286
+Baldi, P., Brunak, S., Frasconi, P., Soda, G., and Pollastri, G. (1999). Exploiting the
+past and the future in protein secondary structure prediction. Bioinformatics , 15(11),
+937–946. 395
+Baldi, P., Sadowski, P., and Whiteson, D. (2014). Searching for exotic particles in
+high-energy physics with deep learning. Nature communications, 5. 26
+Ballard, D. H., Hinton, G. E., and Sejnowski, T. J. (1983). Parallel vision computation.
+Nature . 452
+Barlow, H. B. (1989). Unsupervised learning. Neural Computation, 1, 295–311. 147
+Barron, A. E. (1993). Universal approximation bounds for superpositions of a sigmoidal
+function. IEEE Trans. on Information Theory, 39, 930–945. 199
+Bartholomew, D. J. (1987). Latent variable models and factor analysis. Oxford University
+Press. 490
+Basilevsky, A. (1994). Statistical Factor Analysis and Related Methods: Theory and
+Applications . Wiley. 490
+Bastien, F., Lamblin, P., Pascanu, R., Bergstra, J., Goodfellow, I. J., Bergeron, A.,
+Bouchard, N., and Bengio, Y. (2012). Theano: new features and speed improvements.
+Deep Learning and Unsupervised Feature Learning NIPS 2012 Workshop. 25, 82, 214,
+222, 446
+Basu, S. and Christensen, J. (2013). Teaching classi�?cation boundaries to humans. In
+AAAI’2013 . 329
+Baxter, J. (1995). Learning internal representations. In Proceedings of the 8th International
+Conference on Computational Learning Theory (COLT’95), pages 311–320, Santa Cruz,
+California. ACM Press. 245
+Bayer, J. and Osendorfer, C. (2014). Learning stochastic recurrent networks. ArXiv
+e-prints. 265
+Becker, S. and Hinton, G. (1992). A self-organizing neural network that discovers surfaces
+in random-dot stereograms. Nature, 355, 161–163. 541
+722
+
+BIBLIOGRAPHY
+
+Behnke, S. (2001). Learning iterative image reconstruction in the neural abstraction
+pyramid. Int. J. Computational Intelligence and Applications, 1(4), 427–438. 515
+Beiu, V., Quintana, J. M., and Avedillo, M. J. (2003). VLSI implementations of threshold
+logic-a comprehensive survey. Neural Networks, IEEE Transactions on, 14(5), 1217–
+1243. 451
+Belkin, M. and Niyogi, P. (2002). Laplacian eigenmaps and spectral techniques for
+embedding and clustering. In T. Dietterich, S. Becker, and Z. Ghahramani, editors,
+Advances in Neural Information Processing Systems 14 (NIPS’01), Cambridge, MA.
+MIT Press. 244
+Belkin, M. and Niyogi, P. (2003). Laplacian eigenmaps for dimensionality reduction and
+data representation. Neural Computation, 15(6), 1373–1396. 164, 518
+Bengio, E., Bacon, P.-L., Pineau, J., and Precup, D. (2015a). Conditional computation in
+neural networks for faster models. arXiv:1511.06297. 450
+Bengio, S. and Bengio, Y. (2000a). Taking on the curse of dimensionality in joint
+distributions using neural networks. IEEE Transactions on Neural Networks, special
+issue on Data Mining and Knowledge Discovery, 11(3), 550–557. 707
+Bengio, S., Vinyals, O., Jaitly, N., and Shazeer, N. (2015b). Scheduled sampling for
+sequence prediction with recurrent neural networks. Technical report, arXiv:1506.03099.
+384
+Bengio, Y. (1991). Arti�?cial Neural Networks and their Application to Sequence Recognition.
+Ph.D. thesis, McGill University, (Computer Science), Montreal, Canada. 407
+Bengio, Y. (2000). Gradient-based optimization of hyperparameters. Neural Computation,
+12(8), 1889–1900. 435
+Bengio, Y. (2002). New distributed probabilistic language models. Technical Report 1215,
+Dept. IRO, Université de Montréal. 467
+Bengio, Y. (2009). Learning deep architectures for AI . Now Publishers. 201, 622
+Bengio, Y. (2013). Deep learning of representations: looking forward. In Statistical
+Language and Speech Processing, volume 7978 of Lecture Notes in Computer Science,
+pages 1–37. Springer, also in arXiv at http://arxiv.org/abs/1305.0445. 448
+Bengio, Y. (2015). Early inference in energy-based models approximates back-propagation.
+Technical Report arXiv:1510.02777, Universite de Montreal. 656
+Bengio, Y. and Bengio, S. (2000b). Modeling high-dimensional discrete data with multilayer neural networks. In NIPS 12 , pages 400–406. MIT Press. 705, 707, 708, 710
+Bengio, Y. and Delalleau, O. (2009). Justifying and generalizing contrastive divergence.
+Neural Computation, 21(6), 1601–1621. 513, 611
+723
+
+BIBLIOGRAPHY
+
+Bengio, Y. and Grandvalet, Y. (2004). No unbiased estimator of the variance of k-fold
+cross-validation. In S. Thrun, L. Saul, and B. Schölkopf, editors, Advances in Neural
+Information Processing Systems 16 (NIPS’03), Cambridge, MA. MIT Press, Cambridge.
+122
+Bengio, Y. and LeCun, Y. (2007). Scaling learning algorithms towards AI. In Large Scale
+Kernel Machines . 19
+Bengio, Y. and Monperrus, M. (2005). Non-local manifold tangent learning. In L. Saul,
+Y. Weiss, and L. Bottou, editors, Advances in Neural Information Processing Systems
+17 (NIPS’04), pages 129–136. MIT Press. 160, 519
+Bengio, Y. and Sénécal, J.-S. (2003). Quick training of probabilistic neural nets by
+importance sampling. In Proceedings of AISTATS 2003 . 470
+Bengio, Y. and Sénécal, J.-S. (2008). Adaptive importance sampling to accelerate training
+of a neural probabilistic language model. IEEE Trans. Neural Networks ,19(4), 713–722.
+470
+Bengio, Y., De Mori, R., Flammia, G., and Kompe, R. (1991). Phonetically motivated
+acoustic parameters for continuous speech recognition using arti�?cial neural networks.
+In Proceedings of EuroSpeech’91 . 27, 459
+Bengio, Y., De Mori, R., Flammia, G., and Kompe, R. (1992). Neural network-Gaussian
+mixture hybrid for speech recognition or density estimation. In NIPS 4 , pages 175–182.
+Morgan Kaufmann. 459
+Bengio, Y., Frasconi, P., and Simard, P. (1993). The problem of learning long-term
+dependencies in recurrent networks. In IEEE International Conference on Neural
+Networks, pages 1183–1195, San Francisco. IEEE Press. (invited paper). 403
+Bengio, Y., Simard, P., and Frasconi, P. (1994). Learning long-term dependencies with
+gradient descent is diﬃcult. IEEE Tr. Neural Nets . 18, 401, 403, 411
+Bengio, Y., Latendresse, S., and Dugas, C. (1999). Gradient-based learning of hyperparameters. Learning Conference, Snowbird. 435
+Bengio, Y., Ducharme, R., and Vincent, P. (2001). A neural probabilistic language model.
+In T. K. Leen, T. G. Dietterich, and V. Tresp, editors, NIPS’2000 , pages 932–938. MIT
+Press. 18, 447, 464, 466, 472, 477, 482
+Bengio, Y., Ducharme, R., Vincent, P., and Jauvin, C. (2003). A neural probabilistic
+language model. JMLR , 3, 1137–1155. 466, 472
+Bengio, Y., Le Roux, N., Vincent, P., Delalleau, O., and Marcotte, P. (2006a). Convex
+neural networks. In NIPS’2005 , pages 123–130. 258
+Bengio, Y., Delalleau, O., and Le Roux, N. (2006b). The curse of highly variable functions
+for local kernel machines. In NIPS’2005 . 158
+724
+
+BIBLIOGRAPHY
+
+Bengio, Y., Larochelle, H., and Vincent, P. (2006c). Non-local manifold Parzen windows.
+In NIPS’2005 . MIT Press. 160, 520
+Bengio, Y., Lamblin, P., Popovici, D., and Larochelle, H. (2007). Greedy layer-wise
+training of deep networks. In NIPS’2006 . 14, 19, 201, 323, 324, 528, 530
+Bengio, Y., Louradour, J., Collobert, R., and Weston, J. (2009). Curriculum learning. In
+ICML’09 . 328
+Bengio, Y., Mesnil, G., Dauphin, Y., and Rifai, S. (2013a). Better mixing via deep
+representations. In ICML’2013 . 604
+Bengio, Y., Léonard, N., and Courville, A. (2013b). Estimating or propagating gradients
+through stochastic neurons for conditional computation. arXiv:1308.3432. 448, 450,
+689, 691
+Bengio, Y., Yao, L., Alain, G., and Vincent, P. (2013c). Generalized denoising autoencoders as generative models. In NIPS’2013 . 507, 711, 714
+Bengio, Y., Courville, A., and Vincent, P. (2013d). Representation learning: A review and
+new perspectives. IEEE Trans. Pattern Analysis and Machine Intelligence (PAMI)

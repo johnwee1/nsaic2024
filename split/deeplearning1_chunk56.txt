@@ -1,0 +1,471 @@
+ from
+the output distribution) fed back as input. In this case, the kind of inputs that
+the network sees during training could be quite diﬀerent from the kind of inputs
+that it will see at test time. One way to mitigate this problem is to train with
+both teacher-forced inputs and with free-running inputs, for example by predicting
+the correct target a number of steps in the future through the unfolded recurrent
+output-to-input paths. In this way, the network can learn to take into account
+input conditions (such as those it generates itself in the free-running mode) not
+seen during training and how to map the state back towards one that will make
+the network generate proper outputs after a few steps. Another approach (Bengio
+et al., 2015b) to mitigate the gap between the inputs seen at train time and the
+inputs seen at test time randomly chooses to use generated values or actual data
+values as input. This approach exploits a curriculum learning strategy to gradually
+use more of the generated values as input.
+
+10.2.2
+
+Computing the Gradient in a Recurrent Neural Network
+
+Computing the gradient through a recurrent neural network is straightforward.
+One simply applies the generalized back-propagation algorithm of section 6.5.6
+384
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+to the unrolled computational graph. No specialized algorithms are necessary.
+Gradients obtained by back-propagation may then be used with any general-purpose
+gradient-based techniques to train an RNN.
+To gain some intuition for how the BPTT algorithm behaves, we provide an
+example of how to compute gradients by BPTT for the RNN equations above
+(equation 10.8 and equation 10.12). The nodes of our computational graph include
+the parameters U , V , W , b and c as well as the sequence of nodes indexed by
+t for x(t) , h(t) , o(t) and L(t) . For each node N we need to compute the gradient
+∇NL recursively, based on the gradient computed at nodes that follow it in the
+graph. We start the recursion with the nodes immediately preceding the �?nal loss
+∂L
+= 1.
+∂L(t)
+
+(10.17)
+
+In this derivation we assume that the outputs o(t) are used as the argument to the
+softmax function to obtain the vector ŷ of probabilities over the output. We also
+assume that the loss is the negative log-likelihood of the true target y(t) given the
+input so far. The gradient ∇ o(t) L on the outputs at time step t, for all i, t, is as
+follows:
+∂L
+∂L ∂L(t)
+(t)
+= ŷ i − 1 i,y(t) .
+(10.18)
+(∇o(t) L)i = (t) =
+(
+t
+)
+(
+t
+)
+∂L ∂oi
+∂oi
+We work our way backwards, starting from the end of the sequence. At the �?nal
+time step τ , h(τ ) only has o(τ ) as a descendent, so its gradient is simple:
+∇h(τ ) L = V  ∇o(τ ) L.
+
+(10.19)
+
+We can then iterate backwards in time to back-propagate gradients through time,
+from t = τ − 1 down to t = 1, noting that h(t) (for t < τ) has as descendents both
+o (t) and h(t+1) . Its gradient is thus given by
+
+
+
+∂o(t)
+∇h (t) L =
+(∇h(t+1) L) +
+(∇ o(t) L)
+∂h (t)
+
+�?
+ 2
+(t+1)
+
+= W (∇ h(t+1)L) diag 1 − h
++ V  (∇ o(t) L)
+∂h(t+1)
+∂h(t)
+
+
+
+
+
+(10.20)
+(10.21)
+
+�?
+
+�?2
+where diag 1 − h(t+1)
+indicates the diagonal matrix containing the elements
+(t+1)
+
+1 − (hi
+)2 . This is the Jacobian of the hyperbolic tangent associated with the
+hidden unit i at time t + 1.
+385
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+Once the gradients on the internal nodes of the computational graph are
+obtained, we can obtain the gradients on the parameter nodes. Because the
+parameters are shared across many time steps, we must take some care when
+denoting calculus operations involving these variables. The equations we wish to
+implement use the bprop method of section 6.5.6, that computes the contribution
+of a single edge in the computational graph to the gradient. However, the ∇ W f
+operator used in calculus takes into account the contribution of W to the value
+of f due to all edges in the computational graph. To resolve this ambiguity, we
+introduce dummy variables W (t) that are de�?ned to be copies of W but with each
+W (t) used only at time step t. We may then use ∇ W (t) to denote the contribution
+of the weights at time step t to the gradient.
+Using this notation, the gradient on the remaining parameters is given by:
+∇ cL =
+∇ bL =
+∇V L =
+∇ WL =
+=
+
+�?�
+t
+
+
+
+∂o(t)
+∂c
+
+t
+
+∇U L =
+=
+
+∇o(t) L =
+
+�?�
+t
+
+∇ o(t) L
+
+(10.22)
+
+
+
+�?
+2 
+�?�
+∂h(t)
+(
+t
+)
+∇h (t)L =
+∇h(t) L (10.23)
+diag 1 − h
+(t)
+∂b
+t
+t
+
+
+�?� �?� ∂L
+�?�
+(t)
+(t) 
+o
+=
+(10.24)
+∇
+(∇
+(t) L) h
+V
+o
+i
+( t)
+∂oi
+t
+i
+t
+
+
+�?��?�
+∂L
+(10.25)
+∇ W (t) h(i t)
+(t)
+∂h
+t
+i
+ i �?
+2
+�?�
+
+diag 1 − h(t)
+(10.26)
+(∇ h(t) L) h(t−1)
+�?�
+
+
+
+
+
+�?��?�
+t
+
+�?�
+t
+
+i
+
+
+
+∂L
+
+(t)
+∂h i
+
+
+
+
+
+(t)
+
+∇ U(t) h i
+
+�?
+2
+
+( t)
+diag 1 − h
+(∇ h(t) L) x(t)
+
+(10.27)
+(10.28)
+
+We do not need to compute the gradient with respect to x(t) for training because
+it does not have any parameters as ancestors in the computational graph de�?ning
+the loss.
+
+386
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+10.2.3
+
+Recurrent Networks as Directed Graphical Models
+
+In the example recurrent network we have developed so far, the losses L(t) were
+cross-entropies between training targets y(t) and outputs o(t) . As with a feedforward
+network, it is in principle possible to use almost any loss with a recurrent network.
+The loss should be chosen based on the task. As with a feedforward network, we
+usually wish to interpret the output of the RNN as a probability distribution, and
+we usually use the cross-entropy associated with that distribution to de�?ne the loss.
+Mean squared error is the cross-entropy loss associated with an output distribution
+that is a unit Gaussian, for example, just as with a feedforward network.
+When we use a predictive log-likelihood training objective, such as equation 10.12, we train the RNN to estimate the conditional distribution of the next
+sequence element y(t) given the past inputs. This may mean that we maximize
+the log-likelihood
+log p(y(t) | x(1) , . . . , x (t)),
+(10.29)
+or, if the model includes connections from the output at one time step to the next
+time step,
+log p(y(t) | x (1) , . . . , x(t), y (1) , . . . , y(t−1) ).
+(10.30)
+Decomposing the joint probability over the sequence of y values as a series of
+one-step probabilistic predictions is one way to capture the full joint distribution
+across the whole sequence. When we do not feed past y values as inputs that
+condition the next step prediction, the directed graphical model contains no edges
+from any y(i) in the past to the current y(t) . In this case, the outputs y are
+conditionally independent given the sequence of x values. When we do feed the
+actual y values (not their prediction, but the actual observed or generated values)
+back into the network, the directed graphical model contains edges from all y(i)
+values in the past to the current y(t) value.
+As a simple example, let us consider the case where the RNN models only a
+sequence of scalar random variables Y = {y(1) , . . . , y (τ )}, with no additional inputs
+x. The input at time step t is simply the output at time step t − 1. The RNN then
+de�?nes a directed graphical model over the y variables. We parametrize the joint
+distribution of these observations using the chain rule (equation 3.6) for conditional
+probabilities:
+P (Y) = P (y
+
+(1)
+
+(τ )
+
+,...,y
+
+)=
+
+τ
+�?�
+
+t=1
+
+P (y (t) | y(t−1) , y(t−2) , . . . , y(1) )
+
+(10.31)
+
+where the right-hand side of the bar is empty for t = 1, of course. Hence the
+negative log-likelihood of a set of values {y (1) , . . . , y (τ )} according to such a model
+387
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+y (1)
+
+y (2)
+
+y (3)
+
+y (4)
+
+y (5)
+
+y (...)
+
+Figure 10.7: Fully connected graphical model for a sequence y (1) , y (2), . . . , y (t) , . . . : every
+past observation y (i) may inﬂuence the conditional distribution of some y (t) (for t > i),
+given the previous values. Parametrizing the graphical model directly according to this
+graph (as in equation 10.6) might be very ineﬃcient, with an ever growing number of
+inputs and parameters for each element of the sequence. RNNs obtain the same full
+connectivity but eﬃcient parametrization, as illustrated in �?gure 10.8.
+
+is
+L=
+
+�?�
+
+L (t)
+
+(10.32)
+
+t
+
+where
+
+L (t) = − log P (y(t) = y (t) | y(t−1) , y (t−2) , . . . , y (1)).
+h(1)
+
+h(2)
+
+h(3)
+
+h(4)
+
+h(5)
+
+h(... )
+
+y (1)
+
+y (2)
+
+y (3)
+
+y (4)
+
+y (5)
+
+y (...)
+
+(10.33)
+
+Figure 10.8: Introducing the state variable in the graphical model of the RNN, even
+though it is a deterministic function of its inputs, helps to see how we can obtain a very
+eﬃcient parametrization, based on equation 10.5. Every stage in the sequence (forh(t)
+and y(t) ) involves the same structure (the same number of inputs for each node) and can
+share the same parameters with the other stages.
+
+The edges in a graphical model indicate which variables depend directly on other
+variables. Many graphical models aim to achieve statistical and computational
+eﬃciency by omitting edges that do not correspond to strong interactions. For
+388
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+example, it is common to make the Markov assumption that the graphical model
+should only contain edges from {y(t−k), . . . , y (t−1)} to y(t) , rather than containing
+edges from the entire past history. However, in some cases, we believe that all past
+inputs should have an inﬂuence on the next element of the sequence. RNNs are
+useful when we believe that the distribution over y(t) may depend on a value of y(i)
+from the distant past in a way that is not captured by the eﬀect of y(i) on y(t−1).
+One way to interpret an RNN as a graphical model is to view the RNN as
+de�?ning a graphical model whose structure is the complete graph, able to represent
+direct dependencies between any pair of y values. The graphical model over the y
+values with the complete graph structure is shown in �?gure 10.7. The complete
+graph interpretation of the RNN is based on ignoring the hidden units h(t) by
+marginalizing them out of the model.
+It is more interesting to consider the graphical model structure of RNNs that
+results from regarding the hidden units h(t) as random variables. 1 Including the
+hidden units in the graphical model reveals that the RNN provides a very eﬃcient
+parametrization of the joint distribution over the observations. Suppose that we
+represented an arbitrary joint distribution over discrete values with a tabular
+representation—an array containing a separate entry for each possible assignment
+of values, with the value of that entry giving the probability of that assignment
+occurring. If y can take on k diﬀerent values, the tabular representation would
+have O(k τ ) parameters. By comparison, due to parameter sharing, the number of
+parameters in the RNN is O(1) as a function of sequence length. The number of
+parameters in the RNN may be adjusted to control model capacity but is not forced
+to scale with sequence length. Equation 10.5 shows that the RNN parametrizes
+long-term relationships between variables eﬃciently, using recurrent applications
+of the same function f and same parameters θ at each time step. Figure 10.8
+illustrates the graphical model interpretation. Incorporating the h (t) nodes in
+the graphical model decouples the past and the future, acting as an intermediate
+quantity between them. A variable y (i) in the distant past may inﬂuence a variable
+y(t) via its eﬀect on h. The structure of this graph shows that the model can be
+eﬃciently parametrized by using the same conditional probability distributions at
+each time step, and that when the variables are all observed, the probability of the
+joint assignment of all variables can be evaluated eﬃciently.
+Even with the eﬃcient parametrization of the graphical model, some operations
+remain computationally challenging. For example, it is diﬃcult to predict missing
+1
+
+The conditional distribution over these variables given their parents is deterministic. This is
+perfectly legitimate, though it is somewhat rare to design a graphical model with such deterministic
+hidden units.
+389
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+values in the middle of the sequence.
+The price recurrent networks pay for their reduced number of parameters is
+that optimizing the parameters may be diﬃcult.
+The parameter sharing used in recurrent networks relies on the assumption
+that the same parameters can be used for diﬀerent time steps. Equivalently, the
+assumption is that the conditional probability distribution over the variables at
+time t+ 1 given the variables at time t is stationary , meaning that the relationship
+between the previous time step and the next time step does not depend on t. In
+principle, it would be possible to use t as an extra input at each time step and let
+the learner discover any time-dependence while sharing as much as it can between
+diﬀerent time steps. This would already be much better than using a diﬀerent
+conditional probability distribution for each t, but the network would then have to
+extrapolate when faced with new values of t.
+To complete our view of an RNN as a graphical model, we must describe how
+to draw samples from the model. The main operation that we need to perform is
+simply to sample from the conditional distribution at each time step. However,
+there is one additional complication. The RNN must have some mechanism for
+determining the length of the sequence. This can be achieved in various ways.
+In the case when the output is a symbol taken from a vocabulary, one can
+add a special symbol corresponding to the end of a sequence (Schmidhuber, 2012).
+When that symbol is generated, the sampling process stops. In the training set,
+we insert this symbol as an extra member of the sequence, immediately after x(τ )
+in each training example.
+Another option is to introduce an extra Bernoulli output to the model that
+represents the decision to either continue generation or halt generation at each
+time step. This approach is more general than the approach of adding an extra
+symbol to the vocabulary, because it may be applied to any RNN, rather than
+only RNNs that output a sequence of symbols. For example, it may be applied to
+an RNN that emits a sequence of real numbers. The new output unit is usually a
+sigmoid unit trained with the cross-entropy loss. In this approach the sigmoid is
+trained to maximize the log-probability of the correct prediction as to whether the
+sequence ends or continues at each time step.
+Another way to determine the sequence length τ is to add an extra output to
+the model that predicts the integer τ itself. The model can sample a value of τ
+and then sample τ steps worth of data. This approach requires adding an extra
+input to the recurrent update at each time step so that the recurrent update is
+aware of whether it is near the end of the generated sequence. This extra input
+can either consist of the value of τ or can consist of τ − t, the number of remaining
+390
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+time steps. Without this extra input, the RNN might generate sequences that
+end abruptly, such as a sentence that ends before it is complete. This approach is
+based on the decomposition
+P

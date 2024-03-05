@@ -1,0 +1,522 @@
+ not usually an important property of a neural
+network implementation. Instead, many neural network libraries implement a
+related function called the cross-correlation, which is the same as convolution
+but without ﬂipping the kernel:
+�?��?�
+I (i + m, j + n)K (m, n).
+(9.6)
+S (i, j ) = (I ∗ K )(i, j ) =
+m
+
+n
+
+Many machine learning libraries implement cross-correlation but call it convolution.
+In this text we will follow this convention of calling both operations convolution,
+and specify whether we mean to ﬂip the kernel or not in contexts where kernel
+ﬂipping is relevant. In the context of machine learning, the learning algorithm will
+learn the appropriate values of the kernel in the appropriate place, so an algorithm
+based on convolution with kernel ﬂipping will learn a kernel that is ﬂipped relative
+to the kernel learned by an algorithm without the ﬂipping. It is also rare for
+convolution to be used alone in machine learning; instead convolution is used
+simultaneously with other functions, and the combination of these functions does
+not commute regardless of whether the convolution operation ﬂips its kernel or
+not.
+See �?gure 9.1 for an example of convolution (without kernel ﬂipping) applied
+to a 2-D tensor.
+Discrete convolution can be viewed as multiplication by a matrix. However, the
+matrix has several entries constrained to be equal to other entries. For example,
+for univariate discrete convolution, each row of the matrix is constrained to be
+equal to the row above shifted by one element. This is known as a Toeplitz
+matrix. In two dimensions, a doubly block circulant matrix corresponds to
+convolution. In addition to these constraints that several elements be equal to
+each other, convolution usually corresponds to a very sparse matrix (a matrix
+whose entries are mostly equal to zero). This is because the kernel is usually much
+smaller than the input image. Any neural network algorithm that works with
+matrix multiplication and does not depend on speci�?c properties of the matrix
+structure should work with convolution, without requiring any further changes
+to the neural network. Typical convolutional neural networks do make use of
+further specializations in order to deal with large inputs eﬃciently, but these are
+not strictly necessary from a theoretical perspective.
+
+333
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Input
+Kernel
+a
+
+b
+
+e
+
+f
+
+i
+
+j
+
+c
+
+d
+
+g
+
+w
+
+x
+
+y
+
+z
+
+h
+
+k
+
+l
+Output
+
+aw
+ey
+
++
++
+
+bx
+fz
+
++
+
+bw
+fy
+
++
++
+
+cx
+gz
+
++
+
+cw
+gy
+
++
++
+
+dx
+hz
+
++
+
+ew
+iy
+
++
++
+
+fx
+jz
+
++
+
+fw
+jy
+
++
++
+
+gx
+kz
+
++
+
+gw
+ky
+
++
++
+
+hx
+lz
+
++
+
+Figure 9.1: An example of 2-D convolution without kernel-ﬂipping. In this case we restrict
+the output to only positions where the kernel lies entirely within the image, called “valid�?
+convolution in some contexts. We draw boxes with arrows to indicate how the upper-left
+element of the output tensor is formed by applying the kernel to the corresponding
+upper-left region of the input tensor.
+
+334
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+9.2
+
+Motivation
+
+Convolution leverages three important ideas that can help improve a machine
+learning system: sparse interactions, parameter sharing and equivariant
+representations. Moreover, convolution provides a means for working with
+inputs of variable size. We now describe each of these ideas in turn.
+Traditional neural network layers use matrix multiplication by a matrix of
+parameters with a separate parameter describing the interaction between each input
+unit and each output unit. This means every output unit interacts with every input
+unit. Convolutional networks, however, typically have sparse interactions (also
+referred to as sparse connectivity or sparse weights). This is accomplished by
+making the kernel smaller than the input. For example, when processing an image,
+the input image might have thousands or millions of pixels, but we can detect small,
+meaningful features such as edges with kernels that occupy only tens or hundreds of
+pixels. This means that we need to store fewer parameters, which both reduces the
+memory requirements of the model and improves its statistical eﬃciency. It also
+means that computing the output requires fewer operations. These improvements
+in eﬃciency are usually quite large. If there are m inputs and n outputs, then
+matrix multiplication requires m × n parameters and the algorithms used in practice
+have O(m × n ) runtime (per example). If we limit the number of connections
+each output may have to k, then the sparsely connected approach requires only
+k × n parameters and O(k × n ) runtime. For many practical applications, it is
+possible to obtain good performance on the machine learning task while keeping
+k several orders of magnitude smaller than m . For graphical demonstrations of
+sparse connectivity, see �?gure 9.2 and �?gure 9.3. In a deep convolutional network,
+units in the deeper layers may indirectly interact with a larger portion of the input,
+as shown in �?gure 9.4. This allows the network to eﬃciently describe complicated
+interactions between many variables by constructing such interactions from simple
+building blocks that each describe only sparse interactions.
+Parameter sharing refers to using the same parameter for more than one
+function in a model. In a traditional neural net, each element of the weight matrix
+is used exactly once when computing the output of a layer. It is multiplied by
+one element of the input and then never revisited. As a synonym for parameter
+sharing, one can say that a network has tied weights, because the value of the
+weight applied to one input is tied to the value of a weight applied elsewhere. In
+a convolutional neural net, each member of the kernel is used at every position
+of the input (except perhaps some of the boundary pixels, depending on the
+design decisions regarding the boundary). The parameter sharing used by the
+convolution operation means that rather than learning a separate set of parameters
+335
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+s1
+
+s2
+
+s3
+
+s4
+
+s5
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+s1
+
+s2
+
+s3
+
+s4
+
+s5
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+Figure 9.2: Sparse connectivity, viewed from below: We highlight one input unit, x3 ,
+and also highlight the output units in s that are aﬀected by this unit. (Top)When s is
+formed by convolution with a kernel of width 3, only three outputs are aﬀected by x.
+(Bottom)When s is formed by matrix multiplication, connectivity is no longer sparse, so
+all of the outputs are aﬀected by x3 .
+
+336
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+s1
+
+s2
+
+s3
+
+s4
+
+s5
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+s1
+
+s2
+
+s3
+
+s4
+
+s5
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+Figure 9.3: Sparse connectivity, viewed from above: We highlight one output unit, s3 ,
+and also highlight the input units in x that aﬀect this unit. These units are known
+as the receptive �?eld of s3 . (Top)When s is formed by convolution with a kernel of
+width 3, only three inputs aﬀect s 3 . (Bottom)When s is formed by matrix multiplication,
+connectivity is no longer sparse, so all of the inputs aﬀect s3 .
+
+g1
+
+g2
+
+g3
+
+g4
+
+g5
+
+h1
+
+h2
+
+h3
+
+h4
+
+h5
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+Figure 9.4: The receptive �?eld of the units in the deeper layers of a convolutional network
+is larger than the receptive �?eld of the units in the shallow layers. This eﬀect increases if
+the network includes architectural features like strided convolution (�?gure 9.12) or pooling
+(section 9.3). This means that even though direct connections in a convolutional net are
+very sparse, units in the deeper layers can be indirectly connected to all or most of the
+input image.
+337
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+s1
+
+s2
+
+s3
+
+s4
+
+s5
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+s1
+
+s2
+
+s3
+
+s4
+
+s5
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+Figure 9.5: Parameter sharing: Black arrows indicate the connections that use a particular
+parameter in two diﬀerent models. (Top)The black arrows indicate uses of the central
+element of a 3-element kernel in a convolutional model. Due to parameter sharing, this
+single parameter is used at all input locations. (Bottom)The single black arrow indicates
+the use of the central element of the weight matrix in a fully connected model. This model
+has no parameter sharing so the parameter is used only once.
+
+for every location, we learn only one set. This does not aﬀect the runtime of
+forward propagation—it is still O(k × n)—but it does further reduce the storage
+requirements of the model to k parameters. Recall that k is usually several orders
+of magnitude less than m. Since m and n are usually roughly the same size, k is
+practically insigni�?cant compared to m × n. Convolution is thus dramatically more
+eﬃcient than dense matrix multiplication in terms of the memory requirements
+and statistical eﬃciency. For a graphical depiction of how parameter sharing works,
+see �?gure 9.5.
+As an example of both of these �?rst two principles in action, �?gure 9.6 shows
+how sparse connectivity and parameter sharing can dramatically improve the
+eﬃciency of a linear function for detecting edges in an image.
+In the case of convolution, the particular form of parameter sharing causes the
+layer to have a property called equivariance to translation. To say a function is
+equivariant means that if the input changes, the output changes in the same way.
+Speci�?cally, a function f (x) is equivariant to a function g if f(g(x)) = g(f(x)).
+In the case of convolution, if we let g be any function that translates the input,
+i.e., shifts it, then the convolution function is equivariant to g. For example, let I
+be a function giving image brightness at integer coordinates. Let g be a function
+338
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+mapping one image function to another image function, such that I = g(I ) is
+the image function with I  (x, y) = I(x − 1, y). This shifts every pixel of I one
+unit to the right. If we apply this transformation to I, then apply convolution,
+the result will be the same as if we applied convolution to I  , then applied the
+transformation g to the output. When processing time series data, this means
+that convolution produces a sort of timeline that shows when diﬀerent features
+appear in the input. If we move an event later in time in the input, the exact
+same representation of it will appear in the output, just later in time. Similarly
+with images, convolution creates a 2-D map of where certain features appear in
+the input. If we move the object in the input, its representation will move the
+same amount in the output. This is useful for when we know that some function
+of a small number of neighboring pixels is useful when applied to multiple input
+locations. For example, when processing images, it is useful to detect edges in
+the �?rst layer of a convolutional network. The same edges appear more or less
+everywhere in the image, so it is practical to share parameters across the entire
+image. In some cases, we may not wish to share parameters across the entire
+image. For example, if we are processing images that are cropped to be centered
+on an individual’s face, we probably want to extract diﬀerent features at diﬀerent
+locations—the part of the network processing the top of the face needs to look for
+eyebrows, while the part of the network processing the bottom of the face needs to
+look for a chin.
+Convolution is not naturally equivariant to some other transformations, such
+as changes in the scale or rotation of an image. Other mechanisms are necessary
+for handling these kinds of transformations.
+Finally, some kinds of data cannot be processed by neural networks de�?ned by
+matrix multiplication with a �?xed-shape matrix. Convolution enables processing
+of some of these kinds of data. We discuss this further in section 9.7.
+
+9.3
+
+Pooling
+
+A typical layer of a convolutional network consists of three stages (see �?gure 9.7).
+In the �?rst stage, the layer performs several convolutions in parallel to produce a
+set of linear activations. In the second stage, each linear activation is run through
+a nonlinear activation function, such as the recti�?ed linear activation function.
+This stage is sometimes called the detector stage. In the third stage, we use a
+pooling function to modify the output of the layer further.
+A pooling function replaces the output of the net at a certain location with a
+summary statistic of the nearby outputs. For example, the max pooling (Zhou
+339
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Figure 9.6: Eﬃciency of edge detection. The image on the right was formed by taking
+each pixel in the original image and subtracting the value of its neighboring pixel on the
+left. This shows the strength of all of the vertically oriented edges in the input image,
+which can be a useful operation for object detection. Both images are 280 pixels tall.
+The input image is 320 pixels wide while the output image is 319 pixels wide. This
+transformation can be described by a convolution kernel containing two elements, and
+requires 319 × 280 × 3 = 267, 960 ﬂoating point operations (two multiplications and
+one addition per output pixel) to compute using convolution. To describe the same
+transformation with a matrix multiplication would take 320× 280 × 319 × 280, or over
+eight billion, entries in the matrix, making convolution four billion times more eﬃcient for
+representing this transformation. The straightforward matrix multiplication algorithm
+performs over sixteen billion ﬂoating point operations, making convolution roughly 60,000
+times more eﬃcient computationally. Of course, most of the entries of the matrix would be
+zero. If we stored only the nonzero entries of the matrix, then both matrix multiplication
+and convolution would require the same number of ﬂoating point operations to compute.
+The matrix would still need to contain 2 × 319 × 280 = 178, 640 entries. Convolution
+is an extremely eﬃcient way of describing transformations that apply the same linear
+transformation of a small, local region across the entire input. (Photo credit: Paula
+Goodfellow)
+
+340
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Complex layer terminology
+
+Simple layer terminology
+
+Next layer
+
+Next layer
+
+Convolutional Layer
+Pooling stage
+
+Pooling layer
+
+Detector stage:
+Nonlinearity
+e.g., recti�?ed linear
+
+Detector layer: Nonlinearity
+e.g., recti�?ed linear
+
+Convolution stage:
+Aﬃne transform
+
+Convolution layer:
+Aﬃne transform
+
+Input to layer
+
+Input to layers
+
+Figure 9.7: The components of a typical convolutional neural network layer. There are two
+commonly used sets of terminology for describing these layers. (Left)In this terminology,
+the convolutional net is viewed as a small number of relatively complex layers, with
+each layer having many “stages.�? In this terminology, there is a one-to-one mapping
+between kernel tensors and network layers. In this book we generally use this terminology.
+(Right)In this terminology, the convolutional net is viewed as a larger number of simple
+layers; every step of processing is regarded as a layer in its own right. This means that
+not every “layer�? has parameters.
+
+341
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+and Chellappa, 1988) operation reports the maximum output within a rectangular
+neighborhood. Other popular pooling functions include the average of a rectangular
+neighborhood, the L2 norm of a rectangular neighborhood, or a weighted average
+based on the distance from the central pixel.
+In all cases, pooling helps to make the representation become approximately
+invariant to small translations of the input. Invariance to translat

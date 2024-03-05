@@ -1,0 +1,267 @@
+
+
+and continues to inï¬‚uence contemporary approaches. The idea of pretraining has
+been generalized to supervised pretraining discussed in section 8.7.4, as a very
+common approach for transfer learning. Supervised pretraining for transfer learning
+is popular (Oquab et al., 2014; Yosinski et al., 2014) for use with convolutional
+networks pretrained on the ImageNet dataset. Practitioners publish the parameters
+of these trained networks for this purpose, just like pretrained word vectors are
+published for natural language tasks (Collobert et al., 2011a; Mikolov et al., 2013a).
+
+15.2
+
+Transfer Learning and Domain Adaptation
+
+Transfer learning and domain adaptation refer to the situation where what has been
+learned in one setting (i.e., distribution P1 ) is exploited to improve generalization
+in another setting (say distribution P 2). This generalizes the idea presented in the
+previous section, where we transferred representations between an unsupervised
+learning task and a supervised learning task.
+In transfer learning, the learner must perform two or more diï¬€erent tasks,
+but we assume that many of the factors that explain the variations in P1 are
+relevant to the variations that need to be captured for learning P2. This is typically
+understood in a supervised learning context, where the input is the same but the
+target may be of a diï¬€erent nature. For example, we may learn about one set of
+visual categories, such as cats and dogs, in the ï¬?rst setting, then learn about a
+diï¬€erent set of visual categories, such as ants and wasps, in the second setting. If
+there is signiï¬?cantly more data in the ï¬?rst setting (sampled from P 1 ), then that
+may help to learn representations that are useful to quickly generalize from only
+very few examples drawn from P 2. Many visual categories share low-level notions
+of edges and visual shapes, the eï¬€ects of geometric changes, changes in lighting,
+etc. In general, transfer learning, multi-task learning (section 7.7), and domain
+adaptation can be achieved via representation learning when there exist features
+that are useful for the diï¬€erent settings or tasks, corresponding to underlying
+factors that appear in more than one setting. This is illustrated in ï¬?gure 7.2, with
+shared lower layers and task-dependent upper layers.
+However, sometimes, what is shared among the diï¬€erent tasks is not the
+semantics of the input but the semantics of the output. For example, a speech
+recognition system needs to produce valid sentences at the output layer, but
+the earlier layers near the input may need to recognize very diï¬€erent versions of
+the same phonemes or sub-phonemic vocalizations depending on which person
+is speaking. In cases like these, it makes more sense to share the upper layers
+(near the output) of the neural network, and have a task-speciï¬?c preprocessing, as
+536
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+illustrated in ï¬?gure 15.2.
+y
+
+h(shared)
+
+Selection switch
+
+h(1)
+
+h(2)
+
+h(3)
+
+x(1)
+
+x(2)
+
+x(3)
+
+Figure 15.2: Example architecture for multi-task or transfer learning when the output
+variable y has the same semantics for all tasks while the input variable x has a diï¬€erent
+meaning (and possibly even a diï¬€erent dimension) for each task (or, for example, each
+user), called x(1) , x(2) and x(3) for three tasks. The lower levels (up to the selection
+switch) are task-speciï¬?c, while the upper levels are shared. The lower levels learn to
+translate their task-speciï¬?c input into a generic set of features.
+
+In the related case of domain adaptation, the task (and the optimal input-tooutput mapping) remains the same between each setting, but the input distribution
+is slightly diï¬€erent. For example, consider the task of sentiment analysis, which
+consists of determining whether a comment expresses positive or negative sentiment.
+Comments posted on the web come from many categories. A domain adaptation
+scenario can arise when a sentiment predictor trained on customer reviews of
+media content such as books, videos and music is later used to analyze comments
+about consumer electronics such as televisions or smartphones. One can imagine
+that there is an underlying function that tells whether any statement is positive,
+neutral or negative, but of course the vocabulary and style may vary from one
+domain to another, making it more diï¬ƒcult to generalize across domains. Simple
+unsupervised pretraining (with denoising autoencoders) has been found to be very
+successful for sentiment analysis with domain adaptation (Glorot et al., 2011b).
+A related problem is that of concept drift, which we can view as a form
+of transfer learning due to gradual changes in the data distribution over time.
+Both concept drift and transfer learning can be viewed as particular forms of
+537
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+multi-task learning. While the phrase â€œmulti-task learningâ€? typically refers to
+supervised learning tasks, the more general notion of transfer learning is applicable
+to unsupervised learning and reinforcement learning as well.
+In all of these cases, the objective is to take advantage of data from the ï¬?rst
+setting to extract information that may be useful when learning or even when
+directly making predictions in the second setting. The core idea of representation
+learning is that the same representation may be useful in both settings. Using the
+same representation in both settings allows the representation to beneï¬?t from the
+training data that is available for both tasks.
+As mentioned before, unsupervised deep learning for transfer learning has found
+success in some machine learning competitions (Mesnil et al., 2011; Goodfellow
+et al., 2011). In the ï¬?rst of these competitions, the experimental setup is the
+following. Each participant is ï¬?rst given a dataset from the ï¬?rst setting (from
+distribution P 1), illustrating examples of some set of categories. The participants
+must use this to learn a good feature space (mapping the raw input to some
+representation), such that when we apply this learned transformation to inputs
+from the transfer setting (distribution P2), a linear classiï¬?er can be trained and
+generalize well from very few labeled examples. One of the most striking results
+found in this competition is that as an architecture makes use of deeper and
+deeper representations (learned in a purely unsupervised way from data collected
+in the ï¬?rst setting, P 1), the learning curve on the new categories of the second
+(transfer) setting P 2 becomes much better. For deep representations, fewer labeled
+examples of the transfer tasks are necessary to achieve the apparently asymptotic
+generalization performance.
+Two extreme forms of transfer learning are one-shot learning and zero-shot
+learning, sometimes also called zero-data learning. Only one labeled example
+of the transfer task is given for one-shot learning, while no labeled examples are
+given at all for the zero-shot learning task.
+One-shot learning (Fei-Fei et al., 2006) is possible because the representation
+learns to cleanly separate the underlying classes during the ï¬?rst stage. During the
+transfer learning stage, only one labeled example is needed to infer the label of many
+possible test examples that all cluster around the same point in representation
+space. This works to the extent that the factors of variation corresponding to
+these invariances have been cleanly separated from the other factors, in the learned
+representation space, and we have somehow learned which factors do and do not
+matter when discriminating objects of certain categories.
+As an example of a zero-shot learning setting, consider the problem of having
+a learner read a large collection of text and then solve object recognition problems.
+538
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+It may be possible to recognize a speciï¬?c object class even without having seen an
+image of that object, if the text describes the object well enough. For example,
+having read that a cat has four legs and pointy ears, the learner might be able to
+guess that an image is a cat, without having seen a cat before.
+Zero-data learning (Larochelle et al., 2008) and zero-shot learning (Palatucci
+et al., 2009; Socher et al., 2013b) are only possible because additional information
+has been exploited during training. We can think of the zero-data learning scenario
+as including three random variables: the traditional inputs x, the traditional
+outputs or targets y, and an additional random variable describing the task, T .
+The model is trained to estimate the conditional distribution p(y | x, T ) where
+T is a description of the task we wish the model to perform. In our example of
+recognizing cats after having read about cats, the output is a binary variable y
+with y = 1 indicating â€œyesâ€? and y = 0 indicating â€œno.â€? The task variable T then
+represents questions to be answered such as â€œIs there a cat in this image?â€? If we
+have a training set containing unsupervised examples of objects that live in the
+same space as T , we may be able to infer the meaning of unseen instances of T .
+In our example of recognizing cats without having seen an image of the cat, it is
+important that we have had unlabeled text data containing sentences such as â€œcats
+have four legsâ€? or â€œcats have pointy ears.â€?
+Zero-shot learning requires T to be represented in a way that allows some sort
+of generalization. For example, T cannot be just a one-hot code indicating an
+object category. Socher et al. (2013b) provide instead a distributed representation
+of object categories by using a learned word embedding for the word associated
+with each category.
+A similar phenomenon happens in machine translation (Klementiev et al., 2012;
+Mikolov et al., 2013b; Gouws et al., 2014): we have words in one language, and
+the relationships between words can be learned from unilingual corpora; on the
+other hand, we have translated sentences which relate words in one language with
+words in the other. Even though we may not have labeled examples translating
+word A in language X to word B in language Y , we can generalize and guess a
+translation for word A because we have learned a distributed representation for
+words in language X, a distributed representation for words in language Y , and
+created a link (possibly two-way) relating the two spaces, via training examples
+consisting of matched pairs of sentences in both languages. This transfer will be
+most successful if all three ingredients (the two representations and the relations
+between them) are learned jointly.
+Zero-shot learning is a particular form of transfer learning. The same principle
+explains how one can perform multi-modal learning, capturing a representation
+539
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+hx = fx (x)
+hy = fy (y )
+
+fx
+fy
+xâˆ’space
+yâˆ’space
+xtest
+y test
+
+(x, y ) pairs in the training set
+f x : encoder function for x
+f y : encoder function for y
+Relationship between embedded points within one of the domains
+
+Maps between representation spaces
+
+Figure 15.3: Transfer learning between two domains x and y enables zero-shot learning.
+Labeled or unlabeled examples of x allow one to learn a representation function f x and
+similarly with examples of y to learn f y . Each application of the f x and f y functions
+appears as an upward arrow, with the style of the arrows indicating which function is
+applied. Distance in hx space provides a similarity metric between any pair of points
+in x space that may be more meaningful than distance in x space. Likewise, distance
+in hy space provides a similarity metric between any pair of points in y space. Both
+of these similarity functions are indicated with dotted bidirectional arrows. Labeled
+examples (dashed horizontal lines) are pairs (x, y) which allow one to learn a one-way
+or two-way map (solid bidirectional arrow) between the representationsfx (x) and the
+representations f y (y ) and anchor these representations to each other. Zero-data learning
+is then enabled as follows. One can associate an image xtest to a word y test, even if no
+image of that word was ever presented, simply because word-representationsf y (ytest )
+and image-representations fx (xtest ) can be related to each other via the maps between
+representation spaces. It works because, although that image and that word were never
+paired, their respective feature vectors f x(xtest ) and fy ( ytest ) have been related to each
+other. Figure inspired from suggestion by Hrant Khachatrian.
+540
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+in one modality, a representation in the other, and the relationship (in general a joint
+distribution) between pairs (x, y ) consisting of one observation x in one modality
+and another observation y in the other modality (Srivastava and Salakhutdinov,
+2012). By learning all three sets of parameters (from x to its representation, from
+y to its representation, and the relationship between the two representations),
+concepts in one representation are anchored in the other, and vice-versa, allowing
+one to meaningfully generalize to new pairs. The procedure is illustrated in
+ï¬?gure 15.3.
+
+15.3
+
+Semi-Supervised Disentangling of Causal Factors
+
+An important question about representation learning is â€œwhat makes one representation better than another?â€? One hypothesis is that an ideal representation
+is one in which the features within the representation correspond to the underlying causes of the observed data, with separate features or directions in feature
+space corresponding to diï¬€erent causes, so that the representation disentangles the
+causes from one another. This hypothesis motivates approaches in which we ï¬?rst
+seek a good representation for p(x). Such a representation may also be a good
+representation for computing p(y | x ) if y is among the most salient causes of
+x. This idea has guided a large amount of deep learning research since at least
+the 1990s (Becker and Hinton, 1992; Hinton and Sejnowski, 1999), in more detail.
+For other arguments about when semi-supervised learning can outperform pure
+supervised learning, we refer the reader to section 1.2 of Chapelle et al. (2006).
+In other approaches to representation learning, we have often been concerned
+with a representation that is easy to modelâ€”for example, one whose entries are
+sparse, or independent from each other. A representation that cleanly separates
+the underlying causal factors may not necessarily be one that is easy to model.
+However, a further part of the hypothesis motivating semi-supervised learning
+via unsupervised representation learning is that for many AI tasks, these two
+properties coincide: once we are able to obtain the underlying explanations for
+what we observe, it generally becomes easy to isolate individual attributes from
+the others. Speciï¬?cally, if a representation h represents many of the underlying
+causes of the observed x, and the outputs y are among the most salient causes,
+then it is easy to predict y from h.
+First, let us see how semi-supervised learning can fail because unsupervised
+learning of p(x) is of no help to learn p(y | x ). Consider for example the case
+where p(x) is uniformly distributed and we want to learn f (x) = E[y | x]. Clearly,
+observing a training set of x values alone gives us no information about p(y | x).
+541
+
+CHAPTER 15. REPRESENTATION LEARNING
+
+y=2
+
+y=3
+
+p (x )
+
+y=1
+
+x
+
+Figure 15.4: Example of a density over x that is a mixture over three components.
+The component identity is an underlying explanatory fact

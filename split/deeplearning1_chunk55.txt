@@ -1,0 +1,563 @@
+. )
+
+h
+
+f
+f
+x
+
+h(t)
+f
+
+h(t+1)
+f
+
+h(... )
+
+f
+
+Unfold
+x(tâˆ’1)
+
+x (t )
+
+x(t+1)
+
+Figure 10.2: A recurrent network with no outputs. This recurrent network just processes
+information from the input x by incorporating it into the state h that is passed forward
+through time. (Left)Circuit diagram. The black square indicates a delay of a single time
+step. (Right)The same network seen as an unfolded computational graph, where each
+node is now associated with one particular time instance.
+
+Equation 10.5 can be drawn in two diï¬€erent ways. One way to draw the RNN
+is with a diagram containing one node for every component that might exist in a
+376
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+physical implementation of the model, such as a biological neural network. In this
+view, the network deï¬?nes a circuit that operates in real time, with physical parts
+whose current state can inï¬‚uence their future state, as in the left of ï¬?gure 10.2.
+Throughout this chapter, we use a black square in a circuit diagram to indicate
+that an interaction takes place with a delay of a single time step, from the state
+at time t to the state at time t + 1. The other way to draw the RNN is as an
+unfolded computational graph, in which each component is represented by many
+diï¬€erent variables, with one variable per time step, representing the state of the
+component at that point in time. Each variable for each time step is drawn as a
+separate node of the computational graph, as in the right of ï¬?gure 10.2. What we
+call unfolding is the operation that maps a circuit as in the left side of the ï¬?gure
+to a computational graph with repeated pieces as in the right side. The unfolded
+graph now has a size that depends on the sequence length.
+We can represent the unfolded recurrence after t steps with a function g(t):
+h(t) =g(t) (x(t), x(tâˆ’1) , x(tâˆ’2) , . . . , x(2), x (1))
+=f (h(tâˆ’1) , x(t); Î¸)
+
+(10.6)
+(10.7)
+
+The function g(t) takes the whole past sequence (x(t), x(tâˆ’1) , x(tâˆ’2) , . . . , x(2), x (1) )
+as input and produces the current state, but the unfolded recurrent structure
+allows us to factorize g (t) into repeated application of a function f . The unfolding
+process thus introduces two major advantages:
+1. Regardless of the sequence length, the learned model always has the same
+input size, because it is speciï¬?ed in terms of transition from one state to
+another state, rather than speciï¬?ed in terms of a variable-length history of
+states.
+2. It is possible to use the same transition function f with the same parameters
+at every time step.
+These two factors make it possible to learn a single model f that operates on
+all time steps and all sequence lengths, rather than needing to learn a separate
+model g (t) for all possible time steps. Learning a single, shared model allows
+generalization to sequence lengths that did not appear in the training set, and
+allows the model to be estimated with far fewer training examples than would be
+required without parameter sharing.
+Both the recurrent graph and the unrolled graph have their uses. The recurrent
+graph is succinct. The unfolded graph provides an explicit description of which
+computations to perform. The unfolded graph also helps to illustrate the idea of
+377
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+information ï¬‚ow forward in time (computing outputs and losses) and backward
+in time (computing gradients) by explicitly showing the path along which this
+information ï¬‚ows.
+
+10.2
+
+Recurrent Neural Networks
+
+Armed with the graph unrolling and parameter sharing ideas of section 10.1, we
+can design a wide variety of recurrent neural networks.
+y
+
+y (tâˆ’1)
+
+y (t)
+
+y (t+1)
+
+L
+
+L(tâˆ’1)
+
+L(t)
+
+L(t+1)
+
+o
+
+o(tâˆ’1)
+
+o(t)
+
+o(t+1)
+
+Unfold
+
+V
+
+V
+
+W
+
+h(... )
+
+h
+U
+x
+
+W
+
+V
+W
+
+V
+W
+
+W
+
+h(tâˆ’1)
+
+h(t)
+
+h(t+1)
+
+U
+
+U
+
+U
+
+x(tâˆ’1)
+
+x (t)
+
+h(... )
+
+x(t+1)
+
+Figure 10.3: The computational graph to compute the training loss of a recurrent network
+that maps an input sequence of x values to a corresponding sequence of output o values.
+A loss L measures how far each o is from the corresponding training target y . When using
+softmax outputs, we assume o is the unnormalized log probabilities. The loss L internally
+computes yÌ‚ = softmax(o) and compares this to the target y. The RNN has input to hidden
+connections parametrized by a weight matrix U , hidden-to-hidden recurrent connections
+parametrized by a weight matrix W , and hidden-to-output connections parametrized by
+a weight matrix V . Equation 10.8 deï¬?nes forward propagation in this model. (Left)The
+RNN and its loss drawn with recurrent connections. (Right)The same seen as an timeunfolded computational graph, where each node is now associated with one particular
+time instance.
+
+Some examples of important design patterns for recurrent neural networks
+include the following:
+378
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+â€¢ Recurrent networks that produce an output at each time step and have
+recurrent connections between hidden units, illustrated in ï¬?gure 10.3.
+â€¢ Recurrent networks that produce an output at each time step and have
+recurrent connections only from the output at one time step to the hidden
+units at the next time step, illustrated in ï¬?gure 10.4
+â€¢ Recurrent networks with recurrent connections between hidden units, that
+read an entire sequence and then produce a single output, illustrated in
+ï¬?gure 10.5.
+ï¬?gure 10.3 is a reasonably representative example that we return to throughout
+most of the chapter.
+The recurrent neural network of ï¬?gure 10.3 and equation 10.8 is universal in the
+sense that any function computable by a Turing machine can be computed by such
+a recurrent network of a ï¬?nite size. The output can be read from the RNN after
+a number of time steps that is asymptotically linear in the number of time steps
+used by the Turing machine and asymptotically linear in the length of the input
+(Siegelmann and Sontag, 1991; Siegelmann, 1995; Siegelmann and Sontag, 1995;
+Hyotyniemi, 1996). The functions computable by a Turing machine are discrete,
+so these results regard exact implementation of the function, not approximations.
+The RNN, when used as a Turing machine, takes a binary sequence as input and its
+outputs must be discretized to provide a binary output. It is possible to compute all
+functions in this setting using a single speciï¬?c RNN of ï¬?nite size (Siegelmann and
+Sontag (1995) use 886 units). The â€œinputâ€? of the Turing machine is a speciï¬?cation
+of the function to be computed, so the same network that simulates this Turing
+machine is suï¬ƒcient for all problems. The theoretical RNN used for the proof
+can simulate an unbounded stack by representing its activations and weights with
+rational numbers of unbounded precision.
+We now develop the forward propagation equations for the RNN depicted in
+ï¬?gure 10.3. The ï¬?gure does not specify the choice of activation function for the
+hidden units. Here we assume the hyperbolic tangent activation function. Also,
+the ï¬?gure does not specify exactly what form the output and loss function take.
+Here we assume that the output is discrete, as if the RNN is used to predict words
+or characters. A natural way to represent discrete variables is to regard the output
+o as giving the unnormalized log probabilities of each possible value of the discrete
+variable. We can then apply the softmax operation as a post-processing step to
+obtain a vector yÌ‚ of normalized probabilities over the output. Forward propagation
+begins with a speciï¬?cation of the initial state h(0) . Then, for each time step from
+379
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+y
+
+y (tâˆ’1)
+
+y (t )
+
+y (t+1)
+
+L
+
+L(tâˆ’1)
+
+L(t)
+
+L(t+1)
+
+o(tâˆ’1)
+
+o(t)
+
+o(t+1)
+
+o
+
+o(... )
+
+W
+
+V
+
+W
+
+W
+
+W
+
+V
+
+V
+
+V
+
+h(tâˆ’1)
+
+h(t)
+
+h(t+1)
+
+U
+
+U
+
+U
+
+x(tâˆ’1)
+
+x (t )
+
+x(t+1)
+
+W
+Unfold
+
+h
+
+U
+x
+
+h(... )
+
+Figure 10.4: An RNN whose only recurrence is the feedback connection from the output
+to the hidden layer. At each time step t, the input is x t, the hidden layer activations are
+h(t) , the outputs are o(t), the targets are y (t) and the loss is L(t). (Left)Circuit diagram.
+(Right)Unfolded computational graph. Such an RNN is less powerful (can express a
+smaller set of functions) than those in the family represented by ï¬?gure 10.3. The RNN
+in ï¬?gure 10.3 can choose to put any information it wants about the past into its hidden
+representation h and transmit h to the future. The RNN in this ï¬?gure is trained to
+put a speciï¬?c output value into o, and o is the only information it is allowed to send
+to the future. There are no direct connections from h going forward. The previous h
+is connected to the present only indirectly, via the predictions it was used to produce.
+Unless o is very high-dimensional and rich, it will usually lack important information
+from the past. This makes the RNN in this ï¬?gure less powerful, but it may be easier to
+train because each time step can be trained in isolation from the others, allowing greater
+parallelization during training, as described in section 10.2.1.
+
+380
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+t = 1 to t = Ï„ , we apply the following update equations:
+a(t)
+
+= b + W h(tâˆ’1) + U x(t)
+
+(10.8)
+
+h(t)
+
+= tanh(a(t))
+
+(10.9)
+
+o(t)
+
+= c + V h ( t)
+
+(10.10)
+
+yÌ‚(t)
+
+= softmax(o(t) )
+
+(10.11)
+
+where the parameters are the bias vectors b and c along with the weight matrices
+U, V and W , respectively for input-to-hidden, hidden-to-output and hidden-tohidden connections. This is an example of a recurrent network that maps an
+input sequence to an output sequence of the same length. The total loss for a
+given sequence of x values paired with a sequence of y values would then be just
+the sum of the losses over all the time steps. For example, if L(t) is the negative
+log-likelihood of y (t) given x (1) , . . . , x(t) , then
+î€?
+î€‘
+(1)
+(
+Ï„
+)
+(1)
+(
+Ï„
+)
+L {x , . . . , x }, {y , . . . , y }
+(10.12)
+î?˜
+=
+L(t)
+(10.13)
+t
+
+=âˆ’
+
+î?˜
+t
+
+î€?
+î€‘
+(t)
+(1)
+(t)
+log p model y | {x , . . . , x } ,
+
+(10.14)
+
+î€€
+î€?
+where pmodel y (t) | {x(1) , . . . , x(t) } is given by reading the entry for y (t) from the
+modelâ€™s output vector yÌ‚ (t). Computing the gradient of this loss function with respect
+to the parameters is an expensive operation. The gradient computation involves
+performing a forward propagation pass moving left to right through our illustration
+of the unrolled graph in ï¬?gure 10.3, followed by a backward propagation pass
+moving right to left through the graph. The runtime is O(Ï„ ) and cannot be reduced
+by parallelization because the forward propagation graph is inherently sequential;
+each time step may only be computed after the previous one. States computed
+in the forward pass must be stored until they are reused during the backward
+pass, so the memory cost is also O(Ï„). The back-propagation algorithm applied
+to the unrolled graph with O(Ï„) cost is called back-propagation through time
+or BPTT and is discussed further in section 10.2.2. The network with recurrence
+between hidden units is thus very powerful but also expensive to train. Is there an
+alternative?
+
+10.2.1
+
+Teacher Forcing and Networks with Output Recurrence
+
+The network with recurrent connections only from the output at one time step to
+the hidden units at the next time step (shown in ï¬?gure 10.4) is strictly less powerful
+381
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+because it lacks hidden-to-hidden recurrent connections. For example, it cannot
+simulate a universal Turing machine. Because this network lacks hidden-to-hidden
+recurrence, it requires that the output units capture all of the information about
+the past that the network will use to predict the future. Because the output units
+are explicitly trained to match the training set targets, they are unlikely to capture
+the necessary information about the past history of the input, unless the user
+knows how to describe the full state of the system and provides it as part of the
+training set targets. The advantage of eliminating hidden-to-hidden recurrence
+is that, for any loss function based on comparing the prediction at time t to the
+training target at time t, all the time steps are decoupled. Training can thus be
+parallelized, with the gradient for each step t computed in isolation. There is no
+need to compute the output for the previous time step ï¬?rst, because the training
+set provides the ideal value of that output.
+L(Ï„ )
+
+y (Ï„ )
+
+o(Ï„ )
+
+V
+...
+
+W
+
+h(tâˆ’1)
+W
+
+U
+x(tâˆ’1)
+
+h(t)
+
+U
+x ( t)
+
+...
+
+W
+
+W
+
+h(Ï„ )
+
+U
+
+U
+
+x(...)
+
+x (Ï„ )
+
+Figure 10.5: Time-unfolded recurrent neural network with a single output at the end
+of the sequence. Such a network can be used to summarize a sequence and produce a
+ï¬?xed-size representation used as input for further processing. There might be a target
+right at the end (as depicted here) or the gradient on the output o(t) can be obtained by
+back-propagating from further downstream modules.
+
+Models that have recurrent connections from their outputs leading back into
+the model may be trained with teacher forcing. Teacher forcing is a procedure
+that emerges from the maximum likelihood criterion, in which during training the
+model receives the ground truth output y(t) as input at time t + 1. We can see
+this by examining a sequence with two time steps. The conditional maximum
+
+382
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+y (tâˆ’1)
+
+y ( t)
+
+L(tâˆ’1)
+
+L ( t)
+
+W
+o(tâˆ’1)
+
+o(t)
+
+o(tâˆ’1)
+
+V
+
+V
+
+V
+
+V
+
+h(tâˆ’1)
+
+h ( t)
+
+h(tâˆ’1)
+
+h(t)
+
+U
+
+U
+
+U
+
+U
+
+x(tâˆ’1)
+
+x ( t)
+
+x(tâˆ’1)
+
+x (t )
+
+o(t)
+
+W
+
+Train time
+
+Test time
+
+Figure 10.6: Illustration of teacher forcing. Teacher forcing is a training technique that is
+applicable to RNNs that have connections from their output to their hidden states at the
+next time step. (Left)At train time, we feed the correct outputy (t) drawn from the train
+set as input to h (t+1) . (Right)When the model is deployed, the true output is generally
+not known. In this case, we approximate the correct output y(t) with the modelâ€™s output
+o (t), and feed the output back into the model.
+
+383
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+likelihood criterion is
+î€?
+î€‘
+log p y(1), y (2) | x(1) , x (2)
+î€?
+î€‘
+î€?
+î€‘
+(2)
+(1)
+(1)
+(2)
+(1)
+(1)
+(2)
+= log p y | y , x , x
++ log p y | x , x
+
+(10.15)
+(10.16)
+
+In this example, we see that at time t = 2, the model is trained to maximize the
+conditional probability of y(2) given both the x sequence so far and the previous y
+value from the training set. Maximum likelihood thus speciï¬?es that during training,
+rather than feeding the modelâ€™s own output back into itself, these connections
+should be fed with the target values specifying what the correct output should be.
+This is illustrated in ï¬?gure 10.6.
+We originally motivated teacher forcing as allowing us to avoid back-propagation
+through time in models that lack hidden-to-hidden connections. Teacher forcing
+may still be applied to models that have hidden-to-hidden connections so long as
+they have connections from the output at one time step to values computed in the
+next time step. However, as soon as the hidden units become a function of earlier
+time steps, the BPTT algorithm is necessary. Some models may thus be trained
+with both teacher forcing and BPTT.
+The disadvantage of strict teacher forcing arises if the network is going to be
+later used in an open-loop mode, with the network outputs (or samples

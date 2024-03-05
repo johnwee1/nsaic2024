@@ -1,0 +1,280 @@
+of the Hessian matrix
+in this region, or simply the need to circumnavigate the tall â€œmountainâ€? visible in the
+ï¬?gure via an indirect arcing path.
+
+287
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+Gradient descent is designed to move â€œdownhillâ€? and is not explicitly designed
+to seek a critical point. Newtonâ€™s method, however, is designed to solve for a
+point where the gradient is zero. Without appropriate modiï¬?cation, it can jump
+to a saddle point. The proliferation of saddle points in high dimensional spaces
+presumably explains why second-order methods have not succeeded in replacing
+gradient descent for neural network training. Dauphin et al. (2014) introduced a
+saddle-free Newton method for second-order optimization and showed that it
+improves signiï¬?cantly over the traditional version. Second-order methods remain
+diï¬ƒcult to scale to large neural networks, but this saddle-free approach holds
+promise if it could be scaled.
+There are other kinds of points with zero gradient besides minima and saddle
+points. There are also maxima, which are much like saddle points from the
+perspective of optimizationâ€”many algorithms are not attracted to them, but
+unmodiï¬?ed Newtonâ€™s method is. Maxima of many classes of random functions
+become exponentially rare in high dimensional space, just like minima do.
+There may also be wide, ï¬‚at regions of constant value. In these locations, the
+gradient and also the Hessian are all zero. Such degenerate locations pose major
+problems for all numerical optimization algorithms. In a convex problem, a wide,
+ï¬‚at region must consist entirely of global minima, but in a general optimization
+problem, such a region could correspond to a high value of the objective function.
+
+8.2.4
+
+Cliï¬€s and Exploding Gradients
+
+Neural networks with many layers often have extremely steep regions resembling
+cliï¬€s, as illustrated in ï¬?gure 8.3. These result from the multiplication of several
+large weights together. On the face of an extremely steep cliï¬€ structure, the
+gradient update step can move the parameters extremely far, usually jumping oï¬€
+of the cliï¬€ structure altogether.
+
+288
+
+î?Šî€¨î?·î€»î?¢î€©
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+î?·
+î?¢
+
+Figure 8.3: The objective function for highly nonlinear deep neural networks or for
+recurrent neural networks often contains sharp nonlinearities in parameter space resulting
+from the multiplication of several parameters. These nonlinearities give rise to very
+high derivatives in some places. When the parameters get close to such a cliï¬€ region, a
+gradient descent update can catapult the parameters very far, possibly losing most of the
+optimization work that had been done. Figure adapted with permission from Pascanu
+et al. (2013).
+
+The cliï¬€ can be dangerous whether we approach it from above or from below,
+but fortunately its most serious consequences can be avoided using the gradient
+clipping heuristic described in section 10.11.1. The basic idea is to recall that
+the gradient does not specify the optimal step size, but only the optimal direction
+within an inï¬?nitesimal region. When the traditional gradient descent algorithm
+proposes to make a very large step, the gradient clipping heuristic intervenes to
+reduce the step size to be small enough that it is less likely to go outside the region
+where the gradient indicates the direction of approximately steepest descent. Cliï¬€
+structures are most common in the cost functions for recurrent neural networks,
+because such models involve a multiplication of many factors, with one factor
+for each time step. Long temporal sequences thus incur an extreme amount of
+multiplication.
+
+8.2.5
+
+Long-Term Dependencies
+
+Another diï¬ƒculty that neural network optimization algorithms must overcome
+arises when the computational graph becomes extremely deep. Feedforward
+networks with many layers have such deep computational graphs. So do recurrent
+networks, described in chapter 10, which construct very deep computational graphs
+289
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+by repeatedly applying the same operation at each time step of a long temporal
+sequence. Repeated application of the same parameters gives rise to especially
+pronounced diï¬ƒculties.
+For example, suppose that a computational graph contains a path that consists
+of repeatedly multiplying by a matrix W . After t steps, this is equivalent to multiplying by W t . Suppose that W has an eigendecomposition W = V diag(Î»)V âˆ’1 .
+In this simple case, it is straightforward to see that
+î€€
+î€?t
+W t = V diag(Î»)V âˆ’1 = V diag(Î») tV âˆ’1.
+(8.11)
+
+Any eigenvalues Î» i that are not near an absolute value of 1 will either explode if they
+are greater than 1 in magnitude or vanish if they are less than 1 in magnitude. The
+vanishing and exploding gradient problem refers to the fact that gradients
+through such a graph are also scaled according to diag(Î» )t. Vanishing gradients
+make it diï¬ƒcult to know which direction the parameters should move to improve
+the cost function, while exploding gradients can make learning unstable. The cliï¬€
+structures described earlier that motivate gradient clipping are an example of the
+exploding gradient phenomenon.
+The repeated multiplication by W at each time step described here is very
+similar to the power method algorithm used to ï¬?nd the largest eigenvalue of
+a matrix W and the corresponding eigenvector. From this point of view it is
+not surprising that xî€¾ W t will eventually discard all components of x that are
+orthogonal to the principal eigenvector of W .
+
+Recurrent networks use the same matrix W at each time step, but feedforward
+networks do not, so even very deep feedforward networks can largely avoid the
+vanishing and exploding gradient problem (Sussillo, 2014).
+We defer a further discussion of the challenges of training recurrent networks
+until section 10.7, after recurrent networks have been described in more detail.
+
+8.2.6
+
+Inexact Gradients
+
+Most optimization algorithms are designed with the assumption that we have
+access to the exact gradient or Hessian matrix. In practice, we usually only have
+a noisy or even biased estimate of these quantities. Nearly every deep learning
+algorithm relies on sampling-based estimates at least insofar as using a minibatch
+of training examples to compute the gradient.
+In other cases, the objective function we want to minimize is actually intractable.
+When the objective function is intractable, typically its gradient is intractable as
+well. In such cases we can only approximate the gradient. These issues mostly arise
+290
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+with the more advanced models in part III. For example, contrastive divergence
+gives a technique for approximating the gradient of the intractable log-likelihood
+of a Boltzmann machine.
+Various neural network optimization algorithms are designed to account for
+imperfections in the gradient estimate. One can also avoid the problem by choosing
+a surrogate loss function that is easier to approximate than the true loss.
+
+8.2.7
+
+Poor Correspondence between Local and Global Structure
+
+Many of the problems we have discussed so far correspond to properties of the
+loss function at a single pointâ€”it can be diï¬ƒcult to make a single step if J(Î¸ ) is
+poorly conditioned at the current point Î¸, or if Î¸ lies on a cliï¬€, or if Î¸ is a saddle
+point hiding the opportunity to make progress downhill from the gradient.
+It is possible to overcome all of these problems at a single point and still
+perform poorly if the direction that results in the most improvement locally does
+not point toward distant regions of much lower cost.
+Goodfellow et al. (2015) argue that much of the runtime of training is due to
+the length of the trajectory needed to arrive at the solution. Figure 8.2 shows that
+the learning trajectory spends most of its time tracing out a wide arc around a
+mountain-shaped structure.
+Much of research into the diï¬ƒculties of optimization has focused on whether
+training arrives at a global minimum, a local minimum, or a saddle point, but in
+practice neural networks do not arrive at a critical point of any kind. Figure 8.1
+shows that neural networks often do not arrive at a region of small gradient. Indeed,
+such critical points do not even necessarily exist. For example, the loss function
+âˆ’ log p( y | x; Î¸) can lack a global minimum point and instead asymptotically
+approach some value as the model becomes more conï¬?dent. For a classiï¬?er with
+discrete y and p(y | x) provided by a softmax, the negative log-likelihood can
+become arbitrarily close to zero if the model is able to correctly classify every
+example in the training set, but it is impossible to actually reach the value of
+zero. Likewise, a model of real values p(y | x) = N (y; f (Î¸), Î² âˆ’1 ) can have negative
+log-likelihood that asymptotes to negative inï¬?nityâ€”if f(Î¸) is able to correctly
+predict the value of all training set y targets, the learning algorithm will increase
+Î² without bound. See ï¬?gure 8.4 for an example of a failure of local optimization to
+ï¬?nd a good cost function value even in the absence of any local minima or saddle
+points.
+Future research will need to develop further understanding of the factors that
+inï¬‚uence the length of the learning trajectory and better characterize the outcome
+291
+
+J(Î¸ )
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+Î¸
+
+Figure 8.4: Optimization based on local downhill moves can fail if the local surface does
+not point toward the global solution. Here we provide an example of how this can occur,
+even if there are no saddle points and no local minima. This example cost function
+contains only asymptotes toward low values, not minima. The main cause of diï¬ƒculty in
+this case is being initialized on the wrong side of the â€œmountainâ€? and not being able to
+traverse it. In higher dimensional space, learning algorithms can often circumnavigate
+such mountains but the trajectory associated with doing so may be long and result in
+excessive training time, as illustrated in ï¬?gure 8.2.
+
+of the process.
+Many existing research directions are aimed at ï¬?nding good initial points for
+problems that have diï¬ƒcult global structure, rather than developing algorithms
+that use non-local moves.
+Gradient descent and essentially all learning algorithms that are eï¬€ective for
+training neural networks are based on making small, local moves. The previous
+sections have primarily focused on how the correct direction of these local moves
+can be diï¬ƒcult to compute. We may be able to compute some properties of the
+objective function, such as its gradient, only approximately, with bias or variance
+in our estimate of the correct direction. In these cases, local descent may or may
+not deï¬?ne a reasonably short path to a valid solution, but we are not actually
+able to follow the local descent path. The objective function may have issues
+such as poor conditioning or discontinuous gradients, causing the region where
+the gradient provides a good model of the objective function to be very small. In
+these cases, local descent with steps of size î€? may deï¬?ne a reasonably short path
+to the solution, but we are only able to compute the local descent direction with
+steps of size Î´ î€œ î€? . In these cases, local descent may or may not deï¬?ne a path
+to the solution, but the path contains many steps, so following the path incurs a
+292
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+high computational cost. Sometimes local information provides us no guide, when
+the function has a wide ï¬‚at region, or if we manage to land exactly on a critical
+point (usually this latter scenario only happens to methods that solve explicitly
+for critical points, such as Newtonâ€™s method). In these cases, local descent does
+not deï¬?ne a path to a solution at all. In other cases, local moves can be too greedy
+and lead us along a path that moves downhill but away from any solution, as in
+ï¬?gure 8.4, or along an unnecessarily long trajectory to the solution, as in ï¬?gure 8.2.
+Currently, we do not understand which of these problems are most relevant to
+making neural network optimization diï¬ƒcult, and this is an active area of research.
+Regardless of which of these problems are most signiï¬?cant, all of them might be
+avoided if there exists a region of space connected reasonably directly to a solution
+by a path that local descent can follow, and if we are able to initialize learning
+within that well-behaved region. This last view suggests research into choosing
+good initial points for traditional optimization algorithms to use.
+
+8.2.8
+
+Theoretical Limits of Optimization
+
+Several theoretical results show that there are limits on the performance of any
+optimization algorithm we might design for neural networks (Blum and Rivest,
+1992; Judd, 1989; Wolpert and MacReady, 1997). Typically these results have
+little bearing on the use of neural networks in practice.
+Some theoretical results apply only to the case where the units of a neural
+network output discrete values. However, most neural network units output
+smoothly increasing values that make optimization via local search feasible. Some
+theoretical results show that there exist problem classes that are intractable, but
+it can be diï¬ƒcult to tell whether a particular problem falls into that class. Other
+results show that ï¬?nding a solution for a network of a given size is intractable, but
+in practice we can ï¬?nd a solution easily by using a larger network for which many
+more parameter settings correspond to an acceptable solution. Moreover, in the
+context of neural network training, we usually do not care about ï¬?nding the exact
+minimum of a function, but seek only to reduce its value suï¬ƒciently to obtain good
+generalization error. Theoretical analysis of whether an optimization algorithm
+can accomplish this goal is extremely diï¬ƒcult. Developing more realistic bounds
+on the performance of optimization algorithms therefore remains an important
+goal for machine learning research.
+
+293
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+8.3
+
+Basic Algorithms
+
+We have previously introduced the gradient descent (section 4.3) algorithm that
+follows the gradient of an entire training set downhill. This may be accelerated
+considerably by using stochastic gradient descent to follow the gradient of randomly
+selected minibatches downhill, as discussed in section 5.9 and section 8.1.3.
+
+8.3.1
+
+Stochastic Gradient Descent
+
+Stochastic gradient descent (SGD) and its variants are probably the most used
+optimization algorithms for machine learning in general and for deep learning
+in particular. As discussed in section 8.1.3, it is possible to obtain an unbiased
+estimate of the gradient by taking the average gradient on a minibatch of m
+examples drawn i.i.d from the data generating distribution.
+Algorithm 8.1 shows how to follow this estimate of the gradient downhill.
+Algorithm 8.1 Stochastic gradient descent (SGD) update at training iteration k
+Require: Learning rate î€?k .
+Require: Initial parameter Î¸
+while stopping criterion not met do
+Sample a minibatch of m examples from the training set {x(1) , . . . , x (m)} with
+corresponding targets y(i).
+î??
+Compute gradient estimate: gÌ‚ â†? + m1 âˆ‡ Î¸ i L(f (x(i) ; Î¸), y (i))
+Apply update: Î¸ â†? Î¸ âˆ’ î€?gÌ‚
+end while
+A crucial parameter for the SGD algorithm is the learning rate. Previously, we
+have described SGD 

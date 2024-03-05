@@ -1,0 +1,368 @@
+N
+
+Minimum
+
+Maximum
+
+Saddle point
+
+Figure 4.2: Examples of each of the three types of critical points in 1-D. A critical point is
+a point with zero slope. Such a point can either be a local minimum, which is lower than
+the neighboring points, a local maximum, which is higher than the neighboring points, or
+a saddle point, which has neighbors that are both higher and lower than the point itself.
+
+so it is not possible to increase f (x) by making in�?nitesimal steps. Some critical
+points are neither maxima nor minima. These are known as saddle points. See
+�?gure 4.2 for examples of each type of critical point.
+A point that obtains the absolute lowest value of f (x) is a global minimum.
+It is possible for there to be only one global minimum or multiple global minima of
+the function. It is also possible for there to be local minima that are not globally
+optimal. In the context of deep learning, we optimize functions that may have
+many local minima that are not optimal, and many saddle points surrounded by
+very ﬂat regions. All of this makes optimization very diﬃcult, especially when the
+input to the function is multidimensional. We therefore usually settle for �?nding a
+value of f that is very low, but not necessarily minimal in any formal sense. See
+�?gure 4.3 for an example.
+We often minimize functions that have multiple inputs: f : R n → R. For the
+concept of “minimization�? to make sense, there must still be only one (scalar)
+output.
+For functions with multiple inputs, we must make use of the concept of partial
+derivatives. The partial derivative ∂x∂ i f (x) measures how f changes as only the
+variable x i increases at point x. The gradient generalizes the notion of derivative
+to the case where the derivative is with respect to a vector: the gradient of f is the
+vector containing all of the partial derivatives, denoted ∇ xf (x). Element i of the
+gradient is the partial derivative of f with respect to x i. In multiple dimensions,
+84
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+f (x )
+
+This local minimum
+performs nearly as well as
+the global one,
+so it is an acceptable
+halting point.
+Ideally, we would like
+to arrive at the global
+minimum, but this
+might not be possible.
+
+This local minimum performs
+poorly and should be avoided.
+
+x
+
+Figure 4.3: Optimization algorithms may fail to �?nd a global minimum when there are
+multiple local minima or plateaus present. In the context of deep learning, we generally
+accept such solutions even though they are not truly minimal, so long as they correspond
+to signi�?cantly low values of the cost function.
+
+critical points are points where every element of the gradient is equal to zero.
+The directional derivative in direction u (a unit vector) is the slope of the
+function f in direction u. In other words, the directional derivative is the derivative
+of the function f (x + αu) with respect to α, evaluated at α = 0. Using the chain
+∂
+rule, we can see that ∂α
+f (x + αu) evaluates to u∇x f (x) when α = 0.
+To minimize f, we would like to �?nd the direction in which f decreases the
+fastest. We can do this using the directional derivative:
+min
+
+u,u u=1
+
+=
+
+u∇x f (x)
+
+min ||u||2||∇ x f (x)||2 cos θ
+
+u,u  u=1
+
+(4.3)
+(4.4)
+
+where θ is the angle between u and the gradient. Substituting in ||u||2 = 1 and
+ignoring factors that do not depend on u, this simpli�?es to minu cos θ. This is
+minimized when u points in the opposite direction as the gradient. In other
+words, the gradient points directly uphill, and the negative gradient points directly
+downhill. We can decrease f by moving in the direction of the negative gradient.
+This is known as the method of steepest descent or gradient descent.
+Steepest descent proposes a new point
+x  = x − �? ∇ x f (x )
+85
+
+(4.5)
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+where �? is the learning rate, a positive scalar determining the size of the step.
+We can choose �? in several diﬀerent ways. A popular approach is to set �? to a small
+constant. Sometimes, we can solve for the step size that makes the directional
+derivative vanish. Another approach is to evaluate f (x − �?∇x f (x)) for several
+values of �? and choose the one that results in the smallest objective function value.
+This last strategy is called a line search.
+Steepest descent converges when every element of the gradient is zero (or, in
+practice, very close to zero). In some cases, we may be able to avoid running this
+iterative algorithm, and just jump directly to the critical point by solving the
+equation ∇x f (x) = 0 for x.
+
+Although gradient descent is limited to optimization in continuous spaces, the
+general concept of repeatedly making a small move (that is approximately the best
+small move) towards better con�?gurations can be generalized to discrete spaces.
+Ascending an objective function of discrete parameters is called hill climbing
+(Russel and Norvig, 2003).
+
+4.3.1
+
+Beyond the Gradient: Jacobian and Hessian Matrices
+
+Sometimes we need to �?nd all of the partial derivatives of a function whose input
+and output are both vectors. The matrix containing all such partial derivatives is
+known as a Jacobian matrix. Speci�?cally, if we have a function f : R m → R n ,
+∂
+f (x ) i .
+then the Jacobian matrix J ∈ Rn×m of f is de�?ned such that J i,j = ∂x
+j
+
+We are also sometimes interested in a derivative of a derivative. This is known
+as a second derivative. For example, for a function f : R n → R, the derivative
+2
+with respect to xi of the derivative of f with respect to xj is denoted as ∂x∂∂x f.
+i
+
+j
+
+d2
+
+In a single dimension, we can denote dx
+2 f by f (x). The second derivative tells
+
+us how the �?rst derivative will change as we vary the input. This is important
+because it tells us whether a gradient step will cause as much of an improvement
+as we would expect based on the gradient alone. We can think of the second
+derivative as measuring curvature. Suppose we have a quadratic function (many
+functions that arise in practice are not quadratic but can be approximated well
+as quadratic, at least locally). If such a function has a second derivative of zero,
+then there is no curvature. It is a perfectly ﬂat line, and its value can be predicted
+using only the gradient. If the gradient is 1, then we can make a step of size �?
+along the negative gradient, and the cost function will decrease by �?. If the second
+derivative is negative, the function curves downward, so the cost function will
+actually decrease by more than �?. Finally, if the second derivative is positive, the
+function curves upward, so the cost function can decrease by less than �?. See
+86
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+x
+
+Positive curvature
+
+f (x )
+
+No curvature
+
+f (x )
+
+f (x )
+
+Negative curvature
+
+x
+
+x
+
+Figure 4.4: The second derivative determines the curvature of a function. Here we show
+quadratic functions with various curvature. The dashed line indicates the value of the cost
+function we would expect based on the gradient information alone as we make a gradient
+step downhill. In the case of negative curvature, the cost function actually decreases faster
+than the gradient predicts. In the case of no curvature, the gradient predicts the decrease
+correctly. In the case of positive curvature, the function decreases slower than expected
+and eventually begins to increase, so steps that are too large can actually increase the
+function inadvertently.
+
+�?gure 4.4 to see how diﬀerent forms of curvature aﬀect the relationship between
+the value of the cost function predicted by the gradient and the true value.
+When our function has multiple input dimensions, there are many second
+derivatives. These derivatives can be collected together into a matrix called the
+Hessian matrix. The Hessian matrix H (f )(x) is de�?ned such that
+∂2
+H (f )(x)i,j =
+f (x ).
+∂xi ∂xj
+
+(4.6)
+
+Equivalently, the Hessian is the Jacobian of the gradient.
+Anywhere that the second partial derivatives are continuous, the diﬀerential
+operators are commutative, i.e. their order can be swapped:
+∂2
+∂2
+f (x ) =
+f (x ).
+∂x i∂x j
+∂x j∂xi
+
+(4.7)
+
+This implies that Hi,j = H j,i, so the Hessian matrix is symmetric at such points.
+Most of the functions we encounter in the context of deep learning have a symmetric
+Hessian almost everywhere. Because the Hessian matrix is real and symmetric,
+we can decompose it into a set of real eigenvalues and an orthogonal basis of
+87
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+eigenvectors. The second derivative in a speci�?c direction represented by a unit
+vector d is given by d Hd. When d is an eigenvector of H , the second derivative
+in that direction is given by the corresponding eigenvalue. For other directions of
+d, the directional second derivative is a weighted average of all of the eigenvalues,
+with weights between 0 and 1, and eigenvectors that have smaller angle with d
+receiving more weight. The maximum eigenvalue determines the maximum second
+derivative and the minimum eigenvalue determines the minimum second derivative.
+The (directional) second derivative tells us how well we can expect a gradient
+descent step to perform. We can make a second-order Taylor series approximation
+to the function f (x) around the current point x(0):
+1
+f (x) ≈ f (x (0)) + (x − x(0) ) g + (x − x(0) ) H (x − x(0) ).
+2
+
+(4.8)
+
+where g is the gradient and H is the Hessian at x(0). If we use a learning rate
+of �?, then the new point x will be given by x (0) − �?g. Substituting this into our
+approximation, we obtain
+f (x(0) − �?g) ≈ f (x(0) ) − �?g g +
+
+1 2 
+�? g Hg.
+2
+
+(4.9)
+
+There are three terms here: the original value of the function, the expected
+improvement due to the slope of the function, and the correction we must apply
+to account for the curvature of the function. When this last term is too large, the
+gradient descent step can actually move uphill. When gHg is zero or negative,
+the Taylor series approximation predicts that increasing �? forever will decrease f
+forever. In practice, the Taylor series is unlikely to remain accurate for large �?, so
+one must resort to more heuristic choices of �? in this case. When gHg is positive,
+solving for the optimal step size that decreases the Taylor series approximation of
+the function the most yields
+g g
+∗
+�? = 
+.
+(4.10)
+g Hg
+In the worst case, when g aligns with the eigenvector of H corresponding to the
+1
+maximal eigenvalue λ max, then this optimal step size is given by λ max
+. To the
+extent that the function we minimize can be approximated well by a quadratic
+function, the eigenvalues of the Hessian thus determine the scale of the learning
+rate.
+The second derivative can be used to determine whether a critical point is
+a local maximum, a local minimum, or saddle point. Recall that on a critical
+point, f  (x) = 0. When the second derivative f (x) > 0, the �?rst derivative f  (x)
+increases as we move to the right and decreases as we move to the left. This means
+88
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+f (x − �?) < 0 and f (x + �?) > 0 for small enough �?. In other words, as we move
+right, the slope begins to point uphill to the right, and as we move left, the slope
+begins to point uphill to the left. Thus, when f (x) = 0 and f  (x) > 0, we can
+conclude that x is a local minimum. Similarly, when f (x) = 0 and f (x) < 0, we
+can conclude that x is a local maximum. This is known as the second derivative
+test. Unfortunately, when f  (x) = 0, the test is inconclusive. In this case x may
+be a saddle point, or a part of a ﬂat region.
+In multiple dimensions, we need to examine all of the second derivatives of the
+function. Using the eigendecomposition of the Hessian matrix, we can generalize
+the second derivative test to multiple dimensions. At a critical point, where
+∇x f (x) = 0, we can examine the eigenvalues of the Hessian to determine whether
+the critical point is a local maximum, local minimum, or saddle point. When the
+Hessian is positive de�?nite (all its eigenvalues are positive), the point is a local
+minimum. This can be seen by observing that the directional second derivative
+in any direction must be positive, and making reference to the univariate second
+derivative test. Likewise, when the Hessian is negative de�?nite (all its eigenvalues
+are negative), the point is a local maximum. In multiple dimensions, it is actually
+possible to �?nd positive evidence of saddle points in some cases. When at least
+one eigenvalue is positive and at least one eigenvalue is negative, we know that
+x is a local maximum on one cross section of f but a local minimum on another
+cross section. See �?gure 4.5 for an example. Finally, the multidimensional second
+derivative test can be inconclusive, just like the univariate version. The test is
+inconclusive whenever all of the non-zero eigenvalues have the same sign, but at
+least one eigenvalue is zero. This is because the univariate second derivative test is
+inconclusive in the cross section corresponding to the zero eigenvalue.
+In multiple dimensions, there is a diﬀerent second derivative for each direction
+at a single point. The condition number of the Hessian at this point measures
+how much the second derivatives diﬀer from each other. When the Hessian has a
+poor condition number, gradient descent performs poorly. This is because in one
+direction, the derivative increases rapidly, while in another direction, it increases
+slowly. Gradient descent is unaware of this change in the derivative so it does not
+know that it needs to explore preferentially in the direction where the derivative
+remains negative for longer. It also makes it diﬃcult to choose a good step size.
+The step size must be small enough to avoid overshooting the minimum and going
+uphill in directions with strong positive curvature. This usually means that the
+step size is too small to make signi�?cant progress in other directions with less
+curvature. See �?gure 4.6 for an example.
+This issue can be resolved by using information from the Hessian matrix to guide
+89
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+
+
+�?��?� �?� 
+
+
+󰤓
+
+󰤓
+
+�?� 
+
+
+
+󰤓
+
+
+�?�
+
+Figure 4.5: A saddle point containing both positive and negative curvature. The function
+in this example is f (x) = x21 − x22. Along the axis corresponding to x1, the function
+curves upward. This axis is an eigenvector of the Hessian and has a positive eigenvalue.
+Along the axis corresponding to x2 , the function curves downward. This direction is an
+eigenvector of the Hessian with negative eigenvalue. The name “saddle point�? derives from
+the saddle-like shape of this function. This is the quintessential example of a function
+with a saddle point. In more than one dimension, it is not necessary to have an eigenvalue
+of 0 in order to get a saddle point: it is only necessary to have both positive and negative
+eigenvalues. We can think of a saddle point with both signs of eigenvalues as being a local
+maximum within one cross section and a local minimum within another cross section.
+
+90
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+20
+
+x2
+
+10
+0
+−10
+−20
+−30
+−30 −20 −10
+
+0
+x1
+
+10
+
+20
+
+Figure 4.6: Gradient descent fails to exploit the curvature information contained in the
+Hessian matrix. Here we use gradient descent to minimize a quadratic functionf( x) whose
+Hessian matrix has condit

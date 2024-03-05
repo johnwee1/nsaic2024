@@ -1,0 +1,304 @@
+°
+
+î€±î€°
+
+î€²
+
+î€±î€°
+
+î€³
+
+î€±î€°î€´
+
+î€±î€°
+
+î€µ
+
+î€´
+
+î€±î€°
+
+î€µ
+
+î??î?°î?´î?©î?­î?¡î?¬î€ î?£î?¡î?°î?¡î?£î?©î?´î?¹î€ î€¨î?°î?¯î?¬î?¹î?®î?¯î?­î?©î?¡î?¬î€ î?¤î?¥î?§î?²î?¥î?¥î€©
+
+î?Žî?µî?­î?¢î?¥î?²î€ î?¯î?¦î€ î?´î?²î?¡î?©î?®î?©î?®î?§î€ î?¥î?¸î?¡î?­î?°î?¬î?¥î?³
+î€²î€°
+î€±î€µ
+î€±î€°
+î€µ
+î€°
+î€°
+î€±î€°
+
+î€±
+
+î€±î€°
+
+î€±î€°
+
+î€²
+
+î€±î€°
+
+î€³
+
+î€±î€°
+
+î?Žî?µî?­î?¢î?¥î?²î€ î?¯î?¦î€ î?´î?²î?¡î?©î?®î?©î?®î?§î€ î?¥î?¸î?¡î?­î?°î?¬î?¥î?³
+
+Figure 5.4: The eï¬€ect of the training dataset size on the train and test error, as well as
+on the optimal model capacity. We constructed a synthetic regression problem based on
+adding a moderate amount of noise to a degree-5 polynomial, generated a single test set,
+and then generated several diï¬€erent sizes of training set. For each size, we generated 40
+diï¬€erent training sets in order to plot error bars showing 95 percent conï¬?dence intervals.
+(Top)The MSE on the training and test set for two diï¬€erent models: a quadratic model,
+and a model with degree chosen to minimize the test error. Both are ï¬?t in closed form. For
+the quadratic model, the training error increases as the size of the training set increases.
+This is because larger datasets are harder to ï¬?t. Simultaneously, the test error decreases,
+because fewer incorrect hypotheses are consistent with the training data. The quadratic
+model does not have enough capacity to solve the task, so its test error asymptotes to
+a high value. The test error at optimal capacity asymptotes to the Bayes error. The
+training error can fall below the Bayes error, due to the ability of the training algorithm
+to memorize speciï¬?c instances of the training set. As the training size increases to inï¬?nity,
+the training error of any ï¬?xed-capacity model (here, the quadratic model) must rise to at
+least the Bayes error. (Bottom)As the training set size increases, the optimal capacity
+(shown here as the degree of the optimal polynomial regressor) increases. The optimal
+capacity plateaus after reaching suï¬ƒcient complexity to solve the task.
+117
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+performance (over all possible tasks) as merely predicting that every point belongs
+to the same class.
+Fortunately, these results hold only when we average over all possible data
+generating distributions. If we make assumptions about the kinds of probability
+distributions we encounter in real-world applications, then we can design learning
+algorithms that perform well on these distributions.
+This means that the goal of machine learning research is not to seek a universal
+learning algorithm or the absolute best learning algorithm. Instead, our goal is to
+understand what kinds of distributions are relevant to the â€œreal worldâ€? that an AI
+agent experiences, and what kinds of machine learning algorithms perform well on
+data drawn from the kinds of data generating distributions we care about.
+
+5.2.2
+
+Regularization
+
+The no free lunch theorem implies that we must design our machine learning
+algorithms to perform well on a speciï¬?c task. We do so by building a set of
+preferences into the learning algorithm. When these preferences are aligned with
+the learning problems we ask the algorithm to solve, it performs better.
+So far, the only method of modifying a learning algorithm that we have discussed
+concretely is to increase or decrease the modelâ€™s representational capacity by adding
+or removing functions from the hypothesis space of solutions the learning algorithm
+is able to choose. We gave the speciï¬?c example of increasing or decreasing the
+degree of a polynomial for a regression problem. The view we have described so
+far is oversimpliï¬?ed.
+The behavior of our algorithm is strongly aï¬€ected not just by how large we
+make the set of functions allowed in its hypothesis space, but by the speciï¬?c identity
+of those functions. The learning algorithm we have studied so far, linear regression,
+has a hypothesis space consisting of the set of linear functions of its input. These
+linear functions can be very useful for problems where the relationship between
+inputs and outputs truly is close to linear. They are less useful for problems
+that behave in a very nonlinear fashion. For example, linear regression would
+not perform very well if we tried to use it to predict sin(x) from x. We can thus
+control the performance of our algorithms by choosing what kind of functions we
+allow them to draw solutions from, as well as by controlling the amount of these
+functions.
+We can also give a learning algorithm a preference for one solution in its
+hypothesis space to another. This means that both functions are eligible, but one
+is preferred. The unpreferred solution will be chosen only if it ï¬?ts the training
+118
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+data signiï¬?cantly better than the preferred solution.
+For example, we can modify the training criterion for linear regression to include
+weight decay. To perform linear regression with weight decay, we minimize a sum
+comprising both the mean squared error on the training and a criterion J (w) that
+expresses a preference for the weights to have smaller squared L2 norm. Speciï¬?cally,
+J(w) = MSEtrain + Î»wî€¾w,
+
+(5.18)
+
+where Î» is a value chosen ahead of time that controls the strength of our preference
+for smaller weights. When Î» = 0, we impose no preference, and larger Î» forces the
+weights to become smaller. Minimizing J (w) results in a choice of weights that
+make a tradeoï¬€ between ï¬?tting the training data and being small. This gives us
+solutions that have a smaller slope, or put weight on fewer of the features. As an
+example of how we can control a modelâ€™s tendency to overï¬?t or underï¬?t via weight
+decay, we can train a high-degree polynomial regression model with diï¬€erent values
+of Î». See ï¬?gure 5.5 for the results.
+
+î?¸î€°
+
+î??î?¶î?¥î?²î?¦î?©î?´î?´î?©î?®î?§
+î€¨î‚¸ î€¡ î€°î€©
+
+î?¹
+
+î??î?°î?°î?²î?¯î?°î?²î?©î?¡î?´î?¥î€ î?·î?¥î?©î?§î?¨î?´î€ î?¤î?¥î?£î?¡î?¹
+î€¨î??î?¥î?¤î?©î?µî?­ î‚¸î€©
+
+î?¹
+
+î?¹
+
+î?•î?®î?¤î?¥î?²î?¦î?©î?´î?´î?©î?®î?§
+î€¨î?…î?¸î?£î?¥î?³î?³î?©î?¶î?¥î€ î‚¸î€©
+
+î?¸î€°
+
+î?¸î€°
+
+Figure 5.5: We ï¬?t a high-degree polynomial regression model to our example training set
+from ï¬?gure 5.2. The true function is quadratic, but here we use only models with degree 9.
+We vary the amount of weight decay to prevent these high-degree models from overï¬?tting.
+(Left)With very large Î», we can force the model to learn a function with no slope at
+all. This underï¬?ts because it can only represent a constant function. (Center)With a
+medium value of Î», the learning algorithm recovers a curve with the right general shape.
+Even though the model is capable of representing functions with much more complicated
+shape, weight decay has encouraged it to use a simpler function described by smaller
+coeï¬ƒcients. (Right)With weight decay approaching zero (i.e., using the Moore-Penrose
+pseudoinverse to solve the underdetermined problem with minimal regularization), the
+degree-9 polynomial overï¬?ts signiï¬?cantly, as we saw in ï¬?gure 5.2.
+119
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+More generally, we can regularize a model that learns a function f(x; Î¸) by
+adding a penalty called a regularizer to the cost function. In the case of weight
+decay, the regularizer is â„¦(w ) = w î€¾w. In chapter 7, we will see that many other
+regularizers are possible.
+Expressing preferences for one function over another is a more general way
+of controlling a modelâ€™s capacity than including or excluding members from the
+hypothesis space. We can think of excluding a function from a hypothesis space as
+expressing an inï¬?nitely strong preference against that function.
+In our weight decay example, we expressed our preference for linear functions
+deï¬?ned with smaller weights explicitly, via an extra term in the criterion we
+minimize. There are many other ways of expressing preferences for diï¬€erent
+solutions, both implicitly and explicitly. Together, these diï¬€erent approaches
+are known as regularization. Regularization is any modiï¬?cation we make to a
+learning algorithm that is intended to reduce its generalization error but not its
+training error. Regularization is one of the central concerns of the ï¬?eld of machine
+learning, rivaled in its importance only by optimization.
+The no free lunch theorem has made it clear that there is no best machine
+learning algorithm, and, in particular, no best form of regularization. Instead
+we must choose a form of regularization that is well-suited to the particular task
+we want to solve. The philosophy of deep learning in general and this book in
+particular is that a very wide range of tasks (such as all of the intellectual tasks
+that people can do) may all be solved eï¬€ectively using very general-purpose forms
+of regularization.
+
+5.3
+
+Hyperparameters and Validation Sets
+
+Most machine learning algorithms have several settings that we can use to control
+the behavior of the learning algorithm. These settings are called hyperparameters. The values of hyperparameters are not adapted by the learning algorithm
+itself (though we can design a nested learning procedure where one learning
+algorithm learns the best hyperparameters for another learning algorithm).
+In the polynomial regression example we saw in ï¬?gure 5.2, there is a single
+hyperparameter: the degree of the polynomial, which acts as a capacity hyperparameter. The Î» value used to control the strength of weight decay is another
+example of a hyperparameter.
+Sometimes a setting is chosen to be a hyperparameter that the learning algorithm does not learn because it is diï¬ƒcult to optimize. More frequently, the
+120
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+setting must be a hyperparameter because it is not appropriate to learn that
+hyperparameter on the training set. This applies to all hyperparameters that
+control model capacity. If learned on the training set, such hyperparameters would
+always choose the maximum possible model capacity, resulting in overï¬?tting (refer
+to ï¬?gure 5.3). For example, we can always ï¬?t the training set better with a higher
+degree polynomial and a weight decay setting of Î» = 0 than we could with a lower
+degree polynomial and a positive weight decay setting.
+To solve this problem, we need a validation set of examples that the training
+algorithm does not observe.
+Earlier we discussed how a held-out test set, composed of examples coming from
+the same distribution as the training set, can be used to estimate the generalization
+error of a learner, after the learning process has completed. It is important that the
+test examples are not used in any way to make choices about the model, including
+its hyperparameters. For this reason, no example from the test set can be used
+in the validation set. Therefore, we always construct the validation set from the
+training data. Speciï¬?cally, we split the training data into two disjoint subsets. One
+of these subsets is used to learn the parameters. The other subset is our validation
+set, used to estimate the generalization error during or after training, allowing
+for the hyperparameters to be updated accordingly. The subset of data used to
+learn the parameters is still typically called the training set, even though this
+may be confused with the larger pool of data used for the entire training process.
+The subset of data used to guide the selection of hyperparameters is called the
+validation set. Typically, one uses about 80% of the training data for training and
+20% for validation. Since the validation set is used to â€œtrainâ€? the hyperparameters,
+the validation set error will underestimate the generalization error, though typically
+by a smaller amount than the training error. After all hyperparameter optimization
+is complete, the generalization error may be estimated using the test set.
+In practice, when the same test set has been used repeatedly to evaluate
+performance of diï¬€erent algorithms over many years, and especially if we consider
+all the attempts from the scientiï¬?c community at beating the reported state-ofthe-art performance on that test set, we end up having optimistic evaluations with
+the test set as well. Benchmarks can thus become stale and then do not reï¬‚ect the
+true ï¬?eld performance of a trained system. Thankfully, the community tends to
+move on to new (and usually more ambitious and larger) benchmark datasets.
+
+121
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+5.3.1
+
+Cross-Validation
+
+Dividing the dataset into a ï¬?xed training set and a ï¬?xed test set can be problematic
+if it results in the test set being small. A small test set implies statistical uncertainty
+around the estimated average test error, making it diï¬ƒcult to claim that algorithm
+A works better than algorithm B on the given task.
+When the dataset has hundreds of thousands of examples or more, this is not a
+serious issue. When the dataset is too small, are alternative procedures enable one
+to use all of the examples in the estimation of the mean test error, at the price of
+increased computational cost. These procedures are based on the idea of repeating
+the training and testing computation on diï¬€erent randomly chosen subsets or splits
+of the original dataset. The most common of these is the k-fold cross-validation
+procedure, shown in algorithm 5.1, in which a partition of the dataset is formed by
+splitting it into k non-overlapping subsets. The test error may then be estimated
+by taking the average test error across k trials. On trial i, the i -th subset of the
+data is used as the test set and the rest of the data is used as the training set. One
+problem is that there exist no unbiased estimators of the variance of such average
+error estimators (Bengio and Grandvalet, 2004), but approximations are typically
+used.
+
+5.4
+
+Estimators, Bias and Variance
+
+The ï¬?eld of statistics gives us many tools that can be used to achieve the machine
+learning goal of solving a task not only on the training set but also to generalize.
+Foundational concepts such as parameter estimation, bias and variance are useful
+to formally characterize notions of generalization, underï¬?tting and overï¬?tting.
+
+5.4.1
+
+Point Estimation
+
+Point estimation is the attempt to provide the single â€œbestâ€? prediction of some
+quantity of interest. In general the quantity of interest can be a single parameter
+or a vector of parameters in some parametric model, such as the weights in our
+linear regression example in section 5.1.4, but it can also be a whole function.
+In order to distinguish estimates of parameters from their true value, our
+convention will be to denote a point estimate of a parameter Î¸ by Î¸Ì‚.
+Let {x(1) , . . . , x(m) } be a set of m independent and identically distributed
+
+122
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+Algorithm 5.1 The k-fold cross-validation algorithm. It can be used to estimate
+generalization error of a learning algorithm A when the given dataset D is too
+small for a simple train/test or train/valid split to yield accurate estimation of
+generalization error, because the mean of a loss L on a small test set may have too
+high variance. The dataset D contains as elements the abstract examples z(i) (for
+the i-th example), which could stand for an (input,target) pair z(i) = (x(i) , y(i))
+in the case of supervised learning, or for just an input z (i) = x(i) in the case
+of unsupervised learning. The algorithm returns the vector of errors e for each
+example in D, whose mean is the estimated generalization error. The errors on
+individu

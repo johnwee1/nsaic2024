@@ -1,0 +1,315 @@
+RBM-like hidden units. Like the mcRBM, the PoT conditional distribution over the
+observation is a multivariate Gaussian (with non-diagonal covariance) distribution;
+however, unlike the mcRBM, the complementary conditional distribution over the
+hidden variables is given by conditionally independent Gamma distributions. The
+Gamma distribution G(k, Î¸) is a probability distribution over positive real numbers,
+with mean kÎ¸. It is not necessary to have a more detailed understanding of the
+Gamma distribution to understand the basic ideas underlying the mPoT model.
+The mPoT energy function is:
+EmPoT(x, h(m) , h(c) )
+
+(20.48)
+î€’
+î€’
+î€“
+î€“
+î?˜ (c)
+1 î€? (j )î€¾ î€‘2
+(c)
+(m )
+= E m(x, h ) +
+hj
+1+
+r
+x
++ (1 âˆ’ Î³j ) log h j
+2
+j
+(20.49)
+
+(c)
+
+where r(j ) is the covariance weight vector associated with unit h j and Em (x, h(m))
+is as deï¬?ned in equation 20.44.
+Just as with the mcRBM, the mPoT model energy function speciï¬?es a multivariate Gaussian, with a conditional distribution over x that has non-diagonal
+covariance. Learning in the mPoT modelâ€”again, like the mcRBMâ€”is complicated by the inability to sample from the non-diagonal Gaussian conditional
+p mPoT(x | h(m) , h (c) ), so Ranzato et al. (2010b) also advocate direct sampling of
+p(x) via Hamiltonian (hybrid) Monte Carlo.
+680
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+Spike and Slab Restricted Boltzmann Machines Spike and slab restricted
+Boltzmann machines (Courville et al., 2011) or ssRBMs provide another means
+of modeling the covariance structure of real-valued data. Compared to mcRBMs,
+ssRBMs have the advantage of requiring neither matrix inversion nor Hamiltonian
+Monte Carlo methods. Like the mcRBM and the mPoT model, the ssRBMâ€™s binary
+hidden units encode the conditional covariance across pixels through the use of
+auxiliary real-valued variables.
+The spike and slab RBM has two sets of hidden units: binary spike units h,
+and real-valued slab units s. The mean of the visible units conditioned on the
+hidden units is given by (h î€Œ s)W î€¾ . In other words, each column W :,i deï¬?nes a
+component that can appear in the input when hi = 1. The corresponding spike
+variable h i determines whether that component is present at all. The corresponding
+slab variable si determines the intensity of that component, if it is present. When
+a spike variable is active, the corresponding slab variable adds variance to the
+input along the axis deï¬?ned by W:,i . This allows us to model the covariance of the
+inputs. Fortunately, contrastive divergence and persistent contrastive divergence
+with Gibbs sampling are still applicable. There is no need to invert any matrix.
+Formally, the ssRBM model is deï¬?ned via its energy function:
+î€ 
+î€¡
+î?˜
+î?˜
+1
+E ss(x, s, h) = âˆ’
+xî€¾ W:,i sihi + xî€¾ Î› +
+Î¦i hi x
+2
+i
+i
+î?˜
+î?˜
+î?˜
+î?˜
+1
++
+Î±i s2i âˆ’
+Î±i Âµis ih i âˆ’
+bih i +
+Î±i Âµ2i hi,
+2
+i
+
+i
+
+i
+
+(20.50)
+(20.51)
+
+i
+
+where b i is the oï¬€set of the spike h i and Î› is a diagonal precision matrix on the
+observations x. The parameter Î±i > 0 is a scalar precision parameter for the
+real-valued slab variable si . The parameter Î¦i is a non-negative diagonal matrix
+that deï¬?nes an h-modulated quadratic penalty on x. Each Âµi is a mean parameter
+for the slab variable si .
+With the joint distribution deï¬?ned via the energy function, it is relatively
+straightforward to derive the ssRBM conditional distributions. For example,
+by marginalizing out the slab variables s, the conditional distribution over the
+observations given the binary spike variables h is given by:
+î?š
+1 1
+p ss(x | h) =
+exp {âˆ’E (x, s, h)} ds
+(20.52)
+P (h) Z
+î€ 
+î€¡
+î?˜
+W:,i Âµi h i , Cxss|h
+(20.53)
+= N x; Cxss|h
+i
+
+681
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+î€€
+
+î??
+
+î€?âˆ’1
+
+î??
+
+î€¾
+where Cxss|h = Î› + i Î¦ ihi âˆ’ i Î± âˆ’1
+i hi W :,iW:,i
+the covariance matrix Cxss|h is positive deï¬?nite.
+
+. The last equality holds only if
+
+Gating by the spike variables means that the true marginal distribution over
+h î€Œ s is sparse. This is diï¬€erent from sparse coding, where samples from the model
+â€œalmost neverâ€? (in the measure theoretic sense) contain zeros in the code, and MAP
+inference is required to impose sparsity.
+Comparing the ssRBM to the mcRBM and the mPoT models, the ssRBM
+parametrizes the conditional covariance of the observation in a signiï¬?cantly diï¬€erent
+way. The mcRBM and mPoT both model the covariance structure of the observation
+î€?î??
+î€‘âˆ’1
+( c ) (j ) (j )î€¾
++I
+as
+, using the activation of the hidden units hj > 0 to
+j hj r r
+
+enforce constraints on the conditional covariance in the direction r (j ). In contrast,
+the ssRBM speciï¬?es the conditional covariance of the observations using the hidden
+spike activations hi = 1 to pinch the precision matrix along the direction speciï¬?ed
+by the corresponding weight vector. The ssRBM conditional covariance is very
+similar to that given by a diï¬€erent model: the product of probabilistic principal
+components analysis (PoPPCA) (Williams and Agakov, 2002). In the overcomplete
+setting, sparse activations with the ssRBM parametrization permit signiï¬?cant
+variance (above the nominal variance given by Î›âˆ’1 ) only in the selected directions
+of the sparsely activated h i. In the mcRBM or mPoT models, an overcomplete
+representation would mean that to capture variation in a particular direction in
+the observation space requires removing potentially all constraints with positive
+projection in that direction. This would suggest that these models are less well
+suited to the overcomplete setting.
+The primary disadvantage of the spike and slab restricted Boltzmann machine
+is that some settings of the parameters can correspond to a covariance matrix
+that is not positive deï¬?nite. Such a covariance matrix places more unnormalized
+probability on values that are farther from the mean, causing the integral over
+all possible outcomes to diverge. Generally this issue can be avoided with simple
+heuristic tricks. There is not yet any theoretically satisfying solution. Using
+constrained optimization to explicitly avoid the regions where the probability is
+undeï¬?ned is diï¬ƒcult to do without being overly conservative and also preventing
+the model from accessing high-performing regions of parameter space.
+Qualitatively, convolutional variants of the ssRBM produce excellent samples
+of natural images. Some examples are shown in ï¬?gure 16.1.
+The ssRBM allows for several extensions. Including higher-order interactions
+and average-pooling of the slab variables (Courville et al., 2014) enables the model
+to learn excellent features for a classiï¬?er when labeled data is scarce. Adding a
+682
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+term to the energy function that prevents the partition function from becoming
+undeï¬?ned results in a sparse coding model, spike and slab sparse coding (Goodfellow
+et al., 2013d), also known as S3C.
+
+20.6
+
+Convolutional Boltzmann Machines
+
+As seen in chapter 9, extremely high dimensional inputs such as images place
+great strain on the computation, memory and statistical requirements of machine
+learning models. Replacing matrix multiplication by discrete convolution with a
+small kernel is the standard way of solving these problems for inputs that have
+translation invariant spatial or temporal structure. Desjardins and Bengio (2008)
+showed that this approach works well when applied to RBMs.
+Deep convolutional networks usually require a pooling operation so that the
+spatial size of each successive layer decreases. Feedforward convolutional networks
+often use a pooling function such as the maximum of the elements to be pooled.
+It is unclear how to generalize this to the setting of energy-based models. We
+could introduce a binary pooling unit p over n binary detector units d and enforce
+p = maxi di by setting the energy function to be âˆž whenever that constraint is
+violated. This does not scale well though, as it requires evaluating 2n diï¬€erent
+energy conï¬?gurations to compute the normalization constant. For a small 3 Ã— 3
+pooling region this requires 29 = 512 energy function evaluations per pooling unit!
+Lee et al. (2009) developed a solution to this problem called probabilistic
+max pooling (not to be confused with â€œstochastic pooling,â€? which is a technique
+for implicitly constructing ensembles of convolutional feedforward networks). The
+strategy behind probabilistic max pooling is to constrain the detector units so
+at most one may be active at a time. This means there are only n + 1 total
+states (one state for each of the n detector units being on, and an additional state
+corresponding to all of the detector units being oï¬€). The pooling unit is on if
+and only if one of the detector units is on. The state with all units oï¬€ is assigned
+energy zero. We can think of this as describing a model with a single variable that
+has n + 1 states, or equivalently as a model that has n + 1 variables that assigns
+energy âˆž to all but n + 1 joint assignments of variables.
+While eï¬ƒcient, probabilistic max pooling does force the detector units to be
+mutually exclusive, which may be a useful regularizing constraint in some contexts
+or a harmful limit on model capacity in other contexts. It also does not support
+overlapping pooling regions. Overlapping pooling regions are usually required
+to obtain the best performance from feedforward convolutional networks, so this
+constraint probably greatly reduces the performance of convolutional Boltzmann
+683
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+machines.
+Lee et al. (2009) demonstrated that probabilistic max pooling could be used
+to build convolutional deep Boltzmann machines.3 This model is able to perform
+operations such as ï¬?lling in missing portions of its input. While intellectually
+appealing, this model is challenging to make work in practice, and usually does
+not perform as well as a classiï¬?er as traditional convolutional networks trained
+with supervised learning.
+Many convolutional models work equally well with inputs of many diï¬€erent
+spatial sizes. For Boltzmann machines, it is diï¬ƒcult to change the input size
+for a variety of reasons. The partition function changes as the size of the input
+changes. Moreover, many convolutional networks achieve size invariance by scaling
+up the size of their pooling regions proportional to the size of the input, but scaling
+Boltzmann machine pooling regions is awkward. Traditional convolutional neural
+networks can use a ï¬?xed number of pooling units and dynamically increase the
+size of their pooling regions in order to obtain a ï¬?xed-size representation of a
+variable-sized input. For Boltzmann machines, large pooling regions become too
+expensive for the naive approach. The approach of Lee et al. (2009) of making
+each of the detector units in the same pooling region mutually exclusive solves
+the computational problems, but still does not allow variable-size pooling regions.
+For example, suppose we learn a model with 2Ã— 2 probabilistic max pooling over
+detector units that learn edge detectors. This enforces the constraint that only
+one of these edges may appear in each 2 Ã— 2 region. If we then increase the size of
+the input image by 50% in each direction, we would expect the number of edges to
+increase correspondingly. Instead, if we increase the size of the pooling regions by
+50% in each direction to 3Ã— 3, then the mutual exclusivity constraint now speciï¬?es
+that each of these edges may only appear once in a 3 Ã— 3 region. As we grow
+a modelâ€™s input image in this way, the model generates edges with less density.
+Of course, these issues only arise when the model must use variable amounts of
+pooling in order to emit a ï¬?xed-size output vector. Models that use probabilistic
+max pooling may still accept variable-sized input images so long as the output of
+the model is a feature map that can scale in size proportional to the input image.
+Pixels at the boundary of the image also pose some diï¬ƒculty, which is exacerbated by the fact that connections in a Boltzmann machine are symmetric. If
+we do not implicitly zero-pad the input, then there are fewer hidden units than
+visible units, and the visible units at the boundary of the image are not modeled
+3
+
+The publication describes the model as a â€œdeep belief networkâ€? but because it can be described
+as a purely undirected model with tractable layer-wise mean ï¬?eld ï¬?xed point updates, it best ï¬?ts
+the deï¬?nition of a deep Boltzmann machine.
+684
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+well because they lie in the receptive ï¬?eld of fewer hidden units. However, if we do
+implicitly zero-pad the input, then the hidden units at the boundary are driven by
+fewer input pixels, and may fail to activate when needed.
+
+20.7
+
+Boltzmann Machines for Structured or Sequential
+Outputs
+
+In the structured output scenario, we wish to train a model that can map from
+some input x to some output y, and the diï¬€erent entries of y are related to each
+other and must obey some constraints. For example, in the speech synthesis task,
+y is a waveform, and the entire waveform must sound like a coherent utterance.
+A natural way to represent the relationships between the entries in y is to
+use a probability distribution p(y | x). Boltzmann machines, extended to model
+conditional distributions, can supply this probabilistic model.
+The same tool of conditional modeling with a Boltzmann machine can be used
+not just for structured output tasks, but also for sequence modeling. In the latter
+case, rather than mapping an input x to an output y, the model must estimate a
+probability distribution over a sequence of variables, p(x(1) , . . . , x(Ï„ )). Conditional
+Boltzmann machines can represent factors of the form p(x(t) | x(1) , . . . , x(tâˆ’1)) in
+order to accomplish this task.
+An important sequence modeling task for the video game and ï¬?lm industry
+is modeling sequences of joint angles of skeletons used to render 3-D characters.
+These sequences are often collected using motion capture systems to record the
+movements of actors. A probabilistic model of a characterâ€™s movement allows
+the generation of new, previously unseen, but realistic animations. To solve
+this sequence modeling task, Taylor et al. (2007) introduced a conditional RBM
+modeling p(x(t) | x(tâˆ’1) , . . . , x(tâˆ’m) ) for small m. The model is an RBM over
+p(x(t)) whose bias parameters are a linear function of the preceding m values of x.
+When we condition on diï¬€erent values of x(tâˆ’1) and earlier variables, we get a new
+RBM over x . The weights in the RBM over x never change, but by conditioning on
+diï¬€erent past values, we can change the probability of diï¬€erent hidden units in the
+RBM being active. By activating and deactivating diï¬€erent subsets of hidden units,
+we can make large changes to the probability distribution induced on x. Other
+variants of conditional RBM (Mnih et al., 2011) and other variants of sequence
+modeling using conditional RBMs are possible (Taylor and Hinton, 2009; Sutskever
+et al., 2009; Boulanger-Lewandowski et al., 2012).
+Another sequence modeling task is to model the distribution over sequences
+685
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+of musical notes used to compose songs. Boulanger-Lewandowski et al. (2012)
+introduced the RNN-RBM sequence model and applied it to this task. The
+RNN-RBM is a generative model of a sequence of frames x(t) consisting of an RNN
+that emits the RBM parameters for each time step. Unlike previous approaches
+in which only the bias parameters of

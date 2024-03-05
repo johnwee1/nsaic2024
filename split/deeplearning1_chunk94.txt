@@ -1,0 +1,517 @@
+ing is to impose the restriction that q
+is a factorial distribution:
+�?�
+q(h i | v).
+q(h | v) =
+(19.17)
+i
+
+This is called the mean �?eld approach. More generally, we can impose any graphical model structure we choose on q, to ﬂexibly determine how many interactions we
+want our approximation to capture. This fully general graphical model approach
+is called structured variational inference (Saul and Jordan, 1996).
+The beauty of the variational approach is that we do not need to specify a
+speci�?c parametric form for q. We specify how it should factorize, but then the
+optimization problem determines the optimal probability distribution within those
+factorization constraints. For discrete latent variables, this just means that we
+use traditional optimization techniques to optimize a �?nite number of variables
+describing the q distribution. For continuous latent variables, this means that we
+use a branch of mathematics called calculus of variations to perform optimization
+over a space of functions, and actually determine which function should be used
+to represent q . Calculus of variations is the origin of the names “variational
+learning�? and “variational inference,�? though these names apply even when the
+latent variables are discrete and calculus of variations is not needed. In the case
+of continuous latent variables, calculus of variations is a powerful technique that
+removes much of the responsibility from the human designer of the model, who
+now must specify only how q factorizes, rather than needing to guess how to design
+a speci�?c q that can accurately approximate the posterior.
+Because L(v, θ, q ) is de�?ned to be log p(v; θ) − DKL (q(h | v )�?�p( h | v; θ)), we
+can think of maximizing L with respect to q as minimizing DKL (q( h | v )�?�p (h | v)).
+638
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+In this sense, we are �?tting q to p . However, we are doing so with the opposite
+direction of the KL divergence than we are used to using for �?tting an approximation.
+When we use maximum likelihood learning to �?t a model to data, we minimize
+D KL(pdata �?�pmodel). As illustrated in �?gure 3.6, this means that maximum likelihood
+encourages the model to have high probability everywhere that the data has high
+probability, while our optimization-based inference procedure encourages q to
+have low probability everywhere the true posterior has low probability. Both
+directions of the KL divergence can have desirable and undesirable properties. The
+choice of which to use depends on which properties are the highest priority for
+each application. In the case of the inference optimization problem, we choose
+to use DKL (q (h | v)�?�p(h | v)) for computational reasons. Speci�?cally, computing
+D KL(q(h | v) �?�p(h | v )) involves evaluating expectations with respect to q, so by
+designing q to be simple, we can simplify the required expectations. The opposite
+direction of the KL divergence would require computing expectations with respect
+to the true posterior. Because the form of the true posterior is determined by
+the choice of model, we cannot design a reduced-cost approach to computing
+D KL(p(h | v )�?�q(h | v)) exactly.
+
+19.4.1
+
+Discrete Latent Variables
+
+Variational inference with discrete latent variables is relatively straightforward.
+We de�?ne a distribution q, typically one where each factor of q is just de�?ned
+by a lookup table over discrete states. In the simplest case, h is binary and we
+make the mean �?eld assumption that q factorizes over each individual hi. In this
+case we can parametrize q with a vector ĥ whose entries are probabilities. Then
+q(hi = 1 | v) = ĥ i .
+
+After determining how to represent q , we simply optimize its parameters. In
+the case of discrete latent variables, this is just a standard optimization problem.
+In principle the selection of q could be done with any optimization algorithm, such
+as gradient descent.
+
+Because this optimization must occur in the inner loop of a learning algorithm,
+it must be very fast. To achieve this speed, we typically use special optimization
+algorithms that are designed to solve comparatively small and simple problems in
+very few iterations. A popular choice is to iterate �?xed point equations, in other
+words, to solve
+∂
+L=0
+(19.18)
+∂ĥi
+for ĥi . We repeatedly update diﬀerent elements of ĥ until we satisfy a convergence
+639
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+criterion.
+To make this more concrete, we show how to apply variational inference to the
+binary sparse coding model (we present here the model developed by Henniges
+et al. (2010) but demonstrate traditional, generic mean �?eld applied to the model,
+while they introduce a specialized algorithm). This derivation goes into considerable
+mathematical detail and is intended for the reader who wishes to fully resolve
+any ambiguity in the high-level conceptual description of variational inference and
+learning we have presented so far. Readers who do not plan to derive or implement
+variational learning algorithms may safely skip to the next section without missing
+any new high-level concepts. Readers who proceed with the binary sparse coding
+example are encouraged to review the list of useful properties of functions that
+commonly arise in probabilistic models in section 3.10. We use these properties
+liberally throughout the following derivations without highlighting exactly where
+we use each one.
+In the binary sparse coding model, the input v ∈ R n is generated from the
+model by adding Gaussian noise to the sum of m diﬀerent components which
+can each be present or absent. Each component is switched on or oﬀ by the
+corresponding hidden unit in h ∈ {0, 1}m:
+p(hi = 1) = σ(bi )
+
+(19.19)
+
+p(v | h) = N (v; W h, β−1 )
+
+(19.20)
+
+where b is a learnable set of biases, W is a learnable weight matrix, and β is a
+learnable, diagonal precision matrix.
+Training this model with maximum likelihood requires taking the derivative
+with respect to the parameters. Consider the derivative with respect to one of the
+biases:
+
+=
+
+∂
+log p(v)
+∂bi
+∂
+∂b i p(v )
+p(v)
+∂ �??
+
+= ∂b i
+=
+
+h p(h, v)
+
+p(v)
+�??
+∂
+h p( h )p( v | h )
+∂b i
+p(v)
+640
+
+(19.21)
+(19.22)
+(19.23)
+(19.24)
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+h1
+
+h2
+
+v1
+
+h3
+
+v2
+
+h4
+h1
+
+h3
+
+h2
+
+h4
+
+v3
+
+Figure 19.2: The graph structure of a binary sparse coding model with four hidden units.
+(Left)The graph structure of p(h, v). Note that the edges are directed, and that every two
+hidden units are co-parents of every visible unit. (Right)The graph structure of p(h | v ).
+In order to account for the active paths between co-parents, the posterior distribution
+needs an edge between all of the hidden units.
+
+=
+=
+
+�??
+
+∂
+h p(v | h) ∂b i p(h)
+
+�?�
+h
+
+p(v)
+
+p(h | v )
+
+=Eh∼p(h|v)
+
+∂
+∂bi p(h)
+
+p(h)
+
+∂
+log p(h).
+∂b i
+
+(19.25)
+(19.26)
+(19.27)
+
+This requires computing expectations with respect to p(h | v ). Unfortunately,
+p(h | v ) is a complicated distribution. See �?gure 19.2 for the graph structure of
+p(h, v ) and p(h | v ). The posterior distribution corresponds to the complete graph
+over the hidden units, so variable elimination algorithms do not help us to compute
+the required expectations any faster than brute force.
+We can resolve this diﬃculty by using variational inference and variational
+learning instead.
+We can make a mean �?eld approximation:
+q(h | v) =
+
+�?�
+i
+
+q(h i | v).
+
+(19.28)
+
+The latent variables of the binary sparse coding model are binary, so to represent
+a factorial q we simply need to model m Bernoulli distributions q (hi | v). A natural
+way to represent the means of the Bernoulli distributions is with a vector ĥ of
+probabilities, with q(h i = 1 | v) = ĥi . We impose a restriction that ĥ i is never
+equal to 0 or to 1, in order to avoid errors when computing, for example, log ĥi.
+We will see that the variational inference equations never assign 0 or 1 to ĥ i
+641
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+analytically. However, in a software implementation, machine rounding error could
+result in 0 or 1 values. In software, we may wish to implement binary sparse
+coding using an unrestricted vector of variational parameters z and obtain ĥ via
+the relation ĥ = σ (z ). We can thus safely compute log ĥi on a computer by using
+the identity log σ (zi) = −ζ (−z i ) relating the sigmoid and the softplus.
+To begin our derivation of variational learning in the binary sparse coding
+model, we show that the use of this mean �?eld approximation makes learning
+tractable.
+The evidence lower bound is given by
+L(v, θ, q )
+
+(19.29)
+
+=Eh∼q [log p(h, v )] + H (q)
+
+(19.30)
+
+=Eh∼q [log p(h) + log p(v | h) − log q(h | v )]
+ m
+
+n
+m
+�?�
+�?�
+�?�
+=Eh∼q
+log p(hi ) +
+log p(v i | h) −
+log q(h i | v)
+
+(19.31)
+
+i=1
+
+=
+
+m �?�
+�?�
+i=1
+
+i=1
+
++ Eh∼q
+
+i=1
+
+=
+
+m �?�
+�?�
+i=1
+
++
+
+i=1
+
+ĥ i(log σ(bi ) − log ĥi) + (1 − hˆi)(log σ(−b i) − log(1 − ĥi))
+ n
+�?�
+
+log
+
+�?�
+
+
+
+βi
+βi
+exp − (vi − Wi,:h) 2
+2π
+2
+
+ĥ i(log σ(bi ) − log ĥi) + (1 − hˆi)(log σ(−b i) − log(1 − ĥi))
+
+n
+�?�
+
+
+
+(19.32)
+
+
+
+
+
+�?�
+
+(19.33)
+(19.34)
+
+�?�
+
+(19.35)
+ 
+
+�?�
+�?�
+1
+2 ˆ
+log βi − βi v2i − 2viWi,: ĥ +
+Wi,j
+hj +
+Wi,j Wi,k ĥj ĥ k  .
+2 i=1
+2π
+j
+k=j
+
+(19.36)
+
+While these equations are somewhat unappealing aesthetically, they show that L
+can be expressed in a small number of simple arithmetic operations. The evidence
+lower bound L is therefore tractable. We can use L as a replacement for the
+intractable log-likelihood.
+In principle, we could simply run gradient ascent on both v and h and this
+would make a perfectly acceptable combined inference and training algorithm.
+Usually, however, we do not do this, for two reasons. First, this would require
+storing ĥ for each v. We typically prefer algorithms that do not require perexample memory. It is diﬃcult to scale learning algorithms to billions of examples
+if we must remember a dynamically updated vector associated with each example.
+642
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+Second, we would like to be able to extract the features ĥ very quickly, in order to
+recognize the content of v . In a realistic deployed setting, we would need to be
+able to compute ĥ in real time.
+For both these reasons, we typically do not use gradient descent to compute
+the mean �?eld parameters ĥ. Instead, we rapidly estimate them with �?xed point
+equations.
+The idea behind �?xed point equations is that we are seeking a local maximum
+with respect to ĥ, where ∇hL(v, θ, ĥ) = 0 . We cannot eﬃciently solve this
+equation with respect to all of ĥ simultaneously. However, we can solve for a single
+variable:
+∂
+L(v, θ, ĥ) = 0.
+(19.37)
+∂ ĥi
+We can then iteratively apply the solution to the equation for i = 1, . . . , m,
+and repeat the cycle until we satisfy a converge criterion. Common convergence
+criteria include stopping when a full cycle of updates does not improve L by more
+than some tolerance amount, or when the cycle does not change ĥ by more than
+some amount.
+Iterating mean �?eld �?xed point equations is a general technique that can
+provide fast variational inference in a broad variety of models. To make this more
+concrete, we show how to derive the updates for the binary sparse coding model in
+particular.
+First, we must write an expression for the derivatives with respect to ĥi . To
+do so, we substitute equation 19.36 into the left side of equation 19.37:
+∂
+
+(19.38)
+L(v, θ, ĥ)
+
+m
+�?�
+∂  �?��?�
+ˆ
+ˆ
+=
+ĥj (log σ(bj ) − log h j ) + (1 − hj )(log σ(−bj ) − log(1 − ĥj )) (19.39)
+∂ ĥi j=1
+
+
+
+ 
+n
+�?�
+�?�
+�?�
+1
+2
+log βj − β j v 2j − 2v j Wj,: ĥ +
+ Wj,k
++
+ĥ k +
+W j,kWj,l ĥkĥ l  
+2
+2π
+∂ ĥi
+
+j=1
+
+k
+
+= log σ (bi) − log ĥ i − 1 + log(1 − ĥ i) + 1 − log σ(−bi)
+ 
+
+n
+�?�
+�?�
+2
+β j vj Wj,i − 1 Wj,i
++
+W j,kWj,i ĥk 
+−
+2
+j=1
+k=i
+
+643
+
+l=k
+
+(19.40)
+
+(19.41)
+(19.42)
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+�?�
+1 
+
+=bi − log ĥi + log(1 − ĥi) + v βW:,i − W :,i
+βW:,i −
+W:,j
+βW:,i ĥj . (19.43)
+2
+j =i
+
+To apply the �?xed point update inference rule, we solve for the ĥ i that sets
+equation 19.43 to 0:
+
+
+�?�
+1
+
+ĥi = σ  bi + v βW:,i − W:,iβW :,i −
+W:,j
+βW:,i ĥ j  .
+(19.44)
+2
+j =i
+
+At this point, we can see that there is a close connection between recurrent
+neural networks and inference in graphical models. Speci�?cally, the mean �?eld
+�?xed point equations de�?ned a recurrent neural network. The task of this network
+is to perform inference. We have described how to derive this network from a
+model description, but it is also possible to train the inference network directly.
+Several ideas based on this theme are described in chapter 20.
+In the case of binary sparse coding, we can see that the recurrent network
+connection speci�?ed by equation 19.44 consists of repeatedly updating the hidden
+units based on the changing values of the neighboring hidden units. The input
+always sends a �?xed message of v βW to the hidden units, but the hidden units
+constantly update the message they send to each other. Speci�?cally, two units ĥ i
+and ĥj inhibit each other when their weight vectors are aligned. This is a form of
+competition—between two hidden units that both explain the input, only the one
+that explains the input best will be allowed to remain active. This competition is
+the mean �?eld approximation’s attempt to capture the explaining away interactions
+in the binary sparse coding posterior. The explaining away eﬀect actually should
+cause a multi-modal posterior, so that if we draw samples from the posterior,
+some samples will have one unit active, other samples will have the other unit
+active, but very few samples have both active. Unfortunately, explaining away
+interactions cannot be modeled by the factorial q used for mean �?eld, so the mean
+�?eld approximation is forced to choose one mode to model. This is an instance of
+the behavior illustrated in �?gure 3.6.
+We can rewrite equation 19.44 into an equivalent form that reveals some further
+insights:
+
+
+
+
+�?�
+1 
+
+
+ĥ i = σ b i + v −
+W:,j ĥj  βW :,i − W:,i
+βW:,i .
+(19.45)
+2
+j =i
+�??
+In this reformulation, we see the input at each step as consisting of v − j =i W :,j ĥj
+rather than v. We can thus think of unit i as attempting to encode the residual
+644
+
+CHAPTER 19. APPROXIMATE INFERENCE
+
+error in v given the code of the other units. We can thus think of sparse coding as
+an iterative autoencoder, that repeatedly encodes and decodes its input, attempting
+to �?x mistakes in the reconstruction after each iteration.
+In this example, we have derived an update rule that updates a single unit at
+a time. It would be advantageous to be able to update more units simultaneously.
+Some graphical models, such as deep Boltzmann machines, are structured in such a
+way that we can solve for many entries of ĥ simultaneously. Unfortunately, binary
+sparse coding does not admit such block updates. Instead, we can use a heuristic
+technique called damping to perform block updates. In the damping approach,
+we solve for the individually optimal values of every element of ĥ, then move all of
+the values in a small step in that direction. This approach is no longer guaranteed
+to increase L at each step, but works w

@@ -4,15 +4,11 @@ import os
 """Helper script to sanitize the output from gpt files. idk how useful this will be but whatevs"""
 
 ### the .txt suffix IS NEEDED HERE!
-<<<<<<< HEAD
-FILENAME = "reinforcement_learning_qns.txt"
-=======
-FILENAME = "nlp_qns.txt"
->>>>>>> 8a5606603468172b6566e3558c80ea04159807b9
+FILENAME = "deeplearning1_qns.txt"
 
 
 def parse_text_file(input_file, output_file):
-    with open(input_file, "r") as infile, open(output_file, "w+") as outfile:
+    with open(input_file, "r", errors='replace') as infile, open(output_file, "w+", errors='replace') as outfile:
         for line in infile:
             line = line.replace("*", "")
             # Use regular expressions to check if the line starts with a number or a bullet point
@@ -29,7 +25,7 @@ def parse_text_file(input_file, output_file):
 
 def strp_refs(input_file, output_file):
     """deletes [[x]] where x is a number"""
-    with open(input_file, "r") as infile, open(output_file, "w+") as outfile:
+    with open(input_file, "r", errors='replace') as infile, open(output_file, "w+", errors='replace') as outfile:
         for line in infile:
             if re.search(r"\[\[\d+\]\]$", line):
                 # If the line ends with a pattern like [[x]], remove it
@@ -42,7 +38,7 @@ def questionize(input_file, output_file):
     """
     Turns a statement, "Support vector machine" into a question:
     'What is the concept of Support vector machine?'"""
-    with open(input_file, "r") as infile, open(output_file, "w+") as outfile:
+    with open(input_file, "r", errors='replace') as infile, open(output_file, "w+", errors='replace') as outfile:
         for line in infile:
             if not line.strip().endswith("?"):
                 # If the line ends with a question mark, replace it with the modified question format

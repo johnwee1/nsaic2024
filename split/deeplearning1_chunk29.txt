@@ -1,0 +1,433 @@
+ another downstream unit) to obtain another symmetry
+(which is now repeated four times, with two hidden layers). Figure reproduced with
+permission from Montufar et al. (2014).
+
+More precisely, the main theorem in Montufar et al. (2014) states that the
+number of linear regions carved out by a deep recti�?er network with d inputs,
+depth l, and n units per hidden layer, is
+ 
+
+n d(l−1) d
+O
+n ,
+(6.42)
+d
+i.e., exponential in the depth l . In the case of maxout networks with k �?lters per
+unit, the number of linear regions is
+�?
+
+(l−1)+d
+.
+(6.43)
+O k
+200
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Of course, there is no guarantee that the kinds of functions we want to learn in
+applications of machine learning (and in particular for AI) share such a property.
+We may also want to choose a deep model for statistical reasons. Any time
+we choose a speci�?c machine learning algorithm, we are implicitly stating some
+set of prior beliefs we have about what kind of function the algorithm should
+learn. Choosing a deep model encodes a very general belief that the function we
+want to learn should involve composition of several simpler functions. This can be
+interpreted from a representation learning point of view as saying that we believe
+the learning problem consists of discovering a set of underlying factors of variation
+that can in turn be described in terms of other, simpler underlying factors of
+variation. Alternately, we can interpret the use of a deep architecture as expressing
+a belief that the function we want to learn is a computer program consisting of
+multiple steps, where each step makes use of the previous step’s output. These
+intermediate outputs are not necessarily factors of variation, but can instead be
+analogous to counters or pointers that the network uses to organize its internal
+processing. Empirically, greater depth does seem to result in better generalization
+for a wide variety of tasks (Bengio et al., 2007; Erhan et al., 2009; Bengio, 2009;
+Mesnil et al., 2011; Ciresan et al., 2012; Krizhevsky et al., 2012; Sermanet et al.,
+2013; Farabet et al., 2013; Couprie et al., 2013; Kahou et al., 2013; Goodfellow
+et al., 2014d; Szegedy et al., 2014a). See �?gure 6.6 and �?gure 6.7 for examples of
+some of these empirical results. This suggests that using deep architectures does
+indeed express a useful prior over the space of functions the model learns.
+
+6.4.2
+
+Other Architectural Considerations
+
+So far we have described neural networks as being simple chains of layers, with the
+main considerations being the depth of the network and the width of each layer.
+In practice, neural networks show considerably more diversity.
+Many neural network architectures have been developed for speci�?c tasks.
+Specialized architectures for computer vision called convolutional networks are
+described in chapter 9. Feedforward networks may also be generalized to the
+recurrent neural networks for sequence processing, described in chapter 10, which
+have their own architectural considerations.
+In general, the layers need not be connected in a chain, even though this is the
+most common practice. Many architectures build a main chain but then add extra
+architectural features to it, such as skip connections going from layer i to layer
+i + 2 or higher. These skip connections make it easier for the gradient to ﬂow from
+output layers to layers nearer the input.
+201
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+96.5
+Test accuracy (percent)
+
+96.0
+95.5
+95.0
+94.5
+94.0
+93.5
+93.0
+92.5
+92.0
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+Figure 6.6: Empirical results showing that deeper networks generalize better when used
+to transcribe multi-digit numbers from photographs of addresses. Data from Goodfellow
+et al. (2014d). The test set accuracy consistently increases with increasing depth. See
+�?gure 6.7 for a control experiment demonstrating that other increases to the model size
+do not yield the same eﬀect.
+
+Another key consideration of architecture design is exactly how to connect a
+pair of layers to each other. In the default neural network layer described by a linear
+transformation via a matrix W , every input unit is connected to every output
+unit. Many specialized networks in the chapters ahead have fewer connections, so
+that each unit in the input layer is connected to only a small subset of units in
+the output layer. These strategies for reducing the number of connections reduce
+the number of parameters and the amount of computation required to evaluate
+the network, but are often highly problem-dependent. For example, convolutional
+networks, described in chapter 9, use specialized patterns of sparse connections
+that are very eﬀective for computer vision problems. In this chapter, it is diﬃcult
+to give much more speci�?c advice concerning the architecture of a generic neural
+network. Subsequent chapters develop the particular architectural strategies that
+have been found to work well for diﬀerent application domains.
+
+202
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Test accuracy (percent)
+
+97
+
+3, convolutional
+3, fully connected
+11, convolutional
+
+96
+95
+94
+93
+92
+91
+0.0
+
+0. 2
+
+0. 4
+
+0.6
+
+Number of parameters
+
+0. 8
+
+1. 0
+×108
+
+Figure 6.7: Deeper models tend to perform better. This is not merely because the model is
+larger. This experiment from Goodfellow et al. (2014d) shows that increasing the number
+of parameters in layers of convolutional networks without increasing their depth is not
+nearly as eﬀective at increasing test set performance. The legend indicates the depth of
+network used to make each curve and whether the curve represents variation in the size of
+the convolutional or the fully connected layers. We observe that shallow models in this
+context over�?t at around 20 million parameters while deep ones can bene�?t from having
+over 60 million. This suggests that using a deep model expresses a useful preference over
+the space of functions the model can learn. Speci�?cally, it expresses a belief that the
+function should consist of many simpler functions composed together. This could result
+either in learning a representation that is composed in turn of simpler representations (e.g.,
+corners de�?ned in terms of edges) or in learning a program with sequentially dependent
+steps (e.g., �?rst locate a set of objects, then segment them from each other, then recognize
+them).
+
+203
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+6.5
+
+Back-Propagation and Other Diﬀerentiation Algorithms
+
+When we use a feedforward neural network to accept an input x and produce an
+output ŷ, information ﬂows forward through the network. The inputs x provide
+the initial information that then propagates up to the hidden units at each layer
+and �?nally produces ŷ . This is called forward propagation. During training,
+forward propagation can continue onward until it produces a scalar cost J (θ).
+The back-propagation algorithm (Rumelhart et al., 1986a), often simply called
+backprop, allows the information from the cost to then ﬂow backwards through
+the network, in order to compute the gradient.
+Computing an analytical expression for the gradient is straightforward, but
+numerically evaluating such an expression can be computationally expensive. The
+back-propagation algorithm does so using a simple and inexpensive procedure.
+The term back-propagation is often misunderstood as meaning the whole
+learning algorithm for multi-layer neural networks. Actually, back-propagation
+refers only to the method for computing the gradient, while another algorithm,
+such as stochastic gradient descent, is used to perform learning using this gradient.
+Furthermore, back-propagation is often misunderstood as being speci�?c to multilayer neural networks, but in principle it can compute derivatives of any function
+(for some functions, the correct response is to report that the derivative of the
+function is unde�?ned). Speci�?cally, we will describe how to compute the gradient
+∇x f( x, y) for an arbitrary function f , where x is a set of variables whose derivatives
+are desired, and y is an additional set of variables that are inputs to the function
+but whose derivatives are not required. In learning algorithms, the gradient we most
+often require is the gradient of the cost function with respect to the parameters,
+∇θ J(θ). Many machine learning tasks involve computing other derivatives, either
+as part of the learning process, or to analyze the learned model. The backpropagation algorithm can be applied to these tasks as well, and is not restricted
+to computing the gradient of the cost function with respect to the parameters. The
+idea of computing derivatives by propagating information through a network is
+very general, and can be used to compute values such as the Jacobian of a function
+f with multiple outputs. We restrict our description here to the most commonly
+used case where f has a single output.
+
+204
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+6.5.1
+
+Computational Graphs
+
+So far we have discussed neural networks with a relatively informal graph language.
+To describe the back-propagation algorithm more precisely, it is helpful to have a
+more precise computational graph language.
+Many ways of formalizing computation as graphs are possible.
+Here, we use each node in the graph to indicate a variable. The variable may
+be a scalar, vector, matrix, tensor, or even a variable of another type.
+To formalize our graphs, we also need to introduce the idea of an operation.
+An operation is a simple function of one or more variables. Our graph language
+is accompanied by a set of allowable operations. Functions more complicated
+than the operations in this set may be described by composing many operations
+together.
+Without loss of generality, we de�?ne an operation to return only a single
+output variable. This does not lose generality because the output variable can have
+multiple entries, such as a vector. Software implementations of back-propagation
+usually support operations with multiple outputs, but we avoid this case in our
+description because it introduces many extra details that are not important to
+conceptual understanding.
+If a variable y is computed by applying an operation to a variable x, then
+we draw a directed edge from x to y. We sometimes annotate the output node
+with the name of the operation applied, and other times omit this label when the
+operation is clear from context.
+Examples of computational graphs are shown in �?gure 6.8.
+
+6.5.2
+
+Chain Rule of Calculus
+
+The chain rule of calculus (not to be confused with the chain rule of probability) is
+used to compute the derivatives of functions formed by composing other functions
+whose derivatives are known. Back-propagation is an algorithm that computes the
+chain rule, with a speci�?c order of operations that is highly eﬃcient.
+Let x be a real number, and let f and g both be functions mapping from a real
+number to a real number. Suppose that y = g(x) and z = f (g(x)) = f (y). Then
+the chain rule states that
+dz
+dz dy
+=
+.
+(6.44)
+dx
+dy dx
+We can generalize this beyond the scalar case. Suppose that x ∈ Rm, y ∈ R n,
+205
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+ŷ
+σ
+
+z
+
+u(1)
+
+u(2)
++
+
+dot
+
+×
+
+y
+
+x
+
+x
+
+w
+
+(a)
+
+(b)
+
+u(2)
+
+H
+
+relu
+
+U (2)
+
+u(3)
+×
+
+sum
+U (1)
+
+b
+
+u(1)
+
+ŷ
+
++
+
+dot
+
+sqr
+
+matmul
+X
+
+W
+
+x
+
+b
+
+(c)
+
+w
+
+λ
+
+(d)
+
+Figure 6.8: Examples of computational graphs. (a)The graph using the × operation
+to
+
+�?
+compute z = xy. (b)The graph for the logistic regression prediction ŷ = σ x w + b .
+Some of the intermediate expressions do not have names in the algebraic expression
+but need names in the graph. We simply name the i -th such variable u(i) . (c)The
+computational graph for the expression H = max{0, XW + b}, which computes a design
+matrix of recti�?ed linear unit activations H given a design matrix containing a minibatch
+of inputs X . (d)Examples a–c applied at most one operation to each variable, but it
+is possible to apply more than one operation. Here we show a computation graph that
+applies more than one operation to the weights w of a linear regression model.
+�?? The
+weights are used to make both the prediction ŷ and the weight decay penalty λ i w2i .
+
+206
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+g maps from R m to Rn , and f maps from R n to R . If y = g(x) and z = f(y), then
+�?� ∂z ∂yj
+∂z
+=
+.
+(6.45)
+∂xi
+∂y
+∂x
+j
+i
+j
+In vector notation, this may be equivalently written as
+ 
+∂y
+∇ xz =
+∇y z,
+∂x
+
+(6.46)
+
+where ∂y
+∂x is the n × m Jacobian matrix of g .
+
+From this we see that the gradient of a variable x can be obtained by multiplying
+a Jacobian matrix ∂y
+∂x by a gradient ∇y z. The back-propagation algorithm consists
+of performing such a Jacobian-gradient product for each operation in the graph.
+Usually we do not apply the back-propagation algorithm merely to vectors,
+but rather to tensors of arbitrary dimensionality. Conceptually, this is exactly the
+same as back-propagation with vectors. The only diﬀerence is how the numbers
+are arranged in a grid to form a tensor. We could imagine ﬂattening each tensor
+into a vector before we run back-propagation, computing a vector-valued gradient,
+and then reshaping the gradient back into a tensor. In this rearranged view,
+back-propagation is still just multiplying Jacobians by gradients.
+To denote the gradient of a value z with respect to a tensor X, we write ∇ X z,
+just as if X were a vector. The indices into X now have multiple coordinates—for
+example, a 3-D tensor is indexed by three coordinates. We can abstract this away
+by using a single variable i to represent the complete tuple of indices. For all
+∂z
+possible index tuples i, (∇X z)i gives ∂X
+. This is exactly the same as how for all
+i
+∂z
+possible integer indices i into a vector, (∇x z)i gives ∂x
+. Using this notation, we
+i
+can write the chain rule as it applies to tensors. If Y = g (X) and z = f (Y ), then
+�?�
+∂z
+.
+(6.47)
+∇X z =
+(∇X Yj )
+∂Y j
+j
+
+6.5.3
+
+Recursively Applying the Chain Rule to Obtain Backprop
+
+Using the chain rule, it is straightforward to write down an algebraic expression for
+the gradient of a scalar with respect to any node in the computational graph that
+produced that scalar. However, actually evaluating that expression in a computer
+introduces some extra considerations.
+Speci�?cally, many subexpressions may be repeated several times within the
+overall expression for the gradient. Any procedure that computes the gradient
+207
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+will need to choose whether to store these subexpressions or to recompute them
+several times. An example of how these repeated subexpressions arise is given in
+�?gure 6.9. In some cases, computing the same subexpression twice would simply
+be wasteful. For complicated graphs, there can be exponentially many of these
+wasted computations, making a naive implementation of the chain rule infeasible.
+In other cases, computing the same subexpression twice could be a valid way to
+reduce memory consumption at the cost of higher runtime.
+We �?rst begin by a version of the back-propagation algorithm that speci�?es the
+actual gradient computation directly (algorithm 6.2 along with algorithm 6.1 for the
+associated forward computation), in the order it will actually be done and according
+to the recursive application of chain rule. One could either directly perform these
+computations or view the description of the algorithm as a symbolic speci�?cation
+of the computational g

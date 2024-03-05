@@ -1,0 +1,320 @@
+eep in many ways (Pascanu
+et al., 2014a). (a)The hidden recurrent state can be broken down into groups organized
+hierarchically. (b)Deeper computation (e.g., an MLP) can be introduced in the input-tohidden, hidden-to-hidden and hidden-to-output parts. This may lengthen the shortest
+path linking diﬀerent time steps. (c)The path-lengthening eﬀect can be mitigated by
+introducing skip connections.
+
+399
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+can be mitigated by introducing skip connections in the hidden-to-hidden path, as
+illustrated in �?gure 10.13c.
+
+10.6
+
+Recursive Neural Networks
+L
+
+y
+
+o
+
+U
+
+U
+
+W
+
+W
+
+U
+
+W
+
+V
+
+V
+
+V
+
+V
+
+x (1)
+
+x(2)
+
+x(3)
+
+x(4)
+
+Figure 10.14: A recursive network has a computational graph that generalizes that of the
+recurrent network from a chain to a tree. A variable-size sequence x(1), x (2) , . . . , x(t) can
+be mapped to a �?xed-size representation (the output o), with a �?xed set of parameters
+(the weight matrices U , V , W ). The �?gure illustrates a supervised learning case in which
+some target y is provided which is associated with the whole sequence.
+
+Recursive neural networks2 represent yet another generalization of recurrent
+networks, with a diﬀerent kind of computational graph, which is structured as a
+deep tree, rather than the chain-like structure of RNNs. The typical computational
+graph for a recursive network is illustrated in �?gure 10.14. Recursive neural
+2
+
+We suggest to not abbreviate “recursive neural network�? as “RNN�? to avoid confusion with
+“recurrent neural network.�?
+400
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+networks were introduced by Pollack (1990) and their potential use for learning to
+reason was described by Bottou (2011). Recursive networks have been successfully
+applied to processing data structures as input to neural nets (Frasconi et al., 1997,
+1998), in natural language processing (Socher et al., 2011a,c, 2013a) as well as in
+computer vision (Socher et al., 2011b).
+One clear advantage of recursive nets over recurrent nets is that for a sequence
+of the same length τ, the depth (measured as the number of compositions of
+nonlinear operations) can be drastically reduced from τ to O(log τ ), which might
+help deal with long-term dependencies. An open question is how to best structure
+the tree. One option is to have a tree structure which does not depend on the data,
+such as a balanced binary tree. In some application domains, external methods
+can suggest the appropriate tree structure. For example, when processing natural
+language sentences, the tree structure for the recursive network can be �?xed to
+the structure of the parse tree of the sentence provided by a natural language
+parser (Socher et al., 2011a, 2013a). Ideally, one would like the learner itself to
+discover and infer the tree structure that is appropriate for any given input, as
+suggested by Bottou (2011).
+Many variants of the recursive net idea are possible. For example, Frasconi
+et al. (1997) and Frasconi et al. (1998) associate the data with a tree structure,
+and associate the inputs and targets with individual nodes of the tree. The
+computation performed by each node does not have to be the traditional arti�?cial
+neuron computation (aﬃne transformation of all inputs followed by a monotone
+nonlinearity). For example, Socher et al. (2013a) propose using tensor operations
+and bilinear forms, which have previously been found useful to model relationships
+between concepts (Weston et al., 2010; Bordes et al., 2012) when the concepts are
+represented by continuous vectors (embeddings).
+
+10.7
+
+The Challenge of Long-Term Dependencies
+
+The mathematical challenge of learning long-term dependencies in recurrent networks was introduced in section 8.2.5. The basic problem is that gradients propagated over many stages tend to either vanish (most of the time) or explode
+(rarely, but with much damage to the optimization). Even if we assume that the
+parameters are such that the recurrent network is stable (can store memories,
+with gradients not exploding), the diﬃculty with long-term dependencies arises
+from the exponentially smaller weights given to long-term interactions (involving
+the multiplication of many Jacobians) compared to short-term ones. Many other
+sources provide a deeper treatment (Hochreiter, 1991; Doya, 1993; Bengio et al.,
+401
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+Projection of output
+
+4
+
+0
+1
+2
+3
+4
+5
+
+3
+2
+1
+0
+−1
+−2
+−3
+−4
+−60
+
+−40
+
+−20
+
+0
+
+20
+
+40
+
+60
+
+Input coordinate
+
+Figure 10.15: When composing many nonlinear functions (like the linear-tanh layer shown
+here), the result is highly nonlinear, typically with most of the values associated with a tiny
+derivative, some values with a large derivative, and many alternations between increasing
+and decreasing. In this plot, we plot a linear projection of a 100-dimensional hidden state
+down to a single dimension, plotted on the y-axis. The x-axis is the coordinate of the
+initial state along a random direction in the 100-dimensional space. We can thus view this
+plot as a linear cross-section of a high-dimensional function. The plots show the function
+after each time step, or equivalently, after each number of times the transition function
+has been composed.
+
+1994; Pascanu et al., 2013) . In this section, we describe the problem in more
+detail. The remaining sections describe approaches to overcoming the problem.
+Recurrent networks involve the composition of the same function multiple
+times, once per time step. These compositions can result in extremely nonlinear
+behavior, as illustrated in �?gure 10.15.
+In particular, the function composition employed by recurrent neural networks
+somewhat resembles matrix multiplication. We can think of the recurrence relation
+h(t) = W h(t−1)
+
+(10.36)
+
+as a very simple recurrent neural network lacking a nonlinear activation function,
+and lacking inputs x. As described in section 8.2.5, this recurrence relation
+essentially describes the power method. It may be simpli�?ed to
+
+�?
+(10.37)
+h(t) = W t h(0) ,
+and if W admits an eigendecomposition of the form
+W = QΛQ  ,
+402
+
+(10.38)
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+with orthogonal Q, the recurrence may be simpli�?ed further to
+h(t) = QΛt Qh(0) .
+
+(10.39)
+
+The eigenvalues are raised to the power of t causing eigenvalues with magnitude
+less than one to decay to zero and eigenvalues with magnitude greater than one to
+explode. Any component of h(0) that is not aligned with the largest eigenvector
+will eventually be discarded.
+This problem is particular to recurrent networks. In the scalar case, imagine
+multiplying a weight w by itself many times. The product wt will either vanish or
+explode depending on the magnitude of w. However, if we make a non-recurrent
+network that has a diﬀerent weight w (t) at each time step, the situation
+diﬀerent.
+�?� (tis
+)
+If the initial state is given by 1, then the state at time t is given by t w . Suppose
+that the w (t) values are generated randomly, independently from one another, with
+zero mean and variance v. The variance of the product is O(v n ). To obtain some
+√
+desired variance v ∗ we may choose the individual weights with variance v = n v ∗.
+Very deep feedforward networks with carefully chosen scaling can thus avoid the
+vanishing and exploding gradient problem, as argued by Sussillo (2014).
+The vanishing and exploding gradient problem for RNNs was independently
+discovered by separate researchers (Hochreiter, 1991; Bengio et al., 1993, 1994).
+One may hope that the problem can be avoided simply by staying in a region of
+parameter space where the gradients do not vanish or explode. Unfortunately, in
+order to store memories in a way that is robust to small perturbations, the RNN
+must enter a region of parameter space where gradients vanish (Bengio et al., 1993,
+1994). Speci�?cally, whenever the model is able to represent long term dependencies,
+the gradient of a long term interaction has exponentially smaller magnitude than
+the gradient of a short term interaction. It does not mean that it is impossible
+to learn, but that it might take a very long time to learn long-term dependencies,
+because the signal about these dependencies will tend to be hidden by the smallest
+ﬂuctuations arising from short-term dependencies. In practice, the experiments
+in Bengio et al. (1994) show that as we increase the span of the dependencies that
+need to be captured, gradient-based optimization becomes increasingly diﬃcult,
+with the probability of successful training of a traditional RNN via SGD rapidly
+reaching 0 for sequences of only length 10 or 20.
+For a deeper treatment of recurrent networks as dynamical systems, see Doya
+(1993), Bengio et al. (1994) and Siegelmann and Sontag (1995), with a review
+in Pascanu et al. (2013). The remaining sections of this chapter discuss various
+approaches that have been proposed to reduce the diﬃculty of learning longterm dependencies (in some cases allowing an RNN to learn dependencies across
+403
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+hundreds of steps), but the problem of learning long-term dependencies remains
+one of the main challenges in deep learning.
+
+10.8
+
+Echo State Networks
+
+The recurrent weights mapping from h(t−1) to h(t) and the input weights mapping
+from x(t) to h(t) are some of the most diﬃcult parameters to learn in a recurrent
+network. One proposed (Jaeger, 2003; Maass et al., 2002; Jaeger and Haas, 2004;
+Jaeger, 2007b) approach to avoiding this diﬃculty is to set the recurrent weights
+such that the recurrent hidden units do a good job of capturing the history of past
+inputs, and learn only the output weights. This is the idea that was independently
+proposed for echo state networks or ESNs (Jaeger and Haas, 2004; Jaeger, 2007b)
+and liquid state machines (Maass et al., 2002). The latter is similar, except
+that it uses spiking neurons (with binary outputs) instead of the continuous-valued
+hidden units used for ESNs. Both ESNs and liquid state machines are termed
+reservoir computing (Lukoševi�?ius and Jaeger, 2009) to denote the fact that
+the hidden units form of reservoir of temporal features which may capture diﬀerent
+aspects of the history of inputs.
+One way to think about these reservoir computing recurrent networks is that
+they are similar to kernel machines: they map an arbitrary length sequence (the
+history of inputs up to time t) into a �?xed-length vector (the recurrent state h(t) ),
+on which a linear predictor (typically a linear regression) can be applied to solve
+the problem of interest. The training criterion may then be easily designed to be
+convex as a function of the output weights. For example, if the output consists
+of linear regression from the hidden units to the output targets, and the training
+criterion is mean squared error, then it is convex and may be solved reliably with
+simple learning algorithms (Jaeger, 2003).
+The important question is therefore: how do we set the input and recurrent
+weights so that a rich set of histories can be represented in the recurrent neural
+network state? The answer proposed in the reservoir computing literature is to
+view the recurrent net as a dynamical system, and set the input and recurrent
+weights such that the dynamical system is near the edge of stability.
+The original idea was to make the eigenvalues of the Jacobian of the state-tostate transition function be close to 1. As explained in section 8.2.5, an important
+characteristic of a recurrent network is the eigenvalue spectrum of the Jacobians
+(t)
+J (t) = ∂s∂s(t−1) . Of particular importance is the spectral radius of J (t), de�?ned to
+be the maximum of the absolute values of its eigenvalues.
+404
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+To understand the eﬀect of the spectral radius, consider the simple case of
+back-propagation with a Jacobian matrix J that does not change with t. This
+case happens, for example, when the network is purely linear. Suppose that J has
+an eigenvector v with corresponding eigenvalue λ. Consider what happens as we
+propagate a gradient vector backwards through time. If we begin with a gradient
+vector g , then after one step of back-propagation, we will have J g, and after n
+steps we will have J n g. Now consider what happens if we instead back-propagate
+a perturbed version of g. If we begin with g + δv, then after one step, we will
+have J (g + δv). After n steps, we will have J n(g + δv ). From this we can see
+that back-propagation starting from g and back-propagation starting from g + δv
+diverge by δJ n v after n steps of back-propagation. If v is chosen to be a unit
+eigenvector of J with eigenvalue λ , then multiplication by the Jacobian simply
+scales the diﬀerence at each step. The two executions of back-propagation are
+separated by a distance of δ|λ| n. When v corresponds to the largest value of |λ|,
+this perturbation achieves the widest possible separation of an initial perturbation
+of size δ .
+When |λ| > 1, the deviation size δ|λ|n grows exponentially large. When |λ| < 1,
+the deviation size becomes exponentially small.
+Of course, this example assumed that the Jacobian was the same at every
+time step, corresponding to a recurrent network with no nonlinearity. When a
+nonlinearity is present, the derivative of the nonlinearity will approach zero on
+many time steps, and help to prevent the explosion resulting from a large spectral
+radius. Indeed, the most recent work on echo state networks advocates using a
+spectral radius much larger than unity (Yildiz et al., 2012; Jaeger, 2012).
+Everything we have said about back-propagation via repeated matrix multiplication applies equally to forward propagation in a network with no nonlinearity,
+where the state h(t+1) = h(t)W .
+When a linear map W  always shrinks h as measured by the L2 norm, then
+we say that the map is contractive. When the spectral radius is less than one,
+the mapping from h(t) to h(t+1) is contractive, so a small change becomes smaller
+after each time step. This necessarily makes the network forget information about
+the past when we use a �?nite level of precision (such as 32 bit integers) to store
+the state vector.
+The Jacobian matrix tells us how a small change of h (t) propagates one step
+forward, or equivalently, how the gradient on h(t+1) propagates one step backward,
+during back-propagation. Note that neither W nor J need to be symmetric (although they are square and real), so they can have complex-valued eigenvalues and
+eigenvectors, with imaginary components corresponding to potentially oscillatory
+405
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+behavior (if the same Jacobian was applied iteratively). Even though h(t) or a
+small variation of h (t) of interest in back-propagation are real-valued, they can
+be expressed in such a complex-valued basis. What matters is what happens to
+the magnitude (complex absolute value) of these possibly complex-valued basis
+coeﬃcients, when we multiply the matrix by the vector. An eigenvalue with
+magnitude greater than one corresponds to magni�?cation (exponential growth, if
+applied iteratively) or shrinking (exponential decay, if applied iteratively).
+With a nonlinear map, the Jacobian is free to change at each step. The
+dynamics therefore become more complicated. However, it remains true that

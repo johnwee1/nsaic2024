@@ -1,0 +1,349 @@
+oughout computer science is that we can build
+complicated systems from minimal components. Much as a Turing machine’s memory
+needs only to be able to store 0 or 1 states, we can build a universal function approximator
+from recti�?ed linear functions.
+
+175
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+w=
+and b = 0.
+
+
+
+1
+−2
+
+
+
+,
+
+(6.6)
+
+We can now walk through the way that the model processes a batch of inputs.
+Let X be the design matrix containing all four points in the binary input space,
+with one example per row:
+
+
+0 0
+ 0 1 
+
+(6.7)
+X=
+ 1 0 .
+1 1
+The �?rst step in the neural network is to multiply the input matrix by the �?rst
+layer’s weight matrix:
+
+
+0 0
+1 1 
+
+XW = 
+(6.8)
+ 1 1 .
+2 2
+Next, we add the bias vector c, to obtain
+
+
+0 −1
+ 1 0 
+
+
+ 1 0 .
+2 1
+
+(6.9)
+
+In this space, all of the examples lie along a line with slope 1. As we move along
+this line, the output needs to begin at 0, then rise to 1, then drop back down to 0.
+A linear model cannot implement such a function. To �?nish computing the value
+of h for each example, we apply the recti�?ed linear transformation:
+
+
+0 0
+ 1 0 
+
+
+(6.10)
+ 1 0 .
+2 1
+This transformation has changed the relationship between the examples. They no
+longer lie on a single line. As shown in �?gure 6.1, they now lie in a space where a
+linear model can solve the problem.
+We �?nish by multiplying by the weight vector w :
+
+
+0
+ 1 
+
+
+ 1 .
+0
+176
+
+(6.11)
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+The neural network has obtained the correct answer for every example in the batch.
+In this example, we simply speci�?ed the solution, then showed that it obtained
+zero error. In a real situation, there might be billions of model parameters and
+billions of training examples, so one cannot simply guess the solution as we did
+here. Instead, a gradient-based optimization algorithm can �?nd parameters that
+produce very little error. The solution we described to the XOR problem is at a
+global minimum of the loss function, so gradient descent could converge to this
+point. There are other equivalent solutions to the XOR problem that gradient
+descent could also �?nd. The convergence point of gradient descent depends on the
+initial values of the parameters. In practice, gradient descent would usually not
+�?nd clean, easily understood, integer-valued solutions like the one we presented
+here.
+
+6.2
+
+Gradient-Based Learning
+
+Designing and training a neural network is not much diﬀerent from training any
+other machine learning model with gradient descent. In section 5.10, we described
+how to build a machine learning algorithm by specifying an optimization procedure,
+a cost function, and a model family.
+The largest diﬀerence between the linear models we have seen so far and neural
+networks is that the nonlinearity of a neural network causes most interesting loss
+functions to become non-convex. This means that neural networks are usually
+trained by using iterative, gradient-based optimizers that merely drive the cost
+function to a very low value, rather than the linear equation solvers used to train
+linear regression models or the convex optimization algorithms with global convergence guarantees used to train logistic regression or SVMs. Convex optimization
+converges starting from any initial parameters (in theory—in practice it is very
+robust but can encounter numerical problems). Stochastic gradient descent applied
+to non-convex loss functions has no such convergence guarantee, and is sensitive
+to the values of the initial parameters. For feedforward neural networks, it is
+important to initialize all weights to small random values. The biases may be
+initialized to zero or to small positive values. The iterative gradient-based optimization algorithms used to train feedforward networks and almost all other deep
+models will be described in detail in chapter 8, with parameter initialization in
+particular discussed in section 8.4. For the moment, it suﬃces to understand that
+the training algorithm is almost always based on using the gradient to descend the
+cost function in one way or another. The speci�?c algorithms are improvements
+and re�?nements on the ideas of gradient descent, introduced in section 4.3, and,
+177
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+more speci�?cally, are most often improvements of the stochastic gradient descent
+algorithm, introduced in section 5.9.
+We can of course, train models such as linear regression and support vector
+machines with gradient descent too, and in fact this is common when the training
+set is extremely large. From this point of view, training a neural network is not
+much diﬀerent from training any other model. Computing the gradient is slightly
+more complicated for a neural network, but can still be done eﬃciently and exactly.
+Section 6.5 will describe how to obtain the gradient using the back-propagation
+algorithm and modern generalizations of the back-propagation algorithm.
+As with other machine learning models, to apply gradient-based learning we
+must choose a cost function, and we must choose how to represent the output of
+the model. We now revisit these design considerations with special emphasis on
+the neural networks scenario.
+
+6.2.1
+
+Cost Functions
+
+An important aspect of the design of a deep neural network is the choice of the
+cost function. Fortunately, the cost functions for neural networks are more or less
+the same as those for other parametric models, such as linear models.
+In most cases, our parametric model de�?nes a distribution p( y | x; θ ) and
+we simply use the principle of maximum likelihood. This means we use the
+cross-entropy between the training data and the model’s predictions as the cost
+function.
+Sometimes, we take a simpler approach, where rather than predicting a complete
+probability distribution over y, we merely predict some statistic of y conditioned
+on x. Specialized loss functions allow us to train a predictor of these estimates.
+The total cost function used to train a neural network will often combine one
+of the primary cost functions described here with a regularization term. We have
+already seen some simple examples of regularization applied to linear models in
+section 5.2.2. The weight decay approach used for linear models is also directly
+applicable to deep neural networks and is among the most popular regularization
+strategies. More advanced regularization strategies for neural networks will be
+described in chapter 7.
+6.2.1.1
+
+Learning Conditional Distributions with Maximum Likelihood
+
+Most modern neural networks are trained using maximum likelihood. This means
+that the cost function is simply the negative log-likelihood, equivalently described
+178
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+as the cross-entropy between the training data and the model distribution. This
+cost function is given by
+J(θ ) = −Ex,y∼p̂data log p model (y | x).
+
+(6.12)
+
+The speci�?c form of the cost function changes from model to model, depending
+on the speci�?c form of log p model. The expansion of the above equation typically
+yields some terms that do not depend on the model parameters and may be discarded. For example, as we saw in section 5.5.1, if pmodel(y | x ) = N (y ; f(x; θ), I ),
+then we recover the mean squared error cost,
+1
+J (θ ) = E x,y∼p̂data ||y − f (x; θ )||2 + const,
+2
+
+(6.13)
+
+up to a scaling factor of 12 and a term that does not depend on θ . The discarded
+constant is based on the variance of the Gaussian distribution, which in this case
+we chose not to parametrize. Previously, we saw that the equivalence between
+maximum likelihood estimation with an output distribution and minimization of
+mean squared error holds for a linear model, but in fact, the equivalence holds
+regardless of the f (x; θ ) used to predict the mean of the Gaussian.
+An advantage of this approach of deriving the cost function from maximum
+likelihood is that it removes the burden of designing cost functions for each model.
+Specifying a model p(y | x) automatically determines a cost function log p(y | x).
+One recurring theme throughout neural network design is that the gradient of
+the cost function must be large and predictable enough to serve as a good guide
+for the learning algorithm. Functions that saturate (become very ﬂat) undermine
+this objective because they make the gradient become very small. In many cases
+this happens because the activation functions used to produce the output of the
+hidden units or the output units saturate. The negative log-likelihood helps to
+avoid this problem for many models. Many output units involve an exp function
+that can saturate when its argument is very negative. The log function in the
+negative log-likelihood cost function undoes the exp of some output units. We will
+discuss the interaction between the cost function and the choice of output unit in
+section 6.2.2.
+
+One unusual property of the cross-entropy cost used to perform maximum
+likelihood estimation is that it usually does not have a minimum value when applied
+to the models commonly used in practice. For discrete output variables, most
+models are parametrized in such a way that they cannot represent a probability
+of zero or one, but can come arbitrarily close to doing so. Logistic regression
+is an example of such a model. For real-valued output variables, if the model
+179
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+can control the density of the output distribution (for example, by learning the
+variance parameter of a Gaussian output distribution) then it becomes possible
+to assign extremely high density to the correct training set outputs, resulting in
+cross-entropy approaching negative in�?nity. Regularization techniques described
+in chapter 7 provide several diﬀerent ways of modifying the learning problem so
+that the model cannot reap unlimited reward in this way.
+6.2.1.2
+
+Learning Conditional Statistics
+
+Instead of learning a full probability distribution p(y | x ; θ) we often want to learn
+just one conditional statistic of y given x.
+For example, we may have a predictor f(x; θ ) that we wish to predict the mean
+of y .
+If we use a suﬃciently powerful neural network, we can think of the neural
+network as being able to represent any function f from a wide class of functions,
+with this class being limited only by features such as continuity and boundedness
+rather than by having a speci�?c parametric form. From this point of view, we
+can view the cost function as being a functional rather than just a function. A
+functional is a mapping from functions to real numbers. We can thus think of
+learning as choosing a function rather than merely choosing a set of parameters.
+We can design our cost functional to have its minimum occur at some speci�?c
+function we desire. For example, we can design the cost functional to have its
+minimum lie on the function that maps x to the expected value of y given x.
+Solving an optimization problem with respect to a function requires a mathematical
+tool called calculus of variations, described in section 19.4.2. It is not necessary
+to understand calculus of variations to understand the content of this chapter. At
+the moment, it is only necessary to understand that calculus of variations may be
+used to derive the following two results.
+Our �?rst result derived using calculus of variations is that solving the optimization problem
+f ∗ = arg min Ex,y∼p data ||y − f (x)||2
+(6.14)
+f
+
+yields
+f∗ (x) = Ey∼p data(y |x) [y ],
+
+(6.15)
+
+so long as this function lies within the class we optimize over. In other words, if we
+could train on in�?nitely many samples from the true data generating distribution,
+minimizing the mean squared error cost function gives a function that predicts the
+mean of y for each value of x.
+180
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Diﬀerent cost functions give diﬀerent statistics. A second result derived using
+calculus of variations is that
+f ∗ = arg min Ex,y∼p data ||y − f (x)||1
+
+(6.16)
+
+f
+
+yields a function that predicts the median value of y for each x, so long as such a
+function may be described by the family of functions we optimize over. This cost
+function is commonly called mean absolute error.
+Unfortunately, mean squared error and mean absolute error often lead to poor
+results when used with gradient-based optimization. Some output units that
+saturate produce very small gradients when combined with these cost functions.
+This is one reason that the cross-entropy cost function is more popular than mean
+squared error or mean absolute error, even when it is not necessary to estimate an
+entire distribution p(y | x).
+
+6.2.2
+
+Output Units
+
+The choice of cost function is tightly coupled with the choice of output unit. Most
+of the time, we simply use the cross-entropy between the data distribution and the
+model distribution. The choice of how to represent the output then determines
+the form of the cross-entropy function.
+Any kind of neural network unit that may be used as an output can also be
+used as a hidden unit. Here, we focus on the use of these units as outputs of the
+model, but in principle they can be used internally as well. We revisit these units
+with additional detail about their use as hidden units in section 6.3.
+Throughout this section, we suppose that the feedforward network provides a
+set of hidden features de�?ned by h = f (x;θ ). The role of the output layer is then
+to provide some additional transformation from the features to complete the task
+that the network must perform.
+6.2.2.1
+
+Linear Units for Gaussian Output Distributions
+
+One simple kind of output unit is an output unit based on an aﬃne transformation
+with no nonlinearity. These are often just called linear units.
+Given features h, a layer of linear output units produces a vector ŷ = W  h+b.
+Linear output layers are often used to produce the mean of a conditional
+Gaussian distribution:
+p(y | x) = N (y ; yˆ, I ).
+(6.17)
+181
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Maximizing the log-likelihood is then equivalent to minimizing the mean squared
+error.
+The maximum likelihood framework makes it straightforward to learn the
+covariance of the Gaussian too, or to make the covariance of the Gaussian be a
+function of the input. However, the covariance must be constrained to be a positive
+de�?nite matrix for all inputs. It is diﬃcult to satisfy such constraints with a linear
+output layer, so typically other output units are used to parametrize the covariance.
+Approaches to modeling the covariance are described shortly, in section 6.2.2.4.
+Because linear units do not saturate, they pose little diﬃculty for gradientbased optimization algorithms and may be used with a wide variety of optimization
+algorithms.
+6.2.2.2
+
+Sigmoid Units for Bernoulli Output Distributions
+
+Many tasks require predicting the value of a binary variable y . Classi�?cation
+problems with two classes can be cast in this form.
+The maximum-likelihood approach is to de�?ne a Bernoulli distribution over y
+conditioned on x.
+A Bernoulli distribution is de�?ned by just a single number. The neural net
+needs to predict only P(y = 1 | x). For this number to be a valid probability, it
+must lie in the interval [0, 1].
+Satisfying this constraint requires some careful design eﬀort. Suppose we were
+to use a linear unit, and threshold its value to obtain a valid probability:
+�?�
+�?�
+�?��?�
+
+.
+(6.18)
+P (y =

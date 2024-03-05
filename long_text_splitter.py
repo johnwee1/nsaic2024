@@ -24,12 +24,8 @@ def text_spliter(filename):
     # Write the individual chunks into directory "split/{filename}_chunk{i}.txt"
     for i, chunk in enumerate(chunks):
         chunk_file_path = split_dir / f"{filename}_chunk{i}.txt"
-        with chunk_file_path.open("w+") as file:
+        with chunk_file_path.open("w+", errors='replace') as file:
             file.write(chunk)
 
 
-<<<<<<< HEAD
-text_spliter("nlp")
-=======
-text_spliter("nlp")
->>>>>>> 8a5606603468172b6566e3558c80ea04159807b9
+text_spliter("deeplearning1")

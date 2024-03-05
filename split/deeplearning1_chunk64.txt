@@ -1,0 +1,270 @@
+els can be guaranteed to be able ï¬?t a suï¬ƒciently small dataset. For example,
+a classiï¬?cation dataset with only one example can be ï¬?t just by setting the biases
+of the output layer correctly. Usually if you cannot train a classiï¬?er to correctly
+label a single example, an autoencoder to successfully reproduce a single example
+with high ï¬?delity, or a generative model to consistently emit samples resembling a
+single example, there is a software defect preventing successful optimization on the
+training set. This test can be extended to a small dataset with few examples.
+Compare back-propagated derivatives to numerical derivatives: If you are using
+a software framework that requires you to implement your own gradient computations, or if you are adding a new operation to a diï¬€erentiation library and
+must deï¬?ne its bprop method, then a common source of error is implementing this
+gradient expression incorrectly. One way to verify that these derivatives are correct
+438
+
+CHAPTER 11. PRACTICAL METHODOLOGY
+
+is to compare the derivatives computed by your implementation of automatic
+diï¬€erentiation to the derivatives computed by a ï¬?nite diï¬€erences. Because
+f ( x + î€?) âˆ’ f ( x )
+,
+î€?â†’0
+î€?
+
+f î€°(x) = lim
+
+(11.5)
+
+we can approximate the derivative by using a small, ï¬?nite î€?:
+f î€° (x ) â‰ˆ
+
+f (x + î€? ) âˆ’ f (x )
+.
+î€?
+
+(11.6)
+
+We can improve the accuracy of the approximation by using the centered diï¬€erence:
+f (x + 12 î€?) âˆ’ f (x âˆ’ 12 î€?)
+f î€°(x) â‰ˆ
+.
+(11.7)
+î€?
+The perturbation size î€? must chosen to be large enough to ensure that the perturbation is not rounded down too much by ï¬?nite-precision numerical computations.
+Usually, we will want to test the gradient or Jacobian of a vector-valued function
+g : R m â†’ Rn . Unfortunately, ï¬?nite diï¬€erencing only allows us to take a single
+derivative at a time. We can either run ï¬?nite diï¬€erencing mn times to evaluate all
+of the partial derivatives of g, or we can apply the test to a new function that uses
+random projections at both the input and output of g. For example, we can apply
+our test of the implementation of the derivatives to f (x) where f (x) = uT g(vx),
+where u and v are randomly chosen vectors. Computing f î€° (x) correctly requires
+being able to back-propagate through g correctly, yet is eï¬ƒcient to do with ï¬?nite
+diï¬€erences because f has only a single input and a single output. It is usually
+a good idea to repeat this test for more than one value of u and v to reduce
+the chance that the test overlooks mistakes that are orthogonal to the random
+projection.
+If one has access to numerical computation on complex numbers, then there is
+a very eï¬ƒcient way to numerically estimate the gradient by using complex numbers
+as input to the function (Squire and Trapp, 1998). The method is based on the
+observation that
+f (x + iî€?) = f (x) + iî€?f î€°(x) + O(î€? 2)
+real(f (x + iî€?)) = f (x) + O(î€?2 ),
+
+imag(
+
+f (x + iî€?)
+) = f î€°(x) + O(î€? 2 ),
+î€?
+
+(11.8)
+(11.9)
+
+âˆš
+where i = âˆ’1. Unlike in the real-valued case above, there is no cancellation eï¬€ect
+due to taking the diï¬€erence between the value of f at diï¬€erent points. This allows
+the use of tiny values of î€? like î€? = 10 âˆ’150, which make the O(î€?2) error insigniï¬?cant
+for all practical purposes.
+439
+
+CHAPTER 11. PRACTICAL METHODOLOGY
+
+Monitor histograms of activations and gradient: It is often useful to visualize
+statistics of neural network activations and gradients, collected over a large amount
+of training iterations (maybe one epoch). The pre-activation value of hidden units
+can tell us if the units saturate, or how often they do. For example, for rectiï¬?ers,
+how often are they oï¬€? Are there units that are always oï¬€? For tanh units,
+the average of the absolute value of the pre-activations tells us how saturated
+the unit is. In a deep network where the propagated gradients quickly grow or
+quickly vanish, optimization may be hampered. Finally, it is useful to compare the
+magnitude of parameter gradients to the magnitude of the parameters themselves.
+As suggested by Bottou (2015), we would like the magnitude of parameter updates
+over a minibatch to represent something like 1% of the magnitude of the parameter,
+not 50% or 0.001% (which would make the parameters move too slowly). It may
+be that some groups of parameters are moving at a good pace while others are
+stalled. When the data is sparse (like in natural language), some parameters may
+be very rarely updated, and this should be kept in mind when monitoring their
+evolution.
+Finally, many deep learning algorithms provide some sort of guarantee about
+the results produced at each step. For example, in part III, we will see some approximate inference algorithms that work by using algebraic solutions to optimization
+problems. Typically these can be debugged by testing each of their guarantees.
+Some guarantees that some optimization algorithms oï¬€er include that the objective
+function will never increase after one step of the algorithm, that the gradient with
+respect to some subset of variables will be zero after each step of the algorithm,
+and that the gradient with respect to all variables will be zero at convergence.
+Usually due to rounding error, these conditions will not hold exactly in a digital
+computer, so the debugging test should include some tolerance parameter.
+
+11.6
+
+Example: Multi-Digit Number Recognition
+
+To provide an end-to-end description of how to apply our design methodology
+in practice, we present a brief account of the Street View transcription system,
+from the point of view of designing the deep learning components. Obviously,
+many other components of the complete system, such as the Street View cars, the
+database infrastructure, and so on, were of paramount importance.
+From the point of view of the machine learning task, the process began with
+data collection. The cars collected the raw data and human operators provided
+labels. The transcription task was preceded by a signiï¬?cant amount of dataset
+curation, including using other machine learning techniques to detect the house
+440
+
+CHAPTER 11. PRACTICAL METHODOLOGY
+
+numbers prior to transcribing them.
+The transcription project began with a choice of performance metrics and
+desired values for these metrics. An important general principle is to tailor the
+choice of metric to the business goals for the project. Because maps are only useful
+if they have high accuracy, it was important to set a high accuracy requirement
+for this project. Speciï¬?cally, the goal was to obtain human-level, 98% accuracy.
+This level of accuracy may not always be feasible to obtain. In order to reach
+this level of accuracy, the Street View transcription system sacriï¬?ces coverage.
+Coverage thus became the main performance metric optimized during the project,
+with accuracy held at 98%. As the convolutional network improved, it became
+possible to reduce the conï¬?dence threshold below which the network refuses to
+transcribe the input, eventually exceeding the goal of 95% coverage.
+After choosing quantitative goals, the next step in our recommended methodology is to rapidly establish a sensible baseline system. For vision tasks, this means a
+convolutional network with rectiï¬?ed linear units. The transcription project began
+with such a model. At the time, it was not common for a convolutional network
+to output a sequence of predictions. In order to begin with the simplest possible
+baseline, the ï¬?rst implementation of the output layer of the model consisted of n
+diï¬€erent softmax units to predict a sequence of n characters. These softmax units
+were trained exactly the same as if the task were classiï¬?cation, with each softmax
+unit trained independently.
+Our recommended methodology is to iteratively reï¬?ne the baseline and test
+whether each change makes an improvement. The ï¬?rst change to the Street View
+transcription system was motivated by a theoretical understanding of the coverage
+metric and the structure of the data. Speciï¬?cally, the network refuses to classify
+an input x whenever the probability of the output sequence p(y | x ) < t for
+some threshold t. Initially, the deï¬?nition of p(y | x) was ad-hoc, based on simply
+multiplying all of the softmax outputs together. This motivated the development
+of a specialized output layer and cost function that actually computed a principled
+log-likelihood. This approach allowed the example rejection mechanism to function
+much more eï¬€ectively.
+At this point, coverage was still below 90%, yet there were no obvious theoretical
+problems with the approach. Our methodology therefore suggests to instrument
+the train and test set performance in order to determine whether the problem
+is underï¬?tting or overï¬?tting. In this case, train and test set error were nearly
+identical. Indeed, the main reason this project proceeded so smoothly was the
+availability of a dataset with tens of millions of labeled examples. Because train
+and test set error were so similar, this suggested that the problem was either due
+441
+
+CHAPTER 11. PRACTICAL METHODOLOGY
+
+to underï¬?tting or due to a problem with the training data. One of the debugging
+strategies we recommend is to visualize the modelâ€™s worst errors. In this case, that
+meant visualizing the incorrect training set transcriptions that the model gave the
+highest conï¬?dence. These proved to mostly consist of examples where the input
+image had been cropped too tightly, with some of the digits of the address being
+removed by the cropping operation. For example, a photo of an address â€œ1849â€?
+might be cropped too tightly, with only the â€œ849â€? remaining visible. This problem
+could have been resolved by spending weeks improving the accuracy of the address
+number detection system responsible for determining the cropping regions. Instead,
+the team took a much more practical decision, to simply expand the width of the
+crop region to be systematically wider than the address number detection system
+predicted. This single change added ten percentage points to the transcription
+systemâ€™s coverage.
+Finally, the last few percentage points of performance came from adjusting
+hyperparameters. This mostly consisted of making the model larger while maintaining some restrictions on its computational cost. Because train and test error
+remained roughly equal, it was always clear that any performance deï¬?cits were due
+to underï¬?tting, as well as due to a few remaining problems with the dataset itself.
+Overall, the transcription project was a great success, and allowed hundreds of
+millions of addresses to be transcribed both faster and at lower cost than would
+have been possible via human eï¬€ort.
+We hope that the design principles described in this chapter will lead to many
+other similar successes.
+
+442
+
+Chapter 12
+
+Applications
+In this chapter, we describe how to use deep learning to solve applications in computer vision, speech recognition, natural language processing, and other application
+areas of commercial interest. We begin by discussing the large scale neural network
+implementations required for most serious AI applications. Next, we review several
+speciï¬?c application areas that deep learning has been used to solve. While one
+goal of deep learning is to design algorithms that are capable of solving a broad
+variety of tasks, so far some degree of specialization is needed. For example, vision
+tasks require processing a large number of input features (pixels) per example.
+Language tasks require modeling a large number of possible values (words in the
+vocabulary) per input feature.
+
+12.1
+
+Large-Scale Deep Learning
+
+Deep learning is based on the philosophy of connectionism: while an individual
+biological neuron or an individual feature in a machine learning model is not
+intelligent, a large population of these neurons or features acting together can
+exhibit intelligent behavior. It truly is important to emphasize the fact that the
+number of neurons must be large. One of the key factors responsible for the
+improvement in neural networkâ€™s accuracy and the improvement of the complexity
+of tasks they can solve between the 1980s and today is the dramatic increase in
+the size of the networks we use. As we saw in section 1.2.3, network sizes have
+grown exponentially for the past three decades, yet artiï¬?cial neural networks are
+only as large as the nervous systems of insects.
+Because the size of neural networks is of paramount importance, deep learning
+443
+
+CHAPTER 12. APPLICATIONS
+
+requires high performance hardware and software infrastructure.
+
+12.1.1
+
+Fast CPU Implementations
+
+Traditionally, neural networks were trained using the CPU of a single machine.
+Today, this approach is generally considered insuï¬ƒcient. We now mostly use GPU
+computing or the CPUs of many machines networked together. Before moving to
+these expensive setups, researchers worked hard to demonstrate that CPUs could
+not manage the high computational workload required by neural networks.
+A description of how to implement eï¬ƒcient numerical CPU code is beyond
+the scope of this book, but we emphasize here that careful implementation for
+speciï¬?c CPU families can yield large improvements. For example, in 2011, the best
+CPUs available could run neural network workloads faster when using ï¬?xed-point
+arithmetic rather than ï¬‚oating-point arithmetic. By creating a carefully tuned ï¬?xedpoint implementation, Vanhoucke et al. (2011) obtained a threefold speedup over
+a strong ï¬‚oating-point system. Each new model of CPU has diï¬€erent performance
+characteristics, so sometimes ï¬‚oating-point implementations can be faster too.
+The important principle is that careful specialization of numerical computation
+routines can yield a large payoï¬€. Other strategies, besides choosing whether to use
+ï¬?xed or ï¬‚oating point, include optimizing data structures to avoid cache misses
+and using vector instructions. Many machine learning researchers neglect these
+implementation details, but when the performance of an implementation restricts
+the size of the model, the accuracy of the model suï¬€ers.
+
+12.1.2
+
+GPU Implementations
+
+Most modern neural network implementations are based on graphics processing
+units. Graphics processing units (GPUs) are specialized hardware components
+that were originally developed for graphics applications. The consumer market for
+video gaming systems spurred development of graphics processing hardware. The
+performance characteristics needed for good video gaming systems turn out to be
+beneï¬?cial for neural networks as well.
+Video game rendering requires performing many operations in parallel quickly.
+Models of characters and environments are speciï¬?ed in terms of lists of 3-D
+coordinates of vertices. Graphics cards must perform matrix multiplication and
+division on many vertices in parallel to convert these 3-D coordinates into 2-D
+on-screen coordinates. The graphics card must then perform many computations
+at each pixel in parallel to determine the color of each pixel. In both cases, the
+444
+
+CHAPTER 12. APPLICATIONS
+
+computations are fairly simple and do not involve much branching compared to
+the computational workload that a CPU usually encounters. For example, each
+vertex in the same rigid object will be multiplied by the same matrix; there is no
+need to evaluate an if statement per-vertex to determine which matrix to multiply
+by. The computations are also entirely independent of each other, and t

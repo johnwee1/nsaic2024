@@ -1,0 +1,336 @@
+e �?gure, the choice of
+orthogonal directions of descent do not preserve the minimum along the previous
+search directions. This gives rise to the zig-zag pattern of progress, where by
+descending to the minimum in the current gradient direction, we must re-minimize
+the objective in the previous gradient direction. Thus, by following the gradient at
+the end of each line search we are, in a sense, undoing progress we have already
+made in the direction of the previous line search. The method of conjugate gradients
+seeks to address this problem.
+In the method of conjugate gradients, we seek to �?nd a search direction that
+is conjugate to the previous line search direction, i.e. it will not undo progress
+made in that direction. At training iteration t, the next search direction dt takes
+313
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+
+
+
+󰤓
+󰤓
+󰤓
+󰤓 󰤓 󰤓
+
+
+
+
+
+
+
+Figure 8.6: The method of steepest descent applied to a quadratic cost surface. The
+method of steepest descent involves jumping to the point of lowest cost along the line
+de�?ned by the gradient at the initial point on each step. This resolves some of the problems
+seen with using a �?xed learning rate in �?gure 4.6, but even with the optimal step size
+the algorithm still makes back-and-forth progress toward the optimum. By de�?nition, at
+the minimum of the objective along a given direction, the gradient at the �?nal point is
+orthogonal to that direction.
+
+the form:
+dt = ∇θJ (θ) + β td t−1
+
+(8.29)
+
+where β t is a coeﬃcient whose magnitude controls how much of the direction, dt−1 ,
+we should add back to the current search direction.
+Two directions, dt and dt−1, are de�?ned as conjugate if d
+t Hd t−1 = 0, where
+H is the Hessian matrix.
+The straightforward way to impose conjugacy would involve calculation of the
+eigenvectors of H to choose β t , which would not satisfy our goal of developing
+a method that is more computationally viable than Newton’s method for large
+problems. Can we calculate the conjugate directions without resorting to these
+calculations? Fortunately the answer to that is yes.
+Two popular methods for computing the βt are:
+1. Fletcher-Reeves:
+βt =
+
+∇θ J(θt ) ∇θ J(θ t)
+∇θJ(θt−1 ) ∇θ J(θ t−1)
+
+314
+
+(8.30)
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+2. Polak-Ribière:
+(∇θ J(θt) − ∇θ J(θ t−1))  ∇ θ J(θt )
+βt =
+∇θJ(θt−1 ) ∇θ J(θ t−1)
+
+(8.31)
+
+For a quadratic surface, the conjugate directions ensure that the gradient along
+the previous direction does not increase in magnitude. We therefore stay at the
+minimum along the previous directions. As a consequence, in a k-dimensional
+parameter space, the conjugate gradient method requires at most k line searches to
+achieve the minimum. The conjugate gradient algorithm is given in algorithm 8.9.
+Algorithm 8.9 The conjugate gradient method
+Require: Initial parameters θ0
+Require: Training set of m examples
+Initialize �?0 = 0
+Initialize g0 = 0
+Initialize t = 1
+while stopping criterion not met do
+Initialize the gradient gt = 0 �??
+1
+Compute gradient: gt �? m
+∇θ i L(f (x (i) ; θ), y(i) )
+−g
+
+
+
+g
+
+) t
+Compute βt = (g tg  t−1
+(Polak-Ribière)
+gt−1
+t−1
+
+(Nonlinear conjugate gradient: optionally reset βt to zero, for example if t is
+a multiple of some constant k, such as k = 5)
+Compute search direction: �?t = −gt + βt�?t−1
+1 �??m
+(i )
+( i)
+Perform line search to �?nd: �?∗ = argmin �? m
+i=1 L(f (x ; θ t + �?�?t ), y )
+(On a truly quadratic cost function, analytically solve for �?∗ rather than
+explicitly searching for it)
+Apply update: θt+1 = θt + �? ∗ �?t
+t�? t+1
+end while
+
+Nonlinear Conjugate Gradients: So far we have discussed the method of
+conjugate gradients as it is applied to quadratic objective functions. Of course,
+our primary interest in this chapter is to explore optimization methods for training
+neural networks and other related deep learning models where the corresponding
+objective function is far from quadratic. Perhaps surprisingly, the method of
+conjugate gradients is still applicable in this setting, though with some modi�?cation.
+Without any assurance that the objective is quadratic, the conjugate directions
+315
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+are no longer assured to remain at the minimum of the objective for previous
+directions. As a result, the nonlinear conjugate gradients algorithm includes
+occasional resets where the method of conjugate gradients is restarted with line
+search along the unaltered gradient.
+Practitioners report reasonable results in applications of the nonlinear conjugate
+gradients algorithm to training neural networks, though it is often bene�?cial to
+initialize the optimization with a few iterations of stochastic gradient descent before
+commencing nonlinear conjugate gradients. Also, while the (nonlinear) conjugate
+gradients algorithm has traditionally been cast as a batch method, minibatch
+versions have been used successfully for the training of neural networks (Le et al.,
+2011). Adaptations of conjugate gradients speci�?cally for neural networks have
+been proposed earlier, such as the scaled conjugate gradients algorithm (Moller,
+1993).
+
+8.6.3
+
+BFGS
+
+The Broyden–Fletcher–Goldfarb–Shanno (BFGS) algorithm attempts to
+bring some of the advantages of Newton’s method without the computational
+burden. In that respect, BFGS is similar to the conjugate gradient method.
+However, BFGS takes a more direct approach to the approximation of Newton’s
+update. Recall that Newton’s update is given by
+θ ∗ = θ0 − H−1 ∇θ J(θ0),
+
+(8.32)
+
+where H is the Hessian of J with respect to θ evaluated at θ 0. The primary
+computational diﬃculty in applying Newton’s update is the calculation of the
+inverse Hessian H −1. The approach adopted by quasi-Newton methods (of which
+the BFGS algorithm is the most prominent) is to approximate the inverse with
+a matrix Mt that is iteratively re�?ned by low rank updates to become a better
+approximation of H −1 .
+The speci�?cation and derivation of the BFGS approximation is given in many
+textbooks on optimization, including Luenberger (1984).
+Once the inverse Hessian approximation Mt is updated, the direction of descent
+�?t is determined by �?t = Mtg t. A line search is performed in this direction to
+determine the size of the step, �?∗, taken in this direction. The �?nal update to the
+parameters is given by:
+(8.33)
+θ t+1 = θt + �?∗ �?t .
+Like the method of conjugate gradients, the BFGS algorithm iterates a series of
+line searches with the direction incorporating second-order information. However
+316
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+unlike conjugate gradients, the success of the approach is not heavily dependent
+on the line search �?nding a point very close to the true minimum along the line.
+Thus, relative to conjugate gradients, BFGS has the advantage that it can spend
+less time re�?ning each line search. On the other hand, the BFGS algorithm must
+store the inverse Hessian matrix, M, that requires O(n2) memory, making BFGS
+impractical for most modern deep learning models that typically have millions of
+parameters.
+Limited Memory BFGS (or L-BFGS) The memory costs of the BFGS
+algorithm can be signi�?cantly decreased by avoiding storing the complete inverse
+Hessian approximation M . The L-BFGS algorithm computes the approximation M
+using the same method as the BFGS algorithm, but beginning with the assumption
+that M (t−1) is the identity matrix, rather than storing the approximation from one
+step to the next. If used with exact line searches, the directions de�?ned by L-BFGS
+are mutually conjugate. However, unlike the method of conjugate gradients, this
+procedure remains well behaved when the minimum of the line search is reached
+only approximately. The L-BFGS strategy with no storage described here can be
+generalized to include more information about the Hessian by storing some of the
+vectors used to update M at each time step, which costs only O(n) per step.
+
+8.7
+
+Optimization Strategies and Meta-Algorithms
+
+Many optimization techniques are not exactly algorithms, but rather general
+templates that can be specialized to yield algorithms, or subroutines that can be
+incorporated into many diﬀerent algorithms.
+
+8.7.1
+
+Batch Normalization
+
+Batch normalization (Ioﬀe and Szegedy, 2015) is one of the most exciting recent
+innovations in optimizing deep neural networks and it is actually not an optimization
+algorithm at all. Instead, it is a method of adaptive reparametrization, motivated
+by the diﬃculty of training very deep models.
+Very deep models involve the composition of several functions or layers. The
+gradient tells how to update each parameter, under the assumption that the other
+layers do not change. In practice, we update all of the layers simultaneously.
+When we make the update, unexpected results can happen because many functions
+composed together are changed simultaneously, using updates that were computed
+under the assumption that the other functions remain constant. As a simple
+317
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+example, suppose we have a deep neural network that has only one unit per layer
+and does not use an activation function at each hidden layer: ŷ = xw1 w2 w3 . . . wl .
+Here, w i provides the weight used by layer i. The output of layer i is h i = hi−1 wi .
+The output ŷ is a linear function of the input x, but a nonlinear function of the
+weights wi . Suppose our cost function has put a gradient of 1 on ŷ, so we wish to
+decrease ŷ slightly. The back-propagation algorithm can then compute a gradient
+g = ∇wŷ. Consider what happens when we make an update w �? w − �?g. The
+�?rst-order Taylor series approximation of ŷ predicts that the value of ŷ will decrease
+by �?gg. If we wanted to decrease ŷ by .1, this �?rst-order information available in
+the gradient suggests we could set the learning rate �? to g .1
+g . However, the actual
+update will include second-order and third-order eﬀects, on up to eﬀects of order l.
+The new value of ŷ is given by
+x(w1 − �?g1 )(w2 − �?g 2) . . . (wl − �?gl ).
+
+(8.34)
+
+�?�
+An example of one second-order term arising from this update is �?2g1 g2 li=3 wi .
+�?�
+This term might be negligible if li=3 w i is small, or might be exponentially large
+if the weights on layers 3 through l are greater than 1. This makes it very hard
+to choose an appropriate learning rate, because the eﬀects of an update to the
+parameters for one layer depends so strongly on all of the other layers. Second-order
+optimization algorithms address this issue by computing an update that takes these
+second-order interactions into account, but we can see that in very deep networks,
+even higher-order interactions can be signi�?cant. Even second-order optimization
+algorithms are expensive and usually require numerous approximations that prevent
+them from truly accounting for all signi�?cant second-order interactions. Building
+an n-th order optimization algorithm for n > 2 thus seems hopeless. What can we
+do instead?
+Batch normalization provides an elegant way of reparametrizing almost any deep
+network. The reparametrization signi�?cantly reduces the problem of coordinating
+updates across many layers. Batch normalization can be applied to any input
+or hidden layer in a network. Let H be a minibatch of activations of the layer
+to normalize, arranged as a design matrix, with the activations for each example
+appearing in a row of the matrix. To normalize H , we replace it with
+H =
+
+H−µ
+,
+σ
+
+(8.35)
+
+where µ is a vector containing the mean of each unit and σ is a vector containing
+the standard deviation of each unit. The arithmetic here is based on broadcasting
+the vector µ and the vector σ to be applied to every row of the matrix H . Within
+each row, the arithmetic is element-wise, so Hi,j is normalized by subtracting µj
+318
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+and dividing by σ j . The rest of the network then operates on H  in exactly the
+same way that the original network operated on H .
+At training time,
+
+1�?�
+µ=
+Hi,:
+m i
+
+and
+σ=
+
+�?�
+
+δ+
+
+1�?�
+(H − µ)2i ,
+m i
+
+(8.36)
+
+(8.37)
+
+where δ is a small positive√value such as 10−8 imposed to avoid encountering
+the unde�?ned gradient of z at z = 0. Crucially, we back-propagate through
+these operations for computing the mean and the standard deviation, and for
+applying them to normalize H. This means that the gradient will never propose
+an operation that acts simply to increase the standard deviation or mean of
+h i; the normalization operations remove the eﬀect of such an action and zero
+out its component in the gradient. This was a major innovation of the batch
+normalization approach. Previous approaches had involved adding penalties to
+the cost function to encourage units to have normalized activation statistics or
+involved intervening to renormalize unit statistics after each gradient descent step.
+The former approach usually resulted in imperfect normalization and the latter
+usually resulted in signi�?cant wasted time as the learning algorithm repeatedly
+proposed changing the mean and variance and the normalization step repeatedly
+undid this change. Batch normalization reparametrizes the model to make some
+units always be standardized by de�?nition, deftly sidestepping both problems.
+At test time, µ and σ may be replaced by running averages that were collected
+during training time. This allows the model to be evaluated on a single example,
+without needing to use de�?nitions of µ and σ that depend on an entire minibatch.
+Revisiting the ŷ = xw1w 2 . . . wl example, we see that we can mostly resolve the
+diﬃculties in learning this model by normalizing hl−1 . Suppose that x is drawn
+from a unit Gaussian. Then hl−1 will also come from a Gaussian, because the
+transformation from x to hl is linear. However, h l−1 will no longer have zero mean
+and unit variance. After applying batch normalization, we obtain the normalized
+ĥ l−1 that restores the zero mean and unit variance properties. For almost any
+update to the lower layers, ĥ l−1 will remain a unit Gaussian. The output ŷ may
+then be learned as a simple linear function ŷ = wlĥ l−1. Learning in this model is
+now very simple because the parameters at the lower layers simply do not have an
+eﬀect in most cases; their output is always renormalized to a unit Gaussian. In
+some corner cases, the lower layers can have an eﬀect. Changing one of the lower
+layer weights to 0 can make the output become degenerate, and changing the sign
+319
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+of one of the lower weights can ﬂip the relationship between ĥ l−1 and y. These
+situations are very rare. Without normalization, nearly every update would have
+an extreme eﬀect on the statistics of hl−1 . Batch normalization has thus made
+this model signi�?cantly easier to learn. In this example, the ease of learning of
+course came at the cost of making the lower layers useless. In our linear example,
+the lower layers no longer have any harmful eﬀect, but they also no longer have
+any bene�?cial eﬀect. This is because we have normalized out the �?rst and second
+order statistics, which is all that a linear network can inﬂue

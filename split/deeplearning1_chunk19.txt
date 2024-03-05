@@ -1,0 +1,418 @@
+�?guration x
+to a real number estimating the true probability pdata(x).
+The maximum likelihood estimator for θ is then de�?ned as
+θML = arg max p model(X; θ)
+
+(5.56)
+
+θ
+
+= arg max
+θ
+
+m
+�?�
+i=1
+
+131
+
+p model(x (i); θ)
+
+(5.57)
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+This product over many probabilities can be inconvenient for a variety of reasons.
+For example, it is prone to numerical underﬂow. To obtain a more convenient
+but equivalent optimization problem, we observe that taking the logarithm of the
+likelihood does not change its arg max but does conveniently transform a product
+into a sum:
+m
+�?�
+θ ML = arg max
+log p model(x(i) ; θ).
+(5.58)
+θ
+
+i=1
+
+Because the arg max does not change when we rescale the cost function, we can
+divide by m to obtain a version of the criterion that is expressed as an expectation
+with respect to the empirical distribution p̂data de�?ned by the training data:
+θ ML = arg max Ex∼p̂data log pmodel (x; θ).
+
+(5.59)
+
+θ
+
+One way to interpret maximum likelihood estimation is to view it as minimizing
+the dissimilarity between the empirical distribution p̂data de�?ned by the training
+set and the model distribution, with the degree of dissimilarity between the two
+measured by the KL divergence. The KL divergence is given by
+DKL (p̂data �?�pmodel) = E x∼p̂data [log p̂data (x) − log pmodel(x)] .
+
+(5.60)
+
+The term on the left is a function only of the data generating process, not the
+model. This means when we train the model to minimize the KL divergence, we
+need only minimize
+− E x∼p̂ data [log pmodel(x)]
+(5.61)
+which is of course the same as the maximization in equation 5.59.
+Minimizing this KL divergence corresponds exactly to minimizing the crossentropy between the distributions. Many authors use the term “cross-entropy�? to
+identify speci�?cally the negative log-likelihood of a Bernoulli or softmax distribution,
+but that is a misnomer. Any loss consisting of a negative log-likelihood is a crossentropy between the empirical distribution de�?ned by the training set and the
+probability distribution de�?ned by model. For example, mean squared error is the
+cross-entropy between the empirical distribution and a Gaussian model.
+We can thus see maximum likelihood as an attempt to make the model distribution match the empirical distribution p̂data . Ideally, we would like to match
+the true data generating distribution p data , but we have no direct access to this
+distribution.
+While the optimal θ is the same regardless of whether we are maximizing the
+likelihood or minimizing the KL divergence, the values of the objective functions
+132
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+are diﬀerent. In software, we often phrase both as minimizing a cost function.
+Maximum likelihood thus becomes minimization of the negative log-likelihood
+(NLL), or equivalently, minimization of the cross entropy. The perspective of
+maximum likelihood as minimum KL divergence becomes helpful in this case
+because the KL divergence has a known minimum value of zero. The negative
+log-likelihood can actually become negative when x is real-valued.
+
+5.5.1
+
+Conditional Log-Likelihood and Mean Squared Error
+
+The maximum likelihood estimator can readily be generalized to the case where
+our goal is to estimate a conditional probability P (y | x; θ) in order to predict y
+given x. This is actually the most common situation because it forms the basis for
+most supervised learning. If X represents all our inputs and Y all our observed
+targets, then the conditional maximum likelihood estimator is
+θ ML = arg max P (Y | X ; θ ).
+
+(5.62)
+
+θ
+
+If the examples are assumed to be i.i.d., then this can be decomposed into
+θML = arg max
+θ
+
+m
+�?�
+i=1
+
+log P (y(i) | x (i); θ).
+
+(5.63)
+
+Example: Linear Regression as Maximum Likelihood Linear regression,
+introduced earlier in section 5.1.4, may be justi�?ed as a maximum likelihood
+procedure. Previously, we motivated linear regression as an algorithm that learns
+to take an input x and produce an output value ŷ. The mapping from x to ŷ is
+chosen to minimize mean squared error, a criterion that we introduced more or less
+arbitrarily. We now revisit linear regression from the point of view of maximum
+likelihood estimation. Instead of producing a single prediction ŷ, we now think
+of the model as producing a conditional distribution p (y | x ). We can imagine
+that with an in�?nitely large training set, we might see several training examples
+with the same input value x but diﬀerent values of y. The goal of the learning
+algorithm is now to �?t the distribution p(y | x) to all of those diﬀerent y values
+that are all compatible with x. To derive the same linear regression algorithm
+we obtained before, we de�?ne p (y | x) = N (y; ŷ (x; w), σ2 ). The function ŷ(x; w)
+gives the prediction of the mean of the Gaussian. In this example, we assume that
+the variance is �?xed to some constant σ 2 chosen by the user. We will see that this
+choice of the functional form of p( y | x) causes the maximum likelihood estimation
+procedure to yield the same learning algorithm as we developed before. Since the
+133
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+examples are assumed to be i.i.d., the conditional log-likelihood (equation 5.63) is
+given by
+m
+�?�
+i=1
+
+log p(y(i) | x(i) ; θ)
+
+�?
+m �?
+�?ŷ (i) − y(i) �?2
+�?�
+m
+= − m log σ −
+log(2π ) −
+,
+2
+2
+2σ
+i=1
+
+(5.64)
+
+(5.65)
+
+where ŷ (i) is the output of the linear regression on the i-th input x(i) and m is the
+number of the training examples. Comparing the log-likelihood with the mean
+squared error,
+m
+1 �?� ( i)
+MSEtrain =
+(5.66)
+||ŷ − y (i)||2 ,
+m
+i=1
+
+we immediately see that maximizing the log-likelihood with respect to w yields
+the same estimate of the parameters w as does minimizing the mean squared error.
+The two criteria have diﬀerent values but the same location of the optimum. This
+justi�?es the use of the MSE as a maximum likelihood estimation procedure. As we
+will see, the maximum likelihood estimator has several desirable properties.
+
+5.5.2
+
+Properties of Maximum Likelihood
+
+The main appeal of the maximum likelihood estimator is that it can be shown to
+be the best estimator asymptotically, as the number of examples m → ∞, in terms
+of its rate of convergence as m increases.
+Under appropriate conditions, the maximum likelihood estimator has the
+property of consistency (see section 5.4.5 above), meaning that as the number
+of training examples approaches in�?nity, the maximum likelihood estimate of a
+parameter converges to the true value of the parameter. These conditions are:
+• The true distribution pdata must lie within the model family pmodel(·; θ).
+Otherwise, no estimator can recover pdata .
+• The true distribution pdata must correspond to exactly one value of θ. Otherwise, maximum likelihood can recover the correct pdata , but will not be able
+to determine which value of θ was used by the data generating processing.
+There are other inductive principles besides the maximum likelihood estimator, many of which share the property of being consistent estimators. However,
+134
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+consistent estimators can diﬀer in their statistic eﬃciency, meaning that one
+consistent estimator may obtain lower generalization error for a �?xed number of
+samples m, or equivalently, may require fewer examples to obtain a �?xed level of
+generalization error.
+Statistical eﬃciency is typically studied in the parametric case (like in linear
+regression) where our goal is to estimate the value of a parameter (and assuming
+it is possible to identify the true parameter), not the value of a function. A way to
+measure how close we are to the true parameter is by the expected mean squared
+error, computing the squared diﬀerence between the estimated and true parameter
+values, where the expectation is over m training samples from the data generating
+distribution. That parametric mean squared error decreases as m increases, and
+for m large, the Cramér-Rao lower bound (Rao, 1945; Cramér, 1946) shows that no
+consistent estimator has a lower mean squared error than the maximum likelihood
+estimator.
+For these reasons (consistency and eﬃciency), maximum likelihood is often
+considered the preferred estimator to use for machine learning. When the number
+of examples is small enough to yield over�?tting behavior, regularization strategies
+such as weight decay may be used to obtain a biased version of maximum likelihood
+that has less variance when training data is limited.
+
+5.6
+
+Bayesian Statistics
+
+So far we have discussed frequentist statistics and approaches based on estimating a single value of θ, then making all predictions thereafter based on that one
+estimate. Another approach is to consider all possible values of θ when making a
+prediction. The latter is the domain of Bayesian statistics.
+As discussed in section 5.4.1, the frequentist perspective is that the true
+parameter value θ is �?xed but unknown, while the point estimate θˆ is a random
+variable on account of it being a function of the dataset (which is seen as random).
+The Bayesian perspective on statistics is quite diﬀerent. The Bayesian uses
+probability to reﬂect degrees of certainty of states of knowledge. The dataset is
+directly observed and so is not random. On the other hand, the true parameter θ
+is unknown or uncertain and thus is represented as a random variable.
+Before observing the data, we represent our knowledge of θ using the prior
+probability distribution, p(θ ) (sometimes referred to as simply “the prior�?).
+Generally, the machine learning practitioner selects a prior distribution that is
+quite broad (i.e. with high entropy) to reﬂect a high degree of uncertainty in the
+135
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+value of θ before observing any data. For example, one might assume a priori that
+θ lies in some �?nite range or volume, with a uniform distribution. Many priors
+instead reﬂect a preference for “simpler�? solutions (such as smaller magnitude
+coeﬃcients, or a function that is closer to being constant).
+Now consider that we have a set of data samples {x(1) , . . . , x(m) }. We can
+recover the eﬀect of data on our belief about θ by combining the data likelihood
+p(x(1) , . . . , x(m) | θ) with the prior via Bayes’ rule:
+p(θ | x
+
+(1)
+
+,...,x
+
+(m )
+
+p(x(1), . . . , x(m) | θ )p(θ)
+)=
+p(x(1) , . . . , x(m) )
+
+(5.67)
+
+In the scenarios where Bayesian estimation is typically used, the prior begins as a
+relatively uniform or Gaussian distribution with high entropy, and the observation
+of the data usually causes the posterior to lose entropy and concentrate around a
+few highly likely values of the parameters.
+Relative to maximum likelihood estimation, Bayesian estimation oﬀers two
+important diﬀerences. First, unlike the maximum likelihood approach that makes
+predictions using a point estimate of θ, the Bayesian approach is to make predictions
+using a full distribution over θ. For example, after observing m examples, the
+predicted distribution over the next data sample, x(m+1) , is given by
+�?�
+(m+1)
+(1)
+(m )
+p (x
+(5.68)
+| x , . . . , x ) = p(x(m+1) | θ )p(θ | x(1) , . . . , x(m) ) dθ.
+
+Here each value of θ with positive probability density contributes to the prediction
+of the next example, with the contribution weighted by the posterior density itself.
+After having observed {x(1) , . . . , x(m)} , if we are still quite uncertain about the
+value of θ, then this uncertainty is incorporated directly into any predictions we
+might make.
+In section 5.4, we discussed how the frequentist approach addresses the uncertainty in a given point estimate of θ by evaluating its variance. The variance of
+the estimator is an assessment of how the estimate might change with alternative
+samplings of the observed data. The Bayesian answer to the question of how to deal
+with the uncertainty in the estimator is to simply integrate over it, which tends to
+protect well against over�?tting. This integral is of course just an application of
+the laws of probability, making the Bayesian approach simple to justify, while the
+frequentist machinery for constructing an estimator is based on the rather ad hoc
+decision to summarize all knowledge contained in the dataset with a single point
+estimate.
+The second important diﬀerence between the Bayesian approach to estimation
+and the maximum likelihood approach is due to the contribution of the Bayesian
+136
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+prior distribution. The prior has an inﬂuence by shifting probability mass density
+towards regions of the parameter space that are preferred a priori. In practice,
+the prior often expresses a preference for models that are simpler or more smooth.
+Critics of the Bayesian approach identify the prior as a source of subjective human
+judgment impacting the predictions.
+Bayesian methods typically generalize much better when limited training data
+is available, but typically suﬀer from high computational cost when the number of
+training examples is large.
+Example: Bayesian Linear Regression Here we consider the Bayesian estimation approach to learning the linear regression parameters. In linear regression,
+we learn a linear mapping from an input vector x ∈ R n to predict the value of a
+scalar y ∈ R. The prediction is parametrized by the vector w ∈ Rn :
+ŷ = w x.
+
+(5.69)
+
+Given a set of m training samples (X (train) , y(train) ), we can express the prediction
+of y over the entire training set as:
+ŷ (train) = X (train)w.
+
+(5.70)
+
+Expressed as a Gaussian conditional distribution on y(train) , we have
+p(y(train) | X (train), w) = N (y (train) ; X (train)w, I )
+(5.71)
+
+
+1 (train)
+(train)
+(train)
+(train)
+
+�? exp − (y
+−X
+−X
+w) (y
+w) ,
+2
+(5.72)
+where we follow the standard MSE formulation in assuming that the Gaussian
+variance on y is one. In what follows, to reduce the notational burden, we refer to
+(X (train), y (train)) as simply (X , y).
+To determine the posterior distribution over the model parameter vector w , we
+�?rst need to specify a prior distribution. The prior should reﬂect our naive belief
+about the value of these parameters. While it is sometimes diﬃcult or unnatural
+to express our prior beliefs in terms of the parameters of the model, in practice we
+typically assume a fairly broad distribution expressing a high degree of uncertainty
+about θ. For real-valued parameters it is common to use a Gaussian as a prior
+distribution:
+
+
+1
+ −1
+(5.73)
+p(w) = N (w; µ0 , Λ0) �? exp − (w − µ0) Λ0 (w − µ 0) ,
+2
+137
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+where µ0 and Λ 0 are the prior distribution mean vector and covariance matrix
+respectively.1
+With the prior thus speci�?ed, we can now proceed in determining the posterior
+distribution over the model parameters.
+p(w | X , y) �? p(y | X , w)p(w)
+(5.74)
+
+
+
+
+1
+1
+
+ −1
+�? exp − (y − Xw) (y − Xw) exp − (w − µ0 ) Λ 0 (w − µ 0)
+2
+2
+(5.75)
+
+�?
+
+1
+
+ 
+ −1
+ −1
+�? exp − −2y Xw + w X Xw + w Λ 0 w − 2µ0 Λ0 w
+.
+2
+(5.76)
+
+�?−1
+ 
+�?
+−1
+µ
+=
+Λ
+X
+y
++
+Λ
+µ
+We now de�?ne Λm = X X + Λ−1
+and
+. Using
+m
+m
+0
+0
+0
+these new variables, we �?nd that the posterior may be rewritten as a Gaussian
+distribution:
+
+
+1
+1
+ −1
+(5.77)
+p(w | X , y) �? exp − (w − µm ) Λ−1
+m (w − µ m) + µ mΛm µ m
+2
+2
+
+
+1
+�? exp − (w −

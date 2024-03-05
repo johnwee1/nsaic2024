@@ -1,0 +1,514 @@
+
+
+0
+0
+0
+
+
+
+  −5 
+(7.46)
+ −9 
+ 1 0 0 −1 0 −4  
+
+ 1 
+−3
+1 0 0
+0 −5 0
+4
+m
+m
+×
+n
+y∈R
+A∈R
+x ∈ Rn
+
+254
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+
+
+
+
+
+
+−14
+3
+ 1 
+ 4
+
+
+
+ 19  =  −1
+
+
+
+ 2 
+ 3
+23
+−5
+y ∈ Rm
+
+
+
+−1 2 −5 4
+1
+2 − 3 −1 1
+3 
+
+5
+4
+2 − 3 −2 
+
+1
+2 −3 0 −3 
+4 − 2 2 − 5 −1
+B ∈ R m×n
+
+
+
+
+0
+ 2 
+
+
+ 0 
+
+
+ 0 
+
+
+ −3 
+0
+h ∈ Rn
+
+(7.47)
+
+In the �?rst expression, we have an example of a sparsely parametrized linear
+regression model. In the second, we have linear regression with a sparse representation h of the data x. That is, h is a function of x that, in some sense, represents
+the information present in x, but does so with a sparse vector.
+Representational regularization is accomplished by the same sorts of mechanisms
+that we have used in parameter regularization.
+Norm penalty regularization of representations is performed by adding to the
+loss function J a norm penalty on the representation. This penalty is denoted
+˜
+Ω(h). As before, we denote the regularized loss function by J:
+J˜(θ; X , y) = J (θ; X , y) + αΩ(h)
+
+(7.48)
+
+where α ∈ [0, ∞) weights the relative contribution of the norm penalty term, with
+larger values of α corresponding to more regularization.
+Just as an L1 penalty on the parameters induces parameter sparsity, an L 1
+penalty on the elements
+of the representation induces representational sparsity:
+�??
+Ω(h) = ||h||1 = i |h i |. Of course, the L 1 penalty is only one choice of penalty
+that can result in a sparse representation. Others include the penalty derived from
+a Student-t prior on the representation (Olshausen and Field, 1996; Bergstra, 2011)
+and KL divergence penalties (Larochelle and Bengio, 2008) that are especially
+useful for representations with elements constrained to lie on the unit interval.
+Lee et al. (2008) and Goodfellow et al. (2009) both provide examples of�??strategies
+based on regularizing the average activation across several examples, m1 i h(i), to
+be near some target value, such as a vector with .01 for each entry.
+
+Other approaches obtain representational sparsity with a hard constraint on
+the activation values. For example, orthogonal matching pursuit (Pati et al.,
+1993) encodes an input x with the representation h that solves the constrained
+optimization problem
+arg min �?�x − W h�?�2 ,
+(7.49)
+h,�?�h�?�0 <k
+
+where �?�h�?�0 is the number of non-zero entries of h . This problem can be solved
+eﬃciently when W is constrained to be orthogonal. This method is often called
+255
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+OMP-k with the value of k speci�?ed to indicate the number of non-zero features
+allowed. Coates and Ng (2011) demonstrated that OMP-1 can be a very eﬀective
+feature extractor for deep architectures.
+Essentially any model that has hidden units can be made sparse. Throughout
+this book, we will see many examples of sparsity regularization used in a variety of
+contexts.
+
+7.11
+
+Bagging and Other Ensemble Methods
+
+Bagging (short for bootstrap aggregating) is a technique for reducing generalization error by combining several models (Breiman, 1994). The idea is to
+train several diﬀerent models separately, then have all of the models vote on the
+output for test examples. This is an example of a general strategy in machine
+learning called model averaging. Techniques employing this strategy are known
+as ensemble methods.
+The reason that model averaging works is that diﬀerent models will usually
+not make all the same errors on the test set.
+Consider for example a set of k regression models. Suppose that each model
+makes an error �? i on each example, with the errors drawn from a zero-mean
+multivariate normal distribution with variances E[�? 2i ] = v and covariances E[�?i�?j ] =
+c. �??
+Then the error made by the average prediction of all the ensemble models is
+1
+i �?i . The expected squared error of the ensemble predictor is
+k
+
+
+
+
+2
+�?� 2 �?�
+1�?�
+1
+�?i +
+�?i  = 2 E
+�?i�?j 
+(7.50)
+E
+k
+k
+i
+
+i
+
+=
+
+1
+k−1
+v+
+c.
+k
+k
+
+j =i
+
+(7.51)
+
+In the case where the errors are perfectly correlated and c = v, the mean squared
+error reduces to v, so the model averaging does not help at all. In the case where
+the errors are perfectly uncorrelated and c = 0, the expected squared error of the
+ensemble is only 1k v. This means that the expected squared error of the ensemble
+decreases linearly with the ensemble size. In other words, on average, the ensemble
+will perform at least as well as any of its members, and if the members make
+independent errors, the ensemble will perform signi�?cantly better than its members.
+Diﬀerent ensemble methods construct the ensemble of models in diﬀerent ways.
+For example, each member of the ensemble could be formed by training a completely
+256
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+Original dataset
+
+First ensemble member
+
+First resampled dataset
+
+8
+
+Second resampled dataset
+
+Second ensemble member
+8
+
+Figure 7.5: A cartoon depiction of how bagging works. Suppose we train an 8 detector on
+the dataset depicted above, containing an 8, a 6 and a 9. Suppose we make two diﬀerent
+resampled datasets. The bagging training procedure is to construct each of these datasets
+by sampling with replacement. The �?rst dataset omits the 9 and repeats the 8. On this
+dataset, the detector learns that a loop on top of the digit corresponds to an 8. On
+the second dataset, we repeat the 9 and omit the 6. In this case, the detector learns
+that a loop on the bottom of the digit corresponds to an 8. Each of these individual
+classi�?cation rules is brittle, but if we average their output then the detector is robust,
+achieving maximal con�?dence only when both loops of the 8 are present.
+
+diﬀerent kind of model using a diﬀerent algorithm or objective function. Bagging
+is a method that allows the same kind of model, training algorithm and objective
+function to be reused several times.
+Speci�?cally, bagging involves constructing k diﬀerent datasets. Each dataset
+has the same number of examples as the original dataset, but each dataset is
+constructed by sampling with replacement from the original dataset. This means
+that, with high probability, each dataset is missing some of the examples from the
+original dataset and also contains several duplicate examples (on average around
+2/3 of the examples from the original dataset are found in the resulting training
+set, if it has the same size as the original). Model i is then trained on dataset
+i. The diﬀerences between which examples are included in each dataset result in
+diﬀerences between the trained models. See �?gure 7.5 for an example.
+Neural networks reach a wide enough variety of solution points that they can
+often bene�?t from model averaging even if all of the models are trained on the same
+dataset. Diﬀerences in random initialization, random selection of minibatches,
+diﬀerences in hyperparameters, or diﬀerent outcomes of non-deterministic implementations of neural networks are often enough to cause diﬀerent members of the
+257
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+ensemble to make partially independent errors.
+Model averaging is an extremely powerful and reliable method for reducing
+generalization error. Its use is usually discouraged when benchmarking algorithms
+for scienti�?c papers, because any machine learning algorithm can bene�?t substantially from model averaging at the price of increased computation and memory.
+For this reason, benchmark comparisons are usually made using a single model.
+Machine learning contests are usually won by methods using model averaging over dozens of models. A recent prominent example is the Netﬂix Grand
+Prize (Koren, 2009).
+Not all techniques for constructing ensembles are designed to make the ensemble
+more regularized than the individual models. For example, a technique called
+boosting (Freund and Schapire, 1996b,a) constructs an ensemble with higher
+capacity than the individual models. Boosting has been applied to build ensembles
+of neural networks (Schwenk and Bengio, 1998) by incrementally adding neural
+networks to the ensemble. Boosting has also been applied interpreting an individual
+neural network as an ensemble (Bengio et al., 2006a), incrementally adding hidden
+units to the neural network.
+
+7.12
+
+Dropout
+
+Dropout (Srivastava et al., 2014) provides a computationally inexpensive but
+powerful method of regularizing a broad family of models. To a �?rst approximation,
+dropout can be thought of as a method of making bagging practical for ensembles
+of very many large neural networks. Bagging involves training multiple models,
+and evaluating multiple models on each test example. This seems impractical
+when each model is a large neural network, since training and evaluating such
+networks is costly in terms of runtime and memory. It is common to use ensembles
+of �?ve to ten neural networks—Szegedy et al. (2014a) used six to win the ILSVRC—
+but more than this rapidly becomes unwieldy. Dropout provides an inexpensive
+approximation to training and evaluating a bagged ensemble of exponentially many
+neural networks.
+Speci�?cally, dropout trains the ensemble consisting of all sub-networks that
+can be formed by removing non-output units from an underlying base network,
+as illustrated in �?gure 7.6. In most modern neural networks, based on a series of
+aﬃne transformations and nonlinearities, we can eﬀectively remove a unit from a
+network by multiplying its output value by zero. This procedure requires some
+slight modi�?cation for models such as radial basis function networks, which take
+258
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+the diﬀerence between the unit’s state and some reference value. Here, we present
+the dropout algorithm in terms of multiplication by zero for simplicity, but it can
+be trivially modi�?ed to work with other operations that remove a unit from the
+network.
+Recall that to learn with bagging, we de�?ne k diﬀerent models, construct k
+diﬀerent datasets by sampling from the training set with replacement, and then
+train model i on dataset i. Dropout aims to approximate this process, but with an
+exponentially large number of neural networks. Speci�?cally, to train with dropout,
+we use a minibatch-based learning algorithm that makes small steps, such as
+stochastic gradient descent. Each time we load an example into a minibatch, we
+randomly sample a diﬀerent binary mask to apply to all of the input and hidden
+units in the network. The mask for each unit is sampled independently from all of
+the others. The probability of sampling a mask value of one (causing a unit to be
+included) is a hyperparameter �?xed before training begins. It is not a function
+of the current value of the model parameters or the input example. Typically,
+an input unit is included with probability 0.8 and a hidden unit is included with
+probability 0.5. We then run forward propagation, back-propagation, and the
+learning update as usual. Figure 7.7 illustrates how to run forward propagation
+with dropout.
+More formally, suppose that a mask vector µ speci�?es which units to include,
+and J (θ, µ) de�?nes the cost of the model de�?ned by parameters θ and mask µ.
+Then dropout training consists in minimizing Eµ J( θ, µ). The expectation contains
+exponentially many terms but we can obtain an unbiased estimate of its gradient
+by sampling values of µ.
+Dropout training is not quite the same as bagging training. In the case of
+bagging, the models are all independent. In the case of dropout, the models share
+parameters, with each model inheriting a diﬀerent subset of parameters from the
+parent neural network. This parameter sharing makes it possible to represent an
+exponential number of models with a tractable amount of memory. In the case of
+bagging, each model is trained to convergence on its respective training set. In the
+case of dropout, typically most models are not explicitly trained at all—usually,
+the model is large enough that it would be infeasible to sample all possible subnetworks within the lifetime of the universe. Instead, a tiny fraction of the possible
+sub-networks are each trained for a single step, and the parameter sharing causes
+the remaining sub-networks to arrive at good settings of the parameters. These
+are the only diﬀerences. Beyond these, dropout follows the bagging algorithm. For
+example, the training set encountered by each sub-network is indeed a subset of
+the original training set sampled with replacement.
+259
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+y
+
+y
+
+h1
+
+h2
+
+x1
+
+x2
+
+y
+
+h1
+
+y
+
+h1
+
+h1
+
+x2
+
+x1
+
+y
+
+h2
+
+h2
+x1
+
+y
+
+x2
+y
+
+h2
+
+h2
+
+h2
+x1
+
+x2
+
+x1
+
+y
+x1
+
+h2
+
+y
+
+h1
+h1
+
+y
+
+y
+
+x2
+
+x2
+
+y
+
+y
+
+x2
+
+h1
+
+h1
+
+h2
+
+Base network
+x1
+
+x2
+y
+
+x1
+
+y
+
+x1
+y
+
+h2
+
+y
+
+h1
+
+x2
+
+Ensemble of subnetworks
+
+Figure 7.6: Dropout trains an ensemble consisting of all sub-networks that can be
+constructed by removing non-output units from an underlying base network. Here, we
+begin with a base network with two visible units and two hidden units. There are sixteen
+possible subsets of these four units. We show all sixteen subnetworks that may be formed
+by dropping out diﬀerent subsets of units from the original network. In this small example,
+a large proportion of the resulting networks have no input units or no path connecting
+the input to the output. This problem becomes insigni�?cant for networks with wider
+layers, where the probability of dropping all possible paths from inputs to outputs becomes
+smaller.
+
+260
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+y
+
+h1
+
+h2
+
+x1
+
+x2
+
+y
+
+hˆ1
+
+µ h1
+
+hˆ2
+
+h1
+
+xˆ2
+
+xˆ1
+
+µ x1
+
+µ h2
+
+h2
+
+x1
+
+x2
+
+µ x2
+
+Figure 7.7: An example of forward propagation through a feedforward network using
+dropout. (Top)In this example, we use a feedforward network with two input units, one
+hidden layer with two hidden units, and one output unit. (Bottom)To perform forward
+propagation with dropout, we randomly sample a vector µ with one entry for each input
+or hidden unit in the network. The entries of µ are binary and are sampled independently
+from each other. The probability of each entry being 1 is a hyperparameter, usually 0.5
+for the hidden layers and 0.8 for the input. Each unit in the network is multiplied by
+the corresponding mask, and then forward propagation continues through the rest of the
+network as usual. This is equivalent to randomly selecting one of the sub-networks from
+�?gure 7.6 and running forward propagation through it.
+261
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+To make a prediction, a bagged ensemble must accumulate votes from all of
+its members. We refer to this process as inference in this context. So far, our
+description of bagging and dropout has not required that the model be explicitly
+probabilistic. Now, we assume that the model’s role is to output a probability
+distribution. In the case of bagging, each model i produces a probability distribution
+p(i) (y | x). The prediction of the ensemble is given by the arithmetic mean of all
+of these distributions,
+k
+1 �?� ( i)
+p ( y | x ).
+(7.52)
+k
+i=1
+
+In the case of dropout, each sub-model de�?ned by mask vector µ de�?nes a probability distribution p(y | x, µ). The arithmetic mean over all masks is given
+by
+�?�
+p(µ)p(y | x, µ)
+(7.53)
+µ
+
+wh

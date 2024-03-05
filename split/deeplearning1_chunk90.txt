@@ -1,0 +1,326 @@
+ive phase starts to become accurate.
+Algorithm 18.2 The contrastive divergence algorithm, using gradient ascent as
+the optimization procedure.
+Set �?, the step size, to a small positive number.
+Set k, the number of Gibbs steps, high enough to allow a Markov chain sampling
+from p(x;θ ) to mix when initialized from p data. Perhaps 1-20 to train an RBM
+on a small image patch.
+while not converged do
+Sample �??
+a minibatch of m examples {x(1) , . . . , x(m)} from the training set.
+(i )
+g �? m1 m
+i=1 ∇θ log p̃(x ; θ ).
+for i = 1 to m do
+x̃(i) �? x(i).
+end for
+for i = 1 to k do
+for j = 1 to m do
+x̃(j) �? gibbs_update(x̃(j) ).
+end for
+end for
+�??
+(i )
+g �? g − m1 m
+i=1 ∇θ log p̃(x̃ ; θ ).
+θ �? θ + �?g.
+end while
+Of course, CD is still an approximation to the correct negative phase. The
+main way that CD qualitatively fails to implement the correct negative phase
+is that it fails to suppress regions of high probability that are far from actual
+training examples. These regions that have high probability under the model but
+low probability under the data generating distribution are called spurious modes.
+Figure 18.2 illustrates why this happens. Essentially, it is because modes in the
+model distribution that are far from the data distribution will not be visited by
+610
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+p(x)
+
+pmodel (x)
+pdata(x)
+
+x
+
+Figure 18.2: An illustration of how the negative phase of contrastive divergence (algorithm 18.2) can fail to suppress spurious modes. A spurious mode is a mode that is
+present in the model distribution but absent in the data distribution. Because contrastive
+divergence initializes its Markov chains from data points and runs the Markov chain for
+only a few steps, it is unlikely to visit modes in the model that are far from the data
+points. This means that when sampling from the model, we will sometimes get samples
+that do not resemble the data. It also means that due to wasting some of its probability
+mass on these modes, the model will struggle to place high probability mass on the correct
+modes. For the purpose of visualization, this �?gure uses a somewhat simpli�?ed concept
+of distance—the spurious mode is far from the correct mode along the number line in
+R. This corresponds to a Markov chain based on making local moves with a single x
+variable in R. For most deep probabilistic models, the Markov chains are based on Gibbs
+sampling and can make non-local moves of individual variables but cannot move all of
+the variables simultaneously. For these problems, it is usually better to consider the edit
+distance between modes, rather than the Euclidean distance. However, edit distance in a
+high dimensional space is diﬃcult to depict in a 2-D plot.
+
+Markov chains initialized at training points, unless k is very large.
+Carreira-Perpiñan and Hinton (2005) showed experimentally that the CD
+estimator is biased for RBMs and fully visible Boltzmann machines, in that it
+converges to diﬀerent points than the maximum likelihood estimator. They argue
+that because the bias is small, CD could be used as an inexpensive way to initialize
+a model that could later be �?ne-tuned via more expensive MCMC methods. Bengio
+and Delalleau (2009) showed that CD can be interpreted as discarding the smallest
+terms of the correct MCMC update gradient, which explains the bias.
+CD is useful for training shallow models like RBMs. These can in turn be
+stacked to initialize deeper models like DBNs or DBMs. However, CD does not
+provide much help for training deeper models directly. This is because it is diﬃcult
+611
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+to obtain samples of the hidden units given samples of the visible units. Since the
+hidden units are not included in the data, initializing from training points cannot
+solve the problem. Even if we initialize the visible units from the data, we will still
+need to burn in a Markov chain sampling from the distribution over the hidden
+units conditioned on those visible samples.
+The CD algorithm can be thought of as penalizing the model for having a
+Markov chain that changes the input rapidly when the input comes from the data.
+This means training with CD somewhat resembles autoencoder training. Even
+though CD is more biased than some of the other training methods, it can be
+useful for pretraining shallow models that will later be stacked. This is because
+the earliest models in the stack are encouraged to copy more information up to
+their latent variables, thereby making it available to the later models. This should
+be thought of more of as an often-exploitable side eﬀect of CD training rather than
+a principled design advantage.
+Sutskever and Tieleman (2010) showed that the CD update direction is not the
+gradient of any function. This allows for situations where CD could cycle forever,
+but in practice this is not a serious problem.
+A diﬀerent strategy that resolves many of the problems with CD is to initialize the Markov chains at each gradient step with their states from the previous
+gradient step. This approach was �?rst discovered under the name stochastic maximum likelihood (SML) in the applied mathematics and statistics community
+(Younes, 1998) and later independently rediscovered under the name persistent
+contrastive divergence (PCD, or PCD-k to indicate the use of k Gibbs steps
+per update) in the deep learning community (Tieleman, 2008). See algorithm 18.3.
+The basic idea of this approach is that, so long as the steps taken by the stochastic
+gradient algorithm are small, then the model from the previous step will be similar
+to the model from the current step. It follows that the samples from the previous
+model’s distribution will be very close to being fair samples from the current
+model’s distribution, so a Markov chain initialized with these samples will not
+require much time to mix.
+Because each Markov chain is continually updated throughout the learning
+process, rather than restarted at each gradient step, the chains are free to wander
+far enough to �?nd all of the model’s modes. SML is thus considerably more
+resistant to forming models with spurious modes than CD is. Moreover, because
+it is possible to store the state of all of the sampled variables, whether visible or
+latent, SML provides an initialization point for both the hidden and visible units.
+CD is only able to provide an initialization for the visible units, and therefore
+requires burn-in for deep models. SML is able to train deep models eﬃciently.
+612
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+Marlin et al. (2010) compared SML to many of the other criteria presented in
+this chapter. They found that SML results in the best test set log-likelihood for
+an RBM, and that if the RBM’s hidden units are used as features for an SVM
+classi�?er, SML results in the best classi�?cation accuracy.
+SML is vulnerable to becoming inaccurate if the stochastic gradient algorithm
+can move the model faster than the Markov chain can mix between steps. This
+can happen if k is too small or �? is too large. The permissible range of values is
+unfortunately highly problem-dependent. There is no known way to test formally
+whether the chain is successfully mixing between steps. Subjectively, if the learning
+rate is too high for the number of Gibbs steps, the human operator will be able
+to observe that there is much more variance in the negative phase samples across
+gradient steps rather than across diﬀerent Markov chains. For example, a model
+trained on MNIST might sample exclusively 7s on one step. The learning process
+will then push down strongly on the mode corresponding to 7s, and the model
+might sample exclusively 9s on the next step.
+Algorithm 18.3 The stochastic maximum likelihood / persistent contrastive
+divergence algorithm using gradient ascent as the optimization procedure.
+Set �?, the step size, to a small positive number.
+Set k, the number of Gibbs steps, high enough to allow a Markov chain sampling
+from p(x;θ + �?g) to burn in, starting from samples from p(x; θ). Perhaps 1 for
+RBM on a small image patch, or 5-50 for a more complicated model like a DBM.
+Initialize a set of m samples { x̃ (1) , . . . , x̃(m) } to random values (e.g., from a
+uniform or normal distribution, or possibly a distribution with marginals matched
+to the model’s marginals).
+while not converged do
+Sample a minibatch of m examples {x(1) , . . . , x(m)} from the training set.
+�??
+(i )
+g �? m1 m
+i=1 ∇θ log p̃(x ; θ ).
+for i = 1 to k do
+for j = 1 to m do
+x̃(j) �? gibbs_update(x̃(j) ).
+end for
+end for
+�??
+(i )
+g �? g − m1 m
+i=1 ∇θ log p̃(x̃ ; θ ).
+θ �? θ + �?g.
+end while
+Care must be taken when evaluating the samples from a model trained with
+SML. It is necessary to draw the samples starting from a fresh Markov chain
+613
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+initialized from a random starting point after the model is done training. The
+samples present in the persistent negative chains used for training have been
+inﬂuenced by several recent versions of the model, and thus can make the model
+appear to have greater capacity than it actually does.
+Berglund and Raiko (2013) performed experiments to examine the bias and
+variance in the estimate of the gradient provided by CD and SML. CD proves to
+have lower variance than the estimator based on exact sampling. SML has higher
+variance. The cause of CD’s low variance is its use of the same training points
+in both the positive and negative phase. If the negative phase is initialized from
+diﬀerent training points, the variance rises above that of the estimator based on
+exact sampling.
+All of these methods based on using MCMC to draw samples from the model
+can in principle be used with almost any variant of MCMC. This means that
+techniques such as SML can be improved by using any of the enhanced MCMC
+techniques described in chapter 17, such as parallel tempering (Desjardins et al.,
+2010; Cho et al., 2010).
+One approach to accelerating mixing during learning relies not on changing
+the Monte Carlo sampling technology but rather on changing the parametrization
+of the model and the cost function. Fast PCD or FPCD (Tieleman and Hinton,
+2009) involves replacing the parameters θ of a traditional model with an expression
+θ = θ (slow) + θ (fast) .
+
+(18.16)
+
+There are now twice as many parameters as before, and they are added together
+element-wise to provide the parameters used by the original model de�?nition. The
+fast copy of the parameters is trained with a much larger learning rate, allowing
+it to adapt rapidly in response to the negative phase of learning and push the
+Markov chain to new territory. This forces the Markov chain to mix rapidly, though
+this eﬀect only occurs during learning while the fast weights are free to change.
+Typically one also applies signi�?cant weight decay to the fast weights, encouraging
+them to converge to small values, after only transiently taking on large values long
+enough to encourage the Markov chain to change modes.
+One key bene�?t to the MCMC-based methods described in this section is that
+they provide an estimate of the gradient of log Z , and thus we can essentially
+decompose the problem into the log p̃ contribution and the log Z contribution.
+We can then use any other method to tackle log p̃(x), and just add our negative
+phase gradient onto the other method’s gradient. In particular, this means that
+our positive phase can make use of methods that provide only a lower bound on
+p̃. Most of the other methods of dealing with log Z presented in this chapter are
+614
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+incompatible with bound-based positive phase methods.
+
+18.3
+
+Pseudolikelihood
+
+Monte Carlo approximations to the partition function and its gradient directly
+confront the partition function. Other approaches sidestep the issue, by training
+the model without computing the partition function. Most of these approaches are
+based on the observation that it is easy to compute ratios of probabilities in an
+undirected probabilistic model. This is because the partition function appears in
+both the numerator and the denominator of the ratio and cancels out:
+1
+p̃(x)
+p(x)
+p̃(x)
+Z
+= 1
+=
+.
+p(y)
+p̃(
+y
+)
+p̃(
+y
+)
+Z
+
+(18.17)
+
+The pseudolikelihood is based on the observation that conditional probabilities
+take this ratio-based form, and thus can be computed without knowledge of the
+partition function. Suppose that we partition x into a, b and c, where a contains
+the variables we want to �?nd the conditional distribution over, b contains the
+variables we want to condition on, and c contains the variables that are not part
+of our query.
+p(a | b) =
+
+p(a, b)
+p(a, b)
+p̃(a, b)
+=�??
+=�??
+.
+p(b)
+p
+(a
+,
+b
+,
+c)
+p̃
+(a
+,
+b
+,
+c)
+a ,c
+a ,c
+
+(18.18)
+
+This quantity requires marginalizing out a, which can be a very eﬃcient operation
+provided that a and c do not contain very many variables. In the extreme case, a
+can be a single variable and c can be empty, making this operation require only as
+many evaluations of p̃ as there are values of a single random variable.
+Unfortunately, in order to compute the log-likelihood, we need to marginalize
+out large sets of variables. If there are n variables total, we must marginalize a set
+of size n − 1. By the chain rule of probability,
+log p(x) = log p(x 1) + log p(x2 | x1) + · · · + p(xn | x1:n−1 ).
+
+(18.19)
+
+In this case, we have made a maximally small, but c can be as large as x2:n . What
+if we simply move c into b to reduce the computational cost? This yields the
+pseudolikelihood (Besag, 1975) objective function, based on predicting the value
+of feature xi given all of the other features x−i:
+n
+�?�
+i=1
+
+log p(x i | x −i).
+615
+
+(18.20)
+
+CHAPTER 18. CONFRONTING THE PARTITION FUNCTION
+
+If each random variable has k diﬀerent values, this requires only k ×n evaluations
+of p̃ to compute, as opposed to the kn evaluations needed to compute the partition
+function.
+This may look like an unprincipled hack, but it can be proven that estimation
+by maximizing the pseudolikelihood is asymptotically consistent (Mase, 1995).
+Of course, in the case of datasets that do not approach the large sample limit,
+pseudolikelihood may display diﬀerent behavior from the maximum likelihood
+estimator.
+It is possible to trade computational complexity for deviation from maximum
+likelihood behavior by using the generalized pseudolikelihood estimator (Huang
+and Ogata, 2002). The generalized pseudolikelihood estimator uses m diﬀerent sets
+S(i) , i = 1, . . . , m of indices of variables that appear together on the left side of the
+conditioning bar. In the extreme case of m = 1 and S (1) = 1, . . . , n the generalized
+pseudolikelihood recovers the log-likelihood. In the extreme case of m = n and
+S(i) = {i}, the generalized pseudolikelihood recovers the pseudolikelihood. The
+generalized pseudolikelihood objective function is given by
+m
+�?�
+i=1
+
+log p(x S(i) | x −S(i) ).
+
+(18.21)
+
+The performance of pseudolikelihood-based approaches depends largely on how
+the model will be used. Pseudolikelihood tends to perform poorly on tasks that
+require a good model of the full joint p(x), such as density estimation and sampling.
+However, it can perform better than maximum likelihood for tasks that require only
+the conditional distributions used during training, such as �?lling in small amounts
+of missing values. Generalized pseudolikelihood techniq

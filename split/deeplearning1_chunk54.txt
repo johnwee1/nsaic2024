@@ -1,0 +1,279 @@
+ly out of phase with the weights—when
+the image is dark where the weights are positive and bright where the weights are
+negative.
+2
+The cartoon view of a complex cell is that it computes
+�?�the L norm of the
+2-D vector containing two simple cells’ responses: c( I) = s0(I )2 + s1 (I )2 . An
+important special case occurs when s1 has all of the same parameters as s0 except
+for φ, and φ is set such that s1 is one quarter cycle out of phase with s0. In this
+case, s 0 and s1 form a quadrature pair. A complex cell de�?ned in this way
+responds when the Gaussian reweighted image I(x, y) exp(−βx x2 − βyy 2) contains
+a high amplitude sinusoidal wave with frequency f in direction τ near (x 0 , y0),
+regardless of the phase oﬀset of this wave. In other words, the complex cell is
+invariant to small translations of the image in direction τ , or to negating the image
+
+369
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Figure 9.18: Gabor functions with a variety of parameter settings. White indicates
+large positive weight, black indicates large negative weight, and the background gray
+corresponds to zero weight. (Left)Gabor functions with diﬀerent values of the parameters
+that control the coordinate system: x 0, y 0, and τ. Each Gabor function in this grid is
+assigned a value of x0 and y 0 proportional to its position in its grid, and τ is chosen so
+that each Gabor �?lter is sensitive to the direction radiating out from the center of the grid.
+For the other two plots, x 0 , y 0, and τ are �?xed to zero. (Center)Gabor functions with
+diﬀerent Gaussian scale parameters βx and βy . Gabor functions are arranged in increasing
+width (decreasing β x ) as we move left to right through the grid, and increasing height
+(decreasing β y ) as we move top to bottom. For the other two plots, the β values are �?xed
+to 1.5× the image width. (Right)Gabor functions with diﬀerent sinusoid parameters f
+and φ. As we move top to bottom, f increases, and as we move left to right, φ increases.
+For the other two plots, φ is �?xed to 0 and f is �?xed to 5× the image width.
+
+(replacing black with white and vice versa).
+Some of the most striking correspondences between neuroscience and machine
+learning come from visually comparing the features learned by machine learning
+models with those employed by V1. Olshausen and Field (1996) showed that
+a simple unsupervised learning algorithm, sparse coding, learns features with
+receptive �?elds similar to those of simple cells. Since then, we have found that
+an extremely wide variety of statistical learning algorithms learn features with
+Gabor-like functions when applied to natural images. This includes most deep
+learning algorithms, which learn these features in their �?rst layer. Figure 9.19
+shows some examples. Because so many diﬀerent learning algorithms learn edge
+detectors, it is diﬃcult to conclude that any speci�?c learning algorithm is the
+“right�? model of the brain just based on the features that it learns (though it can
+certainly be a bad sign if an algorithm does not learn some sort of edge detector
+when applied to natural images). These features are an important part of the
+statistical structure of natural images and can be recovered by many diﬀerent
+approaches to statistical modeling. See Hyvärinen et al. (2009) for a review of the
+�?eld of natural image statistics.
+
+370
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Figure 9.19: Many machine learning algorithms learn features that detect edges or speci�?c
+colors of edges when applied to natural images. These feature detectors are reminiscent of
+the Gabor functions known to be present in primary visual cortex. (Left)Weights learned
+by an unsupervised learning algorithm (spike and slab sparse coding) applied to small
+image patches. (Right)Convolution kernels learned by the �?rst layer of a fully supervised
+convolutional maxout network. Neighboring pairs of �?lters drive the same maxout unit.
+
+9.11
+
+Convolutional Networks and the History of Deep
+Learning
+
+Convolutional networks have played an important role in the history of deep
+learning. They are a key example of a successful application of insights obtained
+by studying the brain to machine learning applications. They were also some of
+the �?rst deep models to perform well, long before arbitrary deep models were
+considered viable. Convolutional networks were also some of the �?rst neural
+networks to solve important commercial applications and remain at the forefront
+of commercial applications of deep learning today. For example, in the 1990s, the
+neural network research group at AT&T developed a convolutional network for
+reading checks (LeCun et al., 1998b). By the end of the 1990s, this system deployed
+by NEC was reading over 10% of all the checks in the US. Later, several OCR
+and handwriting recognition systems based on convolutional nets were deployed by
+Microsoft (Simard et al., 2003). See chapter 12 for more details on such applications
+and more modern applications of convolutional networks. See LeCun et al. (2010)
+for a more in-depth history of convolutional networks up to 2010.
+Convolutional networks were also used to win many contests. The current
+intensity of commercial interest in deep learning began when Krizhevsky et al.
+(2012) won the ImageNet object recognition challenge, but convolutional networks
+371
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+had been used to win other machine learning and computer vision contests with
+less impact for years earlier.
+Convolutional nets were some of the �?rst working deep networks trained with
+back-propagation. It is not entirely clear why convolutional networks succeeded
+when general back-propagation networks were considered to have failed. It may
+simply be that convolutional networks were more computationally eﬃcient than
+fully connected networks, so it was easier to run multiple experiments with them
+and tune their implementation and hyperparameters. Larger networks also seem
+to be easier to train. With modern hardware, large fully connected networks
+appear to perform reasonably on many tasks, even when using datasets that were
+available and activation functions that were popular during the times when fully
+connected networks were believed not to work well. It may be that the primary
+barriers to the success of neural networks were psychological (practitioners did
+not expect neural networks to work, so they did not make a serious eﬀort to use
+neural networks). Whatever the case, it is fortunate that convolutional networks
+performed well decades ago. In many ways, they carried the torch for the rest of
+deep learning and paved the way to the acceptance of neural networks in general.
+Convolutional networks provide a way to specialize neural networks to work
+with data that has a clear grid-structured topology and to scale such models to
+very large size. This approach has been the most successful on a two-dimensional,
+image topology. To process one-dimensional, sequential data, we turn next to
+another powerful specialization of the neural networks framework: recurrent neural
+networks.
+
+372
+
+Chapter 10
+
+Sequence Modeling: Recurrent
+and Recursive Nets
+Recurrent neural networks or RNNs (Rumelhart et al., 1986a) are a family of
+neural networks for processing sequential data. Much as a convolutional network
+is a neural network that is specialized for processing a grid of values X such as
+an image, a recurrent neural network is a neural network that is specialized for
+processing a sequence of values x(1) , . . . , x(τ ) . Just as convolutional networks
+can readily scale to images with large width and height, and some convolutional
+networks can process images of variable size, recurrent networks can scale to much
+longer sequences than would be practical for networks without sequence-based
+specialization. Most recurrent networks can also process sequences of variable
+length.
+To go from multi-layer networks to recurrent networks, we need to take advantage of one of the early ideas found in machine learning and statistical models of
+the 1980s: sharing parameters across diﬀerent parts of a model. Parameter sharing
+makes it possible to extend and apply the model to examples of diﬀerent forms
+(diﬀerent lengths, here) and generalize across them. If we had separate parameters
+for each value of the time index, we could not generalize to sequence lengths not
+seen during training, nor share statistical strength across diﬀerent sequence lengths
+and across diﬀerent positions in time. Such sharing is particularly important when
+a speci�?c piece of information can occur at multiple positions within the sequence.
+For example, consider the two sentences “I went to Nepal in 2009�? and “In 2009,
+I went to Nepal.�? If we ask a machine learning model to read each sentence and
+extract the year in which the narrator went to Nepal, we would like it to recognize
+the year 2009 as the relevant piece of information, whether it appears in the sixth
+373
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+word or the second word of the sentence. Suppose that we trained a feedforward
+network that processes sentences of �?xed length. A traditional fully connected
+feedforward network would have separate parameters for each input feature, so it
+would need to learn all of the rules of the language separately at each position in
+the sentence. By comparison, a recurrent neural network shares the same weights
+across several time steps.
+A related idea is the use of convolution across a 1-D temporal sequence. This
+convolutional approach is the basis for time-delay neural networks (Lang and
+Hinton, 1988; Waibel et al., 1989; Lang et al., 1990). The convolution operation
+allows a network to share parameters across time, but is shallow. The output
+of convolution is a sequence where each member of the output is a function of
+a small number of neighboring members of the input. The idea of parameter
+sharing manifests in the application of the same convolution kernel at each time
+step. Recurrent networks share parameters in a diﬀerent way. Each member of the
+output is a function of the previous members of the output. Each member of the
+output is produced using the same update rule applied to the previous outputs.
+This recurrent formulation results in the sharing of parameters through a very
+deep computational graph.
+For the simplicity of exposition, we refer to RNNs as operating on a sequence
+that contains vectors x(t) with the time step index t ranging from 1 to τ . In
+practice, recurrent networks usually operate on minibatches of such sequences,
+with a diﬀerent sequence length τ for each member of the minibatch. We have
+omitted the minibatch indices to simplify notation. Moreover, the time step index
+need not literally refer to the passage of time in the real world. Sometimes it refers
+only to the position in the sequence. RNNs may also be applied in two dimensions
+across spatial data such as images, and even when applied to data involving time,
+the network may have connections that go backwards in time, provided that the
+entire sequence is observed before it is provided to the network.
+This chapter extends the idea of a computational graph to include cycles. These
+cycles represent the inﬂuence of the present value of a variable on its own value
+at a future time step. Such computational graphs allow us to de�?ne recurrent
+neural networks. We then describe many diﬀerent ways to construct, train, and
+use recurrent neural networks.
+For more information on recurrent neural networks than is available in this
+chapter, we refer the reader to the textbook of Graves (2012).
+
+374
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+10.1
+
+Unfolding Computational Graphs
+
+A computational graph is a way to formalize the structure of a set of computations,
+such as those involved in mapping inputs and parameters to outputs and loss.
+Please refer to section 6.5.1 for a general introduction. In this section we explain
+the idea of unfolding a recursive or recurrent computation into a computational
+graph that has a repetitive structure, typically corresponding to a chain of events.
+Unfolding this graph results in the sharing of parameters across a deep network
+structure.
+For example, consider the classical form of a dynamical system:
+s(t) = f (s(t−1) ; θ),
+
+(10.1)
+
+where s(t) is called the state of the system.
+Equation 10.1 is recurrent because the de�?nition of s at time t refers back to
+the same de�?nition at time t − 1.
+
+For a �?nite number of time steps τ , the graph can be unfolded by applying
+the de�?nition τ − 1 times. For example, if we unfold equation 10.1 for τ = 3 time
+steps, we obtain
+s (3) =f (s(2) ; θ)
+
+(10.2)
+
+=f (f (s (1); θ); θ)
+
+(10.3)
+
+Unfolding the equation by repeatedly applying the de�?nition in this way has
+yielded an expression that does not involve recurrence. Such an expression can
+now be represented by a traditional directed acyclic computational graph. The
+unfolded computational graph of equation 10.1 and equation 10.3 is illustrated in
+�?gure 10.1.
+s(... )
+
+f
+
+s (t−1)
+
+f
+
+s(t)
+
+f
+
+s (t+1)
+
+f
+
+s(... )
+
+Figure 10.1: The classical dynamical system described by equation 10.1, illustrated as an
+unfolded computational graph. Each node represents the state at some timet and the
+function f maps the state at t to the state at t + 1. The same parameters (the same value
+of θ used to parametrize f ) are used for all time steps.
+
+As another example, let us consider a dynamical system driven by an external
+signal x(t),
+s(t) = f (s(t−1) , x(t) ; θ),
+(10.4)
+375
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+where we see that the state now contains information about the whole past sequence.
+Recurrent neural networks can be built in many diﬀerent ways. Much as
+almost any function can be considered a feedforward neural network, essentially
+any function involving recurrence can be considered a recurrent neural network.
+Many recurrent neural networks use equation 10.5 or a similar equation to
+de�?ne the values of their hidden units. To indicate that the state is the hidden
+units of the network, we now rewrite equation 10.4 using the variable h to represent
+the state:
+h(t) = f (h(t−1) , x(t) ; θ),
+(10.5)
+illustrated in �?gure 10.2, typical RNNs will add extra architectural features such
+as output layers that read information out of the state h to make predictions.
+When the recurrent network is trained to perform a task that requires predicting
+the future from the past, the network typically learns to use h(t) as a kind of lossy
+summary of the task-relevant aspects of the past sequence of inputs up to t. This
+summary is in general necessarily lossy, since it maps an arbitrary length sequence
+(x(t) , x(t−1) , x(t−2), . . . , x (2) , x(1) ) to a �?xed length vector h (t) . Depending on the
+training criterion, this summary might selectively keep some aspects of the past
+sequence with more precision than other aspects. For example, if the RNN is used
+in statistical language modeling, typically to predict the next word given previous
+words, it may not be necessary to store all of the information in the input sequence
+up to time t, but rather only enough information to predict the rest of the sentence.
+The most demanding situation is when we ask h(t) to be rich enough to allow
+one to approximately recover the input sequence, as in autoencoder frameworks
+(chapter 14).
+h(t−1)
+
+h(..

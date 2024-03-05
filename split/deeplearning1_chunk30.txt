@@ -1,0 +1,403 @@
+raph for computing the back-propagation. However, this
+formulation does not make explicit the manipulation and the construction of the
+symbolic graph that performs the gradient computation. Such a formulation is
+presented below in section 6.5.6, with algorithm 6.5, where we also generalize to
+nodes that contain arbitrary tensors.
+First consider a computational graph describing how to compute a single scalar
+u
+(say the loss on a training example). This scalar is the quantity whose
+gradient we want to obtain, with respect to the ni input nodes u(1) to u(ni ) . In
+(n )
+other words we wish to compute ∂u
+for all i ∈ {1, 2, . . . , n i} . In the application
+∂u (i)
+of back-propagation to computing gradients for gradient descent over parameters,
+u(n) will be the cost associated with an example or a minibatch, while u(1) to u (ni )
+correspond to the parameters of the model.
+(n )
+
+We will assume that the nodes of the graph have been ordered in such a way
+that we can compute their output one after the other, starting at u(ni +1) and
+going up to u(n). As de�?ned in algorithm 6.1, each node u(i) is associated with an
+operation f (i) and is computed by evaluating the function
+u ( i ) = f (A ( i ) )
+
+(6.48)
+
+where A(i) is the set of all nodes that are parents of u (i).
+That algorithm speci�?es the forward propagation computation, which we could
+put in a graph G. In order to perform back-propagation, we can construct a
+computational graph that depends on G and adds to it an extra set of nodes. These
+form a subgraph B with one node per node of G. Computation in B proceeds in
+exactly the reverse of the order of computation in G, and each node of B computes
+(n )
+the derivative ∂u
+associated with the forward graph node u (i). This is done
+∂u(i)
+208
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Algorithm 6.1 A procedure that performs the computations mapping n i inputs
+u(1) to u (ni) to an output u(n) . This de�?nes a computational graph where each node
+computes numerical value u(i) by applying a function f (i) to the set of arguments
+A(i) that comprises the values of previous nodes u (j ), j < i, with j ∈ P a(u(i)). The
+input to the computational graph is the vector x, and is set into the �?rst ni nodes
+u(1) to u (ni ) . The output of the computational graph is read oﬀ the last (output)
+node u(n).
+for i = 1, . . . , ni do
+u(i) �? xi
+end for
+for i = ni + 1, . . . , n do
+A(i) �? {u (j ) | j ∈ P a(u(i) )}
+u(i) �? f (i)(A(i))
+end for
+return u(n)
+using the chain rule with respect to scalar output u(n):
+∂u(n)
+=
+∂u(j )
+
+�?�
+
+∂u (n) ∂u(i)
+∂u (i) ∂u(j )
+( i)
+
+i:j ∈ P a ( u
+
+(6.49)
+
+)
+
+as speci�?ed by algorithm 6.2. The subgraph B contains exactly one edge for each
+edge from node u (j ) to node u (i) of G. The edge from u (j ) to u (i) is associated with
+( i)
+the computation of ∂u
+. In addition, a dot product is performed for each node,
+∂u(j )
+between the gradient already computed with respect to nodes u(i) that are children
+(i )
+of u(j ) and the vector containing the partial derivatives ∂u
+for the same children
+(
+∂u j )
+nodes u(i) . To summarize, the amount of computation required for performing
+the back-propagation scales linearly with the number of edges in G, where the
+computation for each edge corresponds to computing a partial derivative (of one
+node with respect to one of its parents) as well as performing one multiplication
+and one addition. Below, we generalize this analysis to tensor-valued nodes, which
+is just a way to group multiple scalar values in the same node and enable more
+eﬃcient implementations.
+The back-propagation algorithm is designed to reduce the number of common
+subexpressions without regard to memory. Speci�?cally, it performs on the order
+of one Jacobian product per node in the graph. This can be seen from the fact
+that backprop (algorithm 6.2) visits each edge from node u (j ) to node u(i) of
+∂u(i)
+the graph exactly once in order to obtain the associated partial derivative ∂u
+(j ) .
+209
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Algorithm 6.2 Simpli�?ed version of the back-propagation algorithm for computing
+the derivatives of u(n) with respect to the variables in the graph. This example is
+intended to further understanding by showing a simpli�?ed case where all variables
+are scalars, and we wish to compute the derivatives with respect to u(1) , . . . , u (ni ).
+This simpli�?ed version computes the derivatives of all nodes in the graph. The
+computational cost of this algorithm is proportional to the number of edges in
+the graph, assuming that the partial derivative associated with each edge requires
+a constant time. This is of the same order as the number of computations for
+( i)
+the forward propagation. Each ∂u
+is a function of the parents u (j ) of u (i), thus
+∂u(j )
+linking the nodes of the forward graph to those added for the back-propagation
+graph.
+Run forward propagation (algorithm 6.1 for this example) to obtain the activations of the network
+Initialize grad_table, a data structure that will store the derivatives that have
+been computed. The entry grad_table[ u(i) ] will store the computed value of
+∂u(n)
+.
+∂u(i)
+grad_table[u(n)] �? 1
+for j = n − 1 down to 1 do
+�??
+(n )
+∂u(n) ∂u (i)
+=
+The next line computes ∂u
+using stored values:
+(i ) )
+(
+j
+)
+i
+:
+j
+∈
+P
+a
+(
+u
+∂u
+∂u (i) ∂u(j )
+�??
+(
+i
+)
+grad_table[u(j ) ] �? i:j ∈P a(u(i) ) grad_table[u(i) ] ∂u
+∂u(j )
+end for
+return {grad_table[u(i)] | i = 1, . . . , ni}
+Back-propagation thus avoids the exponential explosion in repeated subexpressions.
+However, other algorithms may be able to avoid more subexpressions by performing
+simpli�?cations on the computational graph, or may be able to conserve memory by
+recomputing rather than storing some subexpressions. We will revisit these ideas
+after describing the back-propagation algorithm itself.
+
+6.5.4
+
+Back-Propagation Computation in Fully-Connected MLP
+
+To clarify the above de�?nition of the back-propagation computation, let us consider
+the speci�?c graph associated with a fully-connected multi-layer MLP.
+Algorithm 6.3 �?rst shows the forward propagation, which maps parameters to
+the supervised loss L(ŷ , y ) associated with a single (input,target) training example
+(x, y ), with ŷ the output of the neural network when x is provided in input.
+Algorithm 6.4 then shows the corresponding computation to be done for
+210
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+z
+
+f
+y
+
+f
+x
+
+f
+w
+
+Figure 6.9: A computational graph that results in repeated subexpressions when computing
+the gradient. Let w ∈ R be the input to the graph. We use the same function f : R → R
+as the operation that we apply at every step of a chain: x = f (w), y = f ( x), z = f( y).
+To compute ∂z
+∂w , we apply equation 6.44 and obtain:
+∂z
+∂w
+∂z ∂y ∂x
+=
+∂y ∂x ∂w
+=f (y )f  (x)f  (w )
+=f (f (f (w )))f (f (w ))f (w )
+
+(6.50)
+(6.51)
+(6.52)
+(6.53)
+
+Equation 6.52 suggests an implementation in which we compute the value off (w ) only
+once and store it in the variable x. This is the approach taken by the back-propagation
+algorithm. An alternative approach is suggested by equation 6.53, where the subexpression
+f(w) appears more than once. In the alternative approach, f (w) is recomputed each time
+it is needed. When the memory required to store the value of these expressions is low, the
+back-propagation approach of equation 6.52 is clearly preferable because of its reduced
+runtime. However, equation 6.53 is also a valid implementation of the chain rule, and is
+useful when memory is limited.
+
+211
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+applying the back-propagation algorithm to this graph.
+Algorithms 6.3 and 6.4 are demonstrations that are chosen to be simple and
+straightforward to understand. However, they are specialized to one speci�?c
+problem.
+Modern software implementations are based on the generalized form of backpropagation described in section 6.5.6 below, which can accommodate any computational graph by explicitly manipulating a data structure for representing symbolic
+computation.
+Algorithm 6.3 Forward propagation through a typical deep neural network and
+the computation of the cost function. The loss L(ŷ , y) depends on the output
+ŷ and on the target y (see section 6.2.1.1 for examples of loss functions). To
+obtain the total cost J, the loss may be added to a regularizer Ω(θ), where θ
+contains all the parameters (weights and biases). Algorithm 6.4 shows how to
+compute gradients of J with respect to parameters W and b. For simplicity, this
+demonstration uses only a single input example x. Practical applications should
+use a minibatch. See section 6.5.7 for a more realistic demonstration.
+Require: Network depth, l
+Require: W (i), i ∈ {1, . . . , l}, the weight matrices of the model
+Require: b(i) , i ∈ {1, . . . , l}, the bias parameters of the model
+Require: x, the input to process
+Require: y, the target output
+h(0) = x
+for k = 1, . . . , l do
+a (k) = b(k) + W (k) h (k−1)
+h ( k ) = f (a ( k ) )
+end for
+ŷ = h(l)
+J = L(ŷ , y ) + λΩ(θ )
+
+6.5.5
+
+Symbol-to-Symbol Derivatives
+
+Algebraic expressions and computational graphs both operate on symbols, or
+variables that do not have speci�?c values. These algebraic and graph-based
+representations are called symbolic representations. When we actually use or
+train a neural network, we must assign speci�?c values to these symbols. We
+replace a symbolic input to the network x with a speci�?c numeric value, such as
+[1.2, 3.765, −1.8].
+212
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Algorithm 6.4 Backward computation for the deep neural network of algorithm 6.3, which uses in addition to the input x a target y. This computation
+yields the gradients on the activations a(k) for each layer k, starting from the
+output layer and going backwards to the �?rst hidden layer. From these gradients,
+which can be interpreted as an indication of how each layer’s output should change
+to reduce error, one can obtain the gradient on the parameters of each layer. The
+gradients on weights and biases can be immediately used as part of a stochastic gradient update (performing the update right after the gradients have been
+computed) or used with other gradient-based optimization methods.
+After the forward computation, compute the gradient on the output layer:
+g �? ∇ŷJ = ∇ŷ L(ŷ , y )
+for k = l, l − 1, . . . , 1 do
+Convert the gradient on the layer’s output into a gradient into the prenonlinearity activation (element-wise multiplication if f is element-wise):
+g �? ∇ a(k) J = g  f  (a(k))
+Compute gradients on weights and biases (including the regularization term,
+where needed):
+∇b(k) J = g + λ∇ b(k) Ω(θ )
+∇W (k)J = g h(k−1) + λ∇W (k) Ω(θ )
+Propagate the gradients w.r.t. the next lower-level hidden layer’s activations:
+g �? ∇ h(k−1) J = W (k) g
+end for
+
+213
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+z
+
+f
+
+z
+
+f
+
+f
+y
+
+f
+
+y
+
+dz
+dy
+
+f
+
+f
+x
+
+f
+
+x
+
+dy
+dx
+
+×
+
+dz
+dx
+
+f
+
+f
+w
+
+w
+
+dx
+dw
+
+×
+
+dz
+dw
+
+Figure 6.10: An example of the symbol-to-symbol approach to computing derivatives. In
+this approach, the back-propagation algorithm does not need to ever access any actual
+speci�?c numeric values. Instead, it adds nodes to a computational graph describing how
+to compute these derivatives. A generic graph evaluation engine can later compute the
+derivatives for any speci�?c numeric values. (Left)In this example, we begin with a graph
+representing z = f (f (f (w))). (Right)We run the back-propagation algorithm, instructing
+dz
+it to construct the graph for the expression corresponding to dw
+. In this example, we do
+not explain how the back-propagation algorithm works. The purpose is only to illustrate
+what the desired result is: a computational graph with a symbolic description of the
+derivative.
+
+Some approaches to back-propagation take a computational graph and a set
+of numerical values for the inputs to the graph, then return a set of numerical
+values describing the gradient at those input values. We call this approach “symbolto-number�? diﬀerentiation. This is the approach used by libraries such as Torch
+(Collobert et al., 2011b) and Caﬀe (Jia, 2013).
+Another approach is to take a computational graph and add additional nodes
+to the graph that provide a symbolic description of the desired derivatives. This
+is the approach taken by Theano (Bergstra et al., 2010; Bastien et al., 2012)
+and TensorFlow (Abadi et al., 2015). An example of how this approach works
+is illustrated in �?gure 6.10. The primary advantage of this approach is that
+the derivatives are described in the same language as the original expression.
+Because the derivatives are just another computational graph, it is possible to run
+back-propagation again, diﬀerentiating the derivatives in order to obtain higher
+derivatives. Computation of higher-order derivatives is described in section 6.5.10.
+We will use the latter approach and describe the back-propagation algorithm in
+214
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+terms of constructing a computational graph for the derivatives. Any subset of the
+graph may then be evaluated using speci�?c numerical values at a later time. This
+allows us to avoid specifying exactly when each operation should be computed.
+Instead, a generic graph evaluation engine can evaluate every node as soon as its
+parents’ values are available.
+The description of the symbol-to-symbol based approach subsumes the symbolto-number approach. The symbol-to-number approach can be understood as
+performing exactly the same computations as are done in the graph built by the
+symbol-to-symbol approach. The key diﬀerence is that the symbol-to-number
+approach does not expose the graph.
+
+6.5.6
+
+General Back-Propagation
+
+The back-propagation algorithm is very simple. To compute the gradient of some
+scalar z with respect to one of its ancestors x in the graph, we begin by observing
+that the gradient with respect to z is given by dz
+dz = 1. We can then compute
+the gradient with respect to each parent of z in the graph by multiplying the
+current gradient by the Jacobian of the operation that produced z. We continue
+multiplying by Jacobians traveling backwards through the graph in this way until
+we reach x. For any node that may be reached by going backwards from z through
+two or more paths, we simply sum the gradients arriving from diﬀerent paths at
+that node.
+More formally, each node in the graph G corresponds to a variable. To achieve
+maximum generality, we describe this variable as being a tensor V. Tensor can
+in general have any number of dimensions. They subsume scalars, vectors, and
+matrices.
+We assume that each variable V is associated with the following subroutines:
+• get_operation(V): This returns the operation that computes V, represented by the edges coming into V in the computational graph. For example,
+there may be a Python or C++ class representing the matrix multiplication
+operation, and the get_operation function. Suppose we have a variable that
+is created by matrix multiplication, C = AB. Then get_operation(V)
+returns a pointer to an instance of the corresponding C++ class.
+• get_consumers(V, G): This returns the list of variables that are children of
+V in the computational graph G .
+• get_inputs(V, G ): This returns the list of variables that are parents of V
+in the computational graph G .
+215
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Each operation op is also assoc

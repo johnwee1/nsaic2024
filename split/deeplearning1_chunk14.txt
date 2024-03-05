@@ -1,0 +1,241 @@
+ components such as
+98
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+an optimization algorithm, a cost function, a model, and a dataset to build a
+machine learning algorithm. Finally, in section 5.11, we describe some of the
+factors that have limited the ability of traditional machine learning to generalize.
+These challenges have motivated the development of deep learning algorithms that
+overcome these obstacles.
+
+5.1
+
+Learning Algorithms
+
+A machine learning algorithm is an algorithm that is able to learn from data. But
+what do we mean by learning? Mitchell (1997) provides the deï¬?nition â€œA computer
+program is said to learn from experience E with respect to some class of tasks T
+and performance measure P , if its performance at tasks in T , as measured by P ,
+improves with experience E.â€? One can imagine a very wide variety of experiences
+E, tasks T , and performance measures P , and we do not make any attempt in this
+book to provide a formal deï¬?nition of what may be used for each of these entities.
+Instead, the following sections provide intuitive descriptions and examples of the
+diï¬€erent kinds of tasks, performance measures and experiences that can be used
+to construct machine learning algorithms.
+
+5.1.1
+
+The Task, T
+
+Machine learning allows us to tackle tasks that are too diï¬ƒcult to solve with
+ï¬?xed programs written and designed by human beings. From a scientiï¬?c and
+philosophical point of view, machine learning is interesting because developing our
+understanding of machine learning entails developing our understanding of the
+principles that underlie intelligence.
+In this relatively formal deï¬?nition of the word â€œtask,â€? the process of learning
+itself is not the task. Learning is our means of attaining the ability to perform the
+task. For example, if we want a robot to be able to walk, then walking is the task.
+We could program the robot to learn to walk, or we could attempt to directly write
+a program that speciï¬?es how to walk manually.
+Machine learning tasks are usually described in terms of how the machine
+learning system should process an example. An example is a collection of features
+that have been quantitatively measured from some object or event that we want
+the machine learning system to process. We typically represent an example as a
+vector x âˆˆ Rn where each entry x i of the vector is another feature. For example,
+the features of an image are usually the values of the pixels in the image.
+99
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+Many kinds of tasks can be solved with machine learning. Some of the most
+common machine learning tasks include the following:
+â€¢ Classiï¬?cation: In this type of task, the computer program is asked to specify
+which of k categories some input belongs to. To solve this task, the learning
+algorithm is usually asked to produce a function f : Rn â†’ {1, . . . , k}. When
+y = f (x), the model assigns an input described by vector x to a category
+identiï¬?ed by numeric code y. There are other variants of the classiï¬?cation
+task, for example, where f outputs a probability distribution over classes.
+An example of a classiï¬?cation task is object recognition, where the input
+is an image (usually described as a set of pixel brightness values), and the
+output is a numeric code identifying the object in the image. For example,
+the Willow Garage PR2 robot is able to act as a waiter that can recognize
+diï¬€erent kinds of drinks and deliver them to people on command (Goodfellow et al., 2010). Modern object recognition is best accomplished with
+deep learning (Krizhevsky et al., 2012; Ioï¬€e and Szegedy, 2015). Object
+recognition is the same basic technology that allows computers to recognize
+faces (Taigman et al., 2014), which can be used to automatically tag people
+in photo collections and allow computers to interact more naturally with
+their users.
+â€¢ Classiï¬?cation with missing inputs: Classiï¬?cation becomes more challenging if the computer program is not guaranteed that every measurement
+in its input vector will always be provided. In order to solve the classiï¬?cation
+task, the learning algorithm only has to deï¬?ne a single function mapping
+from a vector input to a categorical output. When some of the inputs may
+be missing, rather than providing a single classiï¬?cation function, the learning
+algorithm must learn a set of functions. Each function corresponds to classifying x with a diï¬€erent subset of its inputs missing. This kind of situation
+arises frequently in medical diagnosis, because many kinds of medical tests
+are expensive or invasive. One way to eï¬ƒciently deï¬?ne such a large set
+of functions is to learn a probability distribution over all of the relevant
+variables, then solve the classiï¬?cation task by marginalizing out the missing
+variables. With n input variables, we can now obtain all 2n diï¬€erent classiï¬?cation functions needed for each possible set of missing inputs, but we only
+need to learn a single function describing the joint probability distribution.
+See Goodfellow et al. (2013b) for an example of a deep probabilistic model
+applied to such a task in this way. Many of the other tasks described in this
+section can also be generalized to work with missing inputs; classiï¬?cation
+with missing inputs is just one example of what machine learning can do.
+100
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+â€¢ Regression: In this type of task, the computer program is asked to predict a
+numerical value given some input. To solve this task, the learning algorithm
+is asked to output a function f : Rn â†’ R. This type of task is similar to
+classiï¬?cation, except that the format of output is diï¬€erent. An example of
+a regression task is the prediction of the expected claim amount that an
+insured person will make (used to set insurance premiums), or the prediction
+of future prices of securities. These kinds of predictions are also used for
+algorithmic trading.
+â€¢ Transcription: In this type of task, the machine learning system is asked
+to observe a relatively unstructured representation of some kind of data and
+transcribe it into discrete, textual form. For example, in optical character
+recognition, the computer program is shown a photograph containing an
+image of text and is asked to return this text in the form of a sequence
+of characters (e.g., in ASCII or Unicode format). Google Street View uses
+deep learning to process address numbers in this way (Goodfellow et al.,
+2014d). Another example is speech recognition, where the computer program
+is provided an audio waveform and emits a sequence of characters or word
+ID codes describing the words that were spoken in the audio recording. Deep
+learning is a crucial component of modern speech recognition systems used
+at major companies including Microsoft, IBM and Google (Hinton et al.,
+2012b).
+â€¢ Machine translation: In a machine translation task, the input already
+consists of a sequence of symbols in some language, and the computer program
+must convert this into a sequence of symbols in another language. This is
+commonly applied to natural languages, such as translating from English to
+French. Deep learning has recently begun to have an important impact on
+this kind of task (Sutskever et al., 2014; Bahdanau et al., 2015).
+â€¢ Structured output: Structured output tasks involve any task where the
+output is a vector (or other data structure containing multiple values) with
+important relationships between the diï¬€erent elements. This is a broad
+category, and subsumes the transcription and translation tasks described
+above, but also many other tasks. One example is parsingâ€”mapping a
+natural language sentence into a tree that describes its grammatical structure
+and tagging nodes of the trees as being verbs, nouns, or adverbs, and so on.
+See Collobert (2011) for an example of deep learning applied to a parsing
+task. Another example is pixel-wise segmentation of images, where the
+computer program assigns every pixel in an image to a speciï¬?c category. For
+101
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+example, deep learning can be used to annotate the locations of roads in
+aerial photographs (Mnih and Hinton, 2010). The output need not have its
+form mirror the structure of the input as closely as in these annotation-style
+tasks. For example, in image captioning, the computer program observes an
+image and outputs a natural language sentence describing the image (Kiros
+et al., 2014a,b; Mao et al., 2015; Vinyals et al., 2015b; Donahue et al., 2014;
+Karpathy and Li, 2015; Fang et al., 2015; Xu et al., 2015). These tasks are
+called structured output tasks because the program must output several
+values that are all tightly inter-related. For example, the words produced by
+an image captioning program must form a valid sentence.
+â€¢ Anomaly detection: In this type of task, the computer program sifts
+through a set of events or objects, and ï¬‚ags some of them as being unusual
+or atypical. An example of an anomaly detection task is credit card fraud
+detection. By modeling your purchasing habits, a credit card company can
+detect misuse of your cards. If a thief steals your credit card or credit card
+information, the thiefâ€™s purchases will often come from a diï¬€erent probability
+distribution over purchase types than your own. The credit card company
+can prevent fraud by placing a hold on an account as soon as that card has
+been used for an uncharacteristic purchase. See Chandola et al. (2009) for a
+survey of anomaly detection methods.
+â€¢ Synthesis and sampling: In this type of task, the machine learning algorithm is asked to generate new examples that are similar to those in the
+training data. Synthesis and sampling via machine learning can be useful
+for media applications where it can be expensive or boring for an artist to
+generate large volumes of content by hand. For example, video games can
+automatically generate textures for large objects or landscapes, rather than
+requiring an artist to manually label each pixel (Luo et al., 2013). In some
+cases, we want the sampling or synthesis procedure to generate some speciï¬?c
+kind of output given the input. For example, in a speech synthesis task, we
+provide a written sentence and ask the program to emit an audio waveform
+containing a spoken version of that sentence. This is a kind of structured
+output task, but with the added qualiï¬?cation that there is no single correct
+output for each input, and we explicitly desire a large amount of variation in
+the output, in order for the output to seem more natural and realistic.
+â€¢ Imputation of missing values: In this type of task, the machine learning
+algorithm is given a new example x âˆˆ R n, but with some entries xi of x
+missing. The algorithm must provide a prediction of the values of the missing
+entries.
+102
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+â€¢ Denoising: In this type of task, the machine learning algorithm is given in
+input a corrupted example xÌƒ âˆˆ Rn obtained by an unknown corruption process
+from a clean example x âˆˆ R n. The learner must predict the clean example
+x from its corrupted version xÌƒ, or more generally predict the conditional
+probability distribution p(x | xÌƒ).
+â€¢ Density estimation or probability mass function estimation: In
+the density estimation problem, the machine learning algorithm is asked
+to learn a function pmodel : R n â†’ R, where p model(x) can be interpreted
+as a probability density function (if x is continuous) or a probability mass
+function (if x is discrete) on the space that the examples were drawn from.
+To do such a task well (we will specify exactly what that means when we
+discuss performance measures P ), the algorithm needs to learn the structure
+of the data it has seen. It must know where examples cluster tightly and
+where they are unlikely to occur. Most of the tasks described above require
+the learning algorithm to at least implicitly capture the structure of the
+probability distribution. Density estimation allows us to explicitly capture
+that distribution. In principle, we can then perform computations on that
+distribution in order to solve the other tasks as well. For example, if we
+have performed density estimation to obtain a probability distribution p(x),
+we can use that distribution to solve the missing value imputation task. If
+a value x i is missing and all of the other values, denoted xâˆ’i, are given,
+then we know the distribution over it is given by p(xi | x âˆ’i). In practice,
+density estimation does not always allow us to solve all of these related tasks,
+because in many cases the required operations on p(x) are computationally
+intractable.
+Of course, many other tasks and types of tasks are possible. The types of tasks
+we list here are intended only to provide examples of what machine learning can
+do, not to deï¬?ne a rigid taxonomy of tasks.
+
+5.1.2
+
+The Performance Measure, P
+
+In order to evaluate the abilities of a machine learning algorithm, we must design
+a quantitative measure of its performance. Usually this performance measure P is
+speciï¬?c to the task T being carried out by the system.
+For tasks such as classiï¬?cation, classiï¬?cation with missing inputs, and transcription, we often measure the accuracy of the model. Accuracy is just the
+proportion of examples for which the model produces the correct output. We can
+103
+
+CHAPTER 5. MACHINE LEARNING BASICS
+
+also obtain equivalent information by measuring the error rate, the proportion
+of examples for which the model produces an incorrect output. We often refer to
+the error rate as the expected 0-1 loss. The 0-1 loss on a particular example is 0
+if it is correctly classiï¬?ed and 1 if it is not. For tasks such as density estimation,
+it does not make sense to measure accuracy, error rate, or any other kind of 0-1
+loss. Instead, we must use a diï¬€erent performance metric that gives the model
+a continuous-valued score for each example. The most common approach is to
+report the average log-probability the model assigns to some examples.
+Usually we are interested in how well the machine learning algorithm performs
+on data that it has not seen before, since this determines how well it will work when
+deployed in the real world. We therefore evaluate these performance measures using
+a test set of data that is separate from the data used for training the machine
+learning system.
+The choice of performance measure may seem straightforward and objective,
+but it is often diï¬ƒcult to choose a performance measure that corresponds well to
+the desired behavior of the system.
+In some cases, this is because it is diï¬ƒcult to decide what should be measured.
+For example, when performing a transcription task, should we measure the accuracy
+of the system at transcribing entire sequences, or should we use a more ï¬?ne-grained
+performance measure that gives partial credit for getting some elements of the
+sequence correct? When performing a regression task, should we penalize the
+system more if it frequently makes medium-sized mistakes or if it rarely makes
+very large mistakes? These kinds of design choices depend on the application.
+In other cases, we know what quantity we would ideally like to measure, but
+measuring it is impractical. For example, this arises frequently in the context of
+density estimation. Many of the best probabilistic models represent probability
+distributions only implicitly. Computing the actual probability value assigned to
+a speciï¬?c point in space in many such models is intractable. In these cases, one
+must

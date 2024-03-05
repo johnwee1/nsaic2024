@@ -1,0 +1,303 @@
+e example is the PCA algorithm,
+357
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+that copies its input x to an approximate reconstruction r using the function
+W î€¾W x. It is common for more general autoencoders to use multiplication
+by the transpose of the weight matrix just as PCA does. To make such models
+convolutional, we can use the function h to perform the transpose of the convolution
+operation. Suppose we have hidden units H in the same format as Z and we deï¬?ne
+a reconstruction
+R = h (K , H , s ).
+(9.14)
+In order to train the autoencoder, we will receive the gradient with respect
+to R as a tensor E . To train the decoder, we need to obtain the gradient with
+respect to K. This is given by g(H, E, s). To train the encoder, we need to obtain
+the gradient with respect to H. This is given by c(K, E, s). It is also possible to
+diï¬€erentiate through g using c and h, but these operations are not needed for the
+back-propagation algorithm on any standard network architectures.
+Generally, we do not use only a linear operation in order to transform from
+the inputs to the outputs in a convolutional layer. We generally also add some
+bias term to each output before applying the nonlinearity. This raises the question
+of how to share parameters among the biases. For locally connected layers it is
+natural to give each unit its own bias, and for tiled convolution, it is natural to
+share the biases with the same tiling pattern as the kernels. For convolutional
+layers, it is typical to have one bias per channel of the output and share it across
+all locations within each convolution map. However, if the input is of known, ï¬?xed
+size, it is also possible to learn a separate bias at each location of the output map.
+Separating the biases may slightly reduce the statistical eï¬ƒciency of the model, but
+also allows the model to correct for diï¬€erences in the image statistics at diï¬€erent
+locations. For example, when using implicit zero padding, detector units at the
+edge of the image receive less total input and may need larger biases.
+
+9.6
+
+Structured Outputs
+
+Convolutional networks can be used to output a high-dimensional, structured
+object, rather than just predicting a class label for a classiï¬?cation task or a real
+value for a regression task. Typically this object is just a tensor, emitted by a
+standard convolutional layer. For example, the model might emit a tensor S, where
+Si,j,k is the probability that pixel (j, k) of the input to the network belongs to class
+i. This allows the model to label every pixel in an image and draw precise masks
+that follow the outlines of individual objects.
+One issue that often comes up is that the output plane can be smaller than the
+358
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+YÌ‚
+
+(1)
+
+V
+
+YÌ‚
+W
+
+V
+
+H(1)
+U
+
+(2)
+
+W
+
+H(2)
+U
+
+YÌ‚
+
+(3)
+
+V
+
+H(3)
+
+U
+
+X
+
+Figure 9.17: An example of a recurrent convolutional network for pixel labeling. The
+input is an image tensor X, with axes corresponding to image rows, image columns, and
+channels (red, green, blue). The goal is to output a tensor of labels YÌ‚ , with a probability
+distribution over labels for each pixel. This tensor has axes corresponding to image rows,
+image columns, and the diï¬€erent classes. Rather than outputting YË† in a single shot, the
+recurrent network iteratively reï¬?nes its estimate YÌ‚ by using a previous estimate of YÌ‚
+as input for creating a new estimate. The same parameters are used for each updated
+estimate, and the estimate can be reï¬?ned as many times as we wish. The tensor of
+convolution kernels U is used on each step to compute the hidden representation given the
+input image. The kernel tensor V is used to produce an estimate of the labels given the
+hidden values. On all but the ï¬?rst step, the kernels W are convolved over YÌ‚ to provide
+input to the hidden layer. On the ï¬?rst time step, this term is replaced by zero. Because
+the same parameters are used on each step, this is an example of a recurrent network, as
+described in chapter 10.
+
+input plane, as shown in ï¬?gure 9.13. In the kinds of architectures typically used for
+classiï¬?cation of a single object in an image, the greatest reduction in the spatial
+dimensions of the network comes from using pooling layers with large stride. In
+order to produce an output map of similar size as the input, one can avoid pooling
+altogether (Jain et al., 2007). Another strategy is to simply emit a lower-resolution
+grid of labels (Pinheiro and Collobert, 2014, 2015). Finally, in principle, one could
+use a pooling operator with unit stride.
+One strategy for pixel-wise labeling of images is to produce an initial guess
+of the image labels, then reï¬?ne this initial guess using the interactions between
+neighboring pixels. Repeating this reï¬?nement step several times corresponds to
+using the same convolutions at each stage, sharing weights between the last layers of
+the deep net (Jain et al., 2007). This makes the sequence of computations performed
+by the successive convolutional layers with weights shared across layers a particular
+kind of recurrent network (Pinheiro and Collobert, 2014, 2015). Figure 9.17 shows
+the architecture of such a recurrent convolutional network.
+359
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Once a prediction for each pixel is made, various methods can be used to
+further process these predictions in order to obtain a segmentation of the image
+into regions (Briggman et al., 2009; Turaga et al., 2010; Farabet et al., 2013).
+The general idea is to assume that large groups of contiguous pixels tend to be
+associated with the same label. Graphical models can describe the probabilistic
+relationships between neighboring pixels. Alternatively, the convolutional network
+can be trained to maximize an approximation of the graphical model training
+objective (Ning et al., 2005; Thompson et al., 2014).
+
+9.7
+
+Data Types
+
+The data used with a convolutional network usually consists of several channels,
+each channel being the observation of a diï¬€erent quantity at some point in space
+or time. See table 9.1 for examples of data types with diï¬€erent dimensionalities
+and number of channels.
+For an example of convolutional networks applied to video, see Chen et al.
+(2010).
+So far we have discussed only the case where every example in the train and test
+data has the same spatial dimensions. One advantage to convolutional networks
+is that they can also process inputs with varying spatial extents. These kinds of
+input simply cannot be represented by traditional, matrix multiplication-based
+neural networks. This provides a compelling reason to use convolutional networks
+even when computational cost and overï¬?tting are not signiï¬?cant issues.
+For example, consider a collection of images, where each image has a diï¬€erent
+width and height. It is unclear how to model such inputs with a weight matrix of
+ï¬?xed size. Convolution is straightforward to apply; the kernel is simply applied a
+diï¬€erent number of times depending on the size of the input, and the output of the
+convolution operation scales accordingly. Convolution may be viewed as matrix
+multiplication; the same convolution kernel induces a diï¬€erent size of doubly block
+circulant matrix for each size of input. Sometimes the output of the network is
+allowed to have variable size as well as the input, for example if we want to assign
+a class label to each pixel of the input. In this case, no further design work is
+necessary. In other cases, the network must produce some ï¬?xed-size output, for
+example if we want to assign a single class label to the entire image. In this case
+we must make some additional design steps, like inserting a pooling layer whose
+pooling regions scale in size proportional to the size of the input, in order to
+maintain a ï¬?xed number of pooled outputs. Some examples of this kind of strategy
+are shown in ï¬?gure 9.11.
+360
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+1-D
+
+2-D
+
+3-D
+
+Single channel
+Audio waveform: The axis we
+convolve over corresponds to
+time. We discretize time and
+measure the amplitude of the
+waveform once per time step.
+
+Audio data that has been preprocessed with a Fourier transform:
+We can transform the audio waveform into a 2D tensor with different rows corresponding to different frequencies and diï¬€erent
+columns corresponding to diï¬€erent points in time. Using convolution in the time makes the model
+equivariant to shifts in time. Using convolution across the frequency axis makes the model
+equivariant to frequency, so that
+the same melody played in a different octave produces the same
+representation but at a diï¬€erent
+height in the networkâ€™s output.
+Volumetric data: A common
+source of this kind of data is medical imaging technology, such as
+CT scans.
+
+Multi-channel
+Skeleton animation data: Animations of 3-D computer-rendered
+characters are generated by altering the pose of a â€œskeletonâ€? over
+time. At each point in time, the
+pose of the character is described
+by a speciï¬?cation of the angles of
+each of the joints in the characterâ€™s skeleton. Each channel in
+the data we feed to the convolutional model represents the angle
+about one axis of one joint.
+Color image data: One channel
+contains the red pixels, one the
+green pixels, and one the blue
+pixels. The convolution kernel
+moves over both the horizontal
+and vertical axes of the image,
+conferring translation equivariance in both directions.
+
+Color video data: One axis corresponds to time, one to the height
+of the video frame, and one to
+the width of the video frame.
+
+Table 9.1: Examples of diï¬€erent formats of data that can be used with convolutional
+networks.
+
+361
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+Note that the use of convolution for processing variable sized inputs only makes
+sense for inputs that have variable size because they contain varying amounts
+of observation of the same kind of thingâ€”diï¬€erent lengths of recordings over
+time, diï¬€erent widths of observations over space, etc. Convolution does not make
+sense if the input has variable size because it can optionally include diï¬€erent
+kinds of observations. For example, if we are processing college applications, and
+our features consist of both grades and standardized test scores, but not every
+applicant took the standardized test, then it does not make sense to convolve the
+same weights over both the features corresponding to the grades and the features
+corresponding to the test scores.
+
+9.8
+
+Eï¬ƒcient Convolution Algorithms
+
+Modern convolutional network applications often involve networks containing more
+than one million units. Powerful implementations exploiting parallel computation
+resources, as discussed in section 12.1, are essential. However, in many cases it
+is also possible to speed up convolution by selecting an appropriate convolution
+algorithm.
+Convolution is equivalent to converting both the input and the kernel to the
+frequency domain using a Fourier transform, performing point-wise multiplication
+of the two signals, and converting back to the time domain using an inverse
+Fourier transform. For some problem sizes, this can be faster than the naive
+implementation of discrete convolution.
+When a d-dimensional kernel can be expressed as the outer product of d
+vectors, one vector per dimension, the kernel is called separable. When the
+kernel is separable, naive convolution is ineï¬ƒcient. It is equivalent to compose d
+one-dimensional convolutions with each of these vectors. The composed approach
+is signiï¬?cantly faster than performing one d-dimensional convolution with their
+outer product. The kernel also takes fewer parameters to represent as vectors.
+If the kernel is w elements wide in each dimension, then naive multidimensional
+convolution requires O (w d ) runtime and parameter storage space, while separable
+convolution requires O(w Ã— d) runtime and parameter storage space. Of course,
+not every convolution can be represented in this way.
+Devising faster ways of performing convolution or approximate convolution
+without harming the accuracy of the model is an active area of research. Even techniques that improve the eï¬ƒciency of only forward propagation are useful because
+in the commercial setting, it is typical to devote more resources to deployment of
+a network than to its training.
+362
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+9.9
+
+Random or Unsupervised Features
+
+Typically, the most expensive part of convolutional network training is learning the
+features. The output layer is usually relatively inexpensive due to the small number
+of features provided as input to this layer after passing through several layers of
+pooling. When performing supervised training with gradient descent, every gradient
+step requires a complete run of forward propagation and backward propagation
+through the entire network. One way to reduce the cost of convolutional network
+training is to use features that are not trained in a supervised fashion.
+There are three basic strategies for obtaining convolution kernels without
+supervised training. One is to simply initialize them randomly. Another is to
+design them by hand, for example by setting each kernel to detect edges at a
+certain orientation or scale. Finally, one can learn the kernels with an unsupervised
+criterion. For example, Coates et al. (2011) apply k-means clustering to small
+image patches, then use each learned centroid as a convolution kernel. Part III
+describes many more unsupervised learning approaches. Learning the features
+with an unsupervised criterion allows them to be determined separately from the
+classiï¬?er layer at the top of the architecture. One can then extract the features for
+the entire training set just once, essentially constructing a new training set for the
+last layer. Learning the last layer is then typically a convex optimization problem,
+assuming the last layer is something like logistic regression or an SVM.
+Random ï¬?lters often work surprisingly well in convolutional networks (Jarrett
+et al., 2009; Saxe et al., 2011; Pinto et al., 2011; Cox and Pinto, 2011). Saxe et al.
+(2011) showed that layers consisting of convolution following by pooling naturally
+become frequency selective and translation invariant when assigned random weights.
+They argue that this provides an inexpensive way to choose the architecture of
+a convolutional network: ï¬?rst evaluate the performance of several convolutional
+network architectures by training only the last layer, then take the best of these
+architectures and train the entire architecture using a more expensive approach.
+An intermediate approach is to learn the features, but using methods that do
+not require full forward and back-propagation at every gradient step. As with
+multilayer perceptrons, we use greedy layer-wise pretraining, to train the ï¬?rst layer
+in isolation, then extract all features from the ï¬?rst layer only once, then train the
+second layer in isolation given those features, and so on. Chapter 8 has described
+how to perform supervised greedy layer-wise pretraining, and part III extends this
+to greedy layer-wise pretraining using an unsupervised criterion at each layer. The
+canonical example of greedy layer-wise pretraining of a convolutional model is the
+convolutional deep belief network (Lee et al., 2009). Convolutional networks oï¬€er
+363
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+us the opportunity to take the pretraining strategy one step further than is possible
+with multilayer perceptrons. Instead of training an entire convolutional layer at a
+time, we can tra

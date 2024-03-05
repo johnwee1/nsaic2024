@@ -1,0 +1,279 @@
+directed graphical model
+with a speci�?c kind of conditional probability distribution. In general, we can
+think of a sigmoid belief network as having a vector of binary states s, with each
+element of the state inﬂuenced by its ancestors:
+
+
+�?�
+p( s i ) = σ 
+Wj,i sj + bi  .
+(20.70)
+j<i
+
+The most common structure of sigmoid belief network is one that is divided
+into many layers, with ancestral sampling proceeding through a series of many
+hidden layers and then ultimately generating the visible layer. This structure is
+very similar to the deep belief network, except that the units at the beginning of
+692
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+the sampling process are independent from each other, rather than sampled from
+a restricted Boltzmann machine. Such a structure is interesting for a variety of
+reasons. One reason is that the structure is a universal approximator of probability
+distributions over the visible units, in the sense that it can approximate any
+probability distribution over binary variables arbitrarily well, given enough depth,
+even if the width of the individual layers is restricted to the dimensionality of the
+visible layer (Sutskever and Hinton, 2008).
+While generating a sample of the visible units is very eﬃcient in a sigmoid
+belief network, most other operations are not. Inference over the hidden units given
+the visible units is intractable. Mean �?eld inference is also intractable because the
+variational lower bound involves taking expectations of cliques that encompass
+entire layers. This problem has remained diﬃcult enough to restrict the popularity
+of directed discrete networks.
+One approach for performing inference in a sigmoid belief network is to construct
+a diﬀerent lower bound that is specialized for sigmoid belief networks (Saul et al.,
+1996). This approach has only been applied to very small networks. Another
+approach is to use learned inference mechanisms as described in section 19.5. The
+Helmholtz machine (Dayan et al., 1995; Dayan and Hinton, 1996) is a sigmoid belief
+network combined with an inference network that predicts the parameters of the
+mean �?eld distribution over the hidden units. Modern approaches (Gregor et al.,
+2014; Mnih and Gregor, 2014) to sigmoid belief networks still use this inference
+network approach. These techniques remain diﬃcult due to the discrete nature of
+the latent variables. One cannot simply back-propagate through the output of the
+inference network, but instead must use the relatively unreliable machinery for backpropagating through discrete sampling processes, described in section 20.9.1. Recent
+approaches based on importance sampling, reweighted wake-sleep (Bornschein and
+Bengio, 2015) and bidirectional Helmholtz machines (Bornschein et al., 2015)
+make it possible to quickly train sigmoid belief networks and reach state-of-the-art
+performance on benchmark tasks.
+A special case of sigmoid belief networks is the case where there are no latent
+variables. Learning in this case is eﬃcient, because there is no need to marginalize
+latent variables out of the likelihood. A family of models called auto-regressive
+networks generalize this fully visible belief network to other kinds of variables
+besides binary variables and other structures of conditional distributions besides loglinear relationships. Auto-regressive networks are described later, in section 20.10.7.
+
+693
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+20.10.2
+
+Diﬀerentiable Generator Nets
+
+Many generative models are based on the idea of using a diﬀerentiable generator
+network. The model transforms samples of latent variables z to samples x or
+to distributions over samples x using a diﬀerentiable function g(z; θ (g )) which is
+typically represented by a neural network. This model class includes variational
+autoencoders, which pair the generator net with an inference net, generative
+adversarial networks, which pair the generator network with a discriminator
+network, and techniques that train generator networks in isolation.
+Generator networks are essentially just parametrized computational procedures
+for generating samples, where the architecture provides the family of possible
+distributions to sample from and the parameters select a distribution from within
+that family.
+As an example, the standard procedure for drawing samples from a normal
+distribution with mean µ and covariance Σ is to feed samples z from a normal
+distribution with zero mean and identity covariance into a very simple generator
+network. This generator network contains just one aﬃne layer:
+x = g(z) = µ + Lz
+
+(20.71)
+
+where L is given by the Cholesky decomposition of Σ.
+Pseudorandom number generators can also use nonlinear transformations of
+simple distributions. For example, inverse transform sampling (Devroye, 2013)
+draws a scalar z from U(0, 1) and applies a nonlinear transformation to a scalar
+x. In this
+�?� xcase g(z) is given by the inverse of the cumulative distribution function
+F (x) = −∞ p(v)dv. If we are able to specify p (x), integrate over x, and invert the
+resulting function, we can sample from p(x) without using machine learning.
+To generate samples from more complicated distributions that are diﬃcult
+to specify directly, diﬃcult to integrate over, or whose resulting integrals are
+diﬃcult to invert, we use a feedforward network to represent a parametric family
+of nonlinear functions g, and use training data to infer the parameters selecting
+the desired function.
+We can think of g as providing a nonlinear change of variables that transforms
+the distribution over z into the desired distribution over x.
+Recall from equation 3.47 that, for invertible, diﬀerentiable, continuous g,
+
+
+
+∂g 
+
+pz (z) = px (g(z)) det( ) .
+(20.72)
+∂z
+694
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+This implicitly imposes a probability distribution over x:
+p (g −1 (x))
+ .
+px (x) = z
+∂g 
+det( ∂z )
+
+(20.73)
+
+Of course, this formula may be diﬃcult to evaluate, depending on the choice of
+g, so we often use indirect means of learning g, rather than trying to maximize
+log p(x) directly.
+In some cases, rather than using g to provide a sample of x directly, we use g
+to de�?ne a conditional distribution over x. For example, we could use a generator
+net whose �?nal layer consists of sigmoid outputs to provide the mean parameters
+of Bernoulli distributions:
+p(xi = 1 | z) = g(z ) i .
+
+(20.74)
+
+In this case, when we use g to de�?ne p(x | z), we impose a distribution over x by
+marginalizing z:
+p(x) = Ez p(x | z).
+(20.75)
+Both approaches de�?ne a distribution p g (x) and allow us to train various
+criteria of pg using the reparametrization trick of section 20.9.
+The two diﬀerent approaches to formulating generator nets—emitting the
+parameters of a conditional distribution versus directly emitting samples—have
+complementary strengths and weaknesses. When the generator net de�?nes a
+conditional distribution over x, it is capable of generating discrete data as well as
+continuous data. When the generator net provides samples directly, it is capable of
+generating only continuous data (we could introduce discretization in the forward
+propagation, but doing so would mean the model could no longer be trained using
+back-propagation). The advantage to direct sampling is that we are no longer
+forced to use conditional distributions whose form can be easily written down and
+algebraically manipulated by a human designer.
+Approaches based on diﬀerentiable generator networks are motivated by the
+success of gradient descent applied to diﬀerentiable feedforward networks for
+classi�?cation. In the context of supervised learning, deep feedforward networks
+trained with gradient-based learning seem practically guaranteed to succeed given
+enough hidden units and enough training data. Can this same recipe for success
+transfer to generative modeling?
+Generative modeling seems to be more diﬃcult than classi�?cation or regression
+because the learning process requires optimizing intractable criteria. In the context
+695
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+of diﬀerentiable generator nets, the criteria are intractable because the data does
+not specify both the inputs z and the outputs x of the generator net. In the case
+of supervised learning, both the inputs x and the outputs y were given, and the
+optimization procedure needs only to learn how to produce the speci�?ed mapping.
+In the case of generative modeling, the learning procedure needs to determine how
+to arrange z space in a useful way and additionally how to map from z to x.
+Dosovitskiy et al. (2015) studied a simpli�?ed problem, where the correspondence
+between z and x is given. Speci�?cally, the training data is computer-rendered
+imagery of chairs. The latent variables z are parameters given to the rendering
+engine describing the choice of which chair model to use, the position of the chair,
+and other con�?guration details that aﬀect the rendering of the image. Using this
+synthetically generated data, a convolutional network is able to learn to map z
+descriptions of the content of an image to x approximations of rendered images.
+This suggests that contemporary diﬀerentiable generator networks have suﬃcient
+model capacity to be good generative models, and that contemporary optimization
+algorithms have the ability to �?t them. The diﬃculty lies in determining how to
+train generator networks when the value of z for each x is not �?xed and known
+ahead of each time.
+The following sections describe several approaches to training diﬀerentiable
+generator nets given only training samples of x.
+
+20.10.3
+
+Variational Autoencoders
+
+The variational autoencoder or VAE (Kingma, 2013; Rezende et al., 2014) is a
+directed model that uses learned approximate inference and can be trained purely
+with gradient-based methods.
+To generate a sample from the model, the VAE �?rst draws a sample z from
+the code distribution p model (z). The sample is then run through a diﬀerentiable
+generator network g(z ). Finally, x is sampled from a distribution p model(x; g(z)) =
+pmodel (x | z). However, during training, the approximate inference network (or
+encoder) q(z | x) is used to obtain z and pmodel (x | z) is then viewed as a decoder
+network.
+The key insight behind variational autoencoders is that they may be trained
+by maximizing the variational lower bound L(q ) associated with data point x:
+L(q) = Ez ∼q(z |x) log p model(z, x) + H(q(z | x))
+
+= Ez ∼q(z |x) log p model(x | z) − DKL (q(z | x)||p model(z))
+≤ log pmodel (x).
+
+696
+
+(20.76)
+(20.77)
+(20.78)
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+In equation 20.76, we recognize the �?rst term as the joint log-likelihood of the visible
+and hidden variables under the approximate posterior over the latent variables
+(just like with EM, except that we use an approximate rather than the exact
+posterior). We recognize also a second term, the entropy of the approximate
+posterior. When q is chosen to be a Gaussian distribution, with noise added to
+a predicted mean value, maximizing this entropy term encourages increasing the
+standard deviation of this noise. More generally, this entropy term encourages the
+variational posterior to place high probability mass on many z values that could
+have generated x, rather than collapsing to a single point estimate of the most
+likely value. In equation 20.77, we recognize the �?rst term as the reconstruction
+log-likelihood found in other autoencoders. The second term tries to make the
+approximate posterior distribution q(z | x) and the model prior p model(z) approach
+each other.
+Traditional approaches to variational inference and learning infer q via an optimization algorithm, typically iterated �?xed point equations (section 19.4). These
+approaches are slow and often require the ability to compute Ez∼q log p model(z, x)
+in closed form. The main idea behind the variational autoencoder is to train a
+parametric encoder (also sometimes called an inference network or recognition
+model) that produces the parameters of q. So long as z is a continuous variable, we
+can then back-propagate through samples of z drawn from q(z | x) = q (z; f(x; θ))
+in order to obtain a gradient with respect to θ. Learning then consists solely of
+maximizing L with respect to the parameters of the encoder and decoder. All of
+the expectations in L may be approximated by Monte Carlo sampling.
+
+The variational autoencoder approach is elegant, theoretically pleasing, and
+simple to implement. It also obtains excellent results and is among the state of the
+art approaches to generative modeling. Its main drawback is that samples from
+variational autoencoders trained on images tend to be somewhat blurry. The causes
+of this phenomenon are not yet known. One possibility is that the blurriness is
+an intrinsic eﬀect of maximum likelihood, which minimizes DKL (p data�?�pmodel). As
+illustrated in �?gure 3.6, this means that the model will assign high probability to
+points that occur in the training set, but may also assign high probability to other
+points. These other points may include blurry images. Part of the reason that the
+model would choose to put probability mass on blurry images rather than some
+other part of the space is that the variational autoencoders used in practice usually
+have a Gaussian distribution for pmodel(x; g(z)). Maximizing a lower bound on
+the likelihood of such a distribution is similar to training a traditional autoencoder
+with mean squared error, in the sense that it has a tendency to ignore features
+of the input that occupy few pixels or that cause only a small change in the
+brightness of the pixels that they occupy. This issue is not speci�?c to VAEs and
+697
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+is shared with generative models that optimize a log-likelihood, or equivalently,
+DKL (p data �?�pmodel ), as argued by Theis et al. (2015) and by Huszar (2015). Another
+troubling issue with contemporary VAE models is that they tend to use only a small
+subset of the dimensions of z, as if the encoder was not able to transform enough
+of the local directions in input space to a space where the marginal distribution
+matches the factorized prior.
+The VAE framework is very straightforward to extend to a wide range of model
+architectures. This is a key advantage over Boltzmann machines, which require
+extremely careful model design to maintain tractability. VAEs work very well with
+a diverse family of diﬀerentiable operators. One particularly sophisticated VAE
+is the deep recurrent attention writer or DRAW model (Gregor et al., 2015).
+DRAW uses a recurrent encoder and recurrent decoder combined with an attention
+mechanism. The generation process for the DRAW model consists of sequentially
+visiting diﬀerent small image patches and drawing the values of the pixels at those
+points. VAEs can also be extended to generate sequences by de�?ning variational
+RNNs (Chung et al., 2015b) by using a recurrent encoder and decoder within
+the VAE framework. Generating a sample from a traditional RNN involves only
+non-deterministic operations at the output space. Variational RNNs also have
+random variability at the potentially more abstract level captured by the VAE
+latent variables.
+The VAE framework has been extended to maximize not just the traditional
+variational lower bound, but instead the importance weighted autoencoder
+(Burda et al., 2015) objective:
+
+
+k
+(
+i
+)
+�?�

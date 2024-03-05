@@ -1,0 +1,286 @@
+ty and
+Information Theory
+
+4. Numerical
+Computation
+
+5. Machine Learning
+Basics
+
+Part II: Deep Networks: Modern Practices
+6. Deep Feedforward
+Networks
+
+7. Regularization
+
+8. Optimization
+
+11. Practical
+Methodology
+
+9. CNNs
+
+10. RNNs
+
+12. Applications
+
+Part III: Deep Learning Research
+13. Linear Factor
+Models
+
+14. Autoencoders
+
+15. Representation
+Learning
+
+16. Structured
+Probabilistic Models
+
+17. Monte Carlo
+Methods
+
+19. Inference
+
+18. Partition
+Function
+
+20. Deep Generative
+Models
+
+Figure 1.6: The high-level organization of the book. An arrow from one chapter to another
+indicates that the former chapter is prerequisite material for understanding the latter.
+12
+
+CHAPTER 1. INTRODUCTION
+
+1.2.1
+
+The Many Names and Changing Fortunes of Neural Networks
+
+We expect that many readers of this book have heard of deep learning as an
+exciting new technology, and are surprised to see a mention of â€œhistoryâ€? in a book
+about an emerging ï¬?eld. In fact, deep learning dates back to the 1940s. Deep
+learning only appears to be new, because it was relatively unpopular for several
+years preceding its current popularity, and because it has gone through many
+diï¬€erent names, and has only recently become called â€œdeep learning.â€? The ï¬?eld
+has been rebranded many times, reï¬‚ecting the inï¬‚uence of diï¬€erent researchers
+and diï¬€erent perspectives.
+A comprehensive history of deep learning is beyond the scope of this textbook.
+However, some basic context is useful for understanding deep learning. Broadly
+speaking, there have been three waves of development of deep learning: deep
+learning known as cybernetics in the 1940sâ€“1960s, deep learning known as
+connectionism in the 1980sâ€“1990s, and the current resurgence under the name
+deep learning beginning in 2006. This is quantitatively illustrated in ï¬?gure 1.7.
+Some of the earliest learning algorithms we recognize today were intended
+to be computational models of biological learning, i.e. models of how learning
+happens or could happen in the brain. As a result, one of the names that deep
+learning has gone by is artiï¬?cial neural networks (ANNs). The corresponding
+perspective on deep learning models is that they are engineered systems inspired
+by the biological brain (whether the human brain or the brain of another animal).
+While the kinds of neural networks used for machine learning have sometimes
+been used to understand brain function (Hinton and Shallice, 1991), they are
+generally not designed to be realistic models of biological function. The neural
+perspective on deep learning is motivated by two main ideas. One idea is that
+the brain provides a proof by example that intelligent behavior is possible, and a
+conceptually straightforward path to building intelligence is to reverse engineer the
+computational principles behind the brain and duplicate its functionality. Another
+perspective is that it would be deeply interesting to understand the brain and the
+principles that underlie human intelligence, so machine learning models that shed
+light on these basic scientiï¬?c questions are useful apart from their ability to solve
+engineering applications.
+The modern term â€œdeep learningâ€? goes beyond the neuroscientiï¬?c perspective
+on the current breed of machine learning models. It appeals to a more general
+principle of learning multiple levels of composition, which can be applied in machine
+learning frameworks that are not necessarily neurally inspired.
+13
+
+Frequency of Word or Phrase
+
+CHAPTER 1. INTRODUCTION
+
+0.000250
+0.000200
+
+cybernetics
+(connectionism + neural networks)
+
+0.000150
+0.000100
+0.000050
+0.000000
+1940
+
+1950
+
+1960
+
+1970
+
+1980
+
+1990
+
+2000
+
+Year
+
+Figure 1.7: The ï¬?gure shows two of the three historical waves of artiï¬?cial neural nets
+research, as measured by the frequency of the phrases â€œcyberneticsâ€? and â€œconnectionismâ€? or
+â€œneural networksâ€? according to Google Books (the third wave is too recent to appear). The
+ï¬?rst wave started with cybernetics in the 1940sâ€“1960s, with the development of theories
+of biological learning (McCulloch and Pitts, 1943; Hebb, 1949) and implementations of
+the ï¬?rst models such as the perceptron (Rosenblatt, 1958) allowing the training of a single
+neuron. The second wave started with the connectionist approach of the 1980â€“1995 period,
+with back-propagation (Rumelhart et al., 1986a) to train a neural network with one or two
+hidden layers. The current and third wave, deep learning, started around 2006 (Hinton
+et al., 2006; Bengio et al., 2007; Ranzato et al., 2007a), and is just now appearing in book
+form as of 2016. The other two waves similarly appeared in book form much later than
+the corresponding scientiï¬?c activity occurred.
+
+14
+
+CHAPTER 1. INTRODUCTION
+
+The earliest predecessors of modern deep learning were simple linear models
+motivated from a neuroscientiï¬?c perspective. These models were designed to
+take a set of n input values x1, . . . , xn and associate them with an output y.
+These models would learn a set of weights w1, . . . , wn and compute their output
+f(x, w ) = x1w1 + Â· Â· Â· + x n wn . This ï¬?rst wave of neural networks research was
+known as cybernetics, as illustrated in ï¬?gure 1.7.
+The McCulloch-Pitts Neuron (McCulloch and Pitts, 1943) was an early model
+of brain function. This linear model could recognize two diï¬€erent categories of
+inputs by testing whether f (x, w ) is positive or negative. Of course, for the model
+to correspond to the desired deï¬?nition of the categories, the weights needed to be
+set correctly. These weights could be set by the human operator. In the 1950s,
+the perceptron (Rosenblatt, 1958, 1962) became the ï¬?rst model that could learn
+the weights deï¬?ning the categories given examples of inputs from each category.
+The adaptive linear element (ADALINE), which dates from about the same
+time, simply returned the value of f(x) itself to predict a real number (Widrow
+and Hoï¬€, 1960), and could also learn to predict these numbers from data.
+These simple learning algorithms greatly aï¬€ected the modern landscape of machine learning. The training algorithm used to adapt the weights of the ADALINE
+was a special case of an algorithm called stochastic gradient descent. Slightly
+modiï¬?ed versions of the stochastic gradient descent algorithm remain the dominant
+training algorithms for deep learning models today.
+Models based on the f(x, w ) used by the perceptron and ADALINE are called
+linear models. These models remain some of the most widely used machine
+learning models, though in many cases they are trained in diï¬€erent ways than the
+original models were trained.
+Linear models have many limitations. Most famously, they cannot learn the
+XOR function, where f ([0,1], w) = 1 and f ([1, 0], w) = 1 but f ([1, 1], w) = 0
+and f ([0, 0], w) = 0. Critics who observed these ï¬‚aws in linear models caused
+a backlash against biologically inspired learning in general (Minsky and Papert,
+1969). This was the ï¬?rst major dip in the popularity of neural networks.
+Today, neuroscience is regarded as an important source of inspiration for deep
+learning researchers, but it is no longer the predominant guide for the ï¬?eld.
+The main reason for the diminished role of neuroscience in deep learning
+research today is that we simply do not have enough information about the brain
+to use it as a guide. To obtain a deep understanding of the actual algorithms used
+by the brain, we would need to be able to monitor the activity of (at the very
+least) thousands of interconnected neurons simultaneously. Because we are not
+able to do this, we are far from understanding even some of the most simple and
+15
+
+CHAPTER 1. INTRODUCTION
+
+well-studied parts of the brain (Olshausen and Field, 2005).
+Neuroscience has given us a reason to hope that a single deep learning algorithm
+can solve many diï¬€erent tasks. Neuroscientists have found that ferrets can learn to
+â€œseeâ€? with the auditory processing region of their brain if their brains are rewired
+to send visual signals to that area (Von Melchner et al., 2000). This suggests that
+much of the mammalian brain might use a single algorithm to solve most of the
+diï¬€erent tasks that the brain solves. Before this hypothesis, machine learning
+research was more fragmented, with diï¬€erent communities of researchers studying
+natural language processing, vision, motion planning and speech recognition. Today,
+these application communities are still separate, but it is common for deep learning
+research groups to study many or even all of these application areas simultaneously.
+We are able to draw some rough guidelines from neuroscience. The basic idea of
+having many computational units that become intelligent only via their interactions
+with each other is inspired by the brain. The Neocognitron (Fukushima, 1980)
+introduced a powerful model architecture for processing images that was inspired
+by the structure of the mammalian visual system and later became the basis
+for the modern convolutional network (LeCun et al., 1998b), as we will see in
+section 9.10. Most neural networks today are based on a model neuron called
+the rectiï¬?ed linear unit. The original Cognitron (Fukushima, 1975) introduced
+a more complicated version that was highly inspired by our knowledge of brain
+function. The simpliï¬?ed modern version was developed incorporating ideas from
+many viewpoints, with Nair and Hinton (2010) and Glorot et al. (2011a) citing
+neuroscience as an inï¬‚uence, and Jarrett et al. (2009) citing more engineeringoriented inï¬‚uences. While neuroscience is an important source of inspiration, it
+need not be taken as a rigid guide. We know that actual neurons compute very
+diï¬€erent functions than modern rectiï¬?ed linear units, but greater neural realism
+has not yet led to an improvement in machine learning performance. Also, while
+neuroscience has successfully inspired several neural network architectures, we
+do not yet know enough about biological learning for neuroscience to oï¬€er much
+guidance for the learning algorithms we use to train these architectures.
+Media accounts often emphasize the similarity of deep learning to the brain.
+While it is true that deep learning researchers are more likely to cite the brain as an
+inï¬‚uence than researchers working in other machine learning ï¬?elds such as kernel
+machines or Bayesian statistics, one should not view deep learning as an attempt
+to simulate the brain. Modern deep learning draws inspiration from many ï¬?elds,
+especially applied math fundamentals like linear algebra, probability, information
+theory, and numerical optimization. While some deep learning researchers cite
+neuroscience as an important source of inspiration, others are not concerned with
+16
+
+CHAPTER 1. INTRODUCTION
+
+neuroscience at all.
+It is worth noting that the eï¬€ort to understand how the brain works on
+an algorithmic level is alive and well. This endeavor is primarily known as
+â€œcomputational neuroscienceâ€? and is a separate ï¬?eld of study from deep learning.
+It is common for researchers to move back and forth between both ï¬?elds. The
+ï¬?eld of deep learning is primarily concerned with how to build computer systems
+that are able to successfully solve tasks requiring intelligence, while the ï¬?eld of
+computational neuroscience is primarily concerned with building more accurate
+models of how the brain actually works.
+In the 1980s, the second wave of neural network research emerged in great
+part via a movement called connectionism or parallel distributed processing (Rumelhart et al., 1986c; McClelland et al., 1995). Connectionism arose in
+the context of cognitive science. Cognitive science is an interdisciplinary approach
+to understanding the mind, combining multiple diï¬€erent levels of analysis. During
+the early 1980s, most cognitive scientists studied models of symbolic reasoning.
+Despite their popularity, symbolic models were diï¬ƒcult to explain in terms of
+how the brain could actually implement them using neurons. The connectionists
+began to study models of cognition that could actually be grounded in neural
+implementations (Touretzky and Minton, 1985), reviving many ideas dating back
+to the work of psychologist Donald Hebb in the 1940s (Hebb, 1949).
+The central idea in connectionism is that a large number of simple computational
+units can achieve intelligent behavior when networked together. This insight
+applies equally to neurons in biological nervous systems and to hidden units in
+computational models.
+Several key concepts arose during the connectionism movement of the 1980s
+that remain central to todayâ€™s deep learning.
+One of these concepts is that of distributed representation (Hinton et al.,
+1986). This is the idea that each input to a system should be represented by
+many features, and each feature should be involved in the representation of many
+possible inputs. For example, suppose we have a vision system that can recognize
+cars, trucks, and birds and these objects can each be red, green, or blue. One way
+of representing these inputs would be to have a separate neuron or hidden unit
+that activates for each of the nine possible combinations: red truck, red car, red
+bird, green truck, and so on. This requires nine diï¬€erent neurons, and each neuron
+must independently learn the concept of color and object identity. One way to
+improve on this situation is to use a distributed representation, with three neurons
+describing the color and three neurons describing the object identity. This requires
+only six neurons total instead of nine, and the neuron describing redness is able to
+17
+
+CHAPTER 1. INTRODUCTION
+
+learn about redness from images of cars, trucks and birds, not only from images
+of one speciï¬?c category of objects. The concept of distributed representation is
+central to this book, and will be described in greater detail in chapter 15.
+Another major accomplishment of the connectionist movement was the successful use of back-propagation to train deep neural networks with internal representations and the popularization of the back-propagation algorithm (Rumelhart
+et al., 1986a; LeCun, 1987). This algorithm has waxed and waned in popularity
+but as of this writing is currently the dominant approach to training deep models.
+During the 1990s, researchers made important advances in modeling sequences
+with neural networks. Hochreiter (1991) and Bengio et al. (1994) identiï¬?ed some of
+the fundamental mathematical diï¬ƒculties in modeling long sequences, described in
+section 10.7. Hochreiter and Schmidhuber (1997) introduced the long short-term
+memory or LSTM network to resolve some of these diï¬ƒculties. Today, the LSTM
+is widely used for many sequence modeling tasks, including many natural language
+processing tasks at Google.
+The second wave of neural networks research lasted until the mid-1990s. Ventures based on neural networks and other AI technologies began to make unrealistically ambitious claims while seeking investments. When AI research did not fulï¬?ll
+these unreasonable expectations, investors were disappointed. Simultaneously,
+other ï¬?elds of machine learning made advances. Kernel machines (Boser et al.,
+1992; Cortes and Vapnik, 1995; SchÃ¶lkopf et al., 1999) and graphical models (Jordan, 1998) both achieved good results on many important tasks. These two factors
+led to a decline in the popularity of neural networks that lasted until 2007.
+During this time, neural networks continued to obtain impressive performance
+on some tasks (LeCu

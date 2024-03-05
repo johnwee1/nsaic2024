@@ -1,0 +1,339 @@
+erns in the weight matrix U, we can implement
+structures of Boltzmann machines, such as RBMs, or DBMs with diï¬€erent numbers
+of layers. This is accomplished by partitioning x into visible and hidden units and
+zeroing out elements of U for units that do not interact. The centered Boltzmann
+machine introduces a vector Âµ that is subtracted from all of the states:
+Eî€° (x; U , b) = âˆ’(x âˆ’ Âµ)î€¾ U (x âˆ’ Âµ) âˆ’ (x âˆ’ Âµ)î€¾b.
+
+(20.37)
+
+Typically Âµ is a hyperparameter ï¬?xed at the beginning of training. It is usually chosen to make sure that x âˆ’ Âµ â‰ˆ 0 when the model is initialized. This
+reparametrization does not change the set of probability distributions that the
+model can represent, but it does change the dynamics of stochastic gradient descent
+applied to the likelihood. Speciï¬?cally, in many cases, this reparametrization results
+673
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+in a Hessian matrix that is better conditioned. Melchior et al. (2013) experimentally
+conï¬?rmed that the conditioning of the Hessian matrix improves, and observed that
+the centering trick is equivalent to another Boltzmann machine learning technique,
+the enhanced gradient (Cho et al., 2011). The improved conditioning of the
+Hessian matrix allows learning to succeed, even in diï¬ƒcult cases like training a
+deep Boltzmann machine with multiple layers.
+The other approach to jointly training deep Boltzmann machines is the multiprediction deep Boltzmann machine (MP-DBM) which works by viewing the mean
+ï¬?eld equations as deï¬?ning a family of recurrent networks for approximately solving
+every possible inference problem (Goodfellow et al., 2013b). Rather than training
+the model to maximize the likelihood, the model is trained to make each recurrent
+network obtain an accurate answer to the corresponding inference problem. The
+training process is illustrated in ï¬?gure 20.5. It consists of randomly sampling a
+training example, randomly sampling a subset of inputs to the inference network,
+and then training the inference network to predict the values of the remaining
+units.
+This general principle of back-propagating through the computational graph
+for approximate inference has been applied to other models (Stoyanov et al., 2011;
+Brakel et al., 2013). In these models and in the MP-DBM, the ï¬?nal loss is not
+the lower bound on the likelihood. Instead, the ï¬?nal loss is typically based on
+the approximate conditional distribution that the approximate inference network
+imposes over the missing values. This means that the training of these models
+is somewhat heuristically motivated. If we inspect the p(v) represented by the
+Boltzmann machine learned by the MP-DBM, it tends to be somewhat defective,
+in the sense that Gibbs sampling yields poor samples.
+Back-propagation through the inference graph has two main advantages. First,
+it trains the model as it is really usedâ€”with approximate inference. This means
+that approximate inference, for example, to ï¬?ll in missing inputs, or to perform
+classiï¬?cation despite the presence of missing inputs, is more accurate in the MPDBM than in the original DBM. The original DBM does not make an accurate
+classiï¬?er on its own; the best classiï¬?cation results with the original DBM were
+based on training a separate classiï¬?er to use features extracted by the DBM,
+rather than by using inference in the DBM to compute the distribution over the
+class labels. Mean ï¬?eld inference in the MP-DBM performs well as a classiï¬?er
+without special modiï¬?cations. The other advantage of back-propagating through
+approximate inference is that back-propagation computes the exact gradient of
+the loss. This is better for optimization than the approximate gradients of SML
+training, which suï¬€er from both bias and variance. This probably explains why MP674
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+Figure 20.5: An illustration of the multi-prediction training process for a deep Boltzmann
+machine. Each row indicates a diï¬€erent example within a minibatch for the same training
+step. Each column represents a time step within the mean ï¬?eld inference process. For
+each example, we sample a subset of the data variables to serve as inputs to the inference
+process. These variables are shaded black to indicate conditioning. We then run the
+mean ï¬?eld inference process, with arrows indicating which variables inï¬‚uence which other
+variables in the process. In practical applications, we unroll mean ï¬?eld for several steps.
+In this illustration, we unroll for only two steps. Dashed arrows indicate how the process
+could be unrolled for more steps. The data variables that were not used as inputs to the
+inference process become targets, shaded in gray. We can view the inference process for
+each example as a recurrent network. We use gradient descent and back-propagation to
+train these recurrent networks to produce the correct targets given their inputs. This
+trains the mean ï¬?eld process for the MP-DBM to produce accurate estimates. Figure
+adapted from Goodfellow et al. (2013b).
+675
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+DBMs may be trained jointly while DBMs require a greedy layer-wise pretraining.
+The disadvantage of back-propagating through the approximate inference graph is
+that it does not provide a way to optimize the log-likelihood, but rather a heuristic
+approximation of the generalized pseudolikelihood.
+The MP-DBM inspired the NADE-k (Raiko et al., 2014) extension to the
+NADE framework, which is described in section 20.10.10.
+The MP-DBM has some connections to dropout. Dropout shares the same parameters among many diï¬€erent computational graphs, with the diï¬€erence between
+each graph being whether it includes or excludes each unit. The MP-DBM also
+shares parameters across many computational graphs. In the case of the MP-DBM,
+the diï¬€erence between the graphs is whether each input unit is observed or not.
+When a unit is not observed, the MP-DBM does not delete it entirely as dropout
+does. Instead, the MP-DBM treats it as a latent variable to be inferred. One could
+imagine applying dropout to the MP-DBM by additionally removing some units
+rather than making them latent.
+
+20.5
+
+Boltzmann Machines for Real-Valued Data
+
+While Boltzmann machines were originally developed for use with binary data,
+many applications such as image and audio modeling seem to require the ability
+to represent probability distributions over real values. In some cases, it is possible
+to treat real-valued data in the interval [0, 1] as representing the expectation of a
+binary variable. For example, Hinton (2000) treats grayscale images in the training
+set as deï¬?ning [0,1] probability values. Each pixel deï¬?nes the probability of a
+binary value being 1, and the binary pixels are all sampled independently from
+each other. This is a common procedure for evaluating binary models on grayscale
+image datasets. However, it is not a particularly theoretically satisfying approach,
+and binary images sampled independently in this way have a noisy appearance. In
+this section, we present Boltzmann machines that deï¬?ne a probability density over
+real-valued data.
+
+20.5.1
+
+Gaussian-Bernoulli RBMs
+
+Restricted Boltzmann machines may be developed for many exponential family
+conditional distributions (Welling et al., 2005). Of these, the most common is the
+RBM with binary hidden units and real-valued visible units, with the conditional
+distribution over the visible units being a Gaussian distribution whose mean is a
+function of the hidden units.
+676
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+There are many ways of parametrizing Gaussian-Bernoulli RBMs. One choice
+is whether to use a covariance matrix or a precision matrix for the Gaussian
+distribution. Here we present the precision formulation. The modiï¬?cation to obtain
+the covariance formulation is straightforward. We wish to have the conditional
+distribution
+(20.38)
+p(v | h) = N (v; W h, Î²âˆ’1 ).
+We can ï¬?nd the terms we need to add to the energy function by expanding the
+unnormalized log conditional distribution:
+1
+log N (v ; W h, Î² âˆ’1 ) = âˆ’ (v âˆ’ W h)î€¾ Î² (v âˆ’ W h) + f (Î²).
+2
+
+(20.39)
+
+Here f encapsulates all the terms that are a function only of the parameters
+and not the random variables in the model. We can discard f because its only
+role is to normalize the distribution, and the partition function of whatever energy
+function we choose will carry out that role.
+If we include all of the terms (with their sign ï¬‚ipped) involving v from equation 20.39 in our energy function and do not add any other terms involving v, then
+our energy function will represent the desired conditional p(v | h).
+We have some freedom regarding the other conditional distribution, p(h | v ).
+Note that equation 20.39 contains a term
+1 î€¾ î€¾
+h W Î²W h.
+2
+
+(20.40)
+
+This term cannot be included in its entirety because it includes hi hj terms. These
+correspond to edges between the hidden units. If we included these terms, we
+would have a linear factor model instead of a restricted Boltzmann machine. When
+designing our Boltzmann machine, we simply omit theseh i hj cross terms. Omitting
+them does not change the conditional p(v | h ) so equation 20.39 is still respected.
+However, we still have a choice about whether to include the terms involving only
+a single h i. If we assume a diagonal precision matrix, we ï¬?nd that for each hidden
+unit hi we have a term
+1 î?˜
+2
+hi
+Î²j W j,i
+.
+(20.41)
+2
+j
+In the above, we used the fact that h2i = hi because hi âˆˆ {0, 1}. If we include this
+term (with its sign ï¬‚ipped) in the energy function, then it will naturally bias h i
+to be turned oï¬€ when the weights for that unit are large and connected to visible
+units with high precision. The choice of whether or not to include this bias term
+does not aï¬€ect the family of distributions the model can represent (assuming that
+677
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+we include bias parameters for the hidden units) but it does aï¬€ect the learning
+dynamics of the model. Including the term may help the hidden unit activations
+remain reasonable even when the weights rapidly increase in magnitude.
+One way to deï¬?ne the energy function on a Gaussian-Bernoulli RBM is thus
+E (v, h) =
+
+1 î€¾
+v (Î² î€Œ v) âˆ’ (v î€Œ Î² )î€¾ W h âˆ’ bî€¾ h
+2
+
+(20.42)
+
+but we may also add extra terms or parametrize the energy in terms of the variance
+rather than precision if we choose.
+In this derivation, we have not included a bias term on the visible units, but one
+could easily be added. One ï¬?nal source of variability in the parametrization of a
+Gaussian-Bernoulli RBM is the choice of how to treat the precision matrix. It may
+either be ï¬?xed to a constant (perhaps estimated based on the marginal precision
+of the data) or learned. It may also be a scalar times the identity matrix, or it
+may be a diagonal matrix. Typically we do not allow the precision matrix to be
+non-diagonal in this context, because some operations on the Gaussian distribution
+require inverting the matrix, and a diagonal matrix can be inverted trivially. In
+the sections ahead, we will see that other forms of Boltzmann machines permit
+modeling the covariance structure, using various techniques to avoid inverting the
+precision matrix.
+
+20.5.2
+
+Undirected Models of Conditional Covariance
+
+While the Gaussian RBM has been the canonical energy model for real-valued
+data, Ranzato et al. (2010a) argue that the Gaussian RBM inductive bias is not
+well suited to the statistical variations present in some types of real-valued data,
+especially natural images. The problem is that much of the information content
+present in natural images is embedded in the covariance between pixels rather than
+in the raw pixel values. In other words, it is the relationships between pixels and
+not their absolute values where most of the useful information in images resides.
+Since the Gaussian RBM only models the conditional mean of the input given the
+hidden units, it cannot capture conditional covariance information. In response
+to these criticisms, alternative models have been proposed that attempt to better
+account for the covariance of real-valued data. These models include the mean and
+covariance RBM (mcRBM1), the mean-product of t-distribution (mPoT) model
+and the spike and slab RBM (ssRBM).
+1
+
+The term â€œmcRBMâ€? is pronounced by saying the name of the letters M-C-R-B-M; the â€œmcâ€?
+is not pronounced like the â€œMcâ€? in â€œMcDonaldâ€™s.â€?
+678
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+Mean and Covariance RBM The mcRBM uses its hidden units to independently encode the conditional mean and covariance of all observed units. The
+mcRBM hidden layer is divided into two groups of units: mean units and covariance
+units. The group that models the conditional mean is simply a Gaussian RBM.
+The other half is a covariance RBM (Ranzato et al., 2010a), also called a cRBM,
+whose components model the conditional covariance structure, as described below.
+Speciï¬?cally, with binary mean units h(m) and binary covariance units h (c), the
+mcRBM model is deï¬?ned as the combination of two energy functions:
+Emc (x, h (m), h(c) ) = Em (x, h (m)) + Ec (x, h(c) ),
+
+(20.43)
+
+where Em is the standard Gaussian-Bernoulli RBM energy function:2
+Em (x, h (m)) =
+
+î?˜
+î?˜ (m ) ( m )
+1 î€¾
+(m )
+x xâˆ’
+xî€¾ W:,jh j âˆ’
+bj hj ,
+2
+j
+j
+
+(20.44)
+
+and Ec is the cRBM energy function that models the conditional covariance
+information:
+1 î?˜ ( c ) î€? î€¾ ( j ) î€‘ 2 î?˜ (c ) ( c )
+(c)
+Ec (x, h ) =
+hj x r
+bj hj .
+(20.45)
+âˆ’
+2
+j
+
+j
+
+The parameter r(j ) corresponds to the covariance weight vector associated with
+(c)
+hj and b(c) is a vector of covariance oï¬€sets. The combined energy function deï¬?nes
+a joint distribution:
+pmc(x, h
+
+(m )
+
+î?®
+î?¯
+1
+(m )
+(c )
+,h ) =
+exp âˆ’Emc (x, h , h ) ,
+Z
+(c)
+
+(20.46)
+
+and a corresponding conditional distribution over the observations given h(m) and
+h(c) as a multivariate Gaussian distribution:
+ï£«
+ï£«
+ï£¶
+ï£¶
+î?˜
+(m )
+ï£­
+ï£¸.
+p mc (x | h(m) , h(c) ) = N ï£­x; Cxmc
+W:,jh j ï£¸ , Cxmc
+(20.47)
+|h
+|h
+j
+
+î€?î??
+î€‘âˆ’1
+(c ) (j ) (j )î€¾
+=
+h
+r
+r
++
+I
+Note that the covariance matrix Cxmc
+is non-diagonal
+j j
+|h
+and that W is the weight matrix associated with the Gaussian RBM modeling the
+2
+
+This version of the Gaussian-Bernoulli RBM energy function assumes the image data has
+zero mean, per pixel. Pixel oï¬€sets can easily be added to the model to account for nonzero pixel
+means.
+679
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+conditional means. It is diï¬ƒcult to train the mcRBM via contrastive divergence or
+persistent contrastive divergence because of its non-diagonal conditional covariance
+structure. CD and PCD require sampling from the joint distribution of x, h(m), h (c)
+which, in a standard RBM, is accomplished by Gibbs sampling over the conditionals.
+However, in the mcRBM, sampling from p mc (x | h (m), h(c)) requires computing
+(Cmc)âˆ’1 at every iteration of learning. This can be an impractical computational
+burden for larger observations. Ranzato and Hinton (2010) avoid direct sampling
+from the conditional pmc (x | h (m), h(c) ) by sampling directly from the marginal
+p(x) using Hamiltonian (hybrid) Monte Carlo (Neal, 1993) on the mcRBM free
+energy.
+Mean-Product of Studentâ€™s t-distributions The mean-product of Studentâ€™s
+t-distribution (mPoT) model (Ranzato et al., 2010b) extends the PoT model (Welling
+et al., 2003a) in a manner similar to how the mcRBM extends the cRBM. This
+is achieved by including nonzero Gaussian means by the addition of Gaussian

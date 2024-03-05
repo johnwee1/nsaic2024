@@ -1,0 +1,266 @@
+oising autoencoders. Generalized
+denoising autoencoders are speci�?ed by a denoising distribution for sampling an
+estimate of the clean input given the corrupted input.
+Each step of the Markov chain that generates from the estimated distribution
+consists of the following sub-steps, illustrated in �?gure 20.11:
+1. Starting from the previous state x, inject corruption noise, sampling x̃ from
+C( x̃ | x).
+2. Encode x̃ into h = f ( x̃).
+3. Decode h to obtain the parameters ω = g (h) of p(x | ω = g (h)) = p(x | x̃).
+4. Sample the next state x from p(x | ω = g (h)) = p(x | x̃).
+711
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+h
+g
+
+f
+
+ω
+
+x̃
+
+C(x̃ | x)
+
+p(x | ω )
+
+x
+
+x̂
+
+Figure 20.11: Each step of the Markov chain associated with a trained denoising autoencoder, that generates the samples from the probabilistic model implicitly trained by the
+denoising log-likelihood criterion. Each step consists in (a) injecting noise via corruption
+process C in state x, yielding x̃, (b) encoding it with function f , yielding h = f (x̃),
+(c) decoding the result with function g, yielding parameters ω for the reconstruction
+distribution, and (d) given ω, sampling a new state from the reconstruction distribution
+p(x | ω = g(f (x̃ ))). In the typical squared reconstruction error case,g (h) = x̂, which
+estimates E[x | x̃], corruption consists in adding Gaussian noise and sampling from
+p(x | ω) consists in adding Gaussian noise, a second time, to the reconstruction x̂. The
+latter noise level should correspond to the mean squared error of reconstructions, whereas
+the injected noise is a hyperparameter that controls the mixing speed as well as the
+extent to which the estimator smooths the empirical distribution (Vincent, 2011). In the
+example illustrated here, only the C and p conditionals are stochastic steps (f and g are
+deterministic computations), although noise can also be injected inside the autoencoder,
+as in generative stochastic networks (Bengio et al., 2014).
+
+712
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+Bengio et al. (2014) showed that if the autoencoder p( x | x̃) forms a consistent
+estimator of the corresponding true conditional distribution, then the stationary
+distribution of the above Markov chain forms a consistent estimator (albeit an
+implicit one) of the data generating distribution of x.
+
+20.11.2
+
+Clamping and Conditional Sampling
+
+Similarly to Boltzmann machines, denoising autoencoders and their generalizations
+(such as GSNs, described below) can be used to sample from a conditional distribution p(x f | x o), simply by clamping the observed units xf and only resampling
+the free units xo given xf and the sampled latent variables (if any). For example,
+MP-DBMs can be interpreted as a form of denoising autoencoder, and are able
+to sample missing inputs. GSNs later generalized some of the ideas present in
+MP-DBMs to perform the same operation (Bengio et al., 2014). Alain et al. (2015)
+identi�?ed a missing condition from Proposition 1 of Bengio et al. (2014), which is
+that the transition operator (de�?ned by the stochastic mapping going from one
+state of the chain to the next) should satisfy a property called detailed balance,
+which speci�?es that a Markov Chain at equilibrium will remain in equilibrium
+whether the transition operator is run in forward or reverse.
+An experiment in clamping half of the pixels (the right part of the image) and
+running the Markov chain on the other half is shown in �?gure 20.12.
+
+713
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+Figure 20.12: Illustration of clamping the right half of the image and running the Markov
+Chain by resampling only the left half at each step. These samples come from a GSN
+trained to reconstruct MNIST digits at each time step using the walkback procedure.
+
+20.11.3
+
+Walk-Back Training Procedure
+
+The walk-back training procedure was proposed by Bengio et al. (2013c) as a way
+to accelerate the convergence of generative training of denoising autoencoders.
+Instead of performing a one-step encode-decode reconstruction, this procedure
+consists in alternative multiple stochastic encode-decode steps (as in the generative
+Markov chain) initialized at a training example (just like with the contrastive
+divergence algorithm, described in section 18.2) and penalizing the last probabilistic
+reconstructions (or all of the reconstructions along the way).
+Training with k steps is equivalent (in the sense of achieving the same stationary
+distribution) as training with one step, but practically has the advantage that
+spurious modes further from the data can be removed more eﬃciently.
+
+20.12
+
+Generative Stochastic Networks
+
+Generative stochastic networks or GSNs (Bengio et al., 2014) are generalizations of denoising autoencoders that include latent variables h in the generative
+714
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+Markov chain, in addition to the visible variables (usually denoted x).
+A GSN is parametrized by two conditional probability distributions which
+specify one step of the Markov chain:
+1. p(x(k) | h(k) ) tells how to generate the next visible variable given the current
+latent state. Such a “reconstruction distribution�? is also found in denoising
+autoencoders, RBMs, DBNs and DBMs.
+2. p(h(k) | h (k−1), x (k−1) ) tells how to update the latent state variable, given
+the previous latent state and visible variable.
+Denoising autoencoders and GSNs diﬀer from classical probabilistic models
+(directed or undirected) in that they parametrize the generative process itself rather
+than the mathematical speci�?cation of the joint distribution of visible and latent
+variables. Instead, the latter is de�?ned implicitly, if it exists, as the stationary
+distribution of the generative Markov chain. The conditions for existence of the
+stationary distribution are mild and are the same conditions required by standard
+MCMC methods (see section 17.3). These conditions are necessary to guarantee
+that the chain mixes, but they can be violated by some choices of the transition
+distributions (for example, if they were deterministic).
+One could imagine diﬀerent training criteria for GSNs. The one proposed and
+evaluated by Bengio et al. (2014) is simply reconstruction log-probability on the
+visible units, just like for denoising autoencoders. This is achieved by clamping
+x(0) = x to the observed example and maximizing the probability of generating x
+at some subsequent time steps, i.e., maximizing log p(x(k) = x | h(k) ), where h(k)
+is sampled from the chain, given x(0) = x. In order to estimate the gradient of
+log p(x(k) = x | h(k)) with respect to the other pieces of the model, Bengio et al.
+(2014) use the reparametrization trick, introduced in section 20.9.
+The walk-back training protocol (described in section 20.11.3) was used (Bengio et al., 2014) to improve training convergence of GSNs.
+
+20.12.1
+
+Discriminant GSNs
+
+The original formulation of GSNs (Bengio et al., 2014) was meant for unsupervised
+learning and implicitly modeling p(x) for observed data x, but it is possible to
+modify the framework to optimize p(y | x).
+
+For example, Zhou and Troyanskaya (2014) generalize GSNs in this way, by
+only back-propagating the reconstruction log-probability over the output variables,
+keeping the input variables �?xed. They applied this successfully to model sequences
+715
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+(protein secondary structure) and introduced a (one-dimensional) convolutional
+structure in the transition operator of the Markov chain. It is important to
+remember that, for each step of the Markov chain, one generates a new sequence
+for each layer, and that sequence is the input for computing other layer values (say
+the one below and the one above) at the next time step.
+Hence the Markov chain is really over the output variable (and associated higherlevel hidden layers), and the input sequence only serves to condition that chain,
+with back-propagation allowing to learn how the input sequence can condition the
+output distribution implicitly represented by the Markov chain. It is therefore a
+case of using the GSN in the context of structured outputs.
+Zöhrer and Pernkopf (2014) introduced a hybrid model that combines a supervised objective (as in the above work) and an unsupervised objective (as in the
+original GSN work), by simply adding (with a diﬀerent weight) the supervised and
+unsupervised costs i.e., the reconstruction log-probabilities of y and x respectively.
+Such a hybrid criterion had previously been introduced for RBMs by Larochelle
+and Bengio (2008). They show improved classi�?cation performance using this
+scheme.
+
+20.13
+
+Other Generation Schemes
+
+The methods we have described so far use either MCMC sampling, ancestral
+sampling, or some mixture of the two to generate samples. While these are the
+most popular approaches to generative modeling, they are by no means the only
+approaches.
+Sohl-Dickstein et al. (2015) developed a diﬀusion inversion training scheme
+for learning a generative model, based on non-equilibrium thermodynamics. The
+approach is based on the idea that the probability distributions we wish to sample
+from have structure. This structure can gradually be destroyed by a diﬀusion
+process that incrementally changes the probability distribution to have more
+entropy. To form a generative model, we can run the process in reverse, by training
+a model that gradually restores the structure to an unstructured distribution.
+By iteratively applying a process that brings a distribution closer to the target
+one, we can gradually approach that target distribution. This approach resembles
+MCMC methods in the sense that it involves many iterations to produce a sample.
+However, the model is de�?ned to be the probability distribution produced by
+the �?nal step of the chain. In this sense, there is no approximation induced by
+the iterative procedure. The approach introduced by Sohl-Dickstein et al. (2015)
+is also very close to the generative interpretation of the denoising autoencoder
+716
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+(section 20.11.1). As with the denoising autoencoder, diﬀusion inversion trains a
+transition operator that attempts to probabilistically undo the eﬀect of adding
+some noise. The diﬀerence is that diﬀusion inversion requres undoing only one step
+of the diﬀusion process, rather than traveling all the way back to a clean data point.
+This addresses the following dilemma present with the ordinary reconstruction
+log-likelihood objective of denoising autoencoders: with small levels of noise the
+learner only sees con�?gurations near the data points, while with large levels of
+noise it is asked to do an almost impossible job (because the denoising distribution
+is highly complex and multi-modal). With the diﬀusion inversion objective, the
+learner can learn the shape of the density around the data points more precisely
+as well as remove spurious modes that could show up far from the data points.
+Another approach to sample generation is the approximate Bayesian computation (ABC) framework (Rubin et al., 1984). In this approach, samples are
+rejected or modi�?ed in order to make the moments of selected functions of the
+samples match those of the desired distribution. While this idea uses the moments
+of the samples like in moment matching, it is diﬀerent from moment matching
+because it modi�?es the samples themselves, rather than training the model to
+automatically emit samples with the correct moments. Bachman and Precup (2015)
+showed how to use ideas from ABC in the context of deep learning, by using ABC
+to shape the MCMC trajectories of GSNs.
+We expect that many other possible approaches to generative modeling await
+discovery.
+
+20.14
+
+Evaluating Generative Models
+
+Researchers studying generative models often need to compare one generative
+model to another, usually in order to demonstrate that a newly invented generative
+model is better at capturing some distribution than the pre-existing models.
+This can be a diﬃcult and subtle task. In many cases, we can not actually
+evaluate the log probability of the data under the model, but only an approximation.
+In these cases, it is important to think and communicate clearly about exactly what
+is being measured. For example, suppose we can evaluate a stochastic estimate of
+the log-likelihood for model A, and a deterministic lower bound on the log-likelihood
+for model B. If model A gets a higher score than model B, which is better? If we
+care about determining which model has a better internal representation of the
+distribution, we actually cannot tell, unless we have some way of determining how
+loose the bound for model B is. However, if we care about how well we can use
+the model in practice, for example to perform anomaly detection, then it is fair to
+717
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+say that a model is preferable based on a criterion speci�?c to the practical task of
+interest, e.g., based on ranking test examples and ranking criteria such as precision
+and recall.
+Another subtlety of evaluating generative models is that the evaluation metrics
+are often hard research problems in and of themselves. It can be very diﬃcult
+to establish that models are being compared fairly. For example, suppose we use
+AIS to estimate log Z in order to compute log p̃(x) − log Z for a new model we
+have just invented. A computationally economical implementation of AIS may fail
+to �?nd several modes of the model distribution and underestimate Z, which will
+result in us overestimating log p(x). It can thus be diﬃcult to tell whether a high
+likelihood estimate is due to a good model or a bad AIS implementation.
+Other �?elds of machine learning usually allow for some variation in the preprocessing of the data. For example, when comparing the accuracy of object
+recognition algorithms, it is usually acceptable to preprocess the input images
+slightly diﬀerently for each algorithm based on what kind of input requirements
+it has. Generative modeling is diﬀerent because changes in preprocessing, even
+very small and subtle ones, are completely unacceptable. Any change to the input
+data changes the distribution to be captured and fundamentally alters the task.
+For example, multiplying the input by 0.1 will arti�?cially increase likelihood by a
+factor of 10.
+Issues with preprocessing commonly arise when benchmarking generative models
+on the MNIST dataset, one of the more popular generative modeling benchmarks.
+MNIST consists of grayscale images. Some models treat MNIST images as points
+in a real vector space, while others treat them as binary. Yet others treat the
+grayscale values as probabilities for a binary samples. It is essential to compare
+real-valued models only to other real-valued models and binary-valued models only
+to other binary-valued models. Otherwise the likelihoods measured are not on the
+same space. For binary-valued models, the log-likelihood can be at most zero, while
+for real-valued models it can be arbitrarily high, since it is the measurement of a
+density. Among binary models, it is important to compare models using exactly
+the same kind of binarization. For example, we might binarize a gray pixel to 0 or 1
+by thresholding at 0.5, or by drawing a random sample whose probability of being
+1 is given by the gray pixel intensity. If we use the random binarization, we might
+binarize the whole dataset once, or we might draw a diﬀerent random example for
+each step of training and then draw mu

@@ -1,0 +1,418 @@
+âˆ‚Wi,j
+
+(16.15)
+
+These two propertiesâ€”eï¬ƒcient Gibbs sampling and eï¬ƒcient derivativesâ€”make
+training convenient. In chapter 18, we will see that undirected models may be
+trained by computing such derivatives applied to samples from the model.
+Training the model induces a representation h of the data v. We can often use
+Ehâˆ¼p(h|v) [h] as a set of features to describe v.
+
+Overall, the RBM demonstrates the typical deep learning approach to graphical models: representation learning accomplished via layers of latent variables,
+combined with eï¬ƒcient interactions between layers parametrized by matrices.
+The language of graphical models provides an elegant, ï¬‚exible and clear language
+for describing probabilistic models. In the chapters ahead, we use this language,
+among other perspectives, to describe a wide variety of deep probabilistic models.
+588
+
+CHAPTER 16. STRUCTURED PROBABILISTIC MODELS FOR DEEP LEARNING
+
+Figure 16.15: Samples from a trained RBM, and its weights. Image reproduced with
+permission from LISA (2008). (Left)Samples from a model trained on MNIST, drawn
+using Gibbs sampling. Each column is a separate Gibbs sampling process. Each row
+represents the output of another 1,000 steps of Gibbs sampling. Successive samples are
+highly correlated with one another. (Right)The corresponding weight vectors. Compare
+this to the samples and weights of a linear factor model, shown in ï¬?gure 13.2. The samples
+here are much better because the RBM prior p(h) is not constrained to be factorial. The
+RBM can learn which features should appear together when sampling. On the other hand,
+the RBM posterior p(h | v ) is factorial, while the sparse coding posterior p(h | v ) is not,
+so the sparse coding model may be better for feature extraction. Other models are able
+to have both a non-factorial p(h) and a non-factorial p(h | v ).
+
+589
+
+Chapter 17
+
+Monte Carlo Methods
+Randomized algorithms fall into two rough categories: Las Vegas algorithms and
+Monte Carlo algorithms. Las Vegas algorithms always return precisely the correct
+answer (or report that they failed). These algorithms consume a random amount
+of resources, usually memory or time. In contrast, Monte Carlo algorithms return
+answers with a random amount of error. The amount of error can typically be
+reduced by expending more resources (usually running time and memory). For any
+ï¬?xed computational budget, a Monte Carlo algorithm can provide an approximate
+answer.
+Many problems in machine learning are so diï¬ƒcult that we can never expect to
+obtain precise answers to them. This excludes precise deterministic algorithms and
+Las Vegas algorithms. Instead, we must use deterministic approximate algorithms
+or Monte Carlo approximations. Both approaches are ubiquitous in machine
+learning. In this chapter, we focus on Monte Carlo methods.
+
+17.1
+
+Sampling and Monte Carlo Methods
+
+Many important technologies used to accomplish machine learning goals are based
+on drawing samples from some probability distribution and using these samples to
+form a Monte Carlo estimate of some desired quantity.
+
+17.1.1
+
+Why Sampling?
+
+There are many reasons that we may wish to draw samples from a probability
+distribution. Sampling provides a ï¬‚exible way to approximate many sums and
+590
+
+CHAPTER 17. MONTE CARLO METHODS
+
+integrals at reduced cost. Sometimes we use this to provide a signiï¬?cant speedup to
+a costly but tractable sum, as in the case when we subsample the full training cost
+with minibatches. In other cases, our learning algorithm requires us to approximate
+an intractable sum or integral, such as the gradient of the log partition function of
+an undirected model. In many other cases, sampling is actually our goal, in the
+sense that we want to train a model that can sample from the training distribution.
+
+17.1.2
+
+Basics of Monte Carlo Sampling
+
+When a sum or an integral cannot be computed exactly (for example the sum
+has an exponential number of terms and no exact simpliï¬?cation is known) it is
+often possible to approximate it using Monte Carlo sampling. The idea is to view
+the sum or integral as if it was an expectation under some distribution and to
+approximate the expectation by a corresponding average. Let
+î?˜
+s=
+p(x)f (x) = Ep [f (x)]
+(17.1)
+x
+
+or
+s=
+
+î?š
+
+p(x)f (x)dx = E p[f (x)]
+
+(17.2)
+
+be the sum or integral to estimate, rewritten as an expectation, with the constraint
+that p is a probability distribution (for the sum) or a probability density (for the
+integral) over random variable x.
+We can approximate s by drawing n samples x(1) , . . . , x(n) from p and then
+forming the empirical average
+n
+
+1î?˜
+sÌ‚n =
+f (x(i) ).
+n
+
+(17.3)
+
+i=1
+
+This approximation is justiï¬?ed by a few diï¬€erent properties. The ï¬?rst trivial
+observation is that the estimator sÌ‚ is unbiased, since
+n
+
+n
+
+1î?˜
+1î?˜
+E[sÌ‚n ] =
+E[f (x(i))] =
+s = s.
+n
+n
+i=1
+
+(17.4)
+
+i=1
+
+But in addition, the law of large numbers states that if the samples x(i) are
+i.i.d., then the average converges almost surely to the expected value:
+lim sÌ‚n = s,
+
+nâ†’âˆž
+
+591
+
+(17.5)
+
+CHAPTER 17. MONTE CARLO METHODS
+
+provided that the variance of the individual terms, Var[f (x(i))], is bounded. To see
+this more clearly, consider the variance of sÌ‚n as n increases. The variance Var[sÌ‚n]
+decreases and converges to 0, so long as Var[f (x(i))] < âˆž:
+n
+
+1 î?˜
+Var[sÌ‚n ] = 2
+Var[f (x)]
+n i=1
+=
+
+Var[f (x)]
+.
+n
+
+(17.6)
+(17.7)
+
+This convenient result also tells us how to estimate the uncertainty in a Monte
+Carlo average or equivalently the amount of expected error of the Monte Carlo
+approximation. We compute both the empirical average of the f (x(i)) and their
+empirical variance,1 and then divide the estimated variance by the number of
+samples n to obtain an estimator of Var[sÌ‚ n ]. The central limit theorem tells
+us that the distribution of the average, sÌ‚n , converges to a normal distribution
+with mean s and variance Var[nf (x)] . This allows us to estimate conï¬?dence intervals
+around the estimate sÌ‚n , using the cumulative distribution of the normal density.
+However, all this relies on our ability to easily sample from the base distribution
+p(x), but doing so is not always possible. When it is not feasible to sample from
+p, an alternative is to use importance sampling, presented in section 17.2. A
+more general approach is to form a sequence of estimators that converge towards
+the distribution of interest. That is the approach of Monte Carlo Markov chains
+(section 17.3).
+
+17.2
+
+Importance Sampling
+
+An important step in the decomposition of the integrand (or summand) used by the
+Monte Carlo method in equation 17.2 is deciding which part of the integrand should
+play the role the probability p(x) and which part of the integrand should play the
+role of the quantity f(x) whose expected value (under that probability distribution)
+is to be estimated. There is no unique decomposition because p(x)f(x) can always
+be rewritten as
+p( x) f ( x)
+p( x ) f (x ) = q ( x )
+,
+(17.8)
+q(x)
+where we now sample from q and average pfq . In many cases, we wish to compute
+an expectation for a given p and an f , and the fact that the problem is speciï¬?ed
+1
+
+The unbiased estimator of the variance is often preferred, in which the sum of squared
+diï¬€erences is divided by n âˆ’ 1 instead of n.
+592
+
+CHAPTER 17. MONTE CARLO METHODS
+
+from the start as an expectation suggests that this p and f would be a natural
+choice of decomposition. However, the original speciï¬?cation of the problem may
+not be the the optimal choice in terms of the number of samples required to obtain
+a given level of accuracy. Fortunately, the form of the optimal choice q âˆ— can be
+derived easily. The optimal qâˆ— corresponds to what is called optimal importance
+sampling.
+Because of the identity shown in equation 17.8, any Monte Carlo estimator
+1
+sÌ‚p =
+n
+
+n
+î?˜
+
+f (x(i) )
+
+(17.9)
+
+i=1,x (i) âˆ¼p
+
+can be transformed into an importance sampling estimator
+1
+sÌ‚ q =
+n
+
+n
+î?˜
+
+i=1,x(i) âˆ¼q
+
+p(x(i))f (x(i))
+.
+q(x(i) )
+
+(17.10)
+
+We see readily that the expected value of the estimator does not depend on q :
+Eq [sÌ‚q ] = E q[sÌ‚p] = s.
+
+(17.11)
+
+However, the variance of an importance sampling estimator can be greatly sensitive
+to the choice of q . The variance is given by
+Var[sÌ‚ q ] = Var[
+
+p( x )f (x )
+]/n.
+q(x)
+
+(17.12)
+
+The minimum variance occurs when q is
+q âˆ— (x ) =
+
+p ( x ) |f (x )|
+,
+Z
+
+(17.13)
+
+where Z is the normalization constant, chosen so that q âˆ— (x) sums or integrates to
+1 as appropriate. Better importance sampling distributions put more weight where
+the integrand is larger. In fact, when f(x) does not change sign, Var [sÌ‚q âˆ— ] = 0,
+meaning that a single sample is suï¬ƒcient when the optimal distribution is used.
+Of course, this is only because the computation of q âˆ— has essentially solved the
+original problem, so it is usually not practical to use this approach of drawing a
+single sample from the optimal distribution.
+Any choice of sampling distribution q is valid (in the sense of yielding the
+correct expected value) and q âˆ— is the optimal one (in the sense of yielding minimum
+variance). Sampling from q âˆ— is usually infeasible, but other choices of q can be
+feasible while still reducing the variance somewhat.
+593
+
+CHAPTER 17. MONTE CARLO METHODS
+
+Another approach is to use biased importance sampling , which has the
+advantage of not requiring normalized p or q . In the case of discrete variables, the
+biased importance sampling estimator is given by
+sÌ‚BIS =
+
+î??n
+
+=
+
+î??n
+
+=
+
+î??n
+
+p(x(i) )
+( i)
+i=1 q(x(i) ) f (x )
+
+î??n
+
+(17.14)
+
+î??n
+
+(17.15)
+
+p(x (i) )
+i=1 q(x (i) )
+
+p(x(i) )
+( i)
+i=1 qÌƒ(x(i) ) f (x )
+p(x (i) )
+i=1 qÌƒ(x (i) )
+
+pÌƒ(x(i) )
+( i)
+i=1 qÌƒ(x(i) ) f (x )
+
+î??n
+
+pÌƒ(x (i) )
+i=1 qÌƒ(x (i) )
+
+,
+
+(17.16)
+
+where pÌƒ and qÌƒ are the unnormalized forms of p and q and the x(i) are the samples
+from q. This estimator is biased because E[sÌ‚ BIS ] î€¶= s, except asymptotically when
+n â†’ âˆž and the denominator of equation 17.14 converges to 1. Hence this estimator
+is called asymptotically unbiased.
+Although a good choice of q can greatly improve the eï¬ƒciency of Monte Carlo
+estimation, a poor choice of q can make the eï¬ƒciency much worse. Going back to
+equation 17.12, we see that if there are samples of q for which p(xq()|xf )(x)| is large,
+then the variance of the estimator can get very large. This may happen when
+q(x) is tiny while neither p(x) nor f (x) are small enough to cancel it. The q
+distribution is usually chosen to be a very simple distribution so that it is easy
+to sample from. When x is high-dimensional, this simplicity in q causes it to
+match p or p|f | poorly. When q (x(i) ) î€? p(x(i) )|f (x(i) )|, importance sampling
+collects useless samples (summing tiny numbers or zeros). On the other hand, when
+q(x(i)) î€œ p(x(i))|f(x(i) )|, which will happen more rarely, the ratio can be huge.
+Because these latter events are rare, they may not show up in a typical sample,
+yielding typical underestimation of s , compensated rarely by gross overestimation.
+Such very large or very small numbers are typical when x is high dimensional,
+because in high dimension the dynamic range of joint probabilities can be very
+large.
+In spite of this danger, importance sampling and its variants have been found
+very useful in many machine learning algorithms, including deep learning algorithms.
+For example, see the use of importance sampling to accelerate training in neural
+language models with a large vocabulary (section 12.4.3.3) or other neural nets
+with a large number of outputs. See also how importance sampling has been
+used to estimate a partition function (the normalization constant of a probability
+594
+
+CHAPTER 17. MONTE CARLO METHODS
+
+distribution) in section 18.7, and to estimate the log-likelihood in deep directed
+models such as the variational autoencoder, in section 20.10.3. Importance sampling
+may also be used to improve the estimate of the gradient of the cost function used
+to train model parameters with stochastic gradient descent, particularly for models
+such as classiï¬?ers where most of the total value of the cost function comes from a
+small number of misclassiï¬?ed examples. Sampling more diï¬ƒcult examples more
+frequently can reduce the variance of the gradient in such cases (Hinton, 2006).
+
+17.3
+
+Markov Chain Monte Carlo Methods
+
+In many cases, we wish to use a Monte Carlo technique but there is no tractable
+method for drawing exact samples from the distribution pmodel (x) or from a good
+(low variance) importance sampling distribution q (x). In the context of deep
+learning, this most often happens when p model(x) is represented by an undirected
+model. In these cases, we introduce a mathematical tool called a Markov chain
+to approximately sample from p model (x). The family of algorithms that use Markov
+chains to perform Monte Carlo estimates is called Markov chain Monte Carlo
+methods (MCMC). Markov chain Monte Carlo methods for machine learning are
+described at greater length in Koller and Friedman (2009). The most standard,
+generic guarantees for MCMC techniques are only applicable when the model
+does not assign zero probability to any state. Therefore, it is most convenient
+to present these techniques as sampling from an energy-based model (EBM)
+p(x) âˆ? exp (âˆ’E(x)) as described in section 16.2.4. In the EBM formulation, every
+state is guaranteed to have non-zero probability. MCMC methods are in fact
+more broadly applicable and can be used with many probability distributions that
+contain zero probability states. However, the theoretical guarantees concerning the
+behavior of MCMC methods must be proven on a case-by-case basis for diï¬€erent
+families of such distributions. In the context of deep learning, it is most common
+to rely on the most general theoretical guarantees that naturally apply to all
+energy-based models.
+To understand why drawing samples from an energy-based model is diï¬ƒcult,
+consider an EBM over just two variables, deï¬?ning a distribution p(a, b). In order
+to sample a, we must draw a from p(a | b), and in order to sample b, we must
+draw it from p(b | a). It seems to be an intractable chicken-and-egg problem.
+Directed models avoid this because their graph is directed and acyclic. To perform
+ancestral sampling one simply samples each of the variables in topological order,
+conditioning on each variableâ€™s parents, which are guaranteed to have already been
+sampled (section 16.3). Ancestral sampling deï¬?nes an eï¬ƒcient, single-pass method
+595
+
+CHAPTER 17. MONTE CARLO METHODS
+
+of obtaining a sample.
+In an EBM, we can avoid this chicken and egg problem by sampling using a
+Markov chain. The core idea of a Markov chain is to have a state x that begins
+as an arbitrary value. Over time, we randomly update x repeatedly. Eventually
+x becomes (very nearly) a fair sample from p(x). Formally, a Markov chain is
+deï¬?ned by a random state x and a transition distribution T (xî€° | x) specifying
+the probability that a random update will go to state xî€° if it starts in state x.
+Running the Markov chain means repeatedly updating the state x to a value xî€°
+sampled from T (xî€° | x).
+
+To gain some theoretical understanding of how MCMC methods work, it is
+useful to reparametrize the problem. First, we restrict our attention to the case
+where the random variable x has countably many states. We can then represent
+the state as just a positive integer x. Diï¬€erent integer values of x map back to
+diï¬€erent states x in the original problem.
+
+Consid

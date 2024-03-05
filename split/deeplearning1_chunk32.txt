@@ -1,0 +1,241 @@
+on to improve over the graph proposed
+by the pure back-propagation algorithm.
+When the forward graph G has a single output node and each partial derivative
+can be computed with a constant amount of computation, back-propagation
+guarantees that the number of computations for the gradient computation is of
+the same order as the number of computations for the forward computation: this
+( i)
+can be seen in algorithm 6.2 because each local partial derivative âˆ‚u
+needs to
+âˆ‚u (j )
+be computed only once along with an associated multiplication and addition for
+the recursive chain-rule formulation (equation 6.49). The overall computation is
+therefore O(# edges). However, it can potentially be reduced by simplifying the
+computational graph constructed by back-propagation, and this is an NP-complete
+task. Implementations such as Theano and TensorFlow use heuristics based on
+matching known simpliï¬?cation patterns in order to iteratively attempt to simplify
+the graph. We deï¬?ned back-propagation only for the computation of a gradient of a
+scalar output but back-propagation can be extended to compute a Jacobian (either
+of k diï¬€erent scalar nodes in the graph, or of a tensor-valued node containing k
+values). A naive implementation may then need k times more computation: for
+âˆ‚u(i)
+âˆ‚u(j )
+
+222
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+each scalar internal node in the original forward graph, the naive implementation
+computes k gradients instead of a single gradient. When the number of outputs of
+the graph is larger than the number of inputs, it is sometimes preferable to use
+another form of automatic diï¬€erentiation called forward mode accumulation.
+Forward mode computation has been proposed for obtaining real-time computation
+of gradients in recurrent networks, for example (Williams and Zipser, 1989). This
+also avoids the need to store the values and gradients for the whole graph, trading
+oï¬€ computational eï¬ƒciency for memory. The relationship between forward mode
+and backward mode is analogous to the relationship between left-multiplying versus
+right-multiplying a sequence of matrices, such as
+ABCD,
+
+(6.58)
+
+where the matrices can be thought of as Jacobian matrices. For example, if D
+is a column vector while A has many rows, this corresponds to a graph with a
+single output and many inputs, and starting the multiplications from the end
+and going backwards only requires matrix-vector products. This corresponds to
+the backward mode. Instead, starting to multiply from the left would involve a
+series of matrix-matrix products, which makes the whole computation much more
+expensive. However, if A has fewer rows than D has columns, it is cheaper to run
+the multiplications left-to-right, corresponding to the forward mode.
+In many communities outside of machine learning, it is more common to implement diï¬€erentiation software that acts directly on traditional programming
+language code, such as Python or C code, and automatically generates programs
+that diï¬€erentiate functions written in these languages. In the deep learning community, computational graphs are usually represented by explicit data structures
+created by specialized libraries. The specialized approach has the drawback of
+requiring the library developer to deï¬?ne the bprop methods for every operation
+and limiting the user of the library to only those operations that have been deï¬?ned.
+However, the specialized approach also has the beneï¬?t of allowing customized
+back-propagation rules to be developed for each operation, allowing the developer
+to improve speed or stability in non-obvious ways that an automatic procedure
+would presumably be unable to replicate.
+Back-propagation is therefore not the only way or the optimal way of computing
+the gradient, but it is a very practical method that continues to serve the deep
+learning community very well. In the future, diï¬€erentiation technology for deep
+networks may improve as deep learning practitioners become more aware of advances
+in the broader ï¬?eld of automatic diï¬€erentiation.
+
+223
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+6.5.10
+
+Higher-Order Derivatives
+
+Some software frameworks support the use of higher-order derivatives. Among the
+deep learning software frameworks, this includes at least Theano and TensorFlow.
+These libraries use the same kind of data structure to describe the expressions for
+derivatives as they use to describe the original function being diï¬€erentiated. This
+means that the symbolic diï¬€erentiation machinery can be applied to derivatives.
+In the context of deep learning, it is rare to compute a single second derivative
+of a scalar function. Instead, we are usually interested in properties of the Hessian
+matrix. If we have a function f : R n â†’ R, then the Hessian matrix is of size n Ã— n.
+In typical deep learning applications, n will be the number of parameters in the
+model, which could easily number in the billions. The entire Hessian matrix is
+thus infeasible to even represent.
+Instead of explicitly computing the Hessian, the typical deep learning approach
+is to use Krylov methods. Krylov methods are a set of iterative techniques for
+performing various operations like approximately inverting a matrix or ï¬?nding
+approximations to its eigenvectors or eigenvalues, without using any operation
+other than matrix-vector products.
+In order to use Krylov methods on the Hessian, we only need to be able to
+compute the product between the Hessian matrix H and an arbitrary vector v . A
+straightforward technique (Christianson, 1992) for doing so is to compute
+î?¨
+î?©
+(6.59)
+Hv = âˆ‡ x (âˆ‡xf (x)) î€¾ v .
+
+Both of the gradient computations in this expression may be computed automatically by the appropriate software library. Note that the outer gradient expression
+takes the gradient of a function of the inner gradient expression.
+If v is itself a vector produced by a computational graph, it is important to
+specify that the automatic diï¬€erentiation software should not diï¬€erentiate through
+the graph that produced v .
+While computing the Hessian is usually not advisable, it is possible to do with
+Hessian vector products. One simply computes He (i) for all i = 1, . . . , n, where
+(i)
+e(i) is the one-hot vector with ei = 1 and all other entries equal to 0.
+
+6.6
+
+Historical Notes
+
+Feedforward networks can be seen as eï¬ƒcient nonlinear function approximators
+based on using gradient descent to minimize the error in a function approximation.
+224
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+From this point of view, the modern feedforward network is the culmination of
+centuries of progress on the general function approximation task.
+The chain rule that underlies the back-propagation algorithm was invented
+in the 17th century (Leibniz, 1676; Lâ€™HÃ´pital, 1696). Calculus and algebra have
+long been used to solve optimization problems in closed form, but gradient descent
+was not introduced as a technique for iteratively approximating the solution to
+optimization problems until the 19th century (Cauchy, 1847).
+Beginning in the 1940s, these function approximation techniques were used to
+motivate machine learning models such as the perceptron. However, the earliest
+models were based on linear models. Critics including Marvin Minsky pointed out
+several of the ï¬‚aws of the linear model family, such as its inability to learn the
+XOR function, which led to a backlash against the entire neural network approach.
+Learning nonlinear functions required the development of a multilayer perceptron and a means of computing the gradient through such a model. Eï¬ƒcient
+applications of the chain rule based on dynamic programming began to appear
+in the 1960s and 1970s, mostly for control applications (Kelley, 1960; Bryson and
+Denham, 1961; Dreyfus, 1962; Bryson and Ho, 1969; Dreyfus, 1973) but also for
+sensitivity analysis (Linnainmaa, 1976). Werbos (1981) proposed applying these
+techniques to training artiï¬?cial neural networks. The idea was ï¬?nally developed
+in practice after being independently rediscovered in diï¬€erent ways (LeCun, 1985;
+Parker, 1985; Rumelhart et al., 1986a). The book Parallel Distributed Processing presented the results of some of the ï¬?rst successful experiments with
+back-propagation in a chapter (Rumelhart et al., 1986b) that contributed greatly
+to the popularization of back-propagation and initiated a very active period of
+research in multi-layer neural networks. However, the ideas put forward by the
+authors of that book and in particular by Rumelhart and Hinton go much beyond
+back-propagation. They include crucial ideas about the possible computational
+implementation of several central aspects of cognition and learning, which came
+under the name of â€œconnectionismâ€? because of the importance this school of thought
+places on the connections between neurons as the locus of learning and memory.
+In particular, these ideas include the notion of distributed representation (Hinton
+et al., 1986).
+Following the success of back-propagation, neural network research gained popularity and reached a peak in the early 1990s. Afterwards, other machine learning
+techniques became more popular until the modern deep learning renaissance that
+began in 2006.
+The core ideas behind modern feedforward networks have not changed substantially since the 1980s. The same back-propagation algorithm and the same
+225
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+approaches to gradient descent are still in use. Most of the improvement in neural
+network performance from 1986 to 2015 can be attributed to two factors. First,
+larger datasets have reduced the degree to which statistical generalization is a
+challenge for neural networks. Second, neural networks have become much larger,
+due to more powerful computers, and better software infrastructure. However, a
+small number of algorithmic changes have improved the performance of neural
+networks noticeably.
+One of these algorithmic changes was the replacement of mean squared error
+with the cross-entropy family of loss functions. Mean squared error was popular in
+the 1980s and 1990s, but was gradually replaced by cross-entropy losses and the
+principle of maximum likelihood as ideas spread between the statistics community
+and the machine learning community. The use of cross-entropy losses greatly
+improved the performance of models with sigmoid and softmax outputs, which
+had previously suï¬€ered from saturation and slow learning when using the mean
+squared error loss.
+The other major algorithmic change that has greatly improved the performance
+of feedforward networks was the replacement of sigmoid hidden units with piecewise
+linear hidden units, such as rectiï¬?ed linear units. Rectiï¬?cation using the max{0, z}
+function was introduced in early neural network models and dates back at least
+as far as the Cognitron and Neocognitron (Fukushima, 1975, 1980). These early
+models did not use rectiï¬?ed linear units, but instead applied rectiï¬?cation to
+nonlinear functions. Despite the early popularity of rectiï¬?cation, rectiï¬?cation was
+largely replaced by sigmoids in the 1980s, perhaps because sigmoids perform better
+when neural networks are very small. As of the early 2000s, rectiï¬?ed linear units
+were avoided due to a somewhat superstitious belief that activation functions with
+non-diï¬€erentiable points must be avoided. This began to change in about 2009.
+Jarrett et al. (2009) observed that â€œusing a rectifying nonlinearity is the single most
+important factor in improving the performance of a recognition systemâ€? among
+several diï¬€erent factors of neural network architecture design.
+For small datasets, Jarrett et al. (2009) observed that using rectifying nonlinearities is even more important than learning the weights of the hidden layers.
+Random weights are suï¬ƒcient to propagate useful information through a rectiï¬?ed
+linear network, allowing the classiï¬?er layer at the top to learn how to map diï¬€erent
+feature vectors to class identities.
+When more data is available, learning begins to extract enough useful knowledge
+to exceed the performance of randomly chosen parameters. Glorot et al. (2011a)
+showed that learning is far easier in deep rectiï¬?ed linear networks than in deep
+networks that have curvature or two-sided saturation in their activation functions.
+226
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Rectiï¬?ed linear units are also of historical interest because they show that
+neuroscience has continued to have an inï¬‚uence on the development of deep
+learning algorithms. Glorot et al. (2011a) motivate rectiï¬?ed linear units from
+biological considerations. The half-rectifying nonlinearity was intended to capture
+these properties of biological neurons: 1) For some inputs, biological neurons are
+completely inactive. 2) For some inputs, a biological neuronâ€™s output is proportional
+to its input. 3) Most of the time, biological neurons operate in the regime where
+they are inactive (i.e., they should have sparse activations).
+When the modern resurgence of deep learning began in 2006, feedforward
+networks continued to have a bad reputation. From about 2006-2012, it was widely
+believed that feedforward networks would not perform well unless they were assisted
+by other models, such as probabilistic models. Today, it is now known that with the
+right resources and engineering practices, feedforward networks perform very well.
+Today, gradient-based learning in feedforward networks is used as a tool to develop
+probabilistic models, such as the variational autoencoder and generative adversarial
+networks, described in chapter 20. Rather than being viewed as an unreliable
+technology that must be supported by other techniques, gradient-based learning in
+feedforward networks has been viewed since 2012 as a powerful technology that
+may be applied to many other machine learning tasks. In 2006, the community
+used unsupervised learning to support supervised learning, and now, ironically, it
+is more common to use supervised learning to support unsupervised learning.
+Feedforward networks continue to have unfulï¬?lled potential. In the future, we
+expect they will be applied to many more tasks, and that advances in optimization
+algorithms and model design will improve their performance even further. This
+chapter has primarily described the neural network family of models. In the
+subsequent chapters, we turn to how to use these modelsâ€”how to regularize and
+train them.
+
+227
+
+Chapter 7
+
+Regularization for Deep Learning
+A central problem in machine learning is how to make an algorithm that will
+perform well not just on the training data, but also on new inputs. Many strategies
+used in machine learning are explicitly designed to reduce the test error, possibly
+at the expense of increased training error. These strategies are known collectively
+as regularization. As we will see there are a great many forms of regularization
+available to the deep learning practitioner. In fact, developing more eï¬€ective
+regularization strategies has been one of the major research eï¬€orts in the ï¬?eld.
+Chapter 5 introduced the basic concepts of generalization, underï¬?tting, overï¬?tting, bias, variance and regularization. If you are not already familiar with these
+notions, please refer to that chapter before continuing with this one.
+In this chapter, we describe regularization in more detail, focusing on regularization strategies for deep models or models that may be used as building blocks
+to form deep models.
+Some sections

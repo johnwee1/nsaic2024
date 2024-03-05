@@ -1,0 +1,275 @@
+me as before.
+
+equal variance, so that the multivariate normal distribution used by PCA has
+spherical contours. Sphering is more commonly known as whitening.
+Global contrast normalization will often fail to highlight image features we
+would like to stand out, such as edges and corners. If we have a scene with a large
+dark area and a large bright area (such as a city square with half the image in
+the shadow of a building) then global contrast normalization will ensure there is a
+large diï¬€erence between the brightness of the dark area and the brightness of the
+light area. It will not, however, ensure that edges within the dark region stand out.
+This motivates local contrast normalization. Local contrast normalization
+ensures that the contrast is normalized across each small window, rather than over
+the image as a whole. See ï¬?gure 12.2 for a comparison of global and local contrast
+normalization.
+Various deï¬?nitions of local contrast normalization are possible. In all cases,
+one modiï¬?es each pixel by subtracting a mean of nearby pixels and dividing by
+a standard deviation of nearby pixels. In some cases, this is literally the mean
+and standard deviation of all pixels in a rectangular window centered on the
+pixel to be modiï¬?ed (Pinto et al., 2008). In other cases, this is a weighted mean
+and weighted standard deviation using Gaussian weights centered on the pixel to
+be modiï¬?ed. In the case of color images, some strategies process diï¬€erent color
+456
+
+CHAPTER 12. APPLICATIONS
+
+Input image
+
+GCN
+
+LCN
+
+Figure 12.2: A comparison of global and local contrast normalization. Visually, the eï¬€ects
+of global contrast normalization are subtle. It places all images on roughly the same
+scale, which reduces the burden on the learning algorithm to handle multiple scales. Local
+contrast normalization modiï¬?es the image much more, discarding all regions of constant
+intensity. This allows the model to focus on just the edges. Regions of ï¬?ne texture,
+such as the houses in the second row, may lose some detail due to the bandwidth of the
+normalization kernel being too high.
+
+channels separately while others combine information from diï¬€erent channels to
+normalize each pixel (Sermanet et al., 2012).
+Local contrast normalization can usually be implemented eï¬ƒciently by using
+separable convolution (see section 9.8) to compute feature maps of local means and
+local standard deviations, then using element-wise subtraction and element-wise
+division on diï¬€erent feature maps.
+Local contrast normalization is a diï¬€erentiable operation and can also be used as
+a nonlinearity applied to the hidden layers of a network, as well as a preprocessing
+operation applied to the input.
+As with global contrast normalization, we typically need to regularize local
+contrast normalization to avoid division by zero. In fact, because local contrast
+normalization typically acts on smaller windows, it is even more important to
+regularize. Smaller windows are more likely to contain values that are all nearly
+the same as each other, and thus more likely to have zero standard deviation.
+
+457
+
+CHAPTER 12. APPLICATIONS
+
+12.2.1.2
+
+Dataset Augmentation
+
+As described in section 7.4, it is easy to improve the generalization of a classiï¬?er
+by increasing the size of the training set by adding extra copies of the training
+examples that have been modiï¬?ed with transformations that do not change the
+class. Object recognition is a classiï¬?cation task that is especially amenable to
+this form of dataset augmentation because the class is invariant to so many
+transformations and the input can be easily transformed with many geometric
+operations. As described before, classiï¬?ers can beneï¬?t from random translations,
+rotations, and in some cases, ï¬‚ips of the input to augment the dataset. In specialized
+computer vision applications, more advanced transformations are commonly used
+for dataset augmentation. These schemes include random perturbation of the
+colors in an image (Krizhevsky et al., 2012) and nonlinear geometric distortions of
+the input (LeCun et al., 1998b).
+
+12.3
+
+Speech Recognition
+
+The task of speech recognition is to map an acoustic signal containing a spoken
+natural language utterance into the corresponding sequence of words intended by
+the speaker. Let X = (x(1) , x(2) , . . . , x(T )) denote the sequence of acoustic input
+vectors (traditionally produced by splitting the audio into 20ms frames). Most
+speech recognition systems preprocess the input using specialized hand-designed
+features, but some (Jaitly and Hinton, 2011) deep learning systems learn features
+from raw input. Let y = (y1 , y2 , . . . , yN ) denote the target output sequence (usually
+a sequence of words or characters). The automatic speech recognition (ASR)
+âˆ—
+task consists of creating a function fASR
+that computes the most probable linguistic
+sequence y given the acoustic sequence X :
+f âˆ—ASR(X ) = arg max P âˆ—(y | X = X )
+
+(12.4)
+
+y
+
+where P âˆ— is the true conditional distribution relating the inputs X to the targets
+y.
+Since the 1980s and until about 2009â€“2012, state-of-the art speech recognition
+systems primarily combined hidden Markov models (HMMs) and Gaussian mixture
+models (GMMs). GMMs modeled the association between acoustic features and
+phonemes (Bahl et al., 1987), while HMMs modeled the sequence of phonemes.
+The GMM-HMM model family treats acoustic waveforms as being generated
+by the following process: ï¬?rst an HMM generates a sequence of phonemes and
+discrete sub-phonemic states (such as the beginning, middle, and end of each
+458
+
+CHAPTER 12. APPLICATIONS
+
+phoneme), then a GMM transforms each discrete symbol into a brief segment of
+audio waveform. Although GMM-HMM systems dominated ASR until recently,
+speech recognition was actually one of the ï¬?rst areas where neural networks were
+applied, and numerous ASR systems from the late 1980s and early 1990s used
+neural nets (Bourlard and Wellekens, 1989; Waibel et al., 1989; Robinson and
+Fallside, 1991; Bengio et al., 1991, 1992; Konig et al., 1996). At the time, the
+performance of ASR based on neural nets approximately matched the performance
+of GMM-HMM systems. For example, Robinson and Fallside (1991) achieved
+26% phoneme error rate on the TIMIT (Garofolo et al., 1993) corpus (with 39
+phonemes to discriminate between), which was better than or comparable to
+HMM-based systems. Since then, TIMIT has been a benchmark for phoneme
+recognition, playing a role similar to the role MNIST plays for object recognition.
+However, because of the complex engineering involved in software systems for
+speech recognition and the eï¬€ort that had been invested in building these systems
+on the basis of GMM-HMMs, the industry did not see a compelling argument
+for switching to neural networks. As a consequence, until the late 2000s, both
+academic and industrial research in using neural nets for speech recognition mostly
+focused on using neural nets to learn extra features for GMM-HMM systems.
+Later, with much larger and deeper models and much larger datasets, recognition
+accuracy was dramatically improved by using neural networks to replace GMMs
+for the task of associating acoustic features to phonemes (or sub-phonemic states).
+Starting in 2009, speech researchers applied a form of deep learning based on
+unsupervised learning to speech recognition. This approach to deep learning was
+based on training undirected probabilistic models called restricted Boltzmann
+machines (RBMs) to model the input data. RBMs will be described in part III.
+To solve speech recognition tasks, unsupervised pretraining was used to build
+deep feedforward networks whose layers were each initialized by training an RBM.
+These networks take spectral acoustic representations in a ï¬?xed-size input window
+(around a center frame) and predict the conditional probabilities of HMM states
+for that center frame. Training such deep networks helped to signiï¬?cantly improve
+the recognition rate on TIMIT (Mohamed et al., 2009, 2012a), bringing down the
+phoneme error rate from about 26% to 20.7%. See Mohamed et al. (2012b) for an
+analysis of reasons for the success of these models. Extensions to the basic phone
+recognition pipeline included the addition of speaker-adaptive features (Mohamed
+et al., 2011) that further reduced the error rate. This was quickly followed up
+by work to expand the architecture from phoneme recognition (which is what
+TIMIT is focused on) to large-vocabulary speech recognition (Dahl et al., 2012),
+which involves not just recognizing phonemes but also recognizing sequences of
+words from a large vocabulary. Deep networks for speech recognition eventually
+459
+
+CHAPTER 12. APPLICATIONS
+
+shifted from being based on pretraining and Boltzmann machines to being based
+on techniques such as rectiï¬?ed linear units and dropout (Zeiler et al., 2013; Dahl
+et al., 2013). By that time, several of the major speech groups in industry had
+started exploring deep learning in collaboration with academic researchers. Hinton
+et al. (2012a) describe the breakthroughs achieved by these collaborators, which
+are now deployed in products such as mobile phones.
+Later, as these groups explored larger and larger labeled datasets and incorporated some of the methods for initializing, training, and setting up the architecture
+of deep nets, they realized that the unsupervised pretraining phase was either
+unnecessary or did not bring any signiï¬?cant improvement.
+These breakthroughs in recognition performance for word error rate in speech
+recognition were unprecedented (around 30% improvement) and were following a
+long period of about ten years during which error rates did not improve much with
+the traditional GMM-HMM technology, in spite of the continuously growing size of
+training sets (see ï¬?gure 2.4 of Deng and Yu (2014)). This created a rapid shift in
+the speech recognition community towards deep learning. In a matter of roughly
+two years, most of the industrial products for speech recognition incorporated deep
+neural networks and this success spurred a new wave of research into deep learning
+algorithms and architectures for ASR, which is still ongoing today.
+One of these innovations was the use of convolutional networks (Sainath et al.,
+2013) that replicate weights across time and frequency, improving over the earlier
+time-delay neural networks that replicated weights only across time. The new
+two-dimensional convolutional models regard the input spectrogram not as one
+long vector but as an image, with one axis corresponding to time and the other to
+frequency of spectral components.
+Another important push, still ongoing, has been towards end-to-end deep
+learning speech recognition systems that completely remove the HMM. The ï¬?rst
+major breakthrough in this direction came from Graves et al. (2013) who trained
+a deep LSTM RNN (see section 10.10), using MAP inference over the frame-tophoneme alignment, as in LeCun et al. (1998b) and in the CTC framework (Graves
+et al., 2006; Graves, 2012). A deep RNN (Graves et al., 2013) has state variables
+from several layers at each time step, giving the unfolded graph two kinds of depth:
+ordinary depth due to a stack of layers, and depth due to time unfolding. This
+work brought the phoneme error rate on TIMIT to a record low of 17.7%. See
+Pascanu et al. (2014a) and Chung et al. (2014) for other variants of deep RNNs,
+applied in other settings.
+Another contemporary step toward end-to-end deep learning ASR is to let the
+system learn how to â€œalignâ€? the acoustic-level information with the phonetic-level
+460
+
+CHAPTER 12. APPLICATIONS
+
+information (Chorowski et al., 2014; Lu et al., 2015).
+
+12.4
+
+Natural Language Processing
+
+Natural language processing (NLP) is the use of human languages, such as
+English or French, by a computer. Computer programs typically read and emit
+specialized languages designed to allow eï¬ƒcient and unambiguous parsing by simple
+programs. More naturally occurring languages are often ambiguous and defy formal
+description. Natural language processing includes applications such as machine
+translation, in which the learner must read a sentence in one human language and
+emit an equivalent sentence in another human language. Many NLP applications
+are based on language models that deï¬?ne a probability distribution over sequences
+of words, characters or bytes in a natural language.
+As with the other applications discussed in this chapter, very generic neural
+network techniques can be successfully applied to natural language processing.
+However, to achieve excellent performance and to scale well to large applications,
+some domain-speciï¬?c strategies become important. To build an eï¬ƒcient model of
+natural language, we must usually use techniques that are specialized for processing
+sequential data. In many cases, we choose to regard natural language as a sequence
+of words, rather than a sequence of individual characters or bytes. Because the total
+number of possible words is so large, word-based language models must operate on
+an extremely high-dimensional and sparse discrete space. Several strategies have
+been developed to make models of such a space eï¬ƒcient, both in a computational
+and in a statistical sense.
+
+12.4.1
+
+n-grams
+
+A language model deï¬?nes a probability distribution over sequences of tokens
+in a natural language. Depending on how the model is designed, a token may
+be a word, a character, or even a byte. Tokens are always discrete entities. The
+earliest successful language models were based on models of ï¬?xed-length sequences
+of tokens called n-grams. An n-gram is a sequence of n tokens.
+Models based on n-grams deï¬?ne the conditional probability of the n-th token
+given the preceding n âˆ’ 1 tokens. The model uses products of these conditional
+distributions to deï¬?ne the probability distribution over longer sequences:
+P (x1 , . . . , xÏ„ ) = P (x1 , . . . , xnâˆ’1 )
+
+Ï„
+î?™
+
+t= n
+
+461
+
+P (x t | xtâˆ’n+1 , . . . , xtâˆ’1 ).
+
+(12.5)
+
+CHAPTER 12. APPLICATIONS
+
+This decomposition is justiï¬?ed by the chain rule of probability. The probability
+distribution over the initial sequence P (x1 , . . . , xnâˆ’1) may be modeled by a diï¬€erent
+model with a smaller value of n.
+Training n-gram models is straightforward because the maximum likelihood
+estimate can be computed simply by counting how many times each possible n
+gram occurs in the training set. Models based on n -grams have been the core
+building block of statistical language modeling for many decades (Jelinek and
+Mercer, 1980; Katz, 1987; Chen and Goodman, 1999).
+For small values of n, models have particular names: unigram for n=1, bigram
+for n=2, and trigram for n=3. These names derive from the Latin preï¬?xes for
+the corresponding numbers and the Greek suï¬ƒx â€œ-gramâ€? denoting something that
+is written.
+Usually we train both an n-gram model and an nâˆ’1 gram model simultaneously.
+This makes it easy to compute
+P (xt | xtâˆ’n+1 , . . . , xtâˆ’1) =
+
+P n (xtâˆ’n+1 , . . . , xt )
+P nâˆ’1 (xtâˆ’n+1 , . . . , xtâˆ’1)
+
+(12.6)
+
+simply by looking up two stored probabilities. For this to exactly reproduce
+inference in P n, we must omit the ï¬?nal character from each sequence when we
+train P nâˆ’1.
+As an example, we demonstrate how a trigram model computes the probability
+of the sentence â€œTHE DOG RAN AWAY.â€? The ï¬?rst words of the sentence cannot be
+handled by the default formula based on conditional probability because there is no
+context at the beginning of th

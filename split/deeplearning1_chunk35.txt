@@ -1,0 +1,328 @@
+chmark results, it is important to take
+the eï¬€ect of dataset augmentation into account. Often, hand-designed dataset
+augmentation schemes can dramatically reduce the generalization error of a machine
+learning technique. To compare the performance of one machine learning algorithm
+to another, it is necessary to perform controlled experiments. When comparing
+machine learning algorithm A and machine learning algorithm B, it is necessary
+to make sure that both algorithms were evaluated using the same hand-designed
+dataset augmentation schemes. Suppose that algorithm A performs poorly with
+no dataset augmentation and algorithm B performs well when combined with
+numerous synthetic transformations of the input. In such a case it is likely the
+synthetic transformations caused the improved performance, rather than the use
+of machine learning algorithm B. Sometimes deciding whether an experiment
+has been properly controlled requires subjective judgment. For example, machine
+learning algorithms that inject noise into the input are performing a form of dataset
+augmentation. Usually, operations that are generally applicable (such as adding
+Gaussian noise to the input) are considered part of the machine learning algorithm,
+while operations that are speciï¬?c to one application domain (such as randomly
+cropping an image) are considered to be separate pre-processing steps.
+
+241
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+7.5
+
+Noise Robustness
+
+Section 7.4 has motivated the use of noise applied to the inputs as a dataset
+augmentation strategy. For some models, the addition of noise with inï¬?nitesimal
+variance at the input of the model is equivalent to imposing a penalty on the
+norm of the weights (Bishop, 1995a,b). In the general case, it is important to
+remember that noise injection can be much more powerful than simply shrinking
+the parameters, especially when the noise is added to the hidden units. Noise
+applied to the hidden units is such an important topic that it merit its own separate
+discussion; the dropout algorithm described in section 7.12 is the main development
+of that approach.
+Another way that noise has been used in the service of regularizing models
+is by adding it to the weights. This technique has been used primarily in the
+context of recurrent neural networks (Jim et al., 1996; Graves, 2011). This can
+be interpreted as a stochastic implementation of Bayesian inference over the
+weights. The Bayesian treatment of learning would consider the model weights
+to be uncertain and representable via a probability distribution that reï¬‚ects this
+uncertainty. Adding noise to the weights is a practical, stochastic way to reï¬‚ect
+this uncertainty.
+Noise applied to the weights can also be interpreted as equivalent (under some
+assumptions) to a more traditional form of regularization, encouraging stability of
+the function to be learned. Consider the regression setting, where we wish to train
+a function yÌ‚(x) that maps a set of features x to a scalar using the least-squares
+cost function between the model predictions yÌ‚(x) and the true values y:
+î€‚
+î€ƒ
+J = E p(x,y ) (yÌ‚(x) âˆ’ y )2 .
+(7.30)
+
+The training set consists of m labeled examples {(x (1) , y(1) ), . . . , (x (m), y (m))}.
+
+We now assume that with each input presentation we also include a random
+perturbation î€?W âˆ¼ N(î€?; 0, Î·I) of the network weights. Let us imagine that we
+have a standard l-layer MLP. We denote the perturbed model as yÌ‚ î€?W (x). Despite
+the injection of noise, we are still interested in minimizing the squared error of the
+output of the network. The objective function thus becomes:
+î?¨
+î?©
+JËœW = E p(x,y,î€?W ) (yÌ‚î€? W (x) âˆ’ y)2
+(7.31)
+î€‚
+î€ƒ
+= E p(x,y,î€?W ) yÌ‚ 2î€?W (x) âˆ’ 2yyË†î€? W (x) + y 2 .
+(7.32)
+
+For small Î·, the minimization of J with added weight noise (with covariance
+Î·I) is equivalent to minimization of J with an additional regularization term:
+242
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+î€‚
+î€ƒ
+Î·Ep(x,y ) î?«âˆ‡ W yÌ‚(x)î?«2 . This form of regularization encourages the parameters to
+go to regions of parameter space where small perturbations of the weights have
+a relatively small inï¬‚uence on the output. In other words, it pushes the model
+into regions where the model is relatively insensitive to small variations in the
+weights, ï¬?nding points that are not merely minima, but minima surrounded by
+ï¬‚at regions (Hochreiter and Schmidhuber, 1995). In the simpliï¬?ed case of linear
+regression (where,
+for instance, yÌ‚(x) = w î€¾x+ b), this regularization term collapses
+î€‚
+î€ƒ
+into Î·E p(x) î?«xî?« 2 , which is not a function of parameters and therefore does not
+contribute to the gradient of JËœW with respect to the model parameters.
+
+7.5.1
+
+Injecting Noise at the Output Targets
+
+Most datasets have some amount of mistakes in the y labels. It can be harmful to
+maximize log p(y | x) when y is a mistake. One way to prevent this is to explicitly
+model the noise on the labels. For example, we can assume that for some small
+constant î€?, the training set label y is correct with probability 1âˆ’ î€?, and otherwise
+any of the other possible labels might be correct. This assumption is easy to
+incorporate into the cost function analytically, rather than by explicitly drawing
+noise samples. For example, label smoothing regularizes a model based on a
+softmax with k output values by replacing the hard 0 and 1 classiï¬?cation targets
+î€? and 1 âˆ’ î€? , respectively. The standard cross-entropy loss may
+with targets of kâˆ’1
+then be used with these soft targets. Maximum likelihood learning with a softmax
+classiï¬?er and hard targets may actually never convergeâ€”the softmax can never
+predict a probability of exactly 0 or exactly 1, so it will continue to learn larger
+and larger weights, making more extreme predictions forever. It is possible to
+prevent this scenario using other regularization strategies like weight decay. Label
+smoothing has the advantage of preventing the pursuit of hard probabilities without
+discouraging correct classiï¬?cation. This strategy has been used since the 1980s
+and continues to be featured prominently in modern neural networks (Szegedy
+et al., 2015).
+
+7.6
+
+Semi-Supervised Learning
+
+In the paradigm of semi-supervised learning, both unlabeled examples from P (x)
+and labeled examples from P (x, y) are used to estimate P (y | x) or predict y from
+x.
+In the context of deep learning, semi-supervised learning usually refers to
+learning a representation h = f (x). The goal is to learn a representation so
+243
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+that examples from the same class have similar representations. Unsupervised
+learning can provide useful cues for how to group examples in representation
+space. Examples that cluster tightly in the input space should be mapped to
+similar representations. A linear classiï¬?er in the new space may achieve better
+generalization in many cases (Belkin and Niyogi, 2002; Chapelle et al., 2003). A
+long-standing variant of this approach is the application of principal components
+analysis as a pre-processing step before applying a classiï¬?er (on the projected
+data).
+Instead of having separate unsupervised and supervised components in the
+model, one can construct models in which a generative model of either P (x) or
+P (x, y) shares parameters with a discriminative model of P (y | x ). One can
+then trade-oï¬€ the supervised criterion âˆ’ log P (y | x) with the unsupervised or
+generative one (such as âˆ’ log P (x) or âˆ’ log P (x, y )). The generative criterion then
+expresses a particular form of prior belief about the solution to the supervised
+learning problem (Lasserre et al., 2006), namely that the structure of P (x) is
+connected to the structure of P (y | x ) in a way that is captured by the shared
+parametrization. By controlling how much of the generative criterion is included
+in the total criterion, one can ï¬?nd a better trade-oï¬€ than with a purely generative
+or a purely discriminative training criterion (Lasserre et al., 2006; Larochelle and
+Bengio, 2008).
+Salakhutdinov and Hinton (2008) describe a method for learning the kernel
+function of a kernel machine used for regression, in which the usage of unlabeled
+examples for modeling P (x) improves P (y | x) quite signiï¬?cantly.
+
+See Chapelle et al. (2006) for more information about semi-supervised learning.
+
+7.7
+
+Multi-Task Learning
+
+Multi-task learning (Caruana, 1993) is a way to improve generalization by pooling
+the examples (which can be seen as soft constraints imposed on the parameters)
+arising out of several tasks. In the same way that additional training examples
+put more pressure on the parameters of the model towards values that generalize
+well, when part of a model is shared across tasks, that part of the model is more
+constrained towards good values (assuming the sharing is justiï¬?ed), often yielding
+better generalization.
+Figure 7.2 illustrates a very common form of multi-task learning, in which
+diï¬€erent supervised tasks (predicting y(i) given x) share the same input x, as well
+as some intermediate-level representation h(shared) capturing a common pool of
+244
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+factors. The model can generally be divided into two kinds of parts and associated
+parameters:
+1. Task-speciï¬?c parameters (which only beneï¬?t from the examples of their task
+to achieve good generalization). These are the upper layers of the neural
+network in ï¬?gure 7.2.
+2. Generic parameters, shared across all the tasks (which beneï¬?t from the
+pooled data of all the tasks). These are the lower layers of the neural network
+in ï¬?gure 7.2.
+
+y (1)
+
+y (2)
+
+h(1)
+
+h(2)
+
+h(3)
+
+h(shared)
+
+x
+
+Figure 7.2: Multi-task learning can be cast in several ways in deep learning frameworks
+and this ï¬?gure illustrates the common situation where the tasks share a common input but
+involve diï¬€erent target random variables. The lower layers of a deep network (whether it
+is supervised and feedforward or includes a generative component with downward arrows)
+can be shared across such tasks, while task-speciï¬?c parameters (associated respectively
+with the weights into and from h(1) and h (2)) can be learned on top of those yielding a
+shared representation h(shared) . The underlying assumption is that there exists a common
+pool of factors that explain the variations in the input x, while each task is associated
+with a subset of these factors. In this example, it is additionally assumed that top-level
+hidden units h(1) and h(2) are specialized to each task (respectively predicting y(1) and
+y (2) ) while some intermediate-level representationh(shared) is shared across all tasks. In
+the unsupervised learning context, it makes sense for some of the top-level factors to be
+associated with none of the output tasks (h (3)): these are the factors that explain some of
+the input variations but are not relevant for predicting y(1) or y(2) .
+
+Improved generalization and generalization error bounds (Baxter, 1995) can be
+achieved because of the shared parameters, for which statistical strength can be
+245
+
+Loss (negative log-likelihood)
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+0.20
+
+Training set loss
+Validation set loss
+
+0.15
+0.10
+0.05
+0.00
+
+0
+
+50
+
+100
+
+150
+
+200
+
+250
+
+Time (epochs)
+
+Figure 7.3: Learning curves showing how the negative log-likelihood loss changes over
+time (indicated as number of training iterations over the dataset, or epochs). In this
+example, we train a maxout network on MNIST. Observe that the training objective
+decreases consistently over time, but the validation set average loss eventually begins to
+increase again, forming an asymmetric U-shaped curve.
+
+greatly improved (in proportion with the increased number of examples for the
+shared parameters, compared to the scenario of single-task models). Of course this
+will happen only if some assumptions about the statistical relationship between
+the diï¬€erent tasks are valid, meaning that there is something shared across some
+of the tasks.
+From the point of view of deep learning, the underlying prior belief is the
+following: among the factors that explain the variations observed in the data
+associated with the diï¬€erent tasks, some are shared across two or more tasks.
+
+7.8
+
+Early Stopping
+
+When training large models with suï¬ƒcient representational capacity to overï¬?t
+the task, we often observe that training error decreases steadily over time, but
+validation set error begins to rise again. See ï¬?gure 7.3 for an example of this
+behavior. This behavior occurs very reliably.
+This means we can obtain a model with better validation set error (and thus,
+hopefully better test set error) by returning to the parameter setting at the point in
+time with the lowest validation set error. Every time the error on the validation set
+improves, we store a copy of the model parameters. When the training algorithm
+terminates, we return these parameters, rather than the latest parameters. The
+246
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+algorithm terminates when no parameters have improved over the best recorded
+validation error for some pre-speciï¬?ed number of iterations. This procedure is
+speciï¬?ed more formally in algorithm 7.1.
+Algorithm 7.1 The early stopping meta-algorithm for determining the best
+amount of time to train. This meta-algorithm is a general strategy that works
+well with a variety of training algorithms and ways of quantifying error on the
+validation set.
+Let n be the number of steps between evaluations.
+Let p be the â€œpatience,â€? the number of times to observe worsening validation set
+error before giving up.
+Let Î¸o be the initial parameters.
+Î¸ â†? Î¸o
+iâ†?0
+jâ†?0
+vâ†?âˆž
+Î¸âˆ— â†? Î¸
+iâˆ— â†? i
+while j < p do
+Update Î¸ by running the training algorithm for n steps.
+iâ†? i+n
+v î€° â†? ValidationSetError(Î¸)
+if v î€° < v then
+jâ†?0
+Î¸âˆ— â†? Î¸
+iâˆ— â†? i
+v â†? vî€°
+else
+j â†?j+1
+end if
+end while
+Best parameters are Î¸âˆ— , best number of training steps is iâˆ—
+This strategy is known as early stopping. It is probably the most commonly
+used form of regularization in deep learning. Its popularity is due both to its
+eï¬€ectiveness and its simplicity.
+One way to think of early stopping is as a very eï¬ƒcient hyperparameter selection
+algorithm. In this view, the number of training steps is just another hyperparameter.
+We can see in ï¬?gure 7.3 that this hyperparameter has a U-shaped validation set
+247
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+performance curve. Most hyperparameters that control model capacity have such a
+U-shaped validation set performance curve, as illustrated in ï¬?gure 5.3. In the case of
+early stopping, we are controlling the eï¬€ective capacity of the model by determining
+how many steps it can take to ï¬?t the training set. Most hyperparameters must be
+chosen using an expensive guess and check process, where we set a hyperparameter
+at the start of training, then run training for several steps to see its eï¬€ect. The
+â€œtraining timeâ€? hyperparameter is unique in that by deï¬?nition a single run of
+training tries out many values of the hyperparameter. The only signiï¬?cant cost
+to choosing this hyperparameter automatically via early stopping is running the
+validation set evaluation periodically during training. Ideally, this is done in
+parallel to the training process on a separate machine, separate CPU, or separate
+GPU from the main training process. If such resources are not available, then the
+cost of these per

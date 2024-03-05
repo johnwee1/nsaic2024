@@ -1,0 +1,351 @@
+ion number 5. This means that the direction of most curvature
+has �?ve times more curvature than the direction of least curvature. In this case, the most
+curvature is in the direction [1, 1] and the least curvature is in the direction [1, −1] . The
+red lines indicate the path followed by gradient descent. This very elongated quadratic
+function resembles a long canyon. Gradient descent wastes time repeatedly descending
+canyon walls, because they are the steepest feature. Because the step size is somewhat
+too large, it has a tendency to overshoot the bottom of the function and thus needs to
+descend the opposite canyon wall on the next iteration. The large positive eigenvalue
+of the Hessian corresponding to the eigenvector pointed in this direction indicates that
+this directional derivative is rapidly increasing, so an optimization algorithm based on
+the Hessian could predict that the steepest direction is not actually a promising search
+direction in this context.
+
+91
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+the search. The simplest method for doing so is known as Newton’s method.
+Newton’s method is based on using a second-order Taylor series expansion to
+approximate f (x) near some point x(0) :
+1
+f (x) ≈ f (x(0) )+(x−x(0) )∇x f (x (0) )+ (x−x(0))H (f )(x(0) )(x−x(0) ). (4.11)
+2
+If we then solve for the critical point of this function, we obtain:
+x ∗ = x(0) − H (f )(x(0) )−1 ∇x f (x(0)).
+
+(4.12)
+
+When f is a positive de�?nite quadratic function, Newton’s method consists of
+applying equation 4.12 once to jump to the minimum of the function directly.
+When f is not truly quadratic but can be locally approximated as a positive
+de�?nite quadratic, Newton’s method consists of applying equation 4.12 multiple
+times. Iteratively updating the approximation and jumping to the minimum of
+the approximation can reach the critical point much faster than gradient descent
+would. This is a useful property near a local minimum, but it can be a harmful
+property near a saddle point. As discussed in section 8.2.3, Newton’s method is
+only appropriate when the nearby critical point is a minimum (all the eigenvalues
+of the Hessian are positive), whereas gradient descent is not attracted to saddle
+points unless the gradient points toward them.
+Optimization algorithms that use only the gradient, such as gradient descent,
+are called �?rst-order optimization algorithms. Optimization algorithms that
+also use the Hessian matrix, such as Newton’s method, are called second-order
+optimization algorithms (Nocedal and Wright, 2006).
+The optimization algorithms employed in most contexts in this book are
+applicable to a wide variety of functions, but come with almost no guarantees.
+Deep learning algorithms tend to lack guarantees because the family of functions
+used in deep learning is quite complicated. In many other �?elds, the dominant
+approach to optimization is to design optimization algorithms for a limited family
+of functions.
+In the context of deep learning, we sometimes gain some guarantees by restricting ourselves to functions that are either Lipschitz continuous or have Lipschitz
+continuous derivatives. A Lipschitz continuous function is a function f whose rate
+of change is bounded by a Lipschitz constant L:
+∀x, ∀y, |f (x) − f (y)| ≤ L||x − y||2 .
+
+(4.13)
+
+This property is useful because it allows us to quantify our assumption that a
+small change in the input made by an algorithm such as gradient descent will have
+92
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+a small change in the output. Lipschitz continuity is also a fairly weak constraint,
+and many optimization problems in deep learning can be made Lipschitz continuous
+with relatively minor modi�?cations.
+Perhaps the most successful �?eld of specialized optimization is convex optimization. Convex optimization algorithms are able to provide many more
+guarantees by making stronger restrictions. Convex optimization algorithms are
+applicable only to convex functions—functions for which the Hessian is positive
+semide�?nite everywhere. Such functions are well-behaved because they lack saddle
+points and all of their local minima are necessarily global minima. However, most
+problems in deep learning are diﬃcult to express in terms of convex optimization.
+Convex optimization is used only as a subroutine of some deep learning algorithms.
+Ideas from the analysis of convex optimization algorithms can be useful for proving
+the convergence of deep learning algorithms. However, in general, the importance
+of convex optimization is greatly diminished in the context of deep learning. For
+more information about convex optimization, see Boyd and Vandenberghe (2004)
+or Rockafellar (1997).
+
+4.4
+
+Constrained Optimization
+
+Sometimes we wish not only to maximize or minimize a function f(x) over all
+possible values of x. Instead we may wish to �?nd the maximal or minimal
+value of f (x) for values of x in some set S. This is known as constrained
+optimization. Points x that lie within the set S are called feasible points in
+constrained optimization terminology.
+We often wish to �?nd a solution that is small in some sense. A common
+approach in such situations is to impose a norm constraint, such as ||x|| ≤ 1.
+
+One simple approach to constrained optimization is simply to modify gradient
+descent taking the constraint into account. If we use a small constant step size �?,
+we can make gradient descent steps, then project the result back into S. If we use
+a line search, we can search only over step sizes �? that yield new x points that are
+feasible, or we can project each point on the line back into the constraint region.
+When possible, this method can be made more eﬃcient by projecting the gradient
+into the tangent space of the feasible region before taking the step or beginning
+the line search (Rosen, 1960).
+A more sophisticated approach is to design a diﬀerent, unconstrained optimization problem whose solution can be converted into a solution to the original,
+constrained optimization problem. For example, if we want to minimize f(x) for
+93
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+x ∈ R2 with x constrained to have exactly unit L2 norm, we can instead minimize
+g(θ) = f ([cos θ, sin θ] ) with respect to θ , then return [cos θ, sin θ] as the solution
+to the original problem. This approach requires creativity; the transformation
+between optimization problems must be designed speci�?cally for each case we
+encounter.
+The Karush–Kuhn–Tucker (KKT) approach1 provides a very general solution to constrained optimization. With the KKT approach, we introduce a
+new function called the generalized Lagrangian or generalized Lagrange
+function.
+To de�?ne the Lagrangian, we �?rst need to describe S in terms of equations
+and inequalities. We want a description of S in terms of m functions g (i) and n
+functions h (j ) so that S = {x | ∀i, g (i)(x) = 0 and ∀j, h(j ) (x) ≤ 0}. The equations
+involving g(i) are called the equality constraints and the inequalities involving
+h(j ) are called inequality constraints.
+We introduce new variables λ i and α j for each constraint, these are called the
+KKT multipliers. The generalized Lagrangian is then de�?ned as
+�?�
+�?�
+L(x, λ, α) = f (x) +
+λ i g(i) (x) +
+α j h (j )(x).
+(4.14)
+i
+
+j
+
+We can now solve a constrained minimization problem using unconstrained
+optimization of the generalized Lagrangian. Observe that, so long as at least one
+feasible point exists and f (x) is not permitted to have value ∞, then
+min max max L(x, λ, α).
+x
+
+λ α,α≥0
+
+(4.15)
+
+has the same optimal objective function value and set of optimal points x as
+min f (x).
+x∈S
+
+(4.16)
+
+This follows because any time the constraints are satis�?ed,
+max max L(x, λ, α) = f (x),
+λ
+
+α,α≥0
+
+(4.17)
+
+while any time a constraint is violated,
+max max L(x, λ, α) = ∞.
+λ
+
+α,α≥0
+
+1
+
+(4.18)
+
+The KKT approach generalizes the method of Lagrange multipliers which allows equality
+constraints but not inequality constraints.
+94
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+These properties guarantee that no infeasible point can be optimal, and that the
+optimum within the feasible points is unchanged.
+To perform constrained maximization, we can construct the generalized Lagrange function of −f (x), which leads to this optimization problem:
+�?�
+�?�
+(i)
+min max max −f (x) +
+λ i g ( x) +
+αj h(j ) (x).
+(4.19)
+x
+
+λ
+
+α,α≥0
+
+i
+
+j
+
+We may also convert this to a problem with maximization in the outer loop:
+�?�
+�?�
+max min min f (x) +
+λig (i) (x) −
+αj h(j ) (x).
+(4.20)
+x
+
+λ α,α≥0
+
+i
+
+j
+
+The sign of the term for the equality constraints does not matter; we may de�?ne it
+with addition or subtraction as we wish, because the optimization is free to choose
+any sign for each λi.
+The inequality constraints are particularly interesting. We say that a constraint
+h(i) (x) is active if h(i) (x∗) = 0. If a constraint is not active, then the solution to
+the problem found using that constraint would remain at least a local solution if
+that constraint were removed. It is possible that an inactive constraint excludes
+other solutions. For example, a convex problem with an entire region of globally
+optimal points (a wide, ﬂat, region of equal cost) could have a subset of this
+region eliminated by constraints, or a non-convex problem could have better local
+stationary points excluded by a constraint that is inactive at convergence. However,
+the point found at convergence remains a stationary point whether or not the
+inactive constraints are included. Because an inactive h(i) has negative value, then
+the solution to min x maxλ max α,α≥0 L(x, λ, α ) will have αi = 0. We can thus
+observe that at the solution, α  h(x) = 0. In other words, for all i, we know
+that at least one of the constraints αi ≥ 0 and h (i)(x) ≤ 0 must be active at the
+solution. To gain some intuition for this idea, we can say that either the solution
+is on the boundary imposed by the inequality and we must use its KKT multiplier
+to inﬂuence the solution to x, or the inequality has no inﬂuence on the solution
+and we represent this by zeroing out its KKT multiplier.
+A simple set of properties describe the optimal points of constrained optimization problems. These properties are called the Karush-Kuhn-Tucker (KKT)
+conditions (Karush, 1939; Kuhn and Tucker, 1951). They are necessary conditions,
+but not always suﬃcient conditions, for a point to be optimal. The conditions are:
+• The gradient of the generalized Lagrangian is zero.
+• All constraints on both x and the KKT multipliers are satis�?ed.
+95
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+• The inequality constraints exhibit “complementary slackness�?: α  h (x) = 0.
+For more information about the KKT approach, see Nocedal and Wright (2006).
+
+4.5
+
+Example: Linear Least Squares
+
+Suppose we want to �?nd the value of x that minimizes
+1
+f (x) = ||Ax − b||22.
+2
+
+(4.21)
+
+There are specialized linear algebra algorithms that can solve this problem eﬃciently.
+However, we can also explore how to solve it using gradient-based optimization as
+a simple example of how these techniques work.
+First, we need to obtain the gradient:
+∇ x f (x) = A (Ax − b) = AAx − A b.
+
+(4.22)
+
+We can then follow this gradient downhill, taking small steps. See algorithm 4.1
+for details.
+Algorithm 4.1 An algorithm to minimize f(x) = 12 ||Ax − b||22 with respect to x
+using gradient descent, starting from an arbitrary value of x.
+Set the step size (�?) and tolerance (δ ) to small, positive numbers.
+
+> δ�? do
+while ||A Ax
+ − A b||2 
+x �? x − �? A Ax − A b
+end while
+One can also solve this problem using Newton’s method. In this case, because
+the true function is quadratic, the quadratic approximation employed by Newton’s
+method is exact, and the algorithm converges to the global minimum in a single
+step.
+Now suppose we wish to minimize the same function, but subject to the
+constraint xx ≤ 1. To do so, we introduce the Lagrangian
+�?
+
+
+L(x, λ) = f (x) + λ x x − 1 .
+(4.23)
+
+We can now solve the problem
+
+min max L(x, λ).
+x λ,λ≥0
+
+96
+
+(4.24)
+
+CHAPTER 4. NUMERICAL COMPUTATION
+
+The smallest-norm solution to the unconstrained least squares problem may be
+found using the Moore-Penrose pseudoinverse: x = A+ b. If this point is feasible,
+then it is the solution to the constrained problem. Otherwise, we must �?nd a
+solution where the constraint is active. By diﬀerentiating the Lagrangian with
+respect to x, we obtain the equation
+AAx − Ab + 2λx = 0.
+
+(4.25)
+
+This tells us that the solution will take the form
+x = (A A + 2λI ) −1A b.
+
+(4.26)
+
+The magnitude of λ must be chosen such that the result obeys the constraint. We
+can �?nd this value by performing gradient ascent on λ. To do so, observe
+∂
+L(x, λ) = x x − 1.
+∂λ
+
+(4.27)
+
+When the norm of x exceeds 1, this derivative is positive, so to follow the derivative
+uphill and increase the Lagrangian with respect to λ, we increase λ. Because the
+coeﬃcient on the xx penalty has increased, solving the linear equation for x will
+now yield a solution with smaller norm. The process of solving the linear equation
+and adjusting λ continues until x has the correct norm and the derivative on λ is
+0.
+This concludes the mathematical preliminaries that we use to develop machine
+learning algorithms. We are now ready to build and analyze some full-ﬂedged
+learning systems.
+
+97
+
+Chapter 5
+
+Machine Learning Basics
+Deep learning is a speci�?c kind of machine learning. In order to understand
+deep learning well, one must have a solid understanding of the basic principles of
+machine learning. This chapter provides a brief course in the most important general
+principles that will be applied throughout the rest of the book. Novice readers or
+those who want a wider perspective are encouraged to consider machine learning
+textbooks with a more comprehensive coverage of the fundamentals, such as Murphy
+(2012) or Bishop (2006). If you are already familiar with machine learning basics,
+feel free to skip ahead to section 5.11. That section covers some perspectives
+on traditional machine learning techniques that have strongly inﬂuenced the
+development of deep learning algorithms.
+We begin with a de�?nition of what a learning algorithm is, and present an
+example: the linear regression algorithm. We then proceed to describe how the
+challenge of �?tting the training data diﬀers from the challenge of �?nding patterns
+that generalize to new data. Most machine learning algorithms have settings
+called hyperparameters that must be determined external to the learning algorithm
+itself; we discuss how to set these using additional data. Machine learning is
+essentially a form of applied statistics with increased emphasis on the use of
+computers to statistically estimate complicated functions and a decreased emphasis
+on proving con�?dence intervals around these functions; we therefore present the
+two central approaches to statistics: frequentist estimators and Bayesian inference.
+Most machine learning algorithms can be divided into the categories of supervised
+learning and unsupervised learning; we describe these categories and give some
+examples of simple learning algorithms from each category. Most deep learning
+algorithms are based on an optimization algorithm called stochastic gradient
+descent. We describe how to combine various algorithm

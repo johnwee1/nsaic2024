@@ -1,0 +1,287 @@
+utations that grow exponentially
+with the number of dimensions.
+With probabilistic models, this computational challenge arises from the need to
+perform intractable inference or simply from the need to normalize the distribution.
+• Intractable inference: inference is discussed mostly in chapter 19. It regards
+the question of guessing the probable values of some variables a, given other
+variables b, with respect to a model that captures the joint distribution over
+487
+
+a, b and c. In order to even compute such conditional probabilities one needs
+to sum over the values of the variables c, as well as compute a normalization
+constant which sums over the values of a and c.
+• Intractable normalization constants (the partition function): the partition
+function is discussed mostly in chapter 18. Normalizing constants of probability functions come up in inference (above) as well as in learning. Many
+probabilistic models involve such a normalizing constant. Unfortunately,
+learning such a model often requires computing the gradient of the logarithm of the partition function with respect to the model parameters. That
+computation is generally as intractable as computing the partition function
+itself. Monte Carlo Markov chain (MCMC) methods (chapter 17) are often used to deal with the partition function (computing it or its gradient).
+Unfortunately, MCMC methods suﬀer when the modes of the model distribution are numerous and well-separated, especially in high-dimensional spaces
+(section 17.5).
+One way to confront these intractable computations is to approximate them,
+and many approaches have been proposed as discussed in this third part of the
+book. Another interesting way, also discussed here, would be to avoid these
+intractable computations altogether by design, and methods that do not require
+such computations are thus very appealing. Several generative models have been
+proposed in recent years, with that motivation. A wide variety of contemporary
+approaches to generative modeling are discussed in chapter 20.
+Part III is the most important for a researcher—someone who wants to understand the breadth of perspectives that have been brought to the �?eld of deep
+learning, and push the �?eld forward towards true arti�?cial intelligence.
+
+488
+
+Chapter 13
+
+Linear Factor Models
+Many of the research frontiers in deep learning involve building a probabilistic model
+of the input, pmodel (x). Such a model can, in principle, use probabilistic inference to
+predict any of the variables in its environment given any of the other variables. Many
+of these models also have latent variables h, with pmodel(x) = Eh pmodel(x | h).
+These latent variables provide another means of representing the data. Distributed
+representations based on latent variables can obtain all of the advantages of
+representation learning that we have seen with deep feedforward and recurrent
+networks.
+In this chapter, we describe some of the simplest probabilistic models with
+latent variables: linear factor models. These models are sometimes used as building
+blocks of mixture models (Hinton et al., 1995a; Ghahramani and Hinton, 1996;
+Roweis et al., 2002) or larger, deep probabilistic models (Tang et al., 2012). They
+also show many of the basic approaches necessary to build generative models that
+the more advanced deep models will extend further.
+A linear factor model is de�?ned by the use of a stochastic, linear decoder
+function that generates x by adding noise to a linear transformation of h.
+These models are interesting because they allow us to discover explanatory
+factors that have a simple joint distribution. The simplicity of using a linear decoder
+made these models some of the �?rst latent variable models to be extensively studied.
+A linear factor model describes the data generation process as follows. First,
+we sample the explanatory factors h from a distribution
+h ∼ p( h ),
+where p(h) is a factorial distribution, with p(h) =
+489
+
+(13.1)
+�?�
+
+i p(hi), so that it is easy to
+
+CHAPTER 13. LINEAR FACTOR MODELS
+
+sample from. Next we sample the real-valued observable variables given the factors:
+x = W h + b + noise
+
+(13.2)
+
+where the noise is typically Gaussian and diagonal (independent across dimensions).
+This is illustrated in �?gure 13.1.
+h1
+
+h2
+
+h3
+
+x1
+
+x2
+
+x3
+
+x = W h + b + noise
+
+Figure 13.1: The directed graphical model describing the linear factor model family, in
+which we assume that an observed data vector x is obtained by a linear combination of
+independent latent factors h, plus some noise. Diﬀerent models, such as probabilistic
+PCA, factor analysis or ICA, make diﬀerent choices about the form of the noise and of
+the prior p(h).
+
+13.1
+
+Probabilistic PCA and Factor Analysis
+
+Probabilistic PCA (principal components analysis), factor analysis and other linear
+factor models are special cases of the above equations (13.1 and 13.2) and only
+diﬀer in the choices made for the noise distribution and the model’s prior over
+latent variables h before observing x.
+In factor analysis (Bartholomew, 1987; Basilevsky, 1994), the latent variable
+prior is just the unit variance Gaussian
+h ∼ N (h; 0, I)
+
+(13.3)
+
+while the observed variables xi are assumed to be conditionally independent,
+given h. Speci�?cally, the noise is assumed to be drawn from a diagonal covariance Gaussian distribution, with covariance matrix ψ = diag(σ2), with
+σ2 = [σ21, σ22 , . . . , σn2 ] a vector of per-variable variances.
+The role of the latent variables is thus to capture the dependencies between
+the diﬀerent observed variables xi . Indeed, it can easily be shown that x is just a
+multivariate normal random variable, with
+x ∼ N (x ; b , W W  + ψ ) .
+490
+
+(13.4)
+
+CHAPTER 13. LINEAR FACTOR MODELS
+
+In order to cast PCA in a probabilistic framework, we can make a slight
+modi�?cation to the factor analysis model, making the conditional variances σ 2i
+equal to each other. In that case the covariance of x is just W W  + σ 2 I, where
+σ 2 is now a scalar. This yields the conditional distribution
+x ∼ N (x; b, W W  + σ 2I)
+
+(13.5)
+
+x = W h + b + σz
+
+(13.6)
+
+or equivalently
+where z ∼ N (z ; 0, I) is Gaussian noise. Tipping and Bishop (1999) then show an
+iterative EM algorithm for estimating the parameters W and σ2.
+This probabilistic PCA model takes advantage of the observation that most
+variations in the data can be captured by the latent variables h, up to some small
+residual reconstruction error σ2. As shown by Tipping and Bishop (1999),
+probabilistic PCA becomes PCA as σ → 0. In that case, the conditional expected
+value of h given x becomes an orthogonal projection of x − b onto the space
+spanned by the d columns of W , like in PCA.
+As σ → 0, the density model de�?ned by probabilistic PCA becomes very sharp
+around these d dimensions spanned by the columns of W . This can make the
+model assign very low likelihood to the data if the data does not actually cluster
+near a hyperplane.
+
+13.2
+
+Independent Component Analysis (ICA)
+
+Independent component analysis (ICA) is among the oldest representation learning
+algorithms (Herault and Ans, 1984; Jutten and Herault, 1991; Comon, 1994;
+Hyvärinen, 1999; Hyvärinen et al., 2001a; Hinton et al., 2001; Teh et al., 2003).
+It is an approach to modeling linear factors that seeks to separate an observed
+signal into many underlying signals that are scaled and added together to form
+the observed data. These signals are intended to be fully independent, rather than
+merely decorrelated from each other.1
+Many diﬀerent speci�?c methodologies are referred to as ICA. The variant
+that is most similar to the other generative models we have described here is a
+variant (Pham et al., 1992) that trains a fully parametric generative model. The
+prior distribution over the underlying factors, p(h), must be �?xed ahead of time by
+the user. The model then deterministically generates x = W h. We can perform a
+1
+
+See section 3.8 for a discussion of the diﬀerence between uncorrelated variables and independent variables.
+491
+
+CHAPTER 13. LINEAR FACTOR MODELS
+
+nonlinear change of variables (using equation 3.47) to determine p(x). Learning
+the model then proceeds as usual, using maximum likelihood.
+The motivation for this approach is that by choosing p(h) to be independent,
+we can recover underlying factors that are as close as possible to independent.
+This is commonly used, not to capture high-level abstract causal factors, but to
+recover low-level signals that have been mixed together. In this setting, each
+training example is one moment in time, each xi is one sensor’s observation of
+the mixed signals, and each hi is one estimate of one of the original signals. For
+example, we might have n people speaking simultaneously. If we have n diﬀerent
+microphones placed in diﬀerent locations, ICA can detect the changes in the volume
+between each speaker as heard by each microphone, and separate the signals so
+that each h i contains only one person speaking clearly. This is commonly used
+in neuroscience for electroencephalography, a technology for recording electrical
+signals originating in the brain. Many electrode sensors placed on the subject’s
+head are used to measure many electrical signals coming from the body. The
+experimenter is typically only interested in signals from the brain, but signals from
+the subject’s heart and eyes are strong enough to confound measurements taken
+at the subject’s scalp. The signals arrive at the electrodes mixed together, so
+ICA is necessary to separate the electrical signature of the heart from the signals
+originating in the brain, and to separate signals in diﬀerent brain regions from
+each other.
+As mentioned before, many variants of ICA are possible. Some add some noise
+in the generation of x rather than using a deterministic decoder. Most do not
+use the maximum likelihood criterion, but instead aim to make the elements of
+h = W −1 x independent from each other. Many criteria that accomplish this goal
+are possible. Equation 3.47 requires taking the determinant of W , which can be
+an expensive and numerically unstable operation. Some variants of ICA avoid this
+problematic operation by constraining W to be orthogonal.
+All variants of ICA require that p(h) be non-Gaussian. This is because if p(h)
+is an independent prior with Gaussian components, then W is not identi�?able.
+We can obtain the same distribution over p(x) for many values of W . This is very
+diﬀerent from other linear factor models like probabilistic PCA and factor analysis,
+that often require p(h) to be Gaussian in order to make many operations on the
+model have closed form solutions. In the maximum likelihood approach where the
+d σ(h ).
+user explicitly speci�?es the distribution, a typical choice is to use p(hi ) = dh
+i
+i
+Typical choices of these non-Gaussian distributions have larger peaks near 0 than
+does the Gaussian distribution, so we can also see most implementations of ICA
+as learning sparse features.
+492
+
+CHAPTER 13. LINEAR FACTOR MODELS
+
+Many variants of ICA are not generative models in the sense that we use the
+phrase. In this book, a generative model either represents p(x) or can draw samples
+from it. Many variants of ICA only know how to transform between x and h, but
+do not have any way of representing p(h), and thus do not impose a distribution
+over p(x). For example, many ICA variants aim to increase the sample kurtosis of
+h = W −1 x, because high kurtosis indicates that p(h) is non-Gaussian, but this is
+accomplished without explicitly representing p(h). This is because ICA is more
+often used as an analysis tool for separating signals, rather than for generating
+data or estimating its density.
+Just as PCA can be generalized to the nonlinear autoencoders described in
+chapter 14, ICA can be generalized to a nonlinear generative model, in which
+we use a nonlinear function f to generate the observed data. See Hyvärinen and
+Pajunen (1999) for the initial work on nonlinear ICA and its successful use with
+ensemble learning by Roberts and Everson (2001) and Lappalainen et al. (2000).
+Another nonlinear extension of ICA is the approach of nonlinear independent
+components estimation, or NICE (Dinh et al., 2014), which stacks a series
+of invertible transformations (encoder stages) that have the property that the
+determinant of the Jacobian of each transformation can be computed eﬃciently.
+This makes it possible to compute the likelihood exactly and, like ICA, attempts
+to transform the data into a space where it has a factorized marginal distribution,
+but is more likely to succeed thanks to the nonlinear encoder. Because the encoder
+is associated with a decoder that is its perfect inverse, it is straightforward to
+generate samples from the model (by �?rst sampling from p(h) and then applying
+the decoder).
+Another generalization of ICA is to learn groups of features, with statistical
+dependence allowed within a group but discouraged between groups (Hyvärinen and
+Hoyer, 1999; Hyvärinen et al., 2001b). When the groups of related units are chosen
+to be non-overlapping, this is called independent subspace analysis. It is also
+possible to assign spatial coordinates to each hidden unit and form overlapping
+groups of spatially neighboring units. This encourages nearby units to learn similar
+features. When applied to natural images, this topographic ICA approach learns
+Gabor �?lters, such that neighboring features have similar orientation, location or
+frequency. Many diﬀerent phase oﬀsets of similar Gabor functions occur within
+each region, so that pooling over small regions yields translation invariance.
+
+13.3
+
+Slow Feature Analysis
+
+Slow feature analysis (SFA) is a linear factor model that uses information from
+493
+
+CHAPTER 13. LINEAR FACTOR MODELS
+
+time signals to learn invariant features (Wiskott and Sejnowski, 2002).
+Slow feature analysis is motivated by a general principle called the slowness
+principle. The idea is that the important characteristics of scenes change very
+slowly compared to the individual measurements that make up a description of a
+scene. For example, in computer vision, individual pixel values can change very
+rapidly. If a zebra moves from left to right across the image, an individual pixel
+will rapidly change from black to white and back again as the zebra’s stripes pass
+over the pixel. By comparison, the feature indicating whether a zebra is in the
+image will not change at all, and the feature describing the zebra’s position will
+change slowly. We therefore may wish to regularize our model to learn features
+that change slowly over time.
+The slowness principle predates slow feature analysis and has been applied
+to a wide variety of models (Hinton, 1989; Földiák, 1989; Mobahi et al., 2009;
+Bergstra and Bengio, 2009). In general, we can apply the slowness principle to any
+diﬀerentiable model trained with gradient descent. The slowness principle may be
+introduced by adding a term to the cost function of the form
+�?�
+λ
+L(f (x(t+1) ), f (x (t)))
+(13.7)
+t
+
+where λ is a hyperparameter determining the strength of the slowness regularization
+term, t is the index into a time sequence of examples, f is the feature extractor
+to be regularized, and L is a loss function measuring the distance between f (x(t))
+and f (x(t+1) ). A common choice for L is the mean squared diﬀerence.
+Slow feature analysis is a particularly eﬃcient application of the slowness
+principle. It is eﬃc

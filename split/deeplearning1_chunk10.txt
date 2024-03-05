@@ -1,0 +1,464 @@
+ted with any
+speci�?c, non-zero amount of error by a Gaussian mixture model with enough
+components.
+Figure 3.2 shows samples from a Gaussian mixture model.
+
+3.10
+
+Useful Properties of Common Functions
+
+Certain functions arise often while working with probability distributions, especially
+the probability distributions used in deep learning models.
+One of these functions is the logistic sigmoid:
+σ (x ) =
+
+1
+.
+1 + exp(−x)
+
+(3.30)
+
+The logistic sigmoid is commonly used to produce the φ parameter of a Bernoulli
+67
+
+x2
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+x1
+
+Figure 3.2: Samples from a Gaussian mixture model. In this example, there are three
+components. From left to right, the �?rst component has an isotropic covariance matrix,
+meaning it has the same amount of variance in each direction. The second has a diagonal
+covariance matrix, meaning it can control the variance separately along each axis-aligned
+direction. This example has more variance along the x2 axis than along the x1 axis. The
+third component has a full-rank covariance matrix, allowing it to control the variance
+separately along an arbitrary basis of directions.
+
+distribution because its range is (0,1), which lies within the valid range of values
+for the φ parameter. See �?gure 3.3 for a graph of the sigmoid function. The
+sigmoid function saturates when its argument is very positive or very negative,
+meaning that the function becomes very ﬂat and insensitive to small changes in its
+input.
+Another commonly encountered function is the softplus function (Dugas et al.,
+2001):
+ζ (x) = log (1 + exp(x)) .
+(3.31)
+The softplus function can be useful for producing the β or σ parameter of a normal
+distribution because its range is (0, ∞). It also arises commonly when manipulating
+expressions involving sigmoids. The name of the softplus function comes from the
+fact that it is a smoothed or “softened�? version of
+x+ = max(0, x).
+
+(3.32)
+
+See �?gure 3.4 for a graph of the softplus function.
+The following properties are all useful enough that you may wish to memorize
+them:
+68
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+1.0
+
+σ (x )
+
+0.8
+0.6
+0.4
+0.2
+0.0
+−10
+
+−5
+
+0
+
+5
+
+10
+
+Figure 3.3: The logistic sigmoid function.
+
+10
+
+ζ (x )
+
+8
+6
+4
+2
+0
+−10
+
+−5
+
+0
+
+5
+
+Figure 3.4: The softplus function.
+
+69
+
+10
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+σ (x ) =
+
+exp(x)
+exp(x) + exp(0)
+
+(3.33)
+
+d
+σ(x) = σ(x)(1 − σ(x))
+dx
+1 − σ(x) = σ (−x)
+
+(3.34)
+(3.35)
+
+log σ(x) = −ζ (−x)
+d
+ζ (x ) = σ ( x )
+dx
+−1
+
+∀x ∈ (0, 1), σ
+
+(3.36)
+(3.37)
+
+
+
+x
+(x) = log
+1−x
+
+
+
+(3.38)
+
+∀x > 0, ζ−1 (x) = log (exp(x) − 1)
+�?� x
+ζ (x ) =
+σ(y)dy
+
+(3.39)
+
+ζ (x) − ζ (−x) = x
+
+(3.41)
+
+(3.40)
+
+−∞
+
+The function σ −1(x) is called the logit in statistics, but this term is more rarely
+used in machine learning.
+Equation 3.41 provides extra justi�?cation for the name “softplus.�? The softplus
+function is intended as a smoothed version of the positive part function, x+ =
+max{0, x}. The positive part function is the counterpart of the negative part
+function, x− = max{0, −x}. To obtain a smooth function that is analogous to the
+negative part, one can use ζ (−x). Just as x can be recovered from its positive part
+and negative part via the identity x + − x− = x, it is also possible to recover x
+using the same relationship between ζ (x) and ζ (−x), as shown in equation 3.41.
+
+3.11
+
+Bayes’ Rule
+
+We often �?nd ourselves in a situation where we know P (y | x) and need to know
+P (x | y ). Fortunately, if we also know P (x), we can compute the desired quantity
+using Bayes’ rule:
+P (x ) P (y | x )
+.
+(3.42)
+P (x | y ) =
+P (y )
+Note that while P (y) appears in the formula, it is usually feasible to compute
+�??
+P (y) = x P (y | x)P (x), so we do not need to begin with knowledge of P (y).
+70
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+Bayes’ rule is straightforward to derive from the de�?nition of conditional
+probability, but it is useful to know the name of this formula since many texts
+refer to it by name. It is named after the Reverend Thomas Bayes, who �?rst
+discovered a special case of the formula. The general version presented here was
+independently discovered by Pierre-Simon Laplace.
+
+3.12
+
+Technical Details of Continuous Variables
+
+A proper formal understanding of continuous random variables and probability
+density functions requires developing probability theory in terms of a branch of
+mathematics known as measure theory. Measure theory is beyond the scope of
+this textbook, but we can brieﬂy sketch some of the issues that measure theory is
+employed to resolve.
+In section 3.3.2, we saw that the probability of a continuous vector-valued x
+lying in some set S is given by the integral of p(x) over the set S. Some choices
+of set S can produce paradoxes. For example, it is possible to construct two sets
+S1 and S 2 such that p(x ∈ S1 ) + p(x ∈ S2) > 1 but S1 ∩ S2 = ∅ . These sets
+are generally constructed making very heavy use of the in�?nite precision of real
+numbers, for example by making fractal-shaped sets or sets that are de�?ned by
+transforming the set of rational numbers.2 One of the key contributions of measure
+theory is to provide a characterization of the set of sets that we can compute the
+probability of without encountering paradoxes. In this book, we only integrate
+over sets with relatively simple descriptions, so this aspect of measure theory never
+becomes a relevant concern.
+For our purposes, measure theory is more useful for describing theorems that
+apply to most points in R n but do not apply to some corner cases. Measure theory
+provides a rigorous way of describing that a set of points is negligibly small. Such
+a set is said to have measure zero. We do not formally de�?ne this concept in this
+textbook. For our purposes, it is suﬃcient to understand the intuition that a set
+of measure zero occupies no volume in the space we are measuring. For example,
+within R 2 , a line has measure zero, while a �?lled polygon has positive measure.
+Likewise, an individual point has measure zero. Any union of countably many sets
+that each have measure zero also has measure zero (so the set of all the rational
+numbers has measure zero, for instance).
+Another useful term from measure theory is almost everywhere. A property
+that holds almost everywhere holds throughout all of space except for on a set of
+2
+
+The Banach-Tarski theorem provides a fun example of such sets.
+71
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+measure zero. Because the exceptions occupy a negligible amount of space, they
+can be safely ignored for many applications. Some important results in probability
+theory hold for all discrete values but only hold “almost everywhere�? for continuous
+values.
+Another technical detail of continuous variables relates to handling continuous
+random variables that are deterministic functions of one another. Suppose we have
+two random variables, x and y, such that y = g(x), where g is an invertible, continuous, diﬀerentiable transformation. One might expect that py (y) = p x (g−1(y)).
+This is actually not the case.
+As a simple example, suppose we have scalar random variables x and y. Suppose
+y = x2 and x ∼ U(0, 1). If we use the rule p y(y) = px (2y) then p y will be 0
+everywhere except the interval [0, 12 ], and it will be 1 on this interval. This means
+�?�
+1
+p y (y)dy = ,
+(3.43)
+2
+which violates the de�?nition of a probability distribution. This is a common mistake.
+The problem with this approach is that it fails to account for the distortion of
+space introduced by the function g. Recall that the probability of x lying in an
+in�?nitesimally small region with volume δx is given by p(x)δx . Since g can expand
+or contract space, the in�?nitesimal volume surrounding x in x space may have
+diﬀerent volume in y space.
+To see how to correct the problem, we return to the scalar case. We need to
+preserve the property
+|py(g(x))dy| = |px (x)dx|.
+(3.44)
+Solving from this, we obtain
+p y(y) = px (g
+or equivalently
+
+−1
+
+ 
+∂x 
+(y))  
+∂y
+
+
+
+ ∂g(x) 
+.
+p x (x) = p y(g(x)) 
+∂x 
+
+(3.45)
+
+(3.46)
+
+In higher dimensions, the derivative generalizes to the determinant of the Jacobian
+i
+matrix—the matrix with Ji,j = ∂x
+∂yj . Thus, for real-valued vectors x and y ,
+
+
+
+
+
+∂g(
+x
+)
+.
+p x (x) = py (g(x))  det
+
+∂x
+72
+
+(3.47)
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+3.13
+
+Information Theory
+
+Information theory is a branch of applied mathematics that revolves around
+quantifying how much information is present in a signal. It was originally invented
+to study sending messages from discrete alphabets over a noisy channel, such as
+communication via radio transmission. In this context, information theory tells how
+to design optimal codes and calculate the expected length of messages sampled from
+speci�?c probability distributions using various encoding schemes. In the context of
+machine learning, we can also apply information theory to continuous variables
+where some of these message length interpretations do not apply. This �?eld is
+fundamental to many areas of electrical engineering and computer science. In this
+textbook, we mostly use a few key ideas from information theory to characterize
+probability distributions or quantify similarity between probability distributions.
+For more detail on information theory, see Cover and Thomas (2006) or MacKay
+(2003).
+The basic intuition behind information theory is that learning that an unlikely
+event has occurred is more informative than learning that a likely event has
+occurred. A message saying “the sun rose this morning�? is so uninformative as
+to be unnecessary to send, but a message saying “there was a solar eclipse this
+morning�? is very informative.
+We would like to quantify information in a way that formalizes this intuition.
+Speci�?cally,
+• Likely events should have low information content, and in the extreme case,
+events that are guaranteed to happen should have no information content
+whatsoever.
+• Less likely events should have higher information content.
+• Independent events should have additive information. For example, �?nding
+out that a tossed coin has come up as heads twice should convey twice as
+much information as �?nding out that a tossed coin has come up as heads
+once.
+In order to satisfy all three of these properties, we de�?ne the self-information
+of an event x = x to be
+I (x) = − log P (x).
+(3.48)
+In this book, we always use log to mean the natural logarithm, with base e. Our
+de�?nition of I (x) is therefore written in units of nats . One nat is the amount of
+73
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+information gained by observing an event of probability 1e . Other texts use base-2
+logarithms and units called bits or shannons; information measured in bits is
+just a rescaling of information measured in nats.
+When x is continuous, we use the same de�?nition of information by analogy,
+but some of the properties from the discrete case are lost. For example, an event
+with unit density still has zero information, despite not being an event that is
+guaranteed to occur.
+Self-information deals only with a single outcome. We can quantify the amount
+of uncertainty in an entire probability distribution using the Shannon entropy:
+H (x) = Ex∼P [I (x)] = −Ex∼P [log P (x)].
+
+(3.49)
+
+also denoted H(P ). In other words, the Shannon entropy of a distribution is the
+expected amount of information in an event drawn from that distribution. It gives
+a lower bound on the number of bits (if the logarithm is base 2, otherwise the units
+are diﬀerent) needed on average to encode symbols drawn from a distribution P.
+Distributions that are nearly deterministic (where the outcome is nearly certain)
+have low entropy; distributions that are closer to uniform have high entropy. See
+�?gure 3.5 for a demonstration. When x is continuous, the Shannon entropy is
+known as the diﬀerential entropy.
+If we have two separate probability distributions P (x) and Q (x) over the same
+random variable x, we can measure how diﬀerent these two distributions are using
+the Kullback-Leibler (KL) divergence:
+
+
+P (x)
+D KL(P �?�Q) = Ex∼P log
+= E x∼P [log P (x) − log Q(x)] .
+(3.50)
+Q (x )
+In the case of discrete variables, it is the extra amount of information (measured
+in bits if we use the base 2 logarithm, but in machine learning we usually use nats
+and the natural logarithm) needed to send a message containing symbols drawn
+from probability distribution P, when we use a code that was designed to minimize
+the length of messages drawn from probability distribution Q.
+The KL divergence has many useful properties, most notably that it is nonnegative. The KL divergence is 0 if and only if P and Q are the same distribution in
+the case of discrete variables, or equal “almost everywhere�? in the case of continuous
+variables. Because the KL divergence is non-negative and measures the diﬀerence
+between two distributions, it is often conceptualized as measuring some sort of
+distance between these distributions. However, it is not a true distance measure
+because it is not symmetric: DKL(P �?�Q ) = DKL(Q�?�P ) for some P and Q. This
+74
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+Shannon entropy in nats
+
+0.7
+0.6
+0.5
+0.4
+0.3
+0.2
+0.1
+0.0
+0 .0
+
+0.2
+
+0 .4
+
+0 .6
+
+0.8
+
+1 .0
+
+Figure 3.5: This plot shows how distributions that are closer to deterministic have low
+Shannon entropy while distributions that are close to uniform have high Shannon entropy.
+On the horizontal axis, we plot p , the probability of a binary random variable being equal
+to 1. The entropy is given by (p − 1) log(1 − p) − p log p. When p is near 0, the distribution
+is nearly deterministic, because the random variable is nearly always 0. When p is near 1,
+the distribution is nearly deterministic, because the random variable is nearly always 1.
+When p = 0.5, the entropy is maximal, because the distribution is uniform over the two
+outcomes.
+
+asymmetry means that there are important consequences to the choice of whether
+to use DKL(P �?�Q) or DKL(Q�?�P ). See �?gure 3.6 for more detail.
+A quantity that is closely related to the KL divergence is the cross-entropy
+H(P, Q) = H (P ) + DKL (P �?�Q ), which is similar to the KL divergence but lacking
+the term on the left:
+(3.51)
+H (P, Q) = −Ex∼P log Q(x).
+Minimizing the cross-entropy with respect to Q is equivalent to minimizing the
+KL divergence, because Q does not participate in the omitted term.
+When computing many of these quantities, it is common to encounter expressions of the form 0 log 0. By convention, in the context of information theory, we
+treat these expressions as limx→0 x log x = 0.
+
+3.14
+
+Structured Probabilistic Models
+
+Machine learning algorithms often involve probability distributions over a very
+large number of random variables. Often, these probability distributions involve
+direct interactions between relatively few variables. Using a single function to
+75
+
+CHAPTER 3. PROBABILITY AND INFORMATION THEORY
+
+p (x )
+q ∗ (x )
+
+p(x)
+q ∗ ( x)
+
+Probability Density
+
+q∗ = argmin q DKL (q �?�p)
+
+Probability Density
+
+q∗ = argmin qDKL (p�?�q )
+
+x
+
+x
+
+Figure 3.6: The KL divergence is asymmetric. Suppose we have a distributionp(x ) and
+wish to approximate it with another distribution q(x). We have the choice of mini

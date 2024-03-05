@@ -1,0 +1,333 @@
+as using a ï¬?xed learning rate î€?. In practice, it is necessary to
+gradually decrease the learning rate over time, so we now denote the learning rate
+at iteration k as î€? k.
+This is because the SGD gradient estimator introduces a source of noise (the
+random sampling of m training examples) that does not vanish even when we arrive
+at a minimum. By comparison, the true gradient of the total cost function becomes
+small and then 0 when we approach and reach a minimum using batch gradient
+descent, so batch gradient descent can use a ï¬?xed learning rate. A suï¬ƒcient
+condition to guarantee convergence of SGD is that
+âˆž
+î?˜
+k=1
+
+î€? k = âˆž,
+294
+
+and
+
+(8.12)
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+âˆž
+î?˜
+k=1
+
+î€? 2k < âˆž.
+
+(8.13)
+
+In practice, it is common to decay the learning rate linearly until iteration Ï„ :
+î€?k = (1 âˆ’ Î±)î€?0 + Î±î€?Ï„
+
+(8.14)
+
+with Î± = kÏ„ . After iteration Ï„ , it is common to leave î€? constant.
+The learning rate may be chosen by trial and error, but it is usually best
+to choose it by monitoring learning curves that plot the objective function as a
+function of time. This is more of an art than a science, and most guidance on this
+subject should be regarded with some skepticism. When using the linear schedule,
+the parameters to choose are î€?0 , î€?Ï„ , and Ï„ . Usually Ï„ may be set to the number of
+iterations required to make a few hundred passes through the training set. Usually
+î€?Ï„ should be set to roughly 1% the value of î€?0. The main question is how to set î€? 0.
+If it is too large, the learning curve will show violent oscillations, with the cost
+function often increasing signiï¬?cantly. Gentle oscillations are ï¬?ne, especially if
+training with a stochastic cost function such as the cost function arising from the
+use of dropout. If the learning rate is too low, learning proceeds slowly, and if the
+initial learning rate is too low, learning may become stuck with a high cost value.
+Typically, the optimal initial learning rate, in terms of total training time and the
+ï¬?nal cost value, is higher than the learning rate that yields the best performance
+after the ï¬?rst 100 iterations or so. Therefore, it is usually best to monitor the ï¬?rst
+several iterations and use a learning rate that is higher than the best-performing
+learning rate at this time, but not so high that it causes severe instability.
+The most important property of SGD and related minibatch or online gradientbased optimization is that computation time per update does not grow with the
+number of training examples. This allows convergence even when the number
+of training examples becomes very large. For a large enough dataset, SGD may
+converge to within some ï¬?xed tolerance of its ï¬?nal test set error before it has
+processed the entire training set.
+To study the convergence rate of an optimization algorithm it is common to
+measure the excess error J (Î¸) âˆ’ minÎ¸ J(Î¸), which is the amount that the current
+cost function exceeds the minimum possible cost. When SGD is applied to a convex
+problem, the excess error is O ( âˆš1k ) after k iterations, while in the strongly convex
+
+case it is O( 1k ). These bounds cannot be improved unless extra conditions are
+assumed. Batch gradient descent enjoys better convergence rates than stochastic
+gradient descent in theory. However, the CramÃ©r-Rao bound (CramÃ©r, 1946; Rao,
+1945) states that generalization error cannot decrease faster than O( 1k ). Bottou
+295
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+and Bousquet (2008) argue that it therefore may not be worthwhile to pursue
+an optimization algorithm that converges faster than O( k1 ) for machine learning
+tasksâ€”faster convergence presumably corresponds to overï¬?tting. Moreover, the
+asymptotic analysis obscures many advantages that stochastic gradient descent
+has after a small number of steps. With large datasets, the ability of SGD to make
+rapid initial progress while evaluating the gradient for only very few examples
+outweighs its slow asymptotic convergence. Most of the algorithms described in
+the remainder of this chapter achieve beneï¬?ts that matter in practice but are lost
+in the constant factors obscured by the O( 1k ) asymptotic analysis. One can also
+trade oï¬€ the beneï¬?ts of both batch and stochastic gradient descent by gradually
+increasing the minibatch size during the course of learning.
+For more information on SGD, see Bottou (1998).
+
+8.3.2
+
+Momentum
+
+While stochastic gradient descent remains a very popular optimization strategy,
+learning with it can sometimes be slow. The method of momentum (Polyak, 1964)
+is designed to accelerate learning, especially in the face of high curvature, small but
+consistent gradients, or noisy gradients. The momentum algorithm accumulates
+an exponentially decaying moving average of past gradients and continues to move
+in their direction. The eï¬€ect of momentum is illustrated in ï¬?gure 8.5.
+Formally, the momentum algorithm introduces a variable v that plays the role
+of velocityâ€”it is the direction and speed at which the parameters move through
+parameter space. The velocity is set to an exponentially decaying average of the
+negative gradient. The name momentum derives from a physical analogy, in
+which the negative gradient is a force moving a particle through parameter space,
+according to Newtonâ€™s laws of motion. Momentum in physics is mass times velocity.
+In the momentum learning algorithm, we assume unit mass, so the velocity vectorv
+may also be regarded as the momentum of the particle. A hyperparameter Î± âˆˆ [0, 1)
+determines how quickly the contributions of previous gradients exponentially decay.
+The update rule is given by:
+î€ 
+î€¡
+m
+1 î?˜
+L(f (x(i) ; Î¸), y(i)) ,
+(8.15)
+v â†? Î± v âˆ’ î€?âˆ‡ Î¸
+m i=1
+Î¸ â†? Î¸ + v.
+
+(8.16)
+î€€ 1 î??m
+î€?
+(i )
+( i)
+The velocity v accumulates the gradient elements âˆ‡ Î¸ m
+i=1 L(f (x ; Î¸ ), y ) .
+The larger Î± is relative to î€?, the more previous gradients aï¬€ect the current direction.
+The SGD algorithm with momentum is given in algorithm 8.2.
+296
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+20
+10
+0
+âˆ’10
+âˆ’20
+âˆ’30
+âˆ’30 âˆ’20 âˆ’10
+
+0
+
+10
+
+20
+
+Figure 8.5: Momentum aims primarily to solve two problems: poor conditioning of the
+Hessian matrix and variance in the stochastic gradient. Here, we illustrate how momentum
+overcomes the ï¬?rst of these two problems. The contour lines depict a quadratic loss
+function with a poorly conditioned Hessian matrix. The red path cutting across the
+contours indicates the path followed by the momentum learning rule as it minimizes this
+function. At each step along the way, we draw an arrow indicating the step that gradient
+descent would take at that point. We can see that a poorly conditioned quadratic objective
+looks like a long, narrow valley or canyon with steep sides. Momentum correctly traverses
+the canyon lengthwise, while gradient steps waste time moving back and forth across the
+narrow axis of the canyon. Compare also ï¬?gure 4.6, which shows the behavior of gradient
+descent without momentum.
+
+297
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+Previously, the size of the step was simply the norm of the gradient multiplied
+by the learning rate. Now, the size of the step depends on how large and how
+aligned a sequence of gradients are. The step size is largest when many successive
+gradients point in exactly the same direction. If the momentum algorithm always
+observes gradient g, then it will accelerate in the direction of âˆ’g, until reaching a
+terminal velocity where the size of each step is
+î€?||g||
+.
+1âˆ’Î±
+
+(8.17)
+
+1
+It is thus helpful to think of the momentum hyperparameter in terms of 1âˆ’Î±
+. For
+example, Î± = .9 corresponds to multiplying the maximum speed by 10 relative to
+the gradient descent algorithm.
+
+Common values of Î± used in practice include .5, .9, and .99. Like the learning
+rate, Î± may also be adapted over time. Typically it begins with a small value and
+is later raised. It is less important to adapt Î± over time than to shrink î€? over time.
+Algorithm 8.2 Stochastic gradient descent (SGD) with momentum
+Require: Learning rate î€?, momentum parameter Î±.
+Require: Initial parameter Î¸ , initial velocity v.
+while stopping criterion not met do
+Sample a minibatch of m examples from the training set {x(1) , . . . , x(m) } with
+corresponding targets y(i).
+î??
+Compute gradient estimate: g â†? m1 âˆ‡Î¸ i L(f (x (i); Î¸), y(i) )
+Compute velocity update: v â†? Î±v âˆ’ î€?g
+Apply update: Î¸ â†? Î¸ + v
+end while
+We can view the momentum algorithm as simulating a particle subject to
+continuous-time Newtonian dynamics. The physical analogy can help to build
+intuition for how the momentum and gradient descent algorithms behave.
+The position of the particle at any point in time is given by Î¸(t). The particle
+experiences net force f (t). This force causes the particle to accelerate:
+âˆ‚2
+Î¸(t).
+(8.18)
+âˆ‚t2
+Rather than viewing this as a second-order diï¬€erential equation of the position,
+we can introduce the variable v(t) representing the velocity of the particle at time
+t and rewrite the Newtonian dynamics as a ï¬?rst-order diï¬€erential equation:
+f(t) =
+
+v(t) =
+
+âˆ‚
+Î¸(t),
+âˆ‚t
+
+298
+
+(8.19)
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+âˆ‚
+v(t).
+(8.20)
+âˆ‚t
+The momentum algorithm then consists of solving the diï¬€erential equations via
+numerical simulation. A simple numerical method for solving diï¬€erential equations
+is Eulerâ€™s method, which simply consists of simulating the dynamics deï¬?ned by
+the equation by taking small, ï¬?nite steps in the direction of each gradient.
+f(t) =
+
+This explains the basic form of the momentum update, but what speciï¬?cally are
+the forces? One force is proportional to the negative gradient of the cost function:
+âˆ’âˆ‡Î¸ J (Î¸). This force pushes the particle downhill along the cost function surface.
+The gradient descent algorithm would simply take a single step based on each
+gradient, but the Newtonian scenario used by the momentum algorithm instead
+uses this force to alter the velocity of the particle. We can think of the particle
+as being like a hockey puck sliding down an icy surface. Whenever it descends a
+steep part of the surface, it gathers speed and continues sliding in that direction
+until it begins to go uphill again.
+One other force is necessary. If the only force is the gradient of the cost function,
+then the particle might never come to rest. Imagine a hockey puck sliding down
+one side of a valley and straight up the other side, oscillating back and forth forever,
+assuming the ice is perfectly frictionless. To resolve this problem, we add one
+other force, proportional to âˆ’v(t). In physics terminology, this force corresponds
+to viscous drag, as if the particle must push through a resistant medium such as
+syrup. This causes the particle to gradually lose energy over time and eventually
+converge to a local minimum.
+Why do we use âˆ’v(t) and viscous drag in particular? Part of the reason to
+use âˆ’v(t) is mathematical convenienceâ€”an integer power of the velocity is easy
+to work with. However, other physical systems have other kinds of drag based
+on other integer powers of the velocity. For example, a particle traveling through
+the air experiences turbulent drag, with force proportional to the square of the
+velocity, while a particle moving along the ground experiences dry friction, with a
+force of constant magnitude. We can reject each of these options. Turbulent drag,
+proportional to the square of the velocity, becomes very weak when the velocity is
+small. It is not powerful enough to force the particle to come to rest. A particle
+with a non-zero initial velocity that experiences only the force of turbulent drag
+will move away from its initial position forever, with the distance from the starting
+point growing like O(log t). We must therefore use a lower power of the velocity.
+If we use a power of zero, representing dry friction, then the force is too strong.
+When the force due to the gradient of the cost function is small but non-zero, the
+constant force due to friction can cause the particle to come to rest before reaching
+a local minimum. Viscous drag avoids both of these problemsâ€”it is weak enough
+299
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+that the gradient can continue to cause motion until a minimum is reached, but
+strong enough to prevent motion if the gradient does not justify moving.
+
+8.3.3
+
+Nesterov Momentum
+
+Sutskever et al. (2013) introduced a variant of the momentum algorithm that was
+inspired by Nesterovâ€™s accelerated gradient method (Nesterov, 1983, 2004). The
+update rules in this case are given by:
+î€¢
+î€£
+m
+î€‘
+1 î?˜ î€?
+(8.21)
+v â†? Î±v âˆ’ î€?âˆ‡Î¸
+L f (x (i); Î¸ + Î±v ), y(i) ,
+m i=1
+Î¸ â†? Î¸ + v,
+
+(8.22)
+
+where the parameters Î± and î€? play a similar role as in the standard momentum
+method. The diï¬€erence between Nesterov momentum and standard momentum is
+where the gradient is evaluated. With Nesterov momentum the gradient is evaluated
+after the current velocity is applied. Thus one can interpret Nesterov momentum
+as attempting to add a correction factor to the standard method of momentum.
+The complete Nesterov momentum algorithm is presented in algorithm 8.3.
+In the convex batch gradient case, Nesterov momentum brings the rate of
+convergence of the excess error from O(1/k) (after k steps) to O(1/k2) as shown
+by Nesterov (1983). Unfortunately, in the stochastic gradient case, Nesterov
+momentum does not improve the rate of convergence.
+Algorithm 8.3 Stochastic gradient descent (SGD) with Nesterov momentum
+Require: Learning rate î€?, momentum parameter Î±.
+Require: Initial parameter Î¸ , initial velocity v.
+while stopping criterion not met do
+Sample a minibatch of m examples from the training set {x(1) , . . . , x(m) } with
+corresponding labels y(i).
+Apply interim update: Î¸Ìƒ â†? Î¸ + Î±v
+î??
+Compute gradient (at interim point): g â†? m1 âˆ‡ Î¸Ìƒ i L(f (x(i) ; Î¸Ìƒ), y (i))
+Compute velocity update: v â†? Î±v âˆ’ î€?g
+Apply update: Î¸ â†? Î¸ + v
+end while
+
+300
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+8.4
+
+Parameter Initialization Strategies
+
+Some optimization algorithms are not iterative by nature and simply solve for a
+solution point. Other optimization algorithms are iterative by nature but, when
+applied to the right class of optimization problems, converge to acceptable solutions
+in an acceptable amount of time regardless of initialization. Deep learning training
+algorithms usually do not have either of these luxuries. Training algorithms for deep
+learning models are usually iterative in nature and thus require the user to specify
+some initial point from which to begin the iterations. Moreover, training deep
+models is a suï¬ƒciently diï¬ƒcult task that most algorithms are strongly aï¬€ected by
+the choice of initialization. The initial point can determine whether the algorithm
+converges at all, with some initial points being so unstable that the algorithm
+encounters numerical diï¬ƒculties and fails altogether. When learning does converge,
+the initial point can determine how quickly learning converges and whether it
+converges to a point with high or low cost. Also, points of comparable cost
+can have wildly varying generalization error, and the initial point can aï¬€ect the
+generalization as well.
+Modern initialization strategies are simple and heuristic. Designing improved
+initialization strategies is a diï¬ƒcult task because neural network optimiza

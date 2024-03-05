@@ -1,0 +1,292 @@
+ NETS
+
+10.11
+
+Optimization for Long-Term Dependencies
+
+Section 8.2.5 and section 10.7 have described the vanishing and exploding gradient
+problems that occur when optimizing RNNs over many time steps.
+An interesting idea proposed by Martens and Sutskever (2011) is that second
+derivatives may vanish at the same time that ï¬?rst derivatives vanish. Second-order
+optimization algorithms may roughly be understood as dividing the ï¬?rst derivative
+by the second derivative (in higher dimension, multiplying the gradient by the
+inverse Hessian). If the second derivative shrinks at a similar rate to the ï¬?rst
+derivative, then the ratio of ï¬?rst and second derivatives may remain relatively
+constant. Unfortunately, second-order methods have many drawbacks, including
+high computational cost, the need for a large minibatch, and a tendency to be
+attracted to saddle points. Martens and Sutskever (2011) found promising results
+using second-order methods. Later, Sutskever et al. (2013) found that simpler
+methods such as Nesterov momentum with careful initialization could achieve
+similar results. See Sutskever (2012) for more detail. Both of these approaches
+have largely been replaced by simply using SGD (even without momentum) applied
+to LSTMs. This is part of a continuing theme in machine learning that it is often
+much easier to design a model that is easy to optimize than it is to design a more
+powerful optimization algorithm.
+
+10.11.1
+
+Clipping Gradients
+
+As discussed in section 8.2.4, strongly nonlinear functions such as those computed
+by a recurrent net over many time steps tend to have derivatives that can be
+either very large or very small in magnitude. This is illustrated in ï¬?gure 8.3 and
+ï¬?gure 10.17, in which we see that the objective function (as a function of the
+parameters) has a â€œlandscapeâ€? in which one ï¬?nds â€œcliï¬€sâ€?: wide and rather ï¬‚at
+regions separated by tiny regions where the objective function changes quickly,
+forming a kind of cliï¬€.
+The diï¬ƒculty that arises is that when the parameter gradient is very large, a
+gradient descent parameter update could throw the parameters very far, into a
+region where the objective function is larger, undoing much of the work that had
+been done to reach the current solution. The gradient tells us the direction that
+corresponds to the steepest descent within an inï¬?nitesimal region surrounding the
+current parameters. Outside of this inï¬?nitesimal region, the cost function may
+begin to curve back upwards. The update must be chosen to be small enough to
+avoid traversing too much upward curvature. We typically use learning rates that
+413
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+decay slowly enough that consecutive steps have approximately the same learning
+rate. A step size that is appropriate for a relatively linear part of the landscape is
+often inappropriate and causes uphill motion if we enter a more curved part of the
+landscape on the next step.
+
+î?·
+
+î?Šî€¨î?·î€»î?¢î€©
+
+î?—î?©î?´î?¨î€ î?£î?¬î?©î?°î?°î?©î?®î?§
+
+î?Šî€¨î?·î€»î?¢î€©
+
+î?—î?©î?´î?¨î?¯î?µî?´î€ î?£î?¬î?©î?°î?°î?©î?®î?§
+
+î?·
+î?¢
+
+î?¢
+
+Figure 10.17: Example of the eï¬€ect of gradient clipping in a recurrent network with
+two parameters w and b . Gradient clipping can make gradient descent perform more
+reasonably in the vicinity of extremely steep cliï¬€s. These steep cliï¬€s commonly occur
+in recurrent networks near where a recurrent network behaves approximately linearly.
+The cliï¬€ is exponentially steep in the number of time steps because the weight matrix
+is multiplied by itself once for each time step. (Left)Gradient descent without gradient
+clipping overshoots the bottom of this small ravine, then receives a very large gradient
+from the cliï¬€ face. The large gradient catastrophically propels the parameters outside the
+axes of the plot. (Right)Gradient descent with gradient clipping has a more moderate
+reaction to the cliï¬€. While it does ascend the cliï¬€ face, the step size is restricted so that
+it cannot be propelled away from steep region near the solution. Figure adapted with
+permission from Pascanu et al. (2013).
+
+A simple type of solution has been in use by practitioners for many years:
+clipping the gradient. There are diï¬€erent instances of this idea (Mikolov, 2012;
+Pascanu et al., 2013). One option is to clip the parameter gradient from a minibatch
+element-wise (Mikolov, 2012) just before the parameter update. Another is to clip
+the norm ||g|| of the gradient g (Pascanu et al., 2013) just before the parameter
+update:
+if ||g || > v
+gâ†?
+414
+
+(10.48)
+gv
+||g||
+
+(10.49)
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+where v is the norm threshold and g is used to update parameters. Because the
+gradient of all the parameters (including diï¬€erent groups of parameters, such as
+weights and biases) is renormalized jointly with a single scaling factor, the latter
+method has the advantage that it guarantees that each step is still in the gradient
+direction, but experiments suggest that both forms work similarly. Although
+the parameter update has the same direction as the true gradient, with gradient
+norm clipping, the parameter update vector norm is now bounded. This bounded
+gradient avoids performing a detrimental step when the gradient explodes. In
+fact, even simply taking a random step when the gradient magnitude is above
+a threshold tends to work almost as well. If the explosion is so severe that the
+gradient is numerically Inf or Nan (considered inï¬?nite or not-a-number), then
+a random step of size v can be taken and will typically move away from the
+numerically unstable conï¬?guration. Clipping the gradient norm per-minibatch will
+not change the direction of the gradient for an individual minibatch. However,
+taking the average of the norm-clipped gradient from many minibatches is not
+equivalent to clipping the norm of the true gradient (the gradient formed from
+using all examples). Examples that have large gradient norm, as well as examples
+that appear in the same minibatch as such examples, will have their contribution
+to the ï¬?nal direction diminished. This stands in contrast to traditional minibatch
+gradient descent, where the true gradient direction is equal to the average over all
+minibatch gradients. Put another way, traditional stochastic gradient descent uses
+an unbiased estimate of the gradient, while gradient descent with norm clipping
+introduces a heuristic bias that we know empirically to be useful. With elementwise clipping, the direction of the update is not aligned with the true gradient
+or the minibatch gradient, but it is still a descent direction. It has also been
+proposed (Graves, 2013) to clip the back-propagated gradient (with respect to
+hidden units) but no comparison has been published between these variants; we
+conjecture that all these methods behave similarly.
+
+10.11.2
+
+Regularizing to Encourage Information Flow
+
+Gradient clipping helps to deal with exploding gradients, but it does not help with
+vanishing gradients. To address vanishing gradients and better capture long-term
+dependencies, we discussed the idea of creating paths in the computational graph of
+the unfolded recurrent architecture along which the product of gradients associated
+with arcs is near 1. One approach to achieve this is with LSTMs and other selfloops and gating mechanisms, described above in section 10.10. Another idea is
+to regularize or constrain the parameters so as to encourage â€œinformation ï¬‚ow.â€?
+In particular, we would like the gradient vector âˆ‡h (t) L being back-propagated to
+415
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+maintain its magnitude, even if the loss function only penalizes the output at the
+end of the sequence. Formally, we want
+(âˆ‡h(t) L)
+
+âˆ‚h (t)
+âˆ‚h(tâˆ’1)
+
+(10.50)
+
+to be as large as
+âˆ‡h(t) L.
+
+(10.51)
+
+With this objective, Pascanu et al. (2013) propose the following regularizer:
+î€Œ
+ï£« î€Œî€Œ
+ï£¶2
+âˆ‚h(t) î€Œ
+î?˜ î€Œ| (âˆ‡ h (t)L) âˆ‚h (tâˆ’1) î€Œ |
+ï£­
+â„¦=
+(10.52)
+âˆ’ 1ï£¸ .
+||âˆ‡
+L|
+|
+(
+t
+)
+h
+t
+
+Computing the gradient of this regularizer may appear diï¬ƒcult, but Pascanu
+et al. (2013) propose an approximation in which we consider the back-propagated
+vectors âˆ‡h (t) L as if they were constants (for the purpose of this regularizer, so
+that there is no need to back-propagate through them). The experiments with
+this regularizer suggest that, if combined with the norm clipping heuristic (which
+handles gradient explosion), the regularizer can considerably increase the span of
+the dependencies that an RNN can learn. Because it keeps the RNN dynamics
+on the edge of explosive gradients, the gradient clipping is particularly important.
+Without gradient clipping, gradient explosion prevents learning from succeeding.
+A key weakness of this approach is that it is not as eï¬€ective as the LSTM for
+tasks where data is abundant, such as language modeling.
+
+10.12
+
+Explicit Memory
+
+Intelligence requires knowledge and acquiring knowledge can be done via learning,
+which has motivated the development of large-scale deep architectures. However,
+there are diï¬€erent kinds of knowledge. Some knowledge can be implicit, subconscious, and diï¬ƒcult to verbalizeâ€”such as how to walk, or how a dog looks
+diï¬€erent from a cat. Other knowledge can be explicit, declarative, and relatively
+straightforward to put into wordsâ€”every day commonsense knowledge, like â€œa cat
+is a kind of animal,â€? or very speciï¬?c facts that you need to know to accomplish
+your current goals, like â€œthe meeting with the sales team is at 3:00 PM in room
+141.â€?
+Neural networks excel at storing implicit knowledge. However, they struggle to
+memorize facts. Stochastic gradient descent requires many presentations of the
+416
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+Memory cells
+
+Reading
+mechanism
+
+Writing
+mechanism
+
+Task network,
+controlling the memory
+
+Figure 10.18: A schematic of an example of a network with an explicit memory, capturing
+some of the key design elements of the neural Turing machine. In this diagram we
+distinguish the â€œrepresentationâ€? part of the model (the â€œtask network,â€? here a recurrent
+net in the bottom) from the â€œmemoryâ€? part of the model (the set of cells), which can
+store facts. The task network learns to â€œcontrolâ€? the memory, deciding where to read from
+and where to write to within the memory (through the reading and writing mechanisms,
+indicated by bold arrows pointing at the reading and writing addresses).
+
+417
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+same input before it can be stored in a neural network parameters, and even then,
+that input will not be stored especially precisely. Graves et al. (2014b) hypothesized
+that this is because neural networks lack the equivalent of the working memory
+system that allows human beings to explicitly hold and manipulate pieces of
+information that are relevant to achieving some goal. Such explicit memory
+components would allow our systems not only to rapidly and â€œintentionallyâ€? store
+and retrieve speciï¬?c facts but also to sequentially reason with them. The need
+for neural networks that can process information in a sequence of steps, changing
+the way the input is fed into the network at each step, has long been recognized
+as important for the ability to reason rather than to make automatic, intuitive
+responses to the input (Hinton, 1990).
+To resolve this diï¬ƒculty, Weston et al. (2014) introduced memory networks
+that include a set of memory cells that can be accessed via an addressing mechanism. Memory networks originally required a supervision signal instructing them
+how to use their memory cells. Graves et al. (2014b) introduced the neural
+Turing machine, which is able to learn to read from and write arbitrary content
+to memory cells without explicit supervision about which actions to undertake,
+and allowed end-to-end training without this supervision signal, via the use of
+a content-based soft attention mechanism (see Bahdanau et al. (2015) and section 12.4.5.1). This soft addressing mechanism has become standard with other
+related architectures emulating algorithmic mechanisms in a way that still allows
+gradient-based optimization (Sukhbaatar et al., 2015; Joulin and Mikolov, 2015;
+Kumar et al., 2015; Vinyals et al., 2015a; Grefenstette et al., 2015).
+Each memory cell can be thought of as an extension of the memory cells in
+LSTMs and GRUs. The diï¬€erence is that the network outputs an internal state
+that chooses which cell to read from or write to, just as memory accesses in a
+digital computer read from or write to a speciï¬?c address.
+It is diï¬ƒcult to optimize functions that produce exact, integer addresses. To
+alleviate this problem, NTMs actually read to or write from many memory cells
+simultaneously. To read, they take a weighted average of many cells. To write, they
+modify multiple cells by diï¬€erent amounts. The coeï¬ƒcients for these operations
+are chosen to be focused on a small number of cells, for example, by producing
+them via a softmax function. Using these weights with non-zero derivatives allows
+the functions controlling access to the memory to be optimized using gradient
+descent. The gradient on these coeï¬ƒcients indicates whether each of them should
+be increased or decreased, but the gradient will typically be large only for those
+memory addresses receiving a large coeï¬ƒcient.
+These memory cells are typically augmented to contain a vector, rather than
+418
+
+CHAPTER 10. SEQUENCE MODELING: RECURRENT AND RECURSIVE NETS
+
+the single scalar stored by an LSTM or GRU memory cell. There are two reasons
+to increase the size of the memory cell. One reason is that we have increased the
+cost of accessing a memory cell. We pay the computational cost of producing a
+coeï¬ƒcient for many cells, but we expect these coeï¬ƒcients to cluster around a small
+number of cells. By reading a vector value, rather than a scalar value, we can
+oï¬€set some of this cost. Another reason to use vector-valued memory cells is that
+they allow for content-based addressing, where the weight used to read to or
+write from a cell is a function of that cell. Vector-valued cells allow us to retrieve a
+complete vector-valued memory if we are able to produce a pattern that matches
+some but not all of its elements. This is analogous to the way that people can
+recall the lyrics of a song based on a few words. We can think of a content-based
+read instruction as saying, â€œRetrieve the lyrics of the song that has the chorus â€˜We
+all live in a yellow submarine.â€™ â€? Content-based addressing is more useful when we
+make the objects to be retrieved largeâ€”if every letter of the song was stored in a
+separate memory cell, we would not be able to ï¬?nd them this way. By comparison,
+location-based addressing is not allowed to refer to the content of the memory.
+We can think of a location-based read instruction as saying â€œRetrieve the lyrics of
+the song in slot 347.â€? Location-based addressing can often be a perfectly sensible
+mechanism even when the memory cells are small.
+If the content of a memory cell is copied (not forgotten) at most time steps, then
+the information it contains can be propagated forward in time and the gradients
+propagated backward in time without either vanishing or exploding.
+The explicit memory approach is illustrated in ï¬?gure 10.18, where we see that
+a â€œtask neural networkâ€? is coupled with a memory. Although

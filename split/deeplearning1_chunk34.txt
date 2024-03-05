@@ -1,0 +1,290 @@
+eries. Alternately, we could imagine that this is a truncated Taylor
+series approximating the cost function of a more sophisticated model. The gradient
+in this setting is given by
+ˆ w) = H (w − w ∗),
+∇w J(
+
+(7.21)
+
+where, again, H is the Hessian matrix of J with respect to w evaluated at w∗.
+Because the L1 penalty does not admit clean algebraic expressions in the case
+of a fully general Hessian, we will also make the further simplifying assumption
+that the Hessian is diagonal, H = diag([H1,1 , . . . , Hn,n ]), where each Hi,i > 0.
+This assumption holds if the data for the linear regression problem has been
+preprocessed to remove all correlation between the input features, which may be
+accomplished using PCA.
+Our quadratic approximation of the L1 regularized objective function decomposes into a sum over the parameters:
+
+�?� 1
+Ĵ (w; X , y) = J (w∗; X , y) +
+H i,i(wi − w∗i )2 + α|wi| .
+(7.22)
+2
+i
+
+The problem of minimizing this approximate cost function has an analytical solution
+(for each dimension i), with the following form:
+
+
+α
+w i = sign(wi∗ ) max |w ∗i | −
+,0 .
+(7.23)
+Hi,i
+235
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+Consider the situation where w∗i > 0 for all i. There are two possible outcomes:
+1. The case where w ∗i ≤ Hαi,i . Here the optimal value of wi under the regularized
+objective is simply w i = 0. This occurs because the contribution of J (w; X , y)
+to the regularized objective J˜(w; X , y) is overwhelmed—in direction i—by
+the L 1 regularization which pushes the value of wi to zero.
+2. The case where w ∗i > Hαi,i . In this case, the regularization does not move the
+optimal value of wi to zero but instead it just shifts it in that direction by a
+distance equal to Hαi,i .
+A similar process happens when wi∗ < 0, but with the L1 penalty making wi less
+negative by Hαi,i , or 0.
+In comparison to L 2 regularization, L1 regularization results in a solution that
+is more sparse. Sparsity in this context refers to the fact that some parameters
+have an optimal value of zero. The sparsity of L1 regularization is a qualitatively
+diﬀerent behavior than arises with L 2 regularization. Equation 7.13 gave the
+solution w̃ for L2 regularization. If we revisit that equation using the assumption
+of a diagonal and positive de�?nite Hessian H that we introduced for our analysis of
+H
+L1 regularization, we �?nd that w̃i = H i,ii,i+α w∗i . If w∗i was nonzero, then w̃i remains
+nonzero. This demonstrates that L2 regularization does not cause the parameters
+to become sparse, while L1 regularization may do so for large enough α.
+
+The sparsity property induced by L 1 regularization has been used extensively
+as a feature selection mechanism. Feature selection simpli�?es a machine learning
+problem by choosing which subset of the available features should be used. In
+particular, the well known LASSO (Tibshirani, 1995) (least absolute shrinkage and
+selection operator) model integrates an L1 penalty with a linear model and a least
+squares cost function. The L 1 penalty causes a subset of the weights to become
+zero, suggesting that the corresponding features may safely be discarded.
+In section 5.6.1, we saw that many regularization strategies can be interpreted
+as MAP Bayesian inference, and that in particular, L2 regularization is equivalent
+to MAP Bayesian inference with a Gaussian prior on the weights. For L 1 regu�??
+larization, the penalty αΩ(w) = α i |wi | used to regularize a cost function is
+equivalent to the log-prior term that is maximized by MAP Bayesian inference
+when the prior is an isotropic Laplace distribution (equation 3.26) over w ∈ R n:
+log p(w) =
+
+�?�
+i
+
+log Laplace(w i; 0,
+
+1
+) = −α||w||1 + n log α − n log 2.
+α
+236
+
+(7.24)
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+From the point of view of learning via maximization with respect to w, we can
+ignore the log α − log 2 terms because they do not depend on w.
+
+7.2
+
+Norm Penalties as Constrained Optimization
+
+Consider the cost function regularized by a parameter norm penalty:
+J˜(θ; X , y) = J (θ; X , y) + αΩ(θ).
+
+(7.25)
+
+Recall from section 4.4 that we can minimize a function subject to constraints
+by constructing a generalized Lagrange function, consisting of the original objective
+function plus a set of penalties. Each penalty is a product between a coeﬃcient,
+called a Karush–Kuhn–Tucker (KKT) multiplier, and a function representing
+whether the constraint is satis�?ed. If we wanted to constrain Ω(θ) to be less than
+some constant k, we could construct a generalized Lagrange function
+L(θ, α; X , y) = J (θ; X , y) + α(Ω(θ) − k).
+
+(7.26)
+
+The solution to the constrained problem is given by
+θ∗ = arg min max L(θ, α).
+θ
+
+α,α≥0
+
+(7.27)
+
+As described in section 4.4, solving this problem requires modifying both θ
+and α . Section 4.5 provides a worked example of linear regression with an L 2
+constraint. Many diﬀerent procedures are possible—some may use gradient descent,
+while others may use analytical solutions for where the gradient is zero—but in all
+procedures α must increase whenever Ω(θ) > k and decrease whenever Ω(θ) < k.
+All positive α encourage Ω(θ) to shrink. The optimal value α ∗ will encourage Ω(θ)
+to shrink, but not so strongly to make Ω(θ) become less than k.
+To gain some insight into the eﬀect of the constraint, we can �?x α ∗ and view
+the problem as just a function of θ :
+θ ∗ = arg min L(θ, α∗) = arg min J (θ; X , y) + α ∗Ω(θ).
+θ
+
+(7.28)
+
+θ
+
+˜
+This is exactly the same as the regularized training problem of minimizing J.
+We can thus think of a parameter norm penalty as imposing a constraint on the
+weights. If Ω is the L2 norm, then the weights are constrained to lie in an L 2
+ball. If Ω is the L1 norm, then the weights are constrained to lie in a region of
+237
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+limited L1 norm. Usually we do not know the size of the constraint region that we
+impose by using weight decay with coeﬃcient α∗ because the value of α∗ does not
+directly tell us the value of k. In principle, one can solve for k, but the relationship
+between k and α∗ depends on the form of J. While we do not know the exact size
+of the constraint region, we can control it roughly by increasing or decreasing α
+in order to grow or shrink the constraint region. Larger α will result in a smaller
+constraint region. Smaller α will result in a larger constraint region.
+Sometimes we may wish to use explicit constraints rather than penalties. As
+described in section 4.4, we can modify algorithms such as stochastic gradient
+descent to take a step downhill on J (θ) and then project θ back to the nearest
+point that satis�?es Ω(θ) < k. This can be useful if we have an idea of what value
+of k is appropriate and do not want to spend time searching for the value of α that
+corresponds to this k.
+Another reason to use explicit constraints and reprojection rather than enforcing
+constraints with penalties is that penalties can cause non-convex optimization
+procedures to get stuck in local minima corresponding to small θ. When training
+neural networks, this usually manifests as neural networks that train with several
+“dead units.�? These are units that do not contribute much to the behavior of the
+function learned by the network because the weights going into or out of them are
+all very small. When training with a penalty on the norm of the weights, these
+con�?gurations can be locally optimal, even if it is possible to signi�?cantly reduce
+J by making the weights larger. Explicit constraints implemented by re-projection
+can work much better in these cases because they do not encourage the weights
+to approach the origin. Explicit constraints implemented by re-projection only
+have an eﬀect when the weights become large and attempt to leave the constraint
+region.
+Finally, explicit constraints with reprojection can be useful because they impose
+some stability on the optimization procedure. When using high learning rates, it
+is possible to encounter a positive feedback loop in which large weights induce
+large gradients which then induce a large update to the weights. If these updates
+consistently increase the size of the weights, then θ rapidly moves away from
+the origin until numerical overﬂow occurs. Explicit constraints with reprojection
+prevent this feedback loop from continuing to increase the magnitude of the weights
+without bound. Hinton et al. (2012c) recommend using constraints combined with
+a high learning rate to allow rapid exploration of parameter space while maintaining
+some stability.
+In particular, Hinton et al. (2012c) recommend a strategy introduced by Srebro
+and Shraibman (2005): constraining the norm of each column of the weight matrix
+238
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+of a neural net layer, rather than constraining the Frobenius norm of the entire
+weight matrix. Constraining the norm of each column separately prevents any one
+hidden unit from having very large weights. If we converted this constraint into a
+penalty in a Lagrange function, it would be similar to L2 weight decay but with a
+separate KKT multiplier for the weights of each hidden unit. Each of these KKT
+multipliers would be dynamically updated separately to make each hidden unit
+obey the constraint. In practice, column norm limitation is always implemented as
+an explicit constraint with reprojection.
+
+7.3
+
+Regularization and Under-Constrained Problems
+
+In some cases, regularization is necessary for machine learning problems to be properly de�?ned. Many linear models in machine learning, including linear regression
+and PCA, depend on inverting the matrix X X. This is not possible whenever
+X X is singular. This matrix can be singular whenever the data generating distribution truly has no variance in some direction, or when no variance is observed in
+some direction because there are fewer examples (rows of X) than input features
+(columns of X ). In this case, many forms of regularization correspond to inverting
+X X + αI instead. This regularized matrix is guaranteed to be invertible.
+These linear problems have closed form solutions when the relevant matrix
+is invertible. It is also possible for a problem with no closed form solution to be
+underdetermined. An example is logistic regression applied to a problem where
+the classes are linearly separable. If a weight vector w is able to achieve perfect
+classi�?cation, then 2w will also achieve perfect classi�?cation and higher likelihood.
+An iterative optimization procedure like stochastic gradient descent will continually
+increase the magnitude of w and, in theory, will never halt. In practice, a numerical
+implementation of gradient descent will eventually reach suﬃciently large weights
+to cause numerical overﬂow, at which point its behavior will depend on how the
+programmer has decided to handle values that are not real numbers.
+Most forms of regularization are able to guarantee the convergence of iterative
+methods applied to underdetermined problems. For example, weight decay will
+cause gradient descent to quit increasing the magnitude of the weights when the
+slope of the likelihood is equal to the weight decay coeﬃcient.
+The idea of using regularization to solve underdetermined problems extends
+beyond machine learning. The same idea is useful for several basic linear algebra
+problems.
+As we saw in section 2.9, we can solve underdetermined linear equations using
+239
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+the Moore-Penrose pseudoinverse. Recall that one de�?nition of the pseudoinverse
+X+ of a matrix X is
+X+ = lim (X  X + αI )−1 X .
+α0
+
+(7.29)
+
+We can now recognize equation 7.29 as performing linear regression with weight
+decay. Speci�?cally, equation 7.29 is the limit of equation 7.17 as the regularization
+coeﬃcient shrinks to zero. We can thus interpret the pseudoinverse as stabilizing
+underdetermined problems using regularization.
+
+7.4
+
+Dataset Augmentation
+
+The best way to make a machine learning model generalize better is to train it on
+more data. Of course, in practice, the amount of data we have is limited. One way
+to get around this problem is to create fake data and add it to the training set.
+For some machine learning tasks, it is reasonably straightforward to create new
+fake data.
+This approach is easiest for classi�?cation. A classi�?er needs to take a complicated, high dimensional input x and summarize it with a single category identity y.
+This means that the main task facing a classi�?er is to be invariant to a wide variety
+of transformations. We can generate new (x, y) pairs easily just by transforming
+the x inputs in our training set.
+This approach is not as readily applicable to many other tasks. For example, it
+is diﬃcult to generate new fake data for a density estimation task unless we have
+already solved the density estimation problem.
+Dataset augmentation has been a particularly eﬀective technique for a speci�?c
+classi�?cation problem: object recognition. Images are high dimensional and include
+an enormous variety of factors of variation, many of which can be easily simulated.
+Operations like translating the training images a few pixels in each direction can
+often greatly improve generalization, even if the model has already been designed to
+be partially translation invariant by using the convolution and pooling techniques
+described in chapter 9. Many other operations such as rotating the image or scaling
+the image have also proven quite eﬀective.
+One must be careful not to apply transformations that would change the correct
+class. For example, optical character recognition tasks require recognizing the
+diﬀerence between ‘b’ and ‘d’ and the diﬀerence between ‘6’ and ‘9’, so horizontal
+ﬂips and 180◦ rotations are not appropriate ways of augmenting datasets for these
+tasks.
+240
+
+CHAPTER 7. REGULARIZATION FOR DEEP LEARNING
+
+There are also transformations that we would like our classi�?ers to be invariant
+to, but which are not easy to perform. For example, out-of-plane rotation can not
+be implemented as a simple geometric operation on the input pixels.
+Dataset augmentation is eﬀective for speech recognition tasks as well (Jaitly
+and Hinton, 2013).
+Injecting noise in the input to a neural network (Sietsma and Dow, 1991)
+can also be seen as a form of data augmentation. For many classi�?cation and
+even some regression tasks, the task should still be possible to solve even if small
+random noise is added to the input. Neural networks prove not to be very robust
+to noise, however (Tang and Eliasmith, 2010). One way to improve the robustness
+of neural networks is simply to train them with random noise applied to their
+inputs. Input noise injection is part of some unsupervised learning algorithms such
+as the denoising autoencoder (Vincent et al., 2008). Noise injection also works
+when the noise is applied to the hidden units, which can be seen as doing dataset
+augmentation at multiple levels of abstraction. Poole et al. (2014) recently showed
+that this approach can be highly eﬀective provided that the magnitude of the
+noise is carefully tuned. Dropout, a powerful regularization strategy that will be
+described in section 7.12, can be seen as a process of constructing new inputs by
+multiplying by noise.
+When comparing machine learning ben

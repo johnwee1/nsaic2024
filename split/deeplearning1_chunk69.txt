@@ -1,0 +1,312 @@
+esponds to the
+preï¬?x (b0 (w4 ) = 1, b1 (w4 ) = 0), and the probability of w4 can be decomposed as follows:
+P (y = w4 ) = P (b0 = 1, b1 = 0, b2 = 0)
+= P (b0 = 1)P (b1 = 0 | b0 = 1)P (b2 = 0 | b0 = 1, b1 = 0).
+
+468
+
+(12.11)
+(12.12)
+
+CHAPTER 12. APPLICATIONS
+
+practice, the computational savings are typically not worth the eï¬€ort because the
+computation of the output probabilities is only one part of the total computation
+in the neural language model. For example, suppose there are l fully connected
+hidden layers of width n h . Let nb be the weighted average of the number of bits
+required to identify a word, with the weighting given by the frequency of these
+words. In this example, the number of operations needed to compute the hidden
+activations grows as as O(ln2h ) while the output computations grow as O(nh nb ).
+As long as nb â‰¤ ln h, we can reduce computation more by shrinking nh than by
+shrinking nb . Indeed, nb is often small. Because the size of the vocabulary rarely
+exceeds a million words and log2 (106) â‰ˆ 20, it is possible to reduce nb to about 20,
+but nh is often much larger, around 103 or more. Rather than carefully optimizing
+a tree with a branching factor
+î?° of 2, one can instead deï¬?ne a tree with depth two
+and a branching factor of |V|. Such a tree corresponds to simply deï¬?ning a set
+of mutually exclusive word classes. The simple approach based on a tree of depth
+two captures most of the computational beneï¬?t of the hierarchical strategy.
+One question that remains somewhat open is how to best deï¬?ne these word
+classes, or how to deï¬?ne the word hierarchy in general. Early work used existing
+hierarchies (Morin and Bengio, 2005) but the hierarchy can also be learned, ideally
+jointly with the neural language model. Learning the hierarchy is diï¬ƒcult. An exact
+optimization of the log-likelihood appears intractable because the choice of a word
+hierarchy is a discrete one, not amenable to gradient-based optimization. However,
+one could use discrete optimization to approximately optimize the partition of
+words into word classes.
+An important advantage of the hierarchical softmax is that it brings computational beneï¬?ts both at training time and at test time, if at test time we want to
+compute the probability of speciï¬?c words.
+Of course, computing the probability of all |V| words will remain expensive
+even with the hierarchical softmax. Another important operation is selecting the
+most likely word in a given context. Unfortunately the tree structure does not
+provide an eï¬ƒcient and exact solution to this problem.
+A disadvantage is that in practice the hierarchical softmax tends to give worse
+test results than sampling-based methods we will describe next. This may be due
+to a poor choice of word classes.
+12.4.3.3
+
+Importance Sampling
+
+One way to speed up the training of neural language models is to avoid explicitly
+computing the contribution of the gradient from all of the words that do not appear
+469
+
+CHAPTER 12. APPLICATIONS
+
+in the next position. Every incorrect word should have low probability under the
+model. It can be computationally costly to enumerate all of these words. Instead,
+it is possible to sample only a subset of the words. Using the notation introduced
+in equation 12.8, the gradient can be written as follows:
+âˆ‚ log P (y | C )
+âˆ‚ log softmaxy (a)
+=
+âˆ‚Î¸
+âˆ‚Î¸
+âˆ‚
+eay
+=
+log î?? a
+i
+âˆ‚Î¸
+ie
+î?˜
+âˆ‚
+=
+(a y âˆ’ log
+ea i )
+âˆ‚Î¸
+i
+î?˜
+âˆ‚ay
+âˆ‚a
+=
+âˆ’
+P (y = i | C ) i
+âˆ‚Î¸
+âˆ‚Î¸
+
+(12.13)
+(12.14)
+(12.15)
+(12.16)
+
+i
+
+where a is the vector of pre-softmax activations (or scores), with one element
+per word. The ï¬?rst term is the positive phase term (pushing ay up) while the
+second term is the negative phase term (pushing ai down for all i, with weight
+P (i | C ). Since the negative phase term is an expectation, we can estimate it with
+a Monte Carlo sample. However, that would require sampling from the model itself.
+Sampling from the model requires computing P (i | C ) for all i in the vocabulary,
+which is precisely what we are trying to avoid.
+Instead of sampling from the model, one can sample from another distribution,
+called the proposal distribution (denoted q ), and use appropriate weights to correct
+for the bias introduced by sampling from the wrong distribution (Bengio and
+SÃ©nÃ©cal, 2003; Bengio and SÃ©nÃ©cal, 2008). This is an application of a more general
+technique called importance sampling, which will be described in more detail
+in section 17.2. Unfortunately, even exact importance sampling is not eï¬ƒcient
+because it requires computing weights pi/qi , where pi = P (i | C ), which can
+only be computed if all the scores ai are computed. The solution adopted for
+this application is called biased importance sampling, where the importance
+weights are normalized to sum to 1. When negative word ni is sampled, the
+associated gradient is weighted by
+p /q
+wi = î?? N ni n i .
+j=1 pnj /qn j
+
+(12.17)
+
+These weights are used to give the appropriate importance to the m negative
+samples from q used to form the estimated negative phase contribution to the
+
+470
+
+CHAPTER 12. APPLICATIONS
+
+gradient:
+|V |
+î?˜
+
+m
+âˆ‚a i
+1 î?˜ âˆ‚a ni
+wi
+.
+P (i | C )
+â‰ˆ
+âˆ‚Î¸
+m i=1
+âˆ‚Î¸
+i=1
+
+(12.18)
+
+A unigram or a bigram distribution works well as the proposal distribution q . It is
+easy to estimate the parameters of such a distribution from data. After estimating
+the parameters, it is also possible to sample from such a distribution very eï¬ƒciently.
+Importance sampling is not only useful for speeding up models with large
+softmax outputs. More generally, it is useful for accelerating training with large
+sparse output layers, where the output is a sparse vector rather than a 1-of-n
+choice. An example is a bag of words. A bag of words is a sparse vector v
+where vi indicates the presence or absence of word i from the vocabulary in the
+document. Alternately, v i can indicate the number of times that word i appears.
+Machine learning models that emit such sparse vectors can be expensive to train
+for a variety of reasons. Early in learning, the model may not actually choose to
+make the output truly sparse. Moreover, the loss function we use for training might
+most naturally be described in terms of comparing every element of the output to
+every element of the target. This means that it is not always clear that there is a
+computational beneï¬?t to using sparse outputs, because the model may choose to
+make the majority of the output non-zero and all of these non-zero values need to
+be compared to the corresponding training target, even if the training target is zero.
+Dauphin et al. (2011) demonstrated that such models can be accelerated using
+importance sampling. The eï¬ƒcient algorithm minimizes the loss reconstruction for
+the â€œpositive wordsâ€? (those that are non-zero in the target) and an equal number
+of â€œnegative words.â€? The negative words are chosen randomly, using a heuristic to
+sample words that are more likely to be mistaken. The bias introduced by this
+heuristic oversampling can then be corrected using importance weights.
+In all of these cases, the computational complexity of gradient estimation for
+the output layer is reduced to be proportional to the number of negative samples
+rather than proportional to the size of the output vector.
+12.4.3.4
+
+Noise-Contrastive Estimation and Ranking Loss
+
+Other approaches based on sampling have been proposed to reduce the computational cost of training neural language models with large vocabularies. An early
+example is the ranking loss proposed by Collobert and Weston (2008a), which
+views the output of the neural language model for each word as a score and tries to
+make the score of the correct word ay be ranked high in comparison to the other
+471
+
+CHAPTER 12. APPLICATIONS
+
+scores ai . The ranking loss proposed then is
+î?˜
+L=
+max(0, 1 âˆ’ ay + ai).
+
+(12.19)
+
+i
+
+The gradient is zero for the i-th term if the score of the observed word, a y, is
+greater than the score of the negative word ai by a margin of 1. One issue with
+this criterion is that it does not provide estimated conditional probabilities, which
+are useful in some applications, including speech recognition and text generation
+(including conditional text generation tasks such as translation).
+A more recently used training objective for neural language model is noisecontrastive estimation, which is introduced in section 18.6. This approach has
+been successfully applied to neural language models (Mnih and Teh, 2012; Mnih
+and Kavukcuoglu, 2013).
+
+12.4.4
+
+Combining Neural Language Models with n-grams
+
+A major advantage of n-gram models over neural networks is that n-gram models
+achieve high model capacity (by storing the frequencies of very many tuples)
+while requiring very little computation to process an example (by looking up
+only a few tuples that match the current context). If we use hash tables or trees
+to access the counts, the computation used for n-grams is almost independent
+of capacity. In comparison, doubling a neural networkâ€™s number of parameters
+typically also roughly doubles its computation time. Exceptions include models
+that avoid using all parameters on each pass. Embedding layers index only a single
+embedding in each pass, so we can increase the vocabulary size without increasing
+the computation time per example. Some other models, such as tiled convolutional
+networks, can add parameters while reducing the degree of parameter sharing
+in order to maintain the same amount of computation. However, typical neural
+network layers based on matrix multiplication use an amount of computation
+proportional to the number of parameters.
+One easy way to add capacity is thus to combine both approaches in an ensemble
+consisting of a neural language model and an n-gram language model (Bengio
+et al., 2001, 2003). As with any ensemble, this technique can reduce test error if
+the ensemble members make independent mistakes. The ï¬?eld of ensemble learning
+provides many ways of combining the ensemble membersâ€™ predictions, including
+uniform weighting and weights chosen on a validation set. Mikolov et al. (2011a)
+extended the ensemble to include not just two models but a large array of models.
+It is also possible to pair a neural network with a maximum entropy model and
+train both jointly (Mikolov et al., 2011b). This approach can be viewed as training
+472
+
+CHAPTER 12. APPLICATIONS
+
+a neural network with an extra set of inputs that are connected directly to the
+output, and not connected to any other part of the model. The extra inputs are
+indicators for the presence of particular n-grams in the input context, so these
+variables are very high-dimensional and very sparse. The increase in model capacity
+is hugeâ€”the new portion of the architecture contains up to |sV |n parametersâ€”but
+the amount of added computation needed to process an input is minimal because
+the extra inputs are very sparse.
+
+12.4.5
+
+Neural Machine Translation
+
+Machine translation is the task of reading a sentence in one natural language and
+emitting a sentence with the equivalent meaning in another language. Machine
+translation systems often involve many components. At a high level, there is
+often one component that proposes many candidate translations. Many of these
+translations will not be grammatical due to diï¬€erences between the languages. For
+example, many languages put adjectives after nouns, so when translated to English
+directly they yield phrases such as â€œapple red.â€? The proposal mechanism suggests
+many variants of the suggested translation, ideally including â€œred apple.â€? A second
+component of the translation system, a language model, evaluates the proposed
+translations, and can score â€œred appleâ€? as better than â€œapple red.â€?
+The earliest use of neural networks for machine translation was to upgrade the
+language model of a translation system by using a neural language model (Schwenk
+et al., 2006; Schwenk, 2010). Previously, most machine translation systems had
+used an n-gram model for this component. The n-gram based models used for
+machine translation include not just traditional back-oï¬€ n-gram models (Jelinek
+and Mercer, 1980; Katz, 1987; Chen and Goodman, 1999) but also maximum
+entropy language models (Berger et al., 1996), in which an aï¬ƒne-softmax layer
+predicts the next word given the presence of frequent n-grams in the context.
+Traditional language models simply report the probability of a natural language
+sentence. Because machine translation involves producing an output sentence given
+an input sentence, it makes sense to extend the natural language model to be
+conditional. As described in section 6.2.1.1, it is straightforward to extend a model
+that deï¬?nes a marginal distribution over some variable to deï¬?ne a conditional
+distribution over that variable given a context C , where C might be a single variable
+or a list of variables. Devlin et al. (2014) beat the state-of-the-art in some statistical
+machine translation benchmarks by using an MLP to score a phrase t1, t2, . . . , tk
+in the target language given a phrase s1 , s2, . . . , s n in the source language. The
+MLP estimates P (t1 , t2 , . . . , tk | s1 , s2 , . . . , sn ). The estimate formed by this MLP
+replaces the estimate provided by conditional n-gram models.
+473
+
+CHAPTER 12. APPLICATIONS
+
+Output object (English
+sentence)
+Decoder
+
+Intermediate, semantic representation
+
+Encoder
+
+Source object (French sentence or image)
+
+Figure 12.5: The encoder-decoder architecture to map back and forth between a surface
+representation (such as a sequence of words or an image) and a semantic representation.
+By using the output of an encoder of data from one modality (such as the encoder mapping
+from French sentences to hidden representations capturing the meaning of sentences) as
+the input to a decoder for another modality (such as the decoder mapping from hidden
+representations capturing the meaning of sentences to English), we can train systems that
+translate from one modality to another. This idea has been applied successfully not just
+to machine translation but also to caption generation from images.
+
+A drawback of the MLP-based approach is that it requires the sequences to be
+preprocessed to be of ï¬?xed length. To make the translation more ï¬‚exible, we would
+like to use a model that can accommodate variable length inputs and variable
+length outputs. An RNN provides this ability. Section 10.2.4 describes several ways
+of constructing an RNN that represents a conditional distribution over a sequence
+given some input, and section 10.4 describes how to accomplish this conditioning
+when the input is a sequence. In all cases, one model ï¬?rst reads the input sequence
+and emits a data structure that summarizes the input sequence. We call this
+summary the â€œcontextâ€? C . The context C may be a list of vectors, or it may be a
+vector or tensor. The model that reads the input to produce C may be an RNN
+(Cho et al., 2014a; Sutskever et al., 2014; Jean et al., 2014) or a convolutional
+network (Kalchbrenner and Blunsom, 2013). A second model, usually an RNN,
+then reads the context C and generates a sentence in the target language. This
+general idea of an encoder-decoder framework for machine translation is illustrated
+in ï¬?gure 12.5.
+In order to generate an entire sentence conditioned on the source sentence, the
+model must have a way to represent the entire source sentence. Earlier models
+were only able to represent individual words or phrases. From 

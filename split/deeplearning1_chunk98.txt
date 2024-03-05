@@ -1,0 +1,397 @@
+tion over their hidden unitsâ€”while complicatedâ€”is easy to approximate
+with a variational approximation (as discussed in section 19.4), speciï¬?cally a
+mean ï¬?eld approximation. The mean ï¬?eld approximation is a simple form of
+variational inference, where we restrict the approximating distribution to fully
+factorial distributions. In the context of DBMs, the mean ï¬?eld equations capture
+the bidirectional interactions between layers. In this section we derive the iterative
+approximate inference procedure originally introduced in Salakhutdinov and Hinton
+(2009a).
+In variational approximations to inference, we approach the task of approxi666
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+mating a particular target distributionâ€”in our case, the posterior distribution over
+the hidden units given the visible unitsâ€”by some reasonably simple family of distributions. In the case of the mean ï¬?eld approximation, the approximating family
+is the set of distributions where the hidden units are conditionally independent.
+We now develop the mean ï¬?eld approach for the example with two hidden
+layers. Let Q (h(1) , h(2) | v) be the approximation of P (h(1) , h (2) | v). The mean
+ï¬?eld assumption implies that
+î?™
+î?™
+(1)
+(2)
+Q(h(1) , h(2) | v) =
+Q(hj | v)
+Q(hk | v).
+(20.29)
+j
+
+k
+
+The mean ï¬?eld approximation attempts to ï¬?nd a member of this family of
+distributions that best ï¬?ts the true posterior P (h(1) , h(2) | v). Importantly, the
+inference process must be run again to ï¬?nd a diï¬€erent distribution Q every time
+we use a new value of v.
+One can conceive of many ways of measuring how well Q(h | v ) ï¬?ts P ( h | v).
+The mean ï¬?eld approach is to minimize
+î€ 
+î€¡
+(1)
+(2)
+î?˜
+Q(h , h | v)
+Q(h(1) , h (2) | v) log
+.
+(20.30)
+KL(Qî?«P ) =
+(1) , h(2) | v)
+P
+(h
+h
+In general, we do not have to provide a parametric form of the approximating
+distribution beyond enforcing the independence assumptions. The variational
+approximation procedure is generally able to recover a functional form of the
+approximate distribution. However, in the case of a mean ï¬?eld assumption on
+binary hidden units (the case we are developing here) there is no loss of generality
+resulting from ï¬?xing a parametrization of the model in advance.
+We parametrize Q as a product of Bernoulli distributions, that is we associate
+the probability of each element of h(1) with a parameter. Speciï¬?cally, for each j,
+(1)
+(1)
+(1)
+(2)
+(2)
+hÌ‚j = Q(hj = 1 | v ), where hÌ‚j âˆˆ [0, 1] and for each k , hÌ‚ k = Q(h k = 1 | v),
+(2)
+
+where hÌ‚ k âˆˆ [0, 1]. Thus we have the following approximation to the posterior:
+î?™
+î?™
+(1)
+(2)
+(20.31)
+Q(h(1), h (2) | v) =
+Q(h j | v) Q(h k | v)
+j
+
+=
+
+î?™
+j
+
+k
+
+(1) h(1)
+j
+
+(hÌ‚ j )
+
+(1)
+(1)
+(1 âˆ’ hÌ‚j )(1âˆ’h j ) Ã—
+
+î?™ (2) (2)
+(2)
+(2)
+(hÌ‚k )h k (1 âˆ’ hÌ‚ k )(1âˆ’h k ).
+k
+
+(20.32)
+
+Of course, for DBMs with more layers the approximate posterior parametrization
+can be extended in the obvious way, exploiting the bipartite structure of the graph
+667
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+to update all of the even layers simultaneously and then to update all of the odd
+layers simultaneously, following the same schedule as Gibbs sampling.
+Now that we have speciï¬?ed our family of approximating distributions Q, it
+remains to specify a procedure for choosing the member of this family that best
+ï¬?ts P. The most straightforward way to do this is to use the mean ï¬?eld equations
+speciï¬?ed by equation 19.56. These equations were derived by solving for where the
+derivatives of the variational lower bound are zero. They describe in an abstract
+manner how to optimize the variational lower bound for any model, simply by
+taking expectations with respect to Q.
+Applying these general equations, we obtain the update rules (again, ignoring
+bias terms):
+î€ 
+î€¡
+î?˜
+î?˜
+(1)
+(2) (2)
+hÌ‚(1)
+v iWi,j
++
+Wj,k
+, âˆ€j
+(20.33)
+î€° hÌ‚ k î€°
+j =Ïƒ
+(2)
+
+ï£«
+
+hÌ‚k = Ïƒ ï£­
+
+i
+
+î?˜
+jî€°
+
+kî€°
+
+ï£¶
+
+(2) (1)
+
+Wjî€° ,k hÌ‚ j î€° ï£¸ , âˆ€k.
+
+(20.34)
+
+At a ï¬?xed point of this system of equations, we have a local maximum of the
+variational lower bound L(Q). Thus these ï¬?xed point update equations deï¬?ne an
+(1)
+iterative algorithm where we alternate updates of hÌ‚ j (using equation 20.33) and
+updates of hÌ‚(2)
+k (using equation 20.34). On small problems such as MNIST, as few
+as ten iterations can be suï¬ƒcient to ï¬?nd an approximate positive phase gradient
+for learning, and ï¬?fty usually suï¬ƒce to obtain a high quality representation of
+a single speciï¬?c example to be used for high-accuracy classiï¬?cation. Extending
+approximate variational inference to deeper DBMs is straightforward.
+
+20.4.3
+
+DBM Parameter Learning
+
+Learning in the DBM must confront both the challenge of an intractable partition
+function, using the techniques from chapter 18, and the challenge of an intractable
+posterior distribution, using the techniques from chapter 19.
+As described in section 20.4.2, variational inference allows the construction of
+a distribution Q(h | v) that approximates the intractable P (h | v). Learning then
+proceeds by maximizing L(v, Q, Î¸ ), the variational lower bound on the intractable
+log-likelihood, log P (v; Î¸ ).
+
+668
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+For a deep Boltzmann machine with two hidden layers, L is given by
+î?˜î?˜
+î?˜ î?˜ (1) (2) (2)
+(1) (1)
+vi Wi,jî€° hÌ‚j î€° +
+hÌ‚j î€° W jî€° ,kî€° hÌ‚kî€° âˆ’ log Z (Î¸) + H(Q). (20.35)
+L(Q, Î¸) =
+i
+
+jî€°
+
+jî€°
+
+kî€°
+
+This expression still contains the log partition function, log Z(Î¸). Because a deep
+Boltzmann machine contains restricted Boltzmann machines as components, the
+hardness results for computing the partition function and sampling that apply to
+restricted Boltzmann machines also apply to deep Boltzmann machines. This means
+that evaluating the probability mass function of a Boltzmann machine requires
+approximate methods such as annealed importance sampling. Likewise, training
+the model requires approximations to the gradient of the log partition function. See
+chapter 18 for a general description of these methods. DBMs are typically trained
+using stochastic maximum likelihood. Many of the other techniques described in
+chapter 18 are not applicable. Techniques such as pseudolikelihood require the
+ability to evaluate the unnormalized probabilities, rather than merely obtain a
+variational lower bound on them. Contrastive divergence is slow for deep Boltzmann
+machines because they do not allow eï¬ƒcient sampling of the hidden units given the
+visible unitsâ€”instead, contrastive divergence would require burning in a Markov
+chain every time a new negative phase sample is needed.
+The non-variational version of stochastic maximum likelihood algorithm was
+discussed earlier, in section 18.2. Variational stochastic maximum likelihood as
+applied to the DBM is given in algorithm 20.1. Recall that we describe a simpliï¬?ed
+varient of the DBM that lacks bias parameters; including them is trivial.
+
+20.4.4
+
+Layer-Wise Pretraining
+
+Unfortunately, training a DBM using stochastic maximum likelihood (as described
+above) from a random initialization usually results in failure. In some cases, the
+model fails to learn to represent the distribution adequately. In other cases, the
+DBM may represent the distribution well, but with no higher likelihood than could
+be obtained with just an RBM. A DBM with very small weights in all but the ï¬?rst
+layer represents approximately the same distribution as an RBM.
+Various techniques that permit joint training have been developed and are
+described in section 20.4.5. However, the original and most popular method for
+overcoming the joint training problem of DBMs is greedy layer-wise pretraining.
+In this method, each layer of the DBM is trained in isolation as an RBM. The
+ï¬?rst layer is trained to model the input data. Each subsequent RBM is trained to
+model samples from the previous RBMâ€™s posterior distribution. After all of the
+669
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+Algorithm 20.1 The variational stochastic maximum likelihood algorithm for
+training a DBM with two hidden layers.
+Set î€?, the step size, to a small positive number
+Set k, the number of Gibbs steps, high enough to allow a Markov chain of
+p(v, h(1) , h(2) ; Î¸ + î€?âˆ†Î¸ ) to burn in, starting from samples from p(v, h(1) , h(2) ; Î¸).
+Initialize three matrices, VÌƒ , HÌƒ (1) and HÌƒ (2) each with m rows set to random
+values (e.g., from Bernoulli distributions, possibly with marginals matched to
+the modelâ€™s marginals).
+while not converged (learning loop) do
+Sample a minibatch of m examples from the training data and arrange them
+as the rows of a design matrix V .
+Initialize matrices HÌ‚ (1) and HÌ‚ (2), possibly to the modelâ€™s marginals.
+while not converged
+(mean ï¬?eld inference
+loop) do
+î€?
+î€‘
+HÌ‚ (1) â†? Ïƒ V W (1) + HÌ‚(2) W (2)î€¾ .
+î€?
+î€‘
+HÌ‚ (2) â†? Ïƒ HÌ‚ (1) W (2) .
+end while
+1 V î€¾HÌ‚ (1)
+âˆ†W (1) â†? m
+1
+âˆ†W (2) â†? m
+HÌ‚ (1) î€¾ HÌ‚(2)
+for l = 1 to k (Gibbs sampling) do
+Gibbs block 1:
+
+î€’
+î€?
+î€‘ î€“
+(1)
+(1) î€¾
+.
+âˆ€i, j, VÌƒ i,j sampled from P (VÌƒ i,j = 1) = Ïƒ Wj,: HÌƒi,:
+î€?
+î€‘
+(2)
+(2)
+(1)
+(2)
+âˆ€i, j, HÌƒi,j sampled from P ( HÌƒi,j = 1) = Ïƒ HÌƒ i,: W :,j .
+Gibbs block 2:
+î€?
+î€‘
+(1)
+(1)
+(1)
+(2)
+(2)î€¾
+.
+âˆ€i, j, HÌƒi,j sampled from P ( HÌƒi,j = 1) = Ïƒ VÌƒi,: W:,j + HÌƒ i,: W j,:
+end for
+âˆ†W (1) â†? âˆ† W (1) âˆ’ m1 V î€¾ HÌƒ (1)
+âˆ†W (2) â†? âˆ† W (2) âˆ’ m1 HÌƒ (1)î€¾ HÌƒ (2)
+W (1) â†? W (1) + î€?âˆ†W (1) (this is a cartoon illustration, in practice use a more
+eï¬€ective algorithm, such as momentum with a decaying learning rate)
+W (2) â†? W (2) + î€?âˆ†W (2)
+end while
+
+670
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+RBMs have been trained in this way, they can be combined to form a DBM. The
+DBM may then be trained with PCD. Typically PCD training will make only a
+small change in the modelâ€™s parameters and its performance as measured by the
+log-likelihood it assigns to the data, or its ability to classify inputs. See ï¬?gure 20.4
+for an illustration of the training procedure.
+This greedy layer-wise training procedure is not just coordinate ascent. It bears
+some passing resemblance to coordinate ascent because we optimize one subset of
+the parameters at each step. The two methods diï¬€er because the greedy layer-wise
+training procedure uses a diï¬€erent objective function at each step.
+Greedy layer-wise pretraining of a DBM diï¬€ers from greedy layer-wise pretraining of a DBN. The parameters of each individual RBM may be copied to
+the corresponding DBN directly. In the case of the DBM, the RBM parameters
+must be modiï¬?ed before inclusion in the DBM. A layer in the middle of the stack
+of RBMs is trained with only bottom-up input, but after the stack is combined
+to form the DBM, the layer will have both bottom-up and top-down input. To
+account for this eï¬€ect, Salakhutdinov and Hinton (2009a) advocate dividing the
+weights of all but the top and bottom RBM in half before inserting them into the
+DBM. Additionally, the bottom RBM must be trained using two â€œcopiesâ€? of each
+visible unit and the weights tied to be equal between the two copies. This means
+that the weights are eï¬€ectively doubled during the upward pass. Similarly, the top
+RBM should be trained with two copies of the topmost layer.
+Obtaining the state of the art results with the deep Boltzmann machine requires
+a modiï¬?cation of the standard SML algorithm, which is to use a small amount of
+mean ï¬?eld during the negative phase of the joint PCD training step (Salakhutdinov
+and Hinton, 2009a). Speciï¬?cally, the expectation of the energy gradient should
+be computed with respect to the mean ï¬?eld distribution in which all of the units
+are independent from each other. The parameters of this mean ï¬?eld distribution
+should be obtained by running the mean ï¬?eld ï¬?xed point equations for just one
+step. See Goodfellow et al. (2013b) for a comparison of the performance of centered
+DBMs with and without the use of partial mean ï¬?eld in the negative phase.
+
+20.4.5
+
+Jointly Training Deep Boltzmann Machines
+
+Classic DBMs require greedy unsupervised pretraining, and to perform classiï¬?cation
+well, require a separate MLP-based classiï¬?er on top of the hidden features they
+extract. This has some undesirable properties. It is hard to track performance
+during training because we cannot evaluate properties of the full DBM while
+training the ï¬?rst RBM. Thus, it is hard to tell how well our hyperparameters
+671
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+a)
+
+c)
+
+b)
+
+d)
+
+Figure 20.4: The deep Boltzmann machine training procedure used to classify the MNIST
+dataset (Salakhutdinov and Hinton, 2009a; Srivastava et al., 2014). (a)Train an RBM
+by using CD to approximately maximize log P(v). (b)Train a second RBM that models
+h(1) and target class y by using CD-k to approximately maximize log P (h(1) , y) where
+h(1) is drawn from the ï¬?rst RBMâ€™s posterior conditioned on the data. Increasek from 1
+to 20 during learning. (c)Combine the two RBMs into a DBM. Train it to approximately
+maximize log P(v, y) using stochastic maximum likelihood with k = 5. (d)Delete y from
+the model. Deï¬?ne a new set of features h(1) and h(2) that are obtained by running mean
+ï¬?eld inference in the model lacking y. Use these features as input to an MLP whose
+structure is the same as an additional pass of mean ï¬?eld, with an additional output layer
+for the estimate of y. Initialize the MLPâ€™s weights to be the same as the DBMâ€™s weights.
+Train the MLP to approximately maximize log P (y | v) using stochastic gradient descent
+and dropout. Figure reprinted from (Goodfellow et al., 2013b).
+
+672
+
+CHAPTER 20. DEEP GENERATIVE MODELS
+
+are working until quite late in the training process. Software implementations
+of DBMs need to have many diï¬€erent components for CD training of individual
+RBMs, PCD training of the full DBM, and training based on back-propagation
+through the MLP. Finally, the MLP on top of the Boltzmann machine loses many
+of the advantages of the Boltzmann machine probabilistic model, such as being
+able to perform inference when some input values are missing.
+There are two main ways to resolve the joint training problem of the deep
+Boltzmann machine. The ï¬?rst is the centered deep Boltzmann machine
+(Montavon and Muller, 2012), which reparametrizes the model in order to make
+the Hessian of the cost function better-conditioned at the beginning of the learning
+process. This yields a model that can be trained without a greedy layer-wise
+pretraining stage. The resulting model obtains excellent test set log-likelihood
+and produces high quality samples. Unfortunately, it remains unable to compete
+with appropriately regularized MLPs as a classiï¬?er. The second way to jointly
+train a deep Boltzmann machine is to use a multi-prediction deep Boltzmann
+machine (Goodfellow et al., 2013b). This model uses an alternative training
+criterion that allows the use of the back-propagation algorithm in order to avoid
+the problems with MCMC estimates of the gradient. Unfortunately, the new
+criterion does not lead to good likelihood or samples, but, compared to the MCMC
+approach, it does lead to superior classiï¬?cation performance and ability to reason
+well about missing inputs.
+The centering trick for the Boltzmann machine is easiest to describe if we
+return to the general view of a Boltzmann machine as consisting of a set of units
+x with a weight matrix U and biases b. Recall from equation 20.2 that he energy
+function is given by
+(20.36)
+E(x) = âˆ’xî€¾U x âˆ’ b î€¾x.
+Using diï¬€erent sparsity patt

@@ -1,0 +1,355 @@
+iated with a bprop operation. This bprop
+operation can compute a Jacobian-vector product as described by equation 6.47.
+This is how the back-propagation algorithm is able to achieve great generality.
+Each operation is responsible for knowing how to back-propagate through the
+edges in the graph that it participates in. For example, we might use a matrix
+multiplication operation to create a variable C = AB. Suppose that the gradient
+of a scalar z with respect to C is given by G. The matrix multiplication operation
+is responsible for deï¬?ning two back-propagation rules, one for each of its input
+arguments. If we call the bprop method to request the gradient with respect to
+A given that the gradient on the output is G, then the bprop method of the
+matrix multiplication operation must state that the gradient with respect to A
+is given by GB î€¾ . Likewise, if we call the bprop method to request the gradient
+with respect to B, then the matrix operation is responsible for implementing the
+bprop method and specifying that the desired gradient is given by Aî€¾ G. The
+back-propagation algorithm itself does not need to know any diï¬€erentiation rules. It
+only needs to call each operationâ€™s bprop rules with the right arguments. Formally,
+op.bprop(inputs, X, G) must return
+î?˜
+(âˆ‡ Xop.f(inputs) i) Gi,
+(6.54)
+i
+
+which is just an implementation of the chain rule as expressed in equation 6.47.
+Here, inputs is a list of inputs that are supplied to the operation, op.f is the
+mathematical function that the operation implements, X is the input whose gradient
+we wish to compute, and G is the gradient on the output of the operation.
+The op.bprop method should always pretend that all of its inputs are distinct
+from each other, even if they are not. For example, if the mul operator is passed
+two copies of x to compute x2, the op.bprop method should still return x as the
+derivative with respect to both inputs. The back-propagation algorithm will later
+add both of these arguments together to obtain 2x, which is the correct total
+derivative on x.
+Software implementations of back-propagation usually provide both the operations and their bprop methods, so that users of deep learning software libraries are
+able to back-propagate through graphs built using common operations like matrix
+multiplication, exponents, logarithms, and so on. Software engineers who build a
+new implementation of back-propagation or advanced users who need to add their
+own operation to an existing library must usually derive the op.bprop method for
+any new operations manually.
+The back-propagation algorithm is formally described in algorithm 6.5.
+216
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Algorithm 6.5 The outermost skeleton of the back-propagation algorithm. This
+portion does simple setup and cleanup work. Most of the important work happens
+in the build_grad subroutine of algorithm 6.6
+.
+Require: T, the target set of variables whose gradients must be computed.
+Require: G, the computational graph
+Require: z, the variable to be diï¬€erentiated
+Let G î€° be G pruned to contain only nodes that are ancestors of z and descendents
+of nodes in T.
+Initialize grad_table, a data structure associating tensors to their gradients
+grad_table[z ] â†? 1
+for V in T do
+build_grad(V, G , Gî€° , grad_table)
+end for
+Return grad_table restricted to T
+
+In section 6.5.2, we explained that back-propagation was developed in order to
+avoid computing the same subexpression in the chain rule multiple times. The naive
+algorithm could have exponential runtime due to these repeated subexpressions.
+Now that we have speciï¬?ed the back-propagation algorithm, we can understand its
+computational cost. If we assume that each operation evaluation has roughly the
+same cost, then we may analyze the computational cost in terms of the number
+of operations executed. Keep in mind here that we refer to an operation as the
+fundamental unit of our computational graph, which might actually consist of very
+many arithmetic operations (for example, we might have a graph that treats matrix
+multiplication as a single operation). Computing a gradient in a graph with n nodes
+will never execute more than O(n 2) operations or store the output of more than
+O(n 2) operations. Here we are counting operations in the computational graph, not
+individual operations executed by the underlying hardware, so it is important to
+remember that the runtime of each operation may be highly variable. For example,
+multiplying two matrices that each contain millions of entries might correspond to
+a single operation in the graph. We can see that computing the gradient requires as
+most O(n 2) operations because the forward propagation stage will at worst execute
+all n nodes in the original graph (depending on which values we want to compute,
+we may not need to execute the entire graph). The back-propagation algorithm
+adds one Jacobian-vector product, which should be expressed with O(1) nodes, per
+edge in the original graph. Because the computational graph is a directed acyclic
+graph it has at most O(n2 ) edges. For the kinds of graphs that are commonly used
+in practice, the situation is even better. Most neural network cost functions are
+217
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+Algorithm 6.6 The inner loop subroutine build_grad(V, G , G î€° , grad_table) of
+the back-propagation algorithm, called by the back-propagation algorithm deï¬?ned
+in algorithm 6.5.
+Require: V, the variable whose gradient should be added to G and grad_table.
+Require: G, the graph to modify.
+Require: Gî€° , the restriction of G to nodes that participate in the gradient.
+Require: grad_table, a data structure mapping nodes to their gradients
+if V is in grad_table then
+Return grad_table[V]
+end if
+iâ†?1
+for C in get_consumers(V , Gî€° ) do
+op â†? get_operation(C)
+D â†? build_grad(C, G , G î€° , grad_table)
+G(i) â†? op.bprop(get_inputs(C, G î€° ), V, D)
+iâ†?i+1
+end î??
+for
+G â†? i G ( i)
+grad_table[V] = G
+Insert G and the operations creating it into G
+Return G
+roughly chain-structured, causing back-propagation to have O(n) cost. This is far
+better than the naive approach, which might need to execute exponentially many
+nodes. This potentially exponential cost can be seen by expanding and rewriting
+the recursive chain rule (equation 6.49) non-recursively:
+âˆ‚u(n)
+=
+âˆ‚u (j )
+
+î?˜
+
+path (u(Ï€ 1 ),u(Ï€2 ) ,...,u(Ï€ t) ),
+from Ï€ 1=j to Ï€ t=n
+
+t
+î?™
+âˆ‚u (Ï€k )
+.
+(Ï€kâˆ’1 )
+âˆ‚u
+k=2
+
+(6.55)
+
+Since the number of paths from node j to node n can grow exponentially in the
+length of these paths, the number of terms in the above sum, which is the number
+of such paths, can grow exponentially with the depth of the forward propagation
+graph. This large cost would be incurred because the same computation for
+âˆ‚u(i)
+would be redone many times. To avoid such recomputation, we can think
+âˆ‚u(j )
+of back-propagation as a table-ï¬?lling algorithm that takes advantage of storing
+(n )
+intermediate results âˆ‚u
+. Each node in the graph has a corresponding slot in a
+âˆ‚u(i)
+table to store the gradient for that node. By ï¬?lling in these table entries in order,
+218
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+back-propagation avoids repeating many common subexpressions. This table-ï¬?lling
+strategy is sometimes called dynamic programming.
+
+6.5.7
+
+Example: Back-Propagation for MLP Training
+
+As an example, we walk through the back-propagation algorithm as it is used to
+train a multilayer perceptron.
+Here we develop a very simple multilayer perception with a single hidden
+layer. To train this model, we will use minibatch stochastic gradient descent.
+The back-propagation algorithm is used to compute the gradient of the cost on a
+single minibatch. Speciï¬?cally, we use a minibatch of examples from the training
+set formatted as a design matrix X and a vector of associated class labels y.
+The network computes a layer of hidden features H = max{0, XW (1) }. To
+simplify the presentation we do not use biases in this model. We assume that our
+graph language includes a relu operation that can compute max{0, Z} elementwise. The predictions of the unnormalized log probabilities over classes are then
+given by HW (2). We assume that our graph language includes a cross_entropy
+operation that computes the cross-entropy between the targets y and the probability
+distribution deï¬?ned by these unnormalized log probabilities. The resulting crossentropy deï¬?nes the cost JMLE . Minimizing this cross-entropy performs maximum
+likelihood estimation of the classiï¬?er. However, to make this example more realistic,
+we also include a regularization term. The total cost
+ï£«
+ï£¶
+î€?
+î€‘
+î€?
+î€‘
+î?˜
+î?˜
+(1) 2
+(2) 2
+J = JMLE + Î» ï£­
+W i,j
++
+Wi,j ï£¸
+(6.56)
+i,j
+
+i,j
+
+consists of the cross-entropy and a weight decay term with coeï¬ƒcient Î». The
+computational graph is illustrated in ï¬?gure 6.11.
+
+The computational graph for the gradient of this example is large enough that
+it would be tedious to draw or to read. This demonstrates one of the beneï¬?ts
+of the back-propagation algorithm, which is that it can automatically generate
+gradients that would be straightforward but tedious for a software engineer to
+derive manually.
+We can roughly trace out the behavior of the back-propagation algorithm
+by looking at the forward propagation graph in ï¬?gure 6.11. To train, we wish
+to compute both âˆ‡W (1) J and âˆ‡W (2) J. There are two diï¬€erent paths leading
+backward from J to the weights: one through the cross-entropy cost, and one
+through the weight decay cost. The weight decay cost is relatively simple; it will
+always contribute 2Î»W (i) to the gradient on W (i) .
+219
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+J
+
+J MLE
+
+cross_entropy
+
+U (2)
+
++
+
+y
+
+u(8)
+
+matmul
+Ã—
+
+H
+
+W (2)
+
+relu
+
+sqr
+
+U (5)
+
+sum
+
+u(6)
+
+u(7)
+
+Î»
+
++
+
+U (1)
+
+matmul
+
+X
+
+W (1)
+
+sqr
+
+U (3)
+
+sum
+
+u(4)
+
+Figure 6.11: The computational graph used to compute the cost used to train our example
+of a single-layer MLP using the cross-entropy loss and weight decay.
+
+The other path through the cross-entropy cost is slightly more complicated.
+Let G be the gradient on the unnormalized log probabilities U (2) provided by
+the cross_entropy operation. The back-propagation algorithm now needs to
+explore two diï¬€erent branches. On the shorter branch, it adds H î€¾ G to the
+gradient on W (2) , using the back-propagation rule for the second argument to
+the matrix multiplication operation. The other branch corresponds to the longer
+chain descending further along the network. First, the back-propagation algorithm
+computes âˆ‡H J = GW (2)î€¾ using the back-propagation rule for the ï¬?rst argument
+to the matrix multiplication operation. Next, the relu operation uses its backpropagation rule to zero out components of the gradient corresponding to entries
+of U (1) that were less than 0. Let the result be called Gî€° . The last step of the
+back-propagation algorithm is to use the back-propagation rule for the second
+argument of the matmul operation to add Xî€¾G î€° to the gradient on W (1) .
+After these gradients have been computed, it is the responsibility of the gradient
+descent algorithm, or another optimization algorithm, to use these gradients to
+update the parameters.
+For the MLP, the computational cost is dominated by the cost of matrix
+multiplication. During the forward propagation stage, we multiply by each weight
+220
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+matrix, resulting in O(w) multiply-adds, where w is the number of weights. During
+the backward propagation stage, we multiply by the transpose of each weight
+matrix, which has the same computational cost. The main memory cost of the
+algorithm is that we need to store the input to the nonlinearity of the hidden layer.
+This value is stored from the time it is computed until the backward pass has
+returned to the same point. The memory cost is thus O(mnh ), where m is the
+number of examples in the minibatch and nh is the number of hidden units.
+
+6.5.8
+
+Complications
+
+Our description of the back-propagation algorithm here is simpler than the implementations actually used in practice.
+As noted above, we have restricted the deï¬?nition of an operation to be a
+function that returns a single tensor. Most software implementations need to
+support operations that can return more than one tensor. For example, if we wish
+to compute both the maximum value in a tensor and the index of that value, it is
+best to compute both in a single pass through memory, so it is most eï¬ƒcient to
+implement this procedure as a single operation with two outputs.
+We have not described how to control the memory consumption of backpropagation. Back-propagation often involves summation of many tensors together.
+In the naive approach, each of these tensors would be computed separately, then
+all of them would be added in a second step. The naive approach has an overly
+high memory bottleneck that can be avoided by maintaining a single buï¬€er and
+adding each value to that buï¬€er as it is computed.
+Real-world implementations of back-propagation also need to handle various
+data types, such as 32-bit ï¬‚oating point, 64-bit ï¬‚oating point, and integer values.
+The policy for handling each of these types takes special care to design.
+Some operations have undeï¬?ned gradients, and it is important to track these
+cases and determine whether the gradient requested by the user is undeï¬?ned.
+Various other technicalities make real-world diï¬€erentiation more complicated.
+These technicalities are not insurmountable, and this chapter has described the key
+intellectual tools needed to compute derivatives, but it is important to be aware
+that many more subtleties exist.
+
+6.5.9
+
+Diï¬€erentiation outside the Deep Learning Community
+
+The deep learning community has been somewhat isolated from the broader
+computer science community and has largely developed its own cultural attitudes
+221
+
+CHAPTER 6. DEEP FEEDFORWARD NETWORKS
+
+concerning how to perform diï¬€erentiation. More generally, the ï¬?eld of automatic
+diï¬€erentiation is concerned with how to compute derivatives algorithmically.
+The back-propagation algorithm described here is only one approach to automatic
+diï¬€erentiation. It is a special case of a broader class of techniques called reverse
+mode accumulation. Other approaches evaluate the subexpressions of the chain
+rule in diï¬€erent orders. In general, determining the order of evaluation that
+results in the lowest computational cost is a diï¬ƒcult problem. Finding the optimal
+sequence of operations to compute the gradient is NP-complete (Naumann, 2008),
+in the sense that it may require simplifying algebraic expressions into their least
+expensive form.
+For example, suppose we have variables p1 , p2, . . . , pn representing probabilities
+and variables z1 , z2 , . . . , zn representing unnormalized log probabilities. Suppose
+we deï¬?ne
+exp(zi)
+qi = î??
+,
+(6.57)
+i exp(zi)
+where we build the softmax function out of exponentiation, summation and division
+î??
+operations, and construct a cross-entropy loss J = âˆ’ i p i log q i. A human
+mathematician can observe that the derivative of J with respect to z i takes a very
+simple form: q i âˆ’ pi . The back-propagation algorithm is not capable of simplifying
+the gradient this way, and will instead explicitly propagate gradients through all of
+the logarithm and exponentiation operations in the original graph. Some software
+libraries such as Theano (Bergstra et al., 2010; Bastien et al., 2012) are able to
+perform some kinds of algebraic substituti

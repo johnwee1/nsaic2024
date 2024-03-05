@@ -1,0 +1,310 @@
+ally reduce the computational cost of representing some
+functions. Depth can also exponentially decrease the amount of training data
+needed to learn some functions. See section 6.4.1 for a review of the advantages of
+depth in feedforward networks.
+Experimentally, deep autoencoders yield much better compression than corresponding shallow or linear autoencoders (Hinton and Salakhutdinov, 2006).
+A common strategy for training a deep autoencoder is to greedily pretrain
+the deep architecture by training a stack of shallow autoencoders, so we often
+encounter shallow autoencoders, even when the ultimate goal is to train a deep
+autoencoder.
+
+14.4
+
+Stochastic Encoders and Decoders
+
+Autoencoders are just feedforward networks. The same loss functions and output
+unit types that can be used for traditional feedforward networks are also used for
+autoencoders.
+As described in section 6.2.2.4, a general strategy for designing the output units
+and the loss function of a feedforward network is to de�?ne an output distribution
+p(y | x) and minimize the negative log-likelihood − log p(y | x). In that setting, y
+was a vector of targets, such as class labels.
+In the case of an autoencoder, x is now the target as well as the input. However,
+we can still apply the same machinery as before. Given a hidden code h, we may
+think of the decoder as providing a conditional distribution p decoder(x | h). We
+may then train the autoencoder by minimizing − log p decoder(x | h) . The exact
+form of this loss function will change depending on the form of pdecoder . As with
+traditional feedforward networks, we usually use linear output units to parametrize
+the mean of a Gaussian distribution if x is real-valued. In that case, the negative
+log-likelihood yields a mean squared error criterion. Similarly, binary x values
+correspond to a Bernoulli distribution whose parameters are given by a sigmoid
+output unit, discrete x values correspond to a softmax distribution, and so on.
+509
+
+CHAPTER 14. AUTOENCODERS
+
+Typically, the output variables are treated as being conditionally independent
+given h so that this probability distribution is inexpensive to evaluate, but some
+techniques such as mixture density outputs allow tractable modeling of outputs
+with correlations.
+h
+
+pencoder (h | x)
+
+pdecoder(x | h)
+
+x
+
+r
+
+Figure 14.2: The structure of a stochastic autoencoder, in which both the encoder and the
+decoder are not simple functions but instead involve some noise injection, meaning that
+their output can be seen as sampled from a distribution, pencoder (h | x ) for the encoder
+and pdecoder (x | h) for the decoder.
+
+To make a more radical departure from the feedforward networks we have seen
+previously, we can also generalize the notion of an encoding function f (x) to
+an encoding distribution pencoder(h | x), as illustrated in �?gure 14.2.
+Any latent variable model pmodel (h, x) de�?nes a stochastic encoder
+pencoder (h | x) = pmodel (h | x)
+
+(14.12)
+
+p decoder(x | h) = pmodel(x | h).
+
+(14.13)
+
+and a stochastic decoder
+
+In general, the encoder and decoder distributions are not necessarily conditional
+distributions compatible with a unique joint distribution pmodel(x, h). Alain et al.
+(2015) showed that training the encoder and decoder as a denoising autoencoder
+will tend to make them compatible asymptotically (with enough capacity and
+examples).
+
+14.5
+
+Denoising Autoencoders
+
+The denoising autoencoder (DAE) is an autoencoder that receives a corrupted
+data point as input and is trained to predict the original, uncorrupted data point
+as its output.
+The DAE training procedure is illustrated in �?gure 14.3. We introduce a
+corruption process C(x̃ | x) which represents a conditional distribution over
+510
+
+CHAPTER 14. AUTOENCODERS
+
+h
+g
+
+f
+x̃
+
+L
+
+C(x̃ | x)
+x
+
+Figure 14.3: The computational graph of the cost function for a denoising autoencoder,
+which is trained to reconstruct the clean data point x from its corrupted version x̃.
+This is accomplished by minimizing the loss L = − log pdecoder (x | h = f (x̃)), where
+x̃ is a corrupted version of the data example x, obtained through a given corruption
+process C(x̃ | x). Typically the distribution pdecoder is a factorial distribution whose mean
+parameters are emitted by a feedforward network g .
+
+corrupted samples x̃, given a data sample x. The autoencoder then learns a
+reconstruction distribution preconstruct(x | x̃ ) estimated from training pairs
+(x, x̃), as follows:
+1. Sample a training example x from the training data.
+2. Sample a corrupted version x̃ from C(x̃ | x = x).
+3. Use (x, x̃) as a training example for estimating the autoencoder reconstruction
+distribution p reconstruct(x | x̃) = pdecoder (x | h) with h the output of encoder
+f ( x̃) and pdecoder typically de�?ned by a decoder g(h).
+Typically we can simply perform gradient-based approximate minimization (such
+as minibatch gradient descent) on the negative log-likelihood − log pdecoder(x | h).
+So long as the encoder is deterministic, the denoising autoencoder is a feedforward
+network and may be trained with exactly the same techniques as any other
+feedforward network.
+We can therefore view the DAE as performing stochastic gradient descent on
+the following expectation:
+log p decoder (x | h = f (x̃))
+− E x∼p̂data (x)Ex∼C(x̃|x)
+˜
+where p̂data (x) is the training distribution.
+511
+
+(14.14)
+
+CHAPTER 14. AUTOENCODERS
+
+x̃
+x
+
+g◦f
+
+x̃
+
+x
+
+C(x̃ | x)
+
+Figure 14.4: A denoising autoencoder is trained to map a corrupted data point x̃ back to
+the original data point x. We illustrate training examples x as red crosses lying near a
+low-dimensional manifold illustrated with the bold black line. We illustrate the corruption
+process C (x̃ | x) with a gray circle of equiprobable corruptions. A gray arrow demonstrates
+how one training example is transformed into one sample from this corruption process.
+When the denoising autoencoder is trained to minimize the average of squared errors
+||g(f(x̃)) − x||2 , the reconstruction g(f (x̃)) estimates E x,x̃∼pdata (x)C ( x̃|x)[x | x̃]. The vector
+g(f(x̃)) − x̃ points approximately towards the nearest point on the manifold, sinceg(f(x̃))
+estimates the center of mass of the clean points x which could have given rise to x̃. The
+autoencoder thus learns a vector �?eld g(f (x)) − x indicated by the green arrows. This
+vector �?eld estimates the score ∇ xlog pdata (x) up to a multiplicative factor that is the
+average root mean square reconstruction error.
+
+512
+
+CHAPTER 14. AUTOENCODERS
+
+14.5.1
+
+Estimating the Score
+
+Score matching (Hyvärinen, 2005) is an alternative to maximum likelihood. It
+provides a consistent estimator of probability distributions based on encouraging
+the model to have the same score as the data distribution at every training point
+x. In this context, the score is a particular gradient �?eld:
+∇x log p(x).
+
+(14.15)
+
+Score matching is discussed further in section 18.4. For the present discussion
+regarding autoencoders, it is suﬃcient to understand that learning the gradient
+�?eld of log pdata is one way to learn the structure of pdata itself.
+A very important property of DAEs is that their training criterion (with
+conditionally Gaussian p(x | h)) makes the autoencoder learn a vector �?eld
+(g(f(x)) − x) that estimates the score of the data distribution. This is illustrated
+in �?gure 14.4.
+Denoising training of a speci�?c kind of autoencoder (sigmoidal hidden units,
+linear reconstruction units) using Gaussian noise and mean squared error as
+the reconstruction cost is equivalent (Vincent, 2011) to training a speci�?c kind
+of undirected probabilistic model called an RBM with Gaussian visible units.
+This kind of model will be described in detail in section 20.5.1; for the present
+discussion it suﬃces to know that it is a model that provides an explicit pmodel(x; θ ).
+When the RBM is trained using denoising score matching (Kingma and LeCun,
+2010), its learning algorithm is equivalent to denoising training in the corresponding
+autoencoder. With a �?xed noise level, regularized score matching is not a consistent
+estimator; it instead recovers a blurred version of the distribution. However, if
+the noise level is chosen to approach 0 when the number of examples approaches
+in�?nity, then consistency is recovered. Denoising score matching is discussed in
+more detail in section 18.5.
+Other connections between autoencoders and RBMs exist. Score matching
+applied to RBMs yields a cost function that is identical to reconstruction error
+combined with a regularization term similar to the contractive penalty of the
+CAE (Swersky et al., 2011). Bengio and Delalleau (2009) showed that an autoencoder gradient provides an approximation to contrastive divergence training of
+RBMs.
+For continuous-valued x, the denoising criterion with Gaussian corruption and
+reconstruction distribution yields an estimator of the score that is applicable to
+general encoder and decoder parametrizations (Alain and Bengio, 2013). This
+means a generic encoder-decoder architecture may be made to estimate the score
+513
+
+CHAPTER 14. AUTOENCODERS
+
+by training with the squared error criterion
+||g (f (x̃)) − x|| 2
+
+(14.16)
+
+C(x̃ = x̃|x) = N (x̃; µ = x, Σ = σ2 I)
+
+(14.17)
+
+and corruption
+with noise variance σ 2. See �?gure 14.5 for an illustration of how this works.
+
+Figure 14.5: Vector �?eld learned by a denoising autoencoder around a 1-D curved manifold
+near which the data concentrates in a 2-D space. Each arrow is proportional to the
+reconstruction minus input vector of the autoencoder and points towards higher probability
+according to the implicitly estimated probability distribution. The vector �?eld has zeros
+at both maxima of the estimated density function (on the data manifolds) and at minima
+of that density function. For example, the spiral arm forms a one-dimensional manifold of
+local maxima that are connected to each other. Local minima appear near the middle of
+the gap between two arms. When the norm of reconstruction error (shown by the length
+of the arrows) is large, it means that probability can be signi�?cantly increased by moving
+in the direction of the arrow, and that is mostly the case in places of low probability.
+The autoencoder maps these low probability points to higher probability reconstructions.
+Where probability is maximal, the arrows shrink because the reconstruction becomes more
+accurate. Figure reproduced with permission from Alain and Bengio (2013).
+
+In general, there is no guarantee that the reconstruction g(f (x)) minus the
+input x corresponds to the gradient of any function, let alone to the score. That is
+514
+
+CHAPTER 14. AUTOENCODERS
+
+why the early results (Vincent, 2011) are specialized to particular parametrizations
+where g (f (x)) − x may be obtained by taking the derivative of another function.
+Kamyshanska and Memisevic (2015) generalized the results of Vincent (2011) by
+identifying a family of shallow autoencoders such that g(f (x)) − x corresponds to
+a score for all members of the family.
+So far we have described only how the denoising autoencoder learns to represent
+a probability distribution. More generally, one may want to use the autoencoder as
+a generative model and draw samples from this distribution. This will be described
+later, in section 20.11.
+14.5.1.1
+
+Historical Perspective
+
+The idea of using MLPs for denoising dates back to the work of LeCun (1987)
+and Gallinari et al. (1987). Behnke (2001) also used recurrent networks to denoise
+images. Denoising autoencoders are, in some sense, just MLPs trained to denoise.
+However, the name “denoising autoencoder�? refers to a model that is intended not
+merely to learn to denoise its input but to learn a good internal representation
+as a side eﬀect of learning to denoise. This idea came much later (Vincent
+et al., 2008, 2010). The learned representation may then be used to pretrain a
+deeper unsupervised network or a supervised network. Like sparse autoencoders,
+sparse coding, contractive autoencoders and other regularized autoencoders, the
+motivation for DAEs was to allow the learning of a very high-capacity encoder
+while preventing the encoder and decoder from learning a useless identity function.
+Prior to the introduction of the modern DAE, Inayoshi and Kurita (2005)
+explored some of the same goals with some of the same methods. Their approach
+minimizes reconstruction error in addition to a supervised objective while injecting
+noise in the hidden layer of a supervised MLP, with the objective to improve
+generalization by introducing the reconstruction error and the injected noise.
+However, their method was based on a linear encoder and could not learn function
+families as powerful as can the modern DAE.
+
+14.6
+
+Learning Manifolds with Autoencoders
+
+Like many other machine learning algorithms, autoencoders exploit the idea
+that data concentrates around a low-dimensional manifold or a small set of such
+manifolds, as described in section 5.11.3. Some machine learning algorithms exploit
+this idea only insofar as that they learn a function that behaves correctly on the
+manifold but may have unusual behavior if given an input that is oﬀ the manifold.
+515
+
+CHAPTER 14. AUTOENCODERS
+
+Autoencoders take this idea further and aim to learn the structure of the manifold.
+To understand how autoencoders do this, we must present some important
+characteristics of manifolds.
+An important characterization of a manifold is the set of its tangent planes.
+At a point x on a d-dimensional manifold, the tangent plane is given by d basis
+vectors that span the local directions of variation allowed on the manifold. As
+illustrated in �?gure 14.6, these local directions specify how one can change x
+in�?nitesimally while staying on the manifold.
+All autoencoder training procedures involve a compromise between two forces:
+1. Learning a representation h of a training example x such that x can be
+approximately recovered from h through a decoder. The fact that x is drawn
+from the training data is crucial, because it means the autoencoder need
+not successfully reconstruct inputs that are not probable under the data
+generating distribution.
+2. Satisfying the constraint or regularization penalty. This can be an architectural constraint that limits the capacity of the autoencoder, or it can be
+a regularization term added to the reconstruction cost. These techniques
+generally prefer solutions that are less sensitive to the input.
+Clearly, neither force alone would be useful—copying the input to the output
+is not useful on its own, nor is ignoring the input. Instead, the two forces together
+are useful because they force the hidden representation to capture information
+about the structure of the data generating distribution. The important principle
+is that the autoencoder can aﬀord to represent only the variations that are needed
+to reconstruct training examples. If the data generating distribution concentrates
+near a low-dimensional manifold, this yields representations that implicitly capture
+a local coordinate system for this manifold: only the variations tangent to the
+manifold around x need to correspond to changes in h = f(x). Hence the encoder
+learns a mapping from the input space x to a representation space, a mapping that
+is only sensitive to changes along the manifold directions, but that is insensitive to
+changes orthogonal to the manifold.
+A one-dimensional example is illustrated in �?gure 14.7, showing t

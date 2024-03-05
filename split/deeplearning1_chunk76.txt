@@ -1,0 +1,278 @@
+hat, by making
+the reconstruction function insensitive to perturbations of the input around the
+data points, we cause the autoencoder to recover the manifold structure.
+To understand why autoencoders are useful for manifold learning, it is instructive to compare them to other approaches. What is most commonly learned
+to characterize a manifold is a representation of the data points on (or near)
+516
+
+CHAPTER 14. AUTOENCODERS
+
+Figure 14.6: An illustration of the concept of a tangent hyperplane. Here we create a
+one-dimensional manifold in 784-dimensional space. We take an MNIST image with 784
+pixels and transform it by translating it vertically. The amount of vertical translation
+deï¬?nes a coordinate along a one-dimensional manifold that traces out a curved path
+through image space. This plot shows a few points along this manifold. For visualization,
+we have projected the manifold into two dimensional space using PCA. An n-dimensional
+manifold has an n-dimensional tangent plane at every point. This tangent plane touches
+the manifold exactly at that point and is oriented parallel to the surface at that point.
+It deï¬?nes the space of directions in which it is possible to move while remaining on
+the manifold. This one-dimensional manifold has a single tangent line. We indicate an
+example tangent line at one point, with an image showing how this tangent direction
+appears in image space. Gray pixels indicate pixels that do not change as we move along
+the tangent line, white pixels indicate pixels that brighten, and black pixels indicate pixels
+that darken.
+
+517
+
+CHAPTER 14. AUTOENCODERS
+
+1 .0
+
+r(x)
+
+0 .8
+
+Identity
+Optimal reconstruction
+
+0 .6
+0 .4
+0 .2
+0 .0
+
+x0
+
+x1
+
+x2
+
+x
+
+Figure 14.7: If the autoencoder learns a reconstruction function that is invariant to small
+perturbations near the data points, it captures the manifold structure of the data. Here
+the manifold structure is a collection of 0-dimensional manifolds. The dashed diagonal
+line indicates the identity function target for reconstruction. The optimal reconstruction
+function crosses the identity function wherever there is a data point. The horizontal
+arrows at the bottom of the plot indicate the r(x) âˆ’ x reconstruction direction vector
+at the base of the arrow, in input space, always pointing towards the nearest â€œmanifoldâ€?
+(a single datapoint, in the 1-D case). The denoising autoencoder explicitly tries to make
+the derivative of the reconstruction function r(x) small around the data points. The
+contractive autoencoder does the same for the encoder. Although the derivative ofr(x) is
+asked to be small around the data points, it can be large between the data points. The
+space between the data points corresponds to the region between the manifolds, where
+the reconstruction function must have a large derivative in order to map corrupted points
+back onto the manifold.
+
+the manifold. Such a representation for a particular example is also called its
+embedding. It is typically given by a low-dimensional vector, with less dimensions
+than the â€œambientâ€? space of which the manifold is a low-dimensional subset. Some
+algorithms (non-parametric manifold learning algorithms, discussed below) directly
+learn an embedding for each training example, while others learn a more general
+mapping, sometimes called an encoder, or representation function, that maps any
+point in the ambient space (the input space) to its embedding.
+Manifold learning has mostly focused on unsupervised learning procedures that
+attempt to capture these manifolds. Most of the initial machine learning research
+on learning nonlinear manifolds has focused on non-parametric methods based
+on the nearest-neighbor graph. This graph has one node per training example
+and edges connecting near neighbors to each other. These methods (SchÃ¶lkopf
+et al., 1998; Roweis and Saul, 2000; Tenenbaum et al., 2000; Brand, 2003; Belkin
+518
+
+CHAPTER 14. AUTOENCODERS
+
+Figure 14.8: Non-parametric manifold learning procedures build a nearest neighbor graph
+in which nodes represent training examples a directed edges indicate nearest neighbor
+relationships. Various procedures can thus obtain the tangent plane associated with a
+neighborhood of the graph as well as a coordinate system that associates each training
+example with a real-valued vector position, or embedding. It is possible to generalize
+such a representation to new examples by a form of interpolation. So long as the number
+of examples is large enough to cover the curvature and twists of the manifold, these
+approaches work well. Images from the QMUL Multiview Face Dataset (Gong et al.,
+2000).
+
+and Niyogi, 2003; Donoho and Grimes, 2003; Weinberger and Saul, 2004; Hinton
+and Roweis, 2003; van der Maaten and Hinton, 2008) associate each of nodes with a
+tangent plane that spans the directions of variations associated with the diï¬€erence
+vectors between the example and its neighbors, as illustrated in ï¬?gure 14.8.
+A global coordinate system can then be obtained through an optimization or
+solving a linear system. Figure 14.9 illustrates how a manifold can be tiled by a
+large number of locally linear Gaussian-like patches (or â€œpancakes,â€? because the
+Gaussians are ï¬‚at in the tangent directions).
+However, there is a fundamental diï¬ƒculty with such local non-parametric
+approaches to manifold learning, raised in Bengio and Monperrus (2005): if the
+manifolds are not very smooth (they have many peaks and troughs and twists),
+one may need a very large number of training examples to cover each one of
+519
+
+CHAPTER 14. AUTOENCODERS
+
+Figure 14.9: If the tangent planes (see ï¬?gure 14.6) at each location are known, then they
+can be tiled to form a global coordinate system or a density function. Each local patch
+can be thought of as a local Euclidean coordinate system or as a locally ï¬‚at Gaussian, or
+â€œpancake,â€? with a very small variance in the directions orthogonal to the pancake and a
+very large variance in the directions deï¬?ning the coordinate system on the pancake. A
+mixture of these Gaussians provides an estimated density function, as in the manifold
+Parzen window algorithm (Vincent and Bengio, 2003) or its non-local neural-net based
+variant (Bengio et al., 2006c).
+
+these variations, with no chance to generalize to unseen variations. Indeed, these
+methods can only generalize the shape of the manifold by interpolating between
+neighboring examples. Unfortunately, the manifolds involved in AI problems can
+have very complicated structure that can be diï¬ƒcult to capture from only local
+interpolation. Consider for example the manifold resulting from translation shown
+in ï¬?gure 14.6. If we watch just one coordinate within the input vector, xi, as the
+image is translated, we will observe that one coordinate encounters a peak or a
+trough in its value once for every peak or trough in brightness in the image. In
+other words, the complexity of the patterns of brightness in an underlying image
+template drives the complexity of the manifolds that are generated by performing
+simple image transformations. This motivates the use of distributed representations
+and deep learning for capturing manifold structure.
+
+520
+
+CHAPTER 14. AUTOENCODERS
+
+14.7
+
+Contractive Autoencoders
+
+The contractive autoencoder (Rifai et al., 2011a,b) introduces an explicit regularizer
+on the code h = f(x), encouraging the derivatives of f to be as small as possible:
+î€?
+î€?
+î€? âˆ‚f (x) î€? 2
+î€?
+â„¦(h) = Î» î€?
+(14.18)
+î€? âˆ‚x î€? .
+F
+The penalty â„¦(h) is the squared Frobenius norm (sum of squared elements) of the
+Jacobian matrix of partial derivatives associated with the encoder function.
+
+There is a connection between the denoising autoencoder and the contractive
+autoencoder: Alain and Bengio (2013) showed that in the limit of small Gaussian
+input noise, the denoising reconstruction error is equivalent to a contractive
+penalty on the reconstruction function that maps x to r = g(f(x)). In other
+words, denoising autoencoders make the reconstruction function resist small but
+ï¬?nite-sized perturbations of the input, while contractive autoencoders make the
+feature extraction function resist inï¬?nitesimal perturbations of the input. When
+using the Jacobian-based contractive penalty to pretrain features f(x) for use
+with a classiï¬?er, the best classiï¬?cation accuracy usually results from applying the
+contractive penalty to f (x) rather than to g(f (x)). A contractive penalty on f (x)
+also has close connections to score matching, as discussed in section 14.5.1.
+The name contractive arises from the way that the CAE warps space. Speciï¬?cally, because the CAE is trained to resist perturbations of its input, it is encouraged
+to map a neighborhood of input points to a smaller neighborhood of output points.
+We can think of this as contracting the input neighborhood to a smaller output
+neighborhood.
+To clarify, the CAE is contractive only locallyâ€”all perturbations of a training
+point x are mapped near to f ( x). Globally, two diï¬€erent points x and xî€° may be
+mapped to f (x) and f(xî€° ) points that are farther apart than the original points.
+It is plausible that f be expanding in-between or far from the data manifolds (see
+for example what happens in the 1-D toy example of ï¬?gure 14.7). When the â„¦(h)
+penalty is applied to sigmoidal units, one easy way to shrink the Jacobian is to
+make the sigmoid units saturate to 0 or 1. This encourages the CAE to encode
+input points with extreme values of the sigmoid that may be interpreted as a
+binary code. It also ensures that the CAE will spread its code values throughout
+most of the hypercube that its sigmoidal hidden units can span.
+We can think of the Jacobian matrix J at a point x as approximating the
+nonlinear encoder f (x) as being a linear operator. This allows us to use the word
+â€œcontractiveâ€? more formally. In the theory of linear operators, a linear operator
+521
+
+CHAPTER 14. AUTOENCODERS
+
+is said to be contractive if the norm of J x remains less than or equal to 1 for
+all unit-norm x. In other words, J is contractive if it shrinks the unit sphere.
+We can think of the CAE as penalizing the Frobenius norm of the local linear
+approximation of f (x) at every training point x in order to encourage each of
+these local linear operator to become a contraction.
+As described in section 14.6, regularized autoencoders learn manifolds by
+balancing two opposing forces. In the case of the CAE, these two forces are
+reconstruction error and the contractive penalty â„¦(h). Reconstruction error alone
+would encourage the CAE to learn an identity function. The contractive penalty
+alone would encourage the CAE to learn features that are constant with respect to x.
+The compromise between these two forces yields an autoencoder whose derivatives
+âˆ‚f (x)
+âˆ‚x are mostly tiny. Only a small number of hidden units, corresponding to a
+small number of directions in the input, may have signiï¬?cant derivatives.
+The goal of the CAE is to learn the manifold structure of the data. Directions
+x with large J x rapidly change h, so these are likely to be directions which
+approximate the tangent planes of the manifold. Experiments by Rifai et al. (2011a)
+and Rifai et al. (2011b) show that training the CAE results in most singular values
+of J dropping below 1 in magnitude and therefore becoming contractive. However,
+some singular values remain above 1, because the reconstruction error penalty
+encourages the CAE to encode the directions with the most local variance. The
+directions corresponding to the largest singular values are interpreted as the tangent
+directions that the contractive autoencoder has learned. Ideally, these tangent
+directions should correspond to real variations in the data. For example, a CAE
+applied to images should learn tangent vectors that show how the image changes as
+objects in the image gradually change pose, as shown in ï¬?gure 14.6. Visualizations
+of the experimentally obtained singular vectors do seem to correspond to meaningful
+transformations of the input image, as shown in ï¬?gure 14.10.
+One practical issue with the CAE regularization criterion is that although it
+is cheap to compute in the case of a single hidden layer autoencoder, it becomes
+much more expensive in the case of deeper autoencoders. The strategy followed by
+Rifai et al. (2011a) is to separately train a series of single-layer autoencoders, each
+trained to reconstruct the previous autoencoderâ€™s hidden layer. The composition
+of these autoencoders then forms a deep autoencoder. Because each layer was
+separately trained to be locally contractive, the deep autoencoder is contractive
+as well. The result is not the same as what would be obtained by jointly training
+the entire architecture with a penalty on the Jacobian of the deep model, but it
+captures many of the desirable qualitative characteristics.
+Another practical issue is that the contraction penalty can obtain useless results
+522
+
+CHAPTER 14. AUTOENCODERS
+
+Input
+point
+
+Tangent vectors
+
+Local PCA (no sharing across regions)
+
+Contractive autoencoder
+Figure 14.10: Illustration of tangent vectors of the manifold estimated by local PCA
+and by a contractive autoencoder. The location on the manifold is deï¬?ned by the input
+image of a dog drawn from the CIFAR-10 dataset. The tangent vectors are estimated
+by the leading singular vectors of the Jacobian matrix âˆ‚h
+âˆ‚x of the input-to-code mapping.
+Although both local PCA and the CAE can capture local tangents, the CAE is able to
+form more accurate estimates from limited training data because it exploits parameter
+sharing across diï¬€erent locations that share a subset of active hidden units. The CAE
+tangent directions typically correspond to moving or changing parts of the object (such as
+the head or legs). Images reproduced with permission from Rifai et al. (2011c).
+
+if we do not impose some sort of scale on the decoder. For example, the encoder
+could consist of multiplying the input by a small constant î€? and the decoder
+could consist of dividing the code by î€?. As î€? approaches 0, the encoder drives the
+contractive penalty â„¦(h) to approach 0 without having learned anything about the
+distribution. Meanwhile, the decoder maintains perfect reconstruction. In Rifai
+et al. (2011a), this is prevented by tying the weights of f and g. Both f and g are
+standard neural network layers consisting of an aï¬ƒne transformation followed by
+an element-wise nonlinearity, so it is straightforward to set the weight matrix of g
+to be the transpose of the weight matrix of f .
+
+14.8
+
+Predictive Sparse Decomposition
+
+Predictive sparse decomposition (PSD) is a model that is a hybrid of sparse
+coding and parametric autoencoders (Kavukcuoglu et al., 2008). A parametric
+encoder is trained to predict the output of iterative inference. PSD has been
+applied to unsupervised feature learning for object recognition in images and video
+(Kavukcuoglu et al., 2009, 2010; Jarrett et al., 2009; Farabet et al., 2011), as well
+as for audio (Henaï¬€ et al., 2011). The model consists of an encoder f (x) and a
+decoder g(h) that are both parametric. During training, h is controlled by the
+523
+
+CHAPTER 14. AUTOENCODERS
+
+optimization algorithm. Training proceeds by minimizing
+||x âˆ’ g(h)||2 + Î»|h|1 + Î³ ||h âˆ’ f (x)|| 2.
+
+(14.19)
+
+Like in sparse coding, the training algorithm alternates between minimization with
+respect to h and minimization with respect to the model parameters. Minimization
+with respect to h is fast becau

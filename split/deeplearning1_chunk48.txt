@@ -1,0 +1,270 @@
+ar functions consistently increase in a single direction, so even if the modelâ€™s
+output is very far from correct, it is clear simply from computing the gradient
+which direction its output should move to reduce the loss function. In other words,
+modern neural nets have been designed so that their local gradient information
+corresponds reasonably well to moving toward a distant solution.
+Other model design strategies can help to make optimization easier. For
+example, linear paths or skip connections between layers reduce the length of
+the shortest path from the lower layerâ€™s parameters to the output, and thus
+mitigate the vanishing gradient problem (Srivastava et al., 2015). A related idea
+to skip connections is adding extra copies of the output that are attached to the
+intermediate hidden layers of the network, as in GoogLeNet (Szegedy et al., 2014a)
+and deeply-supervised nets (Lee et al., 2014). These â€œauxiliary headsâ€? are trained
+to perform the same task as the primary output at the top of the network in order
+to ensure that the lower layers receive a large gradient. When training is complete
+the auxiliary heads may be discarded. This is an alternative to the pretraining
+strategies, which were introduced in the previous section. In this way, one can
+train jointly all the layers in a single phase but change the architecture, so that
+intermediate layers (especially the lower ones) can get some hints about what they
+326
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+should do, via a shorter path. These hints provide an error signal to lower layers.
+
+8.7.6
+
+Continuation Methods and Curriculum Learning
+
+As argued in section 8.2.7, many of the challenges in optimization arise from the
+global structure of the cost function and cannot be resolved merely by making better
+estimates of local update directions. The predominant strategy for overcoming this
+problem is to attempt to initialize the parameters in a region that is connected
+to the solution by a short path through parameter space that local descent can
+discover.
+Continuation methods are a family of strategies that can make optimization
+easier by choosing initial points to ensure that local optimization spends most of
+its time in well-behaved regions of space. The idea behind continuation methods is
+to construct a series of objective functions over the same parameters. In order to
+minimize a cost function J (Î¸ ), we will construct new cost functions {J (0) , . . . , J (n)}.
+These cost functions are designed to be increasingly diï¬ƒcult, with J (0) being fairly
+easy to minimize, and J (n) , the most diï¬ƒcult, being J (Î¸), the true cost function
+motivating the entire process. When we say that J (i) is easier than J (i+1), we
+mean that it is well behaved over more of Î¸ space. A random initialization is more
+likely to land in the region where local descent can minimize the cost function
+successfully because this region is larger. The series of cost functions are designed
+so that a solution to one is a good initial point of the next. We thus begin by
+solving an easy problem then reï¬?ne the solution to solve incrementally harder
+problems until we arrive at a solution to the true underlying problem.
+Traditional continuation methods (predating the use of continuation methods
+for neural network training) are usually based on smoothing the objective function.
+See Wu (1997) for an example of such a method and a review of some related
+methods. Continuation methods are also closely related to simulated annealing,
+which adds noise to the parameters (Kirkpatrick et al., 1983). Continuation
+methods have been extremely successful in recent years. See Mobahi and Fisher
+(2015) for an overview of recent literature, especially for AI applications.
+Continuation methods traditionally were mostly designed with the goal of
+overcoming the challenge of local minima. Speciï¬?cally, they were designed to
+reach a global minimum despite the presence of many local minima. To do so,
+these continuation methods would construct easier cost functions by â€œblurringâ€? the
+original cost function. This blurring operation can be done by approximating
+J (i) (Î¸) = EÎ¸î€° âˆ¼N (Î¸î€° ;Î¸,Ïƒ (i)2 )J(Î¸ î€° )
+
+(8.40)
+
+via sampling. The intuition for this approach is that some non-convex functions
+327
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+become approximately convex when blurred. In many cases, this blurring preserves
+enough information about the location of a global minimum that we can ï¬?nd the
+global minimum by solving progressively less blurred versions of the problem. This
+approach can break down in three diï¬€erent ways. First, it might successfully deï¬?ne
+a series of cost functions where the ï¬?rst is convex and the optimum tracks from
+one function to the next arriving at the global minimum, but it might require so
+many incremental cost functions that the cost of the entire procedure remains high.
+NP-hard optimization problems remain NP-hard, even when continuation methods
+are applicable. The other two ways that continuation methods fail both correspond
+to the method not being applicable. First, the function might not become convex,
+no matter how much it is blurred. Consider for example the function J(Î¸) = âˆ’Î¸ î€¾Î¸.
+Second, the function may become convex as a result of blurring, but the minimum
+of this blurred function may track to a local rather than a global minimum of the
+original cost function.
+Though continuation methods were mostly originally designed to deal with the
+problem of local minima, local minima are no longer believed to be the primary
+problem for neural network optimization. Fortunately, continuation methods can
+still help. The easier objective functions introduced by the continuation method can
+eliminate ï¬‚at regions, decrease variance in gradient estimates, improve conditioning
+of the Hessian matrix, or do anything else that will either make local updates
+easier to compute or improve the correspondence between local update directions
+and progress toward a global solution.
+Bengio et al. (2009) observed that an approach called curriculum learning
+or shaping can be interpreted as a continuation method. Curriculum learning is
+based on the idea of planning a learning process to begin by learning simple concepts
+and progress to learning more complex concepts that depend on these simpler
+concepts. This basic strategy was previously known to accelerate progress in animal
+training (Skinner, 1958; Peterson, 2004; Krueger and Dayan, 2009) and machine
+learning (Solomonoï¬€, 1989; Elman, 1993; Sanger, 1994). Bengio et al. (2009)
+justiï¬?ed this strategy as a continuation method, where earlier J(i) are made easier by
+increasing the inï¬‚uence of simpler examples (either by assigning their contributions
+to the cost function larger coeï¬ƒcients, or by sampling them more frequently), and
+experimentally demonstrated that better results could be obtained by following a
+curriculum on a large-scale neural language modeling task. Curriculum learning
+has been successful on a wide range of natural language (Spitkovsky et al., 2010;
+Collobert et al., 2011a; Mikolov et al., 2011b; Tu and Honavar, 2011) and computer
+vision (Kumar et al., 2010; Lee and Grauman, 2011; Supancic and Ramanan, 2013)
+tasks. Curriculum learning was also veriï¬?ed as being consistent with the way in
+which humans teach (Khan et al., 2011): teachers start by showing easier and
+328
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+more prototypical examples and then help the learner reï¬?ne the decision surface
+with the less obvious cases. Curriculum-based strategies are more eï¬€ective for
+teaching humans than strategies based on uniform sampling of examples, and can
+also increase the eï¬€ectiveness of other teaching strategies (Basu and Christensen,
+2013).
+Another important contribution to research on curriculum learning arose in the
+context of training recurrent neural networks to capture long-term dependencies:
+Zaremba and Sutskever (2014) found that much better results were obtained with a
+stochastic curriculum, in which a random mix of easy and diï¬ƒcult examples is always
+presented to the learner, but where the average proportion of the more diï¬ƒcult
+examples (here, those with longer-term dependencies) is gradually increased. With
+a deterministic curriculum, no improvement over the baseline (ordinary training
+from the full training set) was observed.
+We have now described the basic family of neural network models and how to
+regularize and optimize them. In the chapters ahead, we turn to specializations of
+the neural network family, that allow neural networks to scale to very large sizes and
+process input data that has special structure. The optimization methods discussed
+in this chapter are often directly applicable to these specialized architectures with
+little or no modiï¬?cation.
+
+329
+
+Chapter 9
+
+Convolutional Networks
+Convolutional networks (LeCun, 1989), also known as convolutional neural
+networks or CNNs, are a specialized kind of neural network for processing data
+that has a known, grid-like topology. Examples include time-series data, which can
+be thought of as a 1D grid taking samples at regular time intervals, and image data,
+which can be thought of as a 2D grid of pixels. Convolutional networks have been
+tremendously successful in practical applications. The name â€œconvolutional neural
+networkâ€? indicates that the network employs a mathematical operation called
+convolution. Convolution is a specialized kind of linear operation. Convolutional
+networks are simply neural networks that use convolution in place of general matrix
+multiplication in at least one of their layers.
+In this chapter, we will ï¬?rst describe what convolution is. Next, we will
+explain the motivation behind using convolution in a neural network. We will then
+describe an operation called pooling, which almost all convolutional networks
+employ. Usually, the operation used in a convolutional neural network does not
+correspond precisely to the deï¬?nition of convolution as used in other ï¬?elds such
+as engineering or pure mathematics. We will describe several variants on the
+convolution function that are widely used in practice for neural networks. We
+will also show how convolution may be applied to many kinds of data, with
+diï¬€erent numbers of dimensions. We then discuss means of making convolution
+more eï¬ƒcient. Convolutional networks stand out as an example of neuroscientiï¬?c
+principles inï¬‚uencing deep learning. We will discuss these neuroscientiï¬?c principles,
+then conclude with comments about the role convolutional networks have played
+in the history of deep learning. One topic this chapter does not address is how to
+choose the architecture of your convolutional network. The goal of this chapter is
+to describe the kinds of tools that convolutional networks provide, while chapter 11
+330
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+describes general guidelines for choosing which tools to use in which circumstances.
+Research into convolutional network architectures proceeds so rapidly that a new
+best architecture for a given benchmark is announced every few weeks to months,
+rendering it impractical to describe the best architecture in print. However, the
+best architectures have consistently been composed of the building blocks described
+here.
+
+9.1
+
+The Convolution Operation
+
+In its most general form, convolution is an operation on two functions of a realvalued argument. To motivate the deï¬?nition of convolution, we start with examples
+of two functions we might use.
+Suppose we are tracking the location of a spaceship with a laser sensor. Our
+laser sensor provides a single output x(t), the position of the spaceship at time
+t. Both x and t are real-valued, i.e., we can get a diï¬€erent reading from the laser
+sensor at any instant in time.
+Now suppose that our laser sensor is somewhat noisy. To obtain a less noisy
+estimate of the spaceshipâ€™s position, we would like to average together several
+measurements. Of course, more recent measurements are more relevant, so we will
+want this to be a weighted average that gives more weight to recent measurements.
+We can do this with a weighting function w(a), where a is the age of a measurement.
+If we apply such a weighted average operation at every moment, we obtain a new
+function s providing a smoothed estimate of the position of the spaceship:
+î?š
+s(t) = x(a)w (t âˆ’ a)da
+(9.1)
+This operation is called convolution. The convolution operation is typically
+denoted with an asterisk:
+s(t) = (x âˆ— w )(t)
+(9.2)
+In our example, w needs to be a valid probability density function, or the
+output is not a weighted average. Also, w needs to be 0 for all negative arguments,
+or it will look into the future, which is presumably beyond our capabilities. These
+limitations are particular to our example though. In general, convolution is deï¬?ned
+for any functions for which the above integral is deï¬?ned, and may be used for other
+purposes besides taking weighted averages.
+In convolutional network terminology, the ï¬?rst argument (in this example, the
+function x) to the convolution is often referred to as the input and the second
+331
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+argument (in this example, the function w) as the kernel. The output is sometimes
+referred to as the feature map.
+In our example, the idea of a laser sensor that can provide measurements
+at every instant in time is not realistic. Usually, when we work with data on a
+computer, time will be discretized, and our sensor will provide data at regular
+intervals. In our example, it might be more realistic to assume that our laser
+provides a measurement once per second. The time index t can then take on only
+integer values. If we now assume that x and w are deï¬?ned only on integer t, we
+can deï¬?ne the discrete convolution:
+s(t) = (x âˆ— w )(t) =
+
+âˆž
+î?˜
+
+a=âˆ’âˆž
+
+x (a )w ( t âˆ’ a)
+
+(9.3)
+
+In machine learning applications, the input is usually a multidimensional array
+of data and the kernel is usually a multidimensional array of parameters that are
+adapted by the learning algorithm. We will refer to these multidimensional arrays
+as tensors. Because each element of the input and kernel must be explicitly stored
+separately, we usually assume that these functions are zero everywhere but the
+ï¬?nite set of points for which we store the values. This means that in practice we
+can implement the inï¬?nite summation as a summation over a ï¬?nite number of
+array elements.
+Finally, we often use convolutions over more than one axis at a time. For
+example, if we use a two-dimensional image I as our input, we probably also want
+to use a two-dimensional kernel K :
+î?˜î?˜
+S (i, j ) = (I âˆ— K )(i, j ) =
+I (m, n)K (i âˆ’ m, j âˆ’ n).
+(9.4)
+m
+
+n
+
+Convolution is commutative, meaning we can equivalently write:
+î?˜î?˜
+S (i, j ) = (K âˆ— I )(i, j ) =
+I (i âˆ’ m, j âˆ’ n)K (m, n).
+m
+
+(9.5)
+
+n
+
+Usually the latter formula is more straightforward to implement in a machine
+learning library, because there is less variation in the range of valid values of m
+and n.
+The commutative property of convolution arises because we have ï¬‚ipped the
+kernel relative to the input, in the sense that as m increases, the index into the
+input increases, but the index into the kernel decreases. The only reason to ï¬‚ip
+the kernel is to obtain the commutative property. While the commutative property
+332
+
+CHAPTER 9. CONVOLUTIONAL NETWORKS
+
+is useful for writing proofs, it is

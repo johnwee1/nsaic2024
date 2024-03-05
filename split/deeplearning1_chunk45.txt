@@ -1,0 +1,353 @@
+ model performance. As we have discussed in sections 4.3 and 8.2, the
+cost is often highly sensitive to some directions in parameter space and insensitive
+to others. The momentum algorithm can mitigate these issues somewhat, but
+does so at the expense of introducing another hyperparameter. In the face of this,
+it is natural to ask if there is another way. If we believe that the directions of
+sensitivity are somewhat axis-aligned, it can make sense to use a separate learning
+306
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+rate for each parameter, and automatically adapt these learning rates throughout
+the course of learning.
+The delta-bar-delta algorithm (Jacobs, 1988) is an early heuristic approach
+to adapting individual learning rates for model parameters during training. The
+approach is based on a simple idea: if the partial derivative of the loss, with respect
+to a given model parameter, remains the same sign, then the learning rate should
+increase. If the partial derivative with respect to that parameter changes sign,
+then the learning rate should decrease. Of course, this kind of rule can only be
+applied to full batch optimization.
+More recently, a number of incremental (or mini-batch-based) methods have
+been introduced that adapt the learning rates of model parameters. This section
+will brieﬂy review a few of these algorithms.
+
+8.5.1
+
+AdaGrad
+
+The AdaGrad algorithm, shown in algorithm 8.4, individually adapts the learning
+rates of all model parameters by scaling them inversely proportional to the square
+root of the sum of all of their historical squared values (Duchi et al., 2011). The
+parameters with the largest partial derivative of the loss have a correspondingly
+rapid decrease in their learning rate, while parameters with small partial derivatives
+have a relatively small decrease in their learning rate. The net eﬀect is greater
+progress in the more gently sloped directions of parameter space.
+In the context of convex optimization, the AdaGrad algorithm enjoys some
+desirable theoretical properties. However, empirically it has been found that—for
+training deep neural network models—the accumulation of squared gradients from
+the beginning of training can result in a premature and excessive decrease in the
+eﬀective learning rate. AdaGrad performs well for some but not all deep learning
+models.
+
+8.5.2
+
+RMSProp
+
+The RMSProp algorithm (Hinton, 2012) modi�?es AdaGrad to perform better in
+the non-convex setting by changing the gradient accumulation into an exponentially
+weighted moving average. AdaGrad is designed to converge rapidly when applied
+to a convex function. When applied to a non-convex function to train a neural
+network, the learning trajectory may pass through many diﬀerent structures and
+eventually arrive at a region that is a locally convex bowl. AdaGrad shrinks the
+learning rate according to the entire history of the squared gradient and may
+307
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+Algorithm 8.4 The AdaGrad algorithm
+Require: Global learning rate �?
+Require: Initial parameter θ
+Require: Small constant δ, perhaps 10−7 , for numerical stability
+Initialize gradient accumulation variable r = 0
+while stopping criterion not met do
+Sample a minibatch of m examples from the training set {x(1) , . . . , x(m) } with
+corresponding targets y(i).
+�??
+1
+Compute gradient: g �? m
+∇θ i L(f (x (i); θ), y(i))
+Accumulate squared gradient: r �? r + g  g
+Compute update: ∆θ �? − δ+�?√ r  g. (Division and square root applied
+element-wise)
+Apply update: θ �? θ + ∆θ
+end while
+have made the learning rate too small before arriving at such a convex structure.
+RMSProp uses an exponentially decaying average to discard history from the
+extreme past so that it can converge rapidly after �?nding a convex bowl, as if it
+were an instance of the AdaGrad algorithm initialized within that bowl.
+RMSProp is shown in its standard form in algorithm 8.5 and combined with
+Nesterov momentum in algorithm 8.6. Compared to AdaGrad, the use of the
+moving average introduces a new hyperparameter, �?, that controls the length scale
+of the moving average.
+Empirically, RMSProp has been shown to be an eﬀective and practical optimization algorithm for deep neural networks. It is currently one of the go-to
+optimization methods being employed routinely by deep learning practitioners.
+
+8.5.3
+
+Adam
+
+Adam (Kingma and Ba, 2014) is yet another adaptive learning rate optimization
+algorithm and is presented in algorithm 8.7. The name “Adam�? derives from
+the phrase “adaptive moments.�? In the context of the earlier algorithms, it is
+perhaps best seen as a variant on the combination of RMSProp and momentum
+with a few important distinctions. First, in Adam, momentum is incorporated
+directly as an estimate of the �?rst order moment (with exponential weighting) of
+the gradient. The most straightforward way to add momentum to RMSProp is to
+apply momentum to the rescaled gradients. The use of momentum in combination
+with rescaling does not have a clear theoretical motivation. Second, Adam includes
+308
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+Algorithm 8.5 The RMSProp algorithm
+Require: Global learning rate �?, decay rate �?.
+Require: Initial parameter θ
+Require: Small constant δ, usually 10−6 , used to stabilize division by small
+numbers.
+Initialize accumulation variables r = 0
+while stopping criterion not met do
+Sample a minibatch of m examples from the training set {x(1) , . . . , x(m) } with
+corresponding targets y(i).
+�??
+1
+Compute gradient: g �? m
+∇θ i L(f (x (i); θ), y(i))
+Accumulate squared gradient: r �? �?r + (1 − �?)g  g
+�?
+1
+Compute parameter update: ∆θ = − √ δ+r
+applied element-wise)
+ g . ( √δ+r
+Apply update: θ �? θ + ∆θ
+end while
+bias corrections to the estimates of both the �?rst-order moments (the momentum
+term) and the (uncentered) second-order moments to account for their initialization
+at the origin (see algorithm 8.7). RMSProp also incorporates an estimate of the
+(uncentered) second-order moment, however it lacks the correction factor. Thus,
+unlike in Adam, the RMSProp second-order moment estimate may have high bias
+early in training. Adam is generally regarded as being fairly robust to the choice
+of hyperparameters, though the learning rate sometimes needs to be changed from
+the suggested default.
+
+8.5.4
+
+Choosing the Right Optimization Algorithm
+
+In this section, we discussed a series of related algorithms that each seek to address
+the challenge of optimizing deep models by adapting the learning rate for each
+model parameter. At this point, a natural question is: which algorithm should one
+choose?
+Unfortunately, there is currently no consensus on this point. Schaul et al. (2014)
+presented a valuable comparison of a large number of optimization algorithms
+across a wide range of learning tasks. While the results suggest that the family of
+algorithms with adaptive learning rates (represented by RMSProp and AdaDelta)
+performed fairly robustly, no single best algorithm has emerged.
+Currently, the most popular optimization algorithms actively in use include
+SGD, SGD with momentum, RMSProp, RMSProp with momentum, AdaDelta
+and Adam. The choice of which algorithm to use, at this point, seems to depend
+309
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+Algorithm 8.6 RMSProp algorithm with Nesterov momentum
+Require: Global learning rate �?, decay rate �?, momentum coeﬃcient α.
+Require: Initial parameter θ , initial velocity v.
+Initialize accumulation variable r = 0
+while stopping criterion not met do
+Sample a minibatch of m examples from the training set {x(1) , . . . , x(m) } with
+corresponding targets y(i).
+Compute interim update: θ̃ �?�??
+θ + αv
+1
+Compute gradient: g �? m ∇θ̃ i L(f (x (i); θ˜), y (i))
+Accumulate gradient: r �? �?r + (1 − �?)g  g
+Compute velocity update: v �? αv − √�?r  g. ( √1r applied element-wise)
+Apply update: θ �? θ + v
+end while
+largely on the user’s familiarity with the algorithm (for ease of hyperparameter
+tuning).
+
+8.6
+
+Approximate Second-Order Methods
+
+In this section we discuss the application of second-order methods to the training
+of deep networks. See LeCun et al. (1998a) for an earlier treatment of this subject.
+For simplicity of exposition, the only objective function we examine is the empirical
+risk:
+m
+
+1�?�
+J(θ) = Ex,y∼p̂data (x,y)[L(f (x; θ ), y)] =
+L(f (x (i) ; θ), y (i)).
+m i=1
+
+(8.25)
+
+However the methods we discuss here extend readily to more general objective
+functions that, for instance, include parameter regularization terms such as those
+discussed in chapter 7.
+
+8.6.1
+
+Newton’s Method
+
+In section 4.3, we introduced second-order gradient methods. In contrast to �?rstorder methods, second-order methods make use of second derivatives to improve
+optimization. The most widely used second-order method is Newton’s method. We
+now describe Newton’s method in more detail, with emphasis on its application to
+neural network training.
+310
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+Algorithm 8.7 The Adam algorithm
+Require: Step size �? (Suggested default: 0.001)
+Require: Exponential decay rates for moment estimates, �?1 and �? 2 in [0, 1).
+(Suggested defaults: 0.9 and 0.999 respectively)
+Require: Small constant δ used for numerical stabilization. (Suggested default:
+10 −8)
+Require: Initial parameters θ
+Initialize 1st and 2nd moment variables s = 0, r = 0
+Initialize time step t = 0
+while stopping criterion not met do
+Sample a minibatch of m examples from the training set {x(1) , . . . , x(m) } with
+corresponding targets y(i).
+�??
+1
+Compute gradient: g �? m
+∇θ i L(f (x (i); θ), y(i))
+t�? t+1
+Update biased �?rst moment estimate: s �? �?1s + (1 − �?1 )g
+Update biased second moment estimate: r �? �?2r + (1 − �? 2 )g  g
+s
+Correct bias in �?rst moment: ŝ �? 1−�?
+t
+1
+r
+Correct bias in second moment: r̂ �? 1−�?
+t
+ŝ
+Compute update: ∆θ = −�? √r̂+δ
+Apply update: θ �? θ + ∆θ
+end while
+
+2
+
+(operations applied element-wise)
+
+Newton’s method is an optimization scheme based on using a second-order Taylor series expansion to approximate J (θ) near some point θ 0, ignoring derivatives
+of higher order:
+1
+J (θ) ≈ J (θ0) + (θ − θ 0)∇θ J(θ0 ) + (θ − θ 0) H (θ − θ0),
+2
+
+(8.26)
+
+where H is the Hessian of J with respect to θ evaluated at θ 0. If we then solve for
+the critical point of this function, we obtain the Newton parameter update rule:
+θ∗ = θ0 − H−1 ∇ θ J(θ 0)
+
+(8.27)
+
+Thus for a locally quadratic function (with positive de�?nite H ), by rescaling
+the gradient by H −1 , Newton’s method jumps directly to the minimum. If the
+objective function is convex but not quadratic (there are higher-order terms), this
+update can be iterated, yielding the training algorithm associated with Newton’s
+method, given in algorithm 8.8.
+311
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+Algorithm
+8.8
+Newton’s
+1 �??m
+( i)
+(i)
+i=1 L(f (x ; θ ), y ).
+m
+
+method
+
+with
+
+objective
+
+J(θ )
+
+=
+
+Require: Initial parameter θ0
+Require: Training set of m examples
+while stopping criterion not met�??do
+1
+Compute gradient: g �? m
+∇θ i L(f (x (i); θ), y(i))
+�??
+Compute Hessian: H �? m1 ∇2θ i L(f (x(i); θ), y (i) )
+Compute Hessian inverse: H−1
+Compute update: ∆θ = −H−1 g
+Apply update: θ = θ + ∆θ
+end while
+For surfaces that are not quadratic, as long as the Hessian remains positive
+de�?nite, Newton’s method can be applied iteratively. This implies a two-step
+iterative procedure. First, update or compute the inverse Hessian (i.e. by updating the quadratic approximation). Second, update the parameters according to
+equation 8.27.
+In section 8.2.3, we discussed how Newton’s method is appropriate only when
+the Hessian is positive de�?nite. In deep learning, the surface of the objective
+function is typically non-convex with many features, such as saddle points, that
+are problematic for Newton’s method. If the eigenvalues of the Hessian are not
+all positive, for example, near a saddle point, then Newton’s method can actually
+cause updates to move in the wrong direction. This situation can be avoided
+by regularizing the Hessian. Common regularization strategies include adding a
+constant, α, along the diagonal of the Hessian. The regularized update becomes
+θ∗ = θ0 − [H (f (θ 0)) + αI ]−1 ∇θ f(θ0).
+
+(8.28)
+
+This regularization strategy is used in approximations to Newton’s method, such
+as the Levenberg–Marquardt algorithm (Levenberg, 1944; Marquardt, 1963), and
+works fairly well as long as the negative eigenvalues of the Hessian are still relatively
+close to zero. In cases where there are more extreme directions of curvature, the
+value of α would have to be suﬃciently large to oﬀset the negative eigenvalues.
+However, as α increases in size, the Hessian becomes dominated by the αI diagonal
+and the direction chosen by Newton’s method converges to the standard gradient
+divided by α. When strong negative curvature is present, α may need to be so
+large that Newton’s method would make smaller steps than gradient descent with
+a properly chosen learning rate.
+Beyond the challenges created by certain features of the objective function,
+312
+
+CHAPTER 8. OPTIMIZATION FOR TRAINING DEEP MODELS
+
+such as saddle points, the application of Newton’s method for training large neural
+networks is limited by the signi�?cant computational burden it imposes. The
+number of elements in the Hessian is squared in the number of parameters, so with
+k parameters (and for even very small neural networks the number of parameters
+k can be in the millions), Newton’s method would require the inversion of a k × k
+matrix—with computational complexity of O(k3 ). Also, since the parameters will
+change with every update, the inverse Hessian has to be computed at every training
+iteration. As a consequence, only networks with a very small number of parameters
+can be practically trained via Newton’s method. In the remainder of this section,
+we will discuss alternatives that attempt to gain some of the advantages of Newton’s
+method while side-stepping the computational hurdles.
+
+8.6.2
+
+Conjugate Gradients
+
+Conjugate gradients is a method to eﬃciently avoid the calculation of the inverse
+Hessian by iteratively descending conjugate directions. The inspiration for this
+approach follows from a careful study of the weakness of the method of steepest
+descent (see section 4.3 for details), where line searches are applied iteratively in
+the direction associated with the gradient. Figure 8.6 illustrates how the method of
+steepest descent, when applied in a quadratic bowl, progresses in a rather ineﬀective
+back-and-forth, zig-zag pattern. This happens because each line search direction,
+when given by the gradient, is guaranteed to be orthogonal to the previous line
+search direction.
+Let the previous search direction be d t−1. At the minimum, where the line
+search terminates, the directional derivative is zero in direction d t−1: ∇ θ J (θ) ·
+dt−1 = 0. Since the gradient at this point de�?nes the current search direction,
+dt = ∇θJ (θ) will have no contribution in the direction dt−1. Thus dt is orthogonal
+to dt−1. This relationship between dt−1 and d t is illustrated in �?gure 8.6 for
+multiple iterations of steepest descent. As demonstrated in th
