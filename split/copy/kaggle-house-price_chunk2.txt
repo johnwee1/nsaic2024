@@ -1,0 +1,89 @@
+ number of training errors
+for a set of hyperparameters can be very low,
+even as the number of errors on $K$-fold cross-validation
+grows considerably higher.
+This indicates that we are overfitting.
+Throughout training you will want to monitor both numbers.
+Less overfitting might indicate that our data can support a more powerful model.
+Massive overfitting might suggest that we can gain
+by incorporating regularization techniques.
+
+##  [**Submitting Predictions on Kaggle**]
+
+Now that we know what a good choice of hyperparameters should be,
+we might 
+calculate the average predictions 
+on the test set
+by all the $K$ models.
+Saving the predictions in a csv file
+will simplify uploading the results to Kaggle.
+The following code will generate a file called `submission.csv`.
+
+```{.python .input}
+%%tab all
+if tab.selected('pytorch', 'mxnet', 'tensorflow'):
+    preds = [model(d2l.tensor(data.val.values.astype(float), dtype=d2l.float32))
+             for model in models]
+if tab.selected('jax'):
+    preds = [model.apply({'params': trainer.state.params},
+             d2l.tensor(data.val.values.astype(float), dtype=d2l.float32))
+             for model in models]
+# Taking exponentiation of predictions in the logarithm scale
+ensemble_preds = d2l.reduce_mean(d2l.exp(d2l.concat(preds, 1)), 1)
+submission = pd.DataFrame({'Id':data.raw_val.Id,
+                           'SalePrice':d2l.numpy(ensemble_preds)})
+submission.to_csv('submission.csv', index=False)
+```
+
+Next, as demonstrated in :numref:`fig_kaggle_submit2`,
+we can submit our predictions on Kaggle
+and see how they compare with the actual house prices (labels)
+on the test set.
+The steps are quite simple:
+
+* Log in to the Kaggle website and visit the house price prediction competition page.
+* Click the “Submit Predictions” or “Late Submission” button.
+* Click the “Upload Submission File” button in the dashed box at the bottom of the page and select the prediction file you wish to upload.
+* Click the “Make Submission” button at the bottom of the page to view your results.
+
+![Submitting data to Kaggle.](../img/kaggle-submit2.png)
+:width:`400px`
+:label:`fig_kaggle_submit2`
+
+## Summary and Discussion
+
+Real data often contains a mix of different data types and needs to be preprocessed.
+Rescaling real-valued data to zero mean and unit variance is a good default. So is replacing missing values with their mean.
+Furthermore, transforming categorical features into indicator features allows us to treat them like one-hot vectors.
+When we tend to care more about
+the relative error than about the absolute error,
+we can 
+measure the discrepancy in the logarithm of the prediction.
+To select the model and adjust the hyperparameters,
+we can use $K$-fold cross-validation .
+
+
+
+## Exercises
+
+1. Submit your predictions for this section to Kaggle. How good are they?
+1. Is it always a good idea to replace missing values by a mean? Hint: can you construct a situation where the values are not missing at random?
+1. Improve the score by tuning the hyperparameters through $K$-fold cross-validation.
+1. Improve the score by improving the model (e.g., layers, weight decay, and dropout).
+1. What happens if we do not standardize the continuous numerical features as we have done in this section?
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/106)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/107)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/237)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/17988)
+:end_tab:

@@ -1,0 +1,330 @@
+ This is somewhat of a misnomer as it has nothing whatsoever to do with the *momentum* term of optimization. Nonetheless, it is the commonly adopted name for this term and in deference to API naming convention we use the same variable name in our code.
+
+## [**LeNet with Batch Normalization**]
+
+To see how to apply `BatchNorm` in context,
+below we apply it to a traditional LeNet model (:numref:`sec_lenet`).
+Recall that batch normalization is applied
+after the convolutional layers or fully connected layers
+but before the corresponding activation functions.
+
+```{.python .input}
+%%tab pytorch, mxnet, tensorflow
+class BNLeNetScratch(d2l.Classifier):
+    def __init__(self, lr=0.1, num_classes=10):
+        super().__init__()
+        self.save_hyperparameters()
+        if tab.selected('mxnet'):
+            self.net = nn.Sequential()
+            self.net.add(
+                nn.Conv2D(6, kernel_size=5), BatchNorm(6, num_dims=4),
+                nn.Activation('sigmoid'),
+                nn.AvgPool2D(pool_size=2, strides=2),
+                nn.Conv2D(16, kernel_size=5), BatchNorm(16, num_dims=4),
+                nn.Activation('sigmoid'),
+                nn.AvgPool2D(pool_size=2, strides=2), nn.Dense(120),
+                BatchNorm(120, num_dims=2), nn.Activation('sigmoid'),
+                nn.Dense(84), BatchNorm(84, num_dims=2),
+                nn.Activation('sigmoid'), nn.Dense(num_classes))
+            self.initialize()
+        if tab.selected('pytorch'):
+            self.net = nn.Sequential(
+                nn.LazyConv2d(6, kernel_size=5), BatchNorm(6, num_dims=4),
+                nn.Sigmoid(), nn.AvgPool2d(kernel_size=2, stride=2),
+                nn.LazyConv2d(16, kernel_size=5), BatchNorm(16, num_dims=4),
+                nn.Sigmoid(), nn.AvgPool2d(kernel_size=2, stride=2),
+                nn.Flatten(), nn.LazyLinear(120),
+                BatchNorm(120, num_dims=2), nn.Sigmoid(), nn.LazyLinear(84),
+                BatchNorm(84, num_dims=2), nn.Sigmoid(),
+                nn.LazyLinear(num_classes))
+        if tab.selected('tensorflow'):
+            self.net = tf.keras.models.Sequential([
+                tf.keras.layers.Conv2D(filters=6, kernel_size=5,
+                                       input_shape=(28, 28, 1)),
+                BatchNorm(), tf.keras.layers.Activation('sigmoid'),
+                tf.keras.layers.AvgPool2D(pool_size=2, strides=2),
+                tf.keras.layers.Conv2D(filters=16, kernel_size=5),
+                BatchNorm(), tf.keras.layers.Activation('sigmoid'),
+                tf.keras.layers.AvgPool2D(pool_size=2, strides=2),
+                tf.keras.layers.Flatten(), tf.keras.layers.Dense(120),
+                BatchNorm(), tf.keras.layers.Activation('sigmoid'),
+                tf.keras.layers.Dense(84), BatchNorm(),
+                tf.keras.layers.Activation('sigmoid'),
+                tf.keras.layers.Dense(num_classes)])
+```
+
+```{.python .input}
+%%tab jax
+class BNLeNetScratch(d2l.Classifier):
+    lr: float = 0.1
+    num_classes: int = 10
+    training: bool = True
+
+    def setup(self):
+        self.net = nn.Sequential([
+            nn.Conv(6, kernel_size=(5, 5)),
+            BatchNorm(6, num_dims=4, deterministic=not self.training),
+            nn.sigmoid,
+            lambda x: nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2)),
+            nn.Conv(16, kernel_size=(5, 5)),
+            BatchNorm(16, num_dims=4, deterministic=not self.training),
+            nn.sigmoid,
+            lambda x: nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2)),
+            lambda x: x.reshape((x.shape[0], -1)),
+            nn.Dense(120),
+            BatchNorm(120, num_dims=2, deterministic=not self.training),
+            nn.sigmoid,
+            nn.Dense(84),
+            BatchNorm(84, num_dims=2, deterministic=not self.training),
+            nn.sigmoid,
+            nn.Dense(self.num_classes)])
+```
+
+:begin_tab:`jax`
+Since `BatchNorm` layers need to calculate the batch statistics
+(mean and variance), Flax keeps track of the `batch_stats` dictionary, updating
+them with every minibatch. Collections like `batch_stats` can be stored in the
+`TrainState` object (in the `d2l.Trainer` class defined in
+:numref:`oo-design-training`) as an attribute and during the model's forward pass,
+these should be passed to the `mutable` argument, so that Flax returns the mutated
+variables.
+:end_tab:
+
+```{.python .input}
+%%tab jax
+@d2l.add_to_class(d2l.Classifier)  #@save
+@partial(jax.jit, static_argnums=(0, 5))
+def loss(self, params, X, Y, state, averaged=True):
+    Y_hat, updates = state.apply_fn({'params': params,
+                                     'batch_stats': state.batch_stats},
+                                    *X, mutable=['batch_stats'],
+                                    rngs={'dropout': state.dropout_rng})
+    Y_hat = d2l.reshape(Y_hat, (-1, Y_hat.shape[-1]))
+    Y = d2l.reshape(Y, (-1,))
+    fn = optax.softmax_cross_entropy_with_integer_labels
+    return (fn(Y_hat, Y).mean(), updates) if averaged else (fn(Y_hat, Y), updates)
+```
+
+As before, we will [**train our network on the Fashion-MNIST dataset**].
+This code is virtually identical to that when we first trained LeNet.
+
+```{.python .input}
+%%tab mxnet, pytorch, jax
+trainer = d2l.Trainer(max_epochs=10, num_gpus=1)
+data = d2l.FashionMNIST(batch_size=128)
+model = BNLeNetScratch(lr=0.1)
+if tab.selected('pytorch'):
+    model.apply_init([next(iter(data.get_dataloader(True)))[0]], d2l.init_cnn)
+trainer.fit(model, data)
+```
+
+```{.python .input}
+%%tab tensorflow
+trainer = d2l.Trainer(max_epochs=10)
+data = d2l.FashionMNIST(batch_size=128)
+with d2l.try_gpu():
+    model = BNLeNetScratch(lr=0.5)
+    trainer.fit(model, data)
+```
+
+Let's [**have a look at the scale parameter `gamma`
+and the shift parameter `beta`**] learned
+from the first batch normalization layer.
+
+```{.python .input}
+%%tab mxnet
+model.net[1].gamma.data().reshape(-1,), model.net[1].beta.data().reshape(-1,)
+```
+
+```{.python .input}
+%%tab pytorch
+model.net[1].gamma.reshape((-1,)), model.net[1].beta.reshape((-1,))
+```
+
+```{.python .input}
+%%tab tensorflow
+tf.reshape(model.net.layers[1].gamma, (-1,)), tf.reshape(
+    model.net.layers[1].beta, (-1,))
+```
+
+```{.python .input}
+%%tab jax
+trainer.state.params['net']['layers_1']['gamma'].reshape((-1,)), \
+trainer.state.params['net']['layers_1']['beta'].reshape((-1,))
+```
+
+## [**Concise Implementation**]
+
+Compared with the `BatchNorm` class,
+which we just defined ourselves,
+we can use the `BatchNorm` class defined in high-level APIs from the deep learning framework directly.
+The code looks virtually identical
+to our implementation above, except that we no longer need to provide additional arguments for it to get the dimensions right.
+
+```{.python .input}
+%%tab pytorch, tensorflow, mxnet
+class BNLeNet(d2l.Classifier):
+    def __init__(self, lr=0.1, num_classes=10):
+        super().__init__()
+        self.save_hyperparameters()
+        if tab.selected('mxnet'):
+            self.net = nn.Sequential()
+            self.net.add(
+                nn.Conv2D(6, kernel_size=5), nn.BatchNorm(),
+                nn.Activation('sigmoid'),
+                nn.AvgPool2D(pool_size=2, strides=2),
+                nn.Conv2D(16, kernel_size=5), nn.BatchNorm(),
+                nn.Activation('sigmoid'),
+                nn.AvgPool2D(pool_size=2, strides=2),
+                nn.Dense(120), nn.BatchNorm(), nn.Activation('sigmoid'),
+                nn.Dense(84), nn.BatchNorm(), nn.Activation('sigmoid'),
+                nn.Dense(num_classes))
+            self.initialize()
+        if tab.selected('pytorch'):
+            self.net = nn.Sequential(
+                nn.LazyConv2d(6, kernel_size=5), nn.LazyBatchNorm2d(),
+                nn.Sigmoid(), nn.AvgPool2d(kernel_size=2, stride=2),
+                nn.LazyConv2d(16, kernel_size=5), nn.LazyBatchNorm2d(),
+                nn.Sigmoid(), nn.AvgPool2d(kernel_size=2, stride=2),
+                nn.Flatten(), nn.LazyLinear(120), nn.LazyBatchNorm1d(),
+                nn.Sigmoid(), nn.LazyLinear(84), nn.LazyBatchNorm1d(),
+                nn.Sigmoid(), nn.LazyLinear(num_classes))
+        if tab.selected('tensorflow'):
+            self.net = tf.keras.models.Sequential([
+                tf.keras.layers.Conv2D(filters=6, kernel_size=5,
+                                       input_shape=(28, 28, 1)),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Activation('sigmoid'),
+                tf.keras.layers.AvgPool2D(pool_size=2, strides=2),
+                tf.keras.layers.Conv2D(filters=16, kernel_size=5),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Activation('sigmoid'),
+                tf.keras.layers.AvgPool2D(pool_size=2, strides=2),
+                tf.keras.layers.Flatten(), tf.keras.layers.Dense(120),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Activation('sigmoid'),
+                tf.keras.layers.Dense(84),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.Activation('sigmoid'),
+                tf.keras.layers.Dense(num_classes)])
+```
+
+```{.python .input}
+%%tab jax
+class BNLeNet(d2l.Classifier):
+    lr: float = 0.1
+    num_classes: int = 10
+    training: bool = True
+
+    def setup(self):
+        self.net = nn.Sequential([
+            nn.Conv(6, kernel_size=(5, 5)),
+            nn.BatchNorm(not self.training),
+            nn.sigmoid,
+            lambda x: nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2)),
+            nn.Conv(16, kernel_size=(5, 5)),
+            nn.BatchNorm(not self.training),
+            nn.sigmoid,
+            lambda x: nn.avg_pool(x, window_shape=(2, 2), strides=(2, 2)),
+            lambda x: x.reshape((x.shape[0], -1)),
+            nn.Dense(120),
+            nn.BatchNorm(not self.training),
+            nn.sigmoid,
+            nn.Dense(84),
+            nn.BatchNorm(not self.training),
+            nn.sigmoid,
+            nn.Dense(self.num_classes)])
+```
+
+Below, we [**use the same hyperparameters to train our model.**]
+Note that as usual, the high-level API variant runs much faster
+because its code has been compiled to C++ or CUDA
+while our custom implementation must be interpreted by Python.
+
+```{.python .input}
+%%tab mxnet, pytorch, jax
+trainer = d2l.Trainer(max_epochs=10, num_gpus=1)
+data = d2l.FashionMNIST(batch_size=128)
+model = BNLeNet(lr=0.1)
+if tab.selected('pytorch'):
+    model.apply_init([next(iter(data.get_dataloader(True)))[0]], d2l.init_cnn)
+trainer.fit(model, data)
+```
+
+```{.python .input}
+%%tab tensorflow
+trainer = d2l.Trainer(max_epochs=10)
+data = d2l.FashionMNIST(batch_size=128)
+with d2l.try_gpu():
+    model = BNLeNet(lr=0.5)
+    trainer.fit(model, data)
+```
+
+## Discussion
+
+Intuitively, batch normalization is thought
+to make the optimization landscape smoother.
+However, we must be careful to distinguish between
+speculative intuitions and true explanations
+for the phenomena that we observe when training deep models.
+Recall that we do not even know why simpler
+deep neural networks (MLPs and conventional CNNs)
+generalize well in the first place.
+Even with dropout and weight decay,
+they remain so flexible that their ability to generalize to unseen data
+likely needs significantly more refined learning-theoretic generalization guarantees.
+
+The original paper proposing batch normalization :cite:`Ioffe.Szegedy.2015`, in addition to introducing a powerful and useful tool,
+offered an explanation for why it works:
+by reducing *internal covariate shift*.
+Presumably by *internal covariate shift* they
+meant something like the intuition expressed above---the
+notion that the distribution of variable values changes
+over the course of training.
+However, there were two problems with this explanation:
+i) This drift is very different from *covariate shift*,
+rendering the name a misnomer. If anything, it is closer to concept drift. 
+ii) The explanation offers an under-specified intuition
+but leaves the question of *why precisely this technique works*
+an open question wanting for a rigorous explanation.
+Throughout this book, we aim to convey the intuitions that practitioners
+use to guide their development of deep neural networks.
+However, we believe that it is important
+to separate these guiding intuitions
+from established scientific fact.
+Eventually, when you master this material
+and start writing your own research papers
+you will want to be clear to delineate
+between technical claims and hunches.
+
+Following the success of batch normalization,
+its explanation in terms of *internal covariate shift*
+has repeatedly surfaced in debates in the technical literature
+and broader discourse about how to present machine learning research.
+In a memorable speech given while accepting a Test of Time Award
+at the 2017 NeurIPS conference,
+Ali Rahimi used *internal covariate shift*
+as a focal point in an argument likening
+the modern practice of deep learning to alchemy.
+Subsequently, the example was revisited in detail
+in a position paper outlining
+troubling trends in machine learning :cite:`Lipton.Steinhardt.2018`.
+Other authors
+have proposed alternative explanations for the success of batch normalization,
+some :cite:`Santurkar.Tsipras.Ilyas.ea.2018`
+claiming that batch normalization's success comes despite exhibiting behavior
+that is in some ways opposite to those claimed in the original paper.
+
+
+We note that the *internal covariate shift*
+is no more worthy of criticism than any of
+thousands of similarly vague claims
+made every year in the technical machine learning literature.
+Likely, its resonance as a focal point of these debates
+owes to its broad recognizability for the target audience.
+Batch normalization has proven an indispensable method,
+applied in nearly all deployed image classifiers,
+earning the paper that introduced the technique
+tens of thousands of citations. We conjecture, though, that the guiding principles
+of regularization through noise injection, acceleration through rescaling and lastly preprocessing
+may well lead to furthe

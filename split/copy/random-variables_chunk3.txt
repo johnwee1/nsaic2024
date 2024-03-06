@@ -1,0 +1,285 @@
+case shows that this should be approximately
+
+$$
+P(X \;\textrm{is in an}\; \epsilon \textrm{-sized interval around}\; x \; \textrm{and} \;Y \;\textrm{is in an}\; \epsilon \textrm{-sized interval around}\; y ) \approx \epsilon^{2}p(x, y),
+$$
+
+for some function $p(x, y)$.  This is referred to as the joint density of $X$ and $Y$.  Similar properties are true for this as we saw in the single variable case. Namely:
+
+* $p(x, y) \ge 0$;
+* $\int _ {\mathbb{R}^2} p(x, y) \;dx \;dy = 1$;
+* $P((X, Y) \in \mathcal{D}) = \int _ {\mathcal{D}} p(x, y) \;dx \;dy$.
+
+In this way, we can deal with multiple, potentially correlated random variables.  If we wish to work with more than two random variables, we can extend the multivariate density to as many coordinates as desired by considering $p(\mathbf{x}) = p(x_1, \ldots, x_n)$.  The same properties of being non-negative, and having total integral of one still hold.
+
+### Marginal Distributions
+When dealing with multiple variables, we oftentimes want to be able to ignore the relationships and ask, "how is this one variable distributed?"  Such a distribution is called a *marginal distribution*.
+
+To be concrete, let's suppose that we have two random variables $X, Y$ with joint density given by $p _ {X, Y}(x, y)$.  We will be using the subscript to indicate what random variables the density is for.  The question of finding the marginal distribution is taking this function, and using it to find $p _ X(x)$.
+
+As with most things, it is best to return to the intuitive picture to figure out what should be true.  Recall that the density is the function $p _ X$ so that
+
+$$
+P(X \in [x, x+\epsilon]) \approx \epsilon \cdot p _ X(x).
+$$
+
+There is no mention of $Y$, but if all we are given is $p _{X, Y}$, we need to include $Y$ somehow. We can first observe that this is the same as
+
+$$
+P(X \in [x, x+\epsilon] \textrm{, and } Y \in \mathbb{R}) \approx \epsilon \cdot p _ X(x).
+$$
+
+Our density does not directly tell us about what happens in this case, we need to split into small intervals in $y$ as well, so we can write this as
+
+$$
+\begin{aligned}
+\epsilon \cdot p _ X(x) & \approx \sum _ {i} P(X \in [x, x+\epsilon] \textrm{, and } Y \in [\epsilon \cdot i, \epsilon \cdot (i+1)]) \\
+& \approx \sum _ {i} \epsilon^{2} p _ {X, Y}(x, \epsilon\cdot i).
+\end{aligned}
+$$
+
+![By summing along the columns of our array of probabilities, we are able to obtain the marginal distribution for just the random variable represented along the $\mathit{x}$-axis.](../img/marginal.svg)
+:label:`fig_marginal`
+
+This tells us to add up the value of the density along a series of squares in a line as is shown in :numref:`fig_marginal`.  Indeed, after canceling one factor of epsilon from both sides, and recognizing the sum on the right is the integral over $y$, we can conclude that
+
+$$
+\begin{aligned}
+ p _ X(x) &  \approx \sum _ {i} \epsilon p _ {X, Y}(x, \epsilon\cdot i) \\
+ & \approx \int_{-\infty}^\infty p_{X, Y}(x, y) \; dy.
+\end{aligned}
+$$
+
+Thus we see
+
+$$
+p _ X(x) = \int_{-\infty}^\infty p_{X, Y}(x, y) \; dy.
+$$
+
+This tells us that to get a marginal distribution, we integrate over the variables we do not care about.  This process is often referred to as *integrating out* or *marginalized out* the unneeded variables.
+
+### Covariance
+
+When dealing with multiple random variables, there is one additional summary statistic which is helpful to know: the *covariance*.  This measures the degree that two random variable fluctuate together.
+
+Suppose that we have two random variables $X$ and $Y$, to begin with, let's suppose they are discrete, taking on values $(x_i, y_j)$ with probability $p_{ij}$.  In this case, the covariance is defined as
+
+$$\sigma_{XY} = \textrm{Cov}(X, Y) = \sum_{i, j} (x_i - \mu_X) (y_j-\mu_Y) p_{ij}. = E[XY] - E[X]E[Y].$$
+:eqlabel:`eq_cov_def`
+
+To think about this intuitively: consider the following pair of random variables.  Suppose that $X$ takes the values $1$ and $3$, and $Y$ takes the values $-1$ and $3$.  Suppose that we have the following probabilities
+
+$$
+\begin{aligned}
+P(X = 1 \; \textrm{and} \; Y = -1) & = \frac{p}{2}, \\
+P(X = 1 \; \textrm{and} \; Y = 3) & = \frac{1-p}{2}, \\
+P(X = 3 \; \textrm{and} \; Y = -1) & = \frac{1-p}{2}, \\
+P(X = 3 \; \textrm{and} \; Y = 3) & = \frac{p}{2},
+\end{aligned}
+$$
+
+where $p$ is a parameter in $[0,1]$ we get to pick.  Notice that if $p=1$ then they are both always their minimum or maximum values simultaneously, and if $p=0$ they are guaranteed to take their flipped values simultaneously (one is large when the other is small and vice versa).  If $p=1/2$, then the four possibilities are all equally likely, and neither should be related.  Let's compute the covariance.  First, note $\mu_X = 2$ and $\mu_Y = 1$, so we may compute using :eqref:`eq_cov_def`:
+
+$$
+\begin{aligned}
+\textrm{Cov}(X, Y) & = \sum_{i, j} (x_i - \mu_X) (y_j-\mu_Y) p_{ij} \\
+& = (1-2)(-1-1)\frac{p}{2} + (1-2)(3-1)\frac{1-p}{2} + (3-2)(-1-1)\frac{1-p}{2} + (3-2)(3-1)\frac{p}{2} \\
+& = 4p-2.
+\end{aligned}
+$$
+
+When $p=1$ (the case where they are both maximally positive or negative at the same time) has a covariance of $2$. When $p=0$ (the case where they are flipped) the covariance is $-2$.  Finally, when $p=1/2$ (the case where they are unrelated), the covariance is $0$.  Thus we see that the covariance measures how these two random variables are related.
+
+A quick note on the covariance is that it only measures these linear relationships.  More complex relationships like $X = Y^2$ where $Y$ is randomly chosen from $\{-2, -1, 0, 1, 2\}$ with equal probability can be missed.  Indeed a quick computation shows that these random variables have covariance zero, despite one being a deterministic function of the other.
+
+For continuous random variables, much the same story holds.  At this point, we are pretty comfortable with doing the transition between discrete and continuous, so we will provide the continuous analogue of :eqref:`eq_cov_def` without any derivation.
+
+$$
+\sigma_{XY} = \int_{\mathbb{R}^2} (x-\mu_X)(y-\mu_Y)p(x, y) \;dx \;dy.
+$$
+
+For visualization, let's take a look at a collection of random variables with tunable covariance.
+
+```{.python .input}
+#@tab mxnet
+# Plot a few random variables adjustable covariance
+covs = [-0.9, 0.0, 1.2]
+d2l.plt.figure(figsize=(12, 3))
+for i in range(3):
+    X = np.random.normal(0, 1, 500)
+    Y = covs[i]*X + np.random.normal(0, 1, (500))
+
+    d2l.plt.subplot(1, 4, i+1)
+    d2l.plt.scatter(X.asnumpy(), Y.asnumpy())
+    d2l.plt.xlabel('X')
+    d2l.plt.ylabel('Y')
+    d2l.plt.title(f'cov = {covs[i]}')
+d2l.plt.show()
+```
+
+```{.python .input}
+#@tab pytorch
+# Plot a few random variables adjustable covariance
+covs = [-0.9, 0.0, 1.2]
+d2l.plt.figure(figsize=(12, 3))
+for i in range(3):
+    X = torch.randn(500)
+    Y = covs[i]*X + torch.randn(500)
+
+    d2l.plt.subplot(1, 4, i+1)
+    d2l.plt.scatter(X.numpy(), Y.numpy())
+    d2l.plt.xlabel('X')
+    d2l.plt.ylabel('Y')
+    d2l.plt.title(f'cov = {covs[i]}')
+d2l.plt.show()
+```
+
+```{.python .input}
+#@tab tensorflow
+# Plot a few random variables adjustable covariance
+covs = [-0.9, 0.0, 1.2]
+d2l.plt.figure(figsize=(12, 3))
+for i in range(3):
+    X = tf.random.normal((500, ))
+    Y = covs[i]*X + tf.random.normal((500, ))
+
+    d2l.plt.subplot(1, 4, i+1)
+    d2l.plt.scatter(X.numpy(), Y.numpy())
+    d2l.plt.xlabel('X')
+    d2l.plt.ylabel('Y')
+    d2l.plt.title(f'cov = {covs[i]}')
+d2l.plt.show()
+```
+
+Let's see some properties of covariances:
+
+* For any random variable $X$, $\textrm{Cov}(X, X) = \textrm{Var}(X)$.
+* For any random variables $X, Y$ and numbers $a$ and $b$, $\textrm{Cov}(aX+b, Y) = \textrm{Cov}(X, aY+b) = a\textrm{Cov}(X, Y)$.
+* If $X$ and $Y$ are independent then $\textrm{Cov}(X, Y) = 0$.
+
+In addition, we can use the covariance to expand a relationship we saw before.  Recall that is $X$ and $Y$ are two independent random variables then
+
+$$
+\textrm{Var}(X+Y) = \textrm{Var}(X) + \textrm{Var}(Y).
+$$
+
+With knowledge of covariances, we can expand this relationship.  Indeed, some algebra can show that in general,
+
+$$
+\textrm{Var}(X+Y) = \textrm{Var}(X) + \textrm{Var}(Y) + 2\textrm{Cov}(X, Y).
+$$
+
+This allows us to generalize the variance summation rule for correlated random variables.
+
+### Correlation
+
+As we did in the case of means and variances, let's now consider units.  If $X$ is measured in one unit (say inches), and $Y$ is measured in another (say dollars), the covariance is measured in the product of these two units $\textrm{inches} \times \textrm{dollars}$.  These units can be hard to interpret.  What we will often want in this case is a unit-less measurement of relatedness.  Indeed, often we do not care about exact quantitative correlation, but rather ask if the correlation is in the same direction, and how strong the relationship is.
+
+To see what makes sense, let's perform a thought experiment.  Suppose that we convert our random variables in inches and dollars to be in inches and cents.  In this case the random variable $Y$ is multiplied by $100$.  If we work through the definition, this means that $\textrm{Cov}(X, Y)$ will be multiplied by $100$.  Thus we see that in this case a change of units change the covariance by a factor of $100$.  Thus, to find our unit-invariant measure of correlation, we will need to divide by something else that also gets scaled by $100$.  Indeed we have a clear candidate, the standard deviation!  Indeed if we define the *correlation coefficient* to be
+
+$$\rho(X, Y) = \frac{\textrm{Cov}(X, Y)}{\sigma_{X}\sigma_{Y}},$$
+:eqlabel:`eq_cor_def`
+
+we see that this is a unit-less value.  A little mathematics can show that this number is between $-1$ and $1$ with $1$ meaning maximally positively correlated, whereas $-1$ means maximally negatively correlated.
+
+Returning to our explicit discrete example above, we can see that $\sigma_X = 1$ and $\sigma_Y = 2$, so we can compute the correlation between the two random variables using :eqref:`eq_cor_def` to see that
+
+$$
+\rho(X, Y) = \frac{4p-2}{1\cdot 2} = 2p-1.
+$$
+
+This now ranges between $-1$ and $1$ with the expected behavior of $1$ meaning most correlated, and $-1$ meaning minimally correlated.
+
+As another example, consider $X$ as any random variable, and $Y=aX+b$ as any linear deterministic function of $X$.  Then, one can compute that
+
+$$\sigma_{Y} = \sigma_{aX+b} = |a|\sigma_{X},$$
+
+$$\textrm{Cov}(X, Y) = \textrm{Cov}(X, aX+b) = a\textrm{Cov}(X, X) = a\textrm{Var}(X),$$
+
+and thus by :eqref:`eq_cor_def` that
+
+$$
+\rho(X, Y) = \frac{a\textrm{Var}(X)}{|a|\sigma_{X}^2} = \frac{a}{|a|} = \textrm{sign}(a).
+$$
+
+Thus we see that the correlation is $+1$ for any $a > 0$, and $-1$ for any $a < 0$ illustrating that correlation measures the degree and directionality the two random variables are related, not the scale that the variation takes.
+
+Let's again plot a collection of random variables with tunable correlation.
+
+```{.python .input}
+#@tab mxnet
+# Plot a few random variables adjustable correlations
+cors = [-0.9, 0.0, 1.0]
+d2l.plt.figure(figsize=(12, 3))
+for i in range(3):
+    X = np.random.normal(0, 1, 500)
+    Y = cors[i] * X + np.sqrt(1 - cors[i]**2) * np.random.normal(0, 1, 500)
+
+    d2l.plt.subplot(1, 4, i + 1)
+    d2l.plt.scatter(X.asnumpy(), Y.asnumpy())
+    d2l.plt.xlabel('X')
+    d2l.plt.ylabel('Y')
+    d2l.plt.title(f'cor = {cors[i]}')
+d2l.plt.show()
+```
+
+```{.python .input}
+#@tab pytorch
+# Plot a few random variables adjustable correlations
+cors = [-0.9, 0.0, 1.0]
+d2l.plt.figure(figsize=(12, 3))
+for i in range(3):
+    X = torch.randn(500)
+    Y = cors[i] * X + torch.sqrt(torch.tensor(1) -
+                                 cors[i]**2) * torch.randn(500)
+
+    d2l.plt.subplot(1, 4, i + 1)
+    d2l.plt.scatter(X.numpy(), Y.numpy())
+    d2l.plt.xlabel('X')
+    d2l.plt.ylabel('Y')
+    d2l.plt.title(f'cor = {cors[i]}')
+d2l.plt.show()
+```
+
+```{.python .input}
+#@tab tensorflow
+# Plot a few random variables adjustable correlations
+cors = [-0.9, 0.0, 1.0]
+d2l.plt.figure(figsize=(12, 3))
+for i in range(3):
+    X = tf.random.normal((500, ))
+    Y = cors[i] * X + tf.sqrt(tf.constant(1.) -
+                                 cors[i]**2) * tf.random.normal((500, ))
+
+    d2l.plt.subplot(1, 4, i + 1)
+    d2l.plt.scatter(X.numpy(), Y.numpy())
+    d2l.plt.xlabel('X')
+    d2l.plt.ylabel('Y')
+    d2l.plt.title(f'cor = {cors[i]}')
+d2l.plt.show()
+```
+
+Let's list a few properties of the correlation below.
+
+* For any random variable $X$, $\rho(X, X) = 1$.
+* For any random variables $X, Y$ and numbers $a$ and $b$, $\rho(aX+b, Y) = \rho(X, aY+b) = \rho(X, Y)$.
+* If $X$ and $Y$ are independent with non-zero variance then $\rho(X, Y) = 0$.
+
+As a final note, you may feel like some of these formulae are familiar.  Indeed, if we expand everything out assuming that $\mu_X = \mu_Y = 0$, we see that this is
+
+$$
+\rho(X, Y) = \frac{\sum_{i, j} x_iy_ip_{ij}}{\sqrt{\sum_{i, j}x_i^2 p_{ij}}\sqrt{\sum_{i, j}y_j^2 p_{ij}}}.
+$$
+
+This looks like a sum of a product of terms divided by the square root of sums of terms.  This is exactly the formula for the cosine of the angle between two vectors $\mathbf{v}, \mathbf{w}$ with the different coordinates weighted by $p_{ij}$:
+
+$$
+\cos(\theta) = \frac{\mathbf{v}\cdot \mathbf{w}}{\|\mathbf{v}\|\|\mathbf{w}\|} = \frac{\sum_{i} v_iw_i}{\sqrt{\sum_{i}v_i^2}\sqrt{\sum_{i}w_i^2}}.
+$$
+
+Indeed if we think of norms as being related to standard deviations, and correlations as being cosines of angles, much of the intuition we have from geometry can be applied to thinking about random variables.
+
+## Summary
+* Continuous random variables are random variables that can take on a continuum of values.  They have some technical difficulties that make them more challenging to work with compared to discrete random variables.
+* The probability density function allows us to work with continuous random variables by giving a function where the area under the curve on some interval gives the probability of finding a sample point in that interval.
+* The cumulative distribution function is the probabi

@@ -1,0 +1,331 @@
+      # decoding any output sequence token by token during prediction,
+        # state[2][self.i] contains representations of the decoded output at
+        # the i-th block up to the current time step
+        if state[2][self.i] is None:
+            key_values = X
+        else:
+            key_values = torch.cat((state[2][self.i], X), dim=1)
+        state[2][self.i] = key_values
+        if self.training:
+            batch_size, num_steps, _ = X.shape
+            # Shape of dec_valid_lens: (batch_size, num_steps), where every
+            # row is [1, 2, ..., num_steps]
+            dec_valid_lens = torch.arange(
+                1, num_steps + 1, device=X.device).repeat(batch_size, 1)
+        else:
+            dec_valid_lens = None
+        # Self-attention
+        X2 = self.attention1(X, key_values, key_values, dec_valid_lens)
+        Y = self.addnorm1(X, X2)
+        # Encoder-decoder attention. Shape of enc_outputs:
+        # (batch_size, num_steps, num_hiddens)
+        Y2 = self.attention2(Y, enc_outputs, enc_outputs, enc_valid_lens)
+        Z = self.addnorm2(Y, Y2)
+        return self.addnorm3(Z, self.ffn(Z)), state
+```
+
+```{.python .input}
+%%tab tensorflow
+class TransformerDecoderBlock(tf.keras.layers.Layer):
+    # The i-th block in the Transformer decoder
+    def __init__(self, key_size, query_size, value_size, num_hiddens,
+                 norm_shape, ffn_num_hiddens, num_heads, dropout, i):
+        super().__init__()
+        self.i = i
+        self.attention1 = d2l.MultiHeadAttention(
+            key_size, query_size, value_size, num_hiddens, num_heads, dropout)
+        self.addnorm1 = AddNorm(norm_shape, dropout)
+        self.attention2 = d2l.MultiHeadAttention(
+            key_size, query_size, value_size, num_hiddens, num_heads, dropout)
+        self.addnorm2 = AddNorm(norm_shape, dropout)
+        self.ffn = PositionWiseFFN(ffn_num_hiddens, num_hiddens)
+        self.addnorm3 = AddNorm(norm_shape, dropout)
+
+    def call(self, X, state, **kwargs):
+        enc_outputs, enc_valid_lens = state[0], state[1]
+        # During training, all the tokens of any output sequence are processed
+        # at the same time, so state[2][self.i] is None as initialized. When
+        # decoding any output sequence token by token during prediction,
+        # state[2][self.i] contains representations of the decoded output at
+        # the i-th block up to the current time step
+        if state[2][self.i] is None:
+            key_values = X
+        else:
+            key_values = tf.concat((state[2][self.i], X), axis=1)
+        state[2][self.i] = key_values
+        if kwargs["training"]:
+            batch_size, num_steps, _ = X.shape
+            # Shape of dec_valid_lens: (batch_size, num_steps), where every
+            # row is [1, 2, ..., num_steps]
+            dec_valid_lens = tf.repeat(
+                tf.reshape(tf.range(1, num_steps + 1),
+                           shape=(-1, num_steps)), repeats=batch_size, axis=0)
+        else:
+            dec_valid_lens = None
+        # Self-attention
+        X2 = self.attention1(X, key_values, key_values, dec_valid_lens,
+                             **kwargs)
+        Y = self.addnorm1(X, X2, **kwargs)
+        # Encoder-decoder attention. Shape of enc_outputs:
+        # (batch_size, num_steps, num_hiddens)
+        Y2 = self.attention2(Y, enc_outputs, enc_outputs, enc_valid_lens,
+                             **kwargs)
+        Z = self.addnorm2(Y, Y2, **kwargs)
+        return self.addnorm3(Z, self.ffn(Z), **kwargs), state
+```
+
+```{.python .input}
+%%tab jax
+class TransformerDecoderBlock(nn.Module):
+    # The i-th block in the Transformer decoder
+    num_hiddens: int
+    ffn_num_hiddens: int
+    num_heads: int
+    dropout: float
+    i: int
+
+    def setup(self):
+        self.attention1 = d2l.MultiHeadAttention(self.num_hiddens,
+                                                 self.num_heads,
+                                                 self.dropout)
+        self.addnorm1 = AddNorm(self.dropout)
+        self.attention2 = d2l.MultiHeadAttention(self.num_hiddens,
+                                                 self.num_heads,
+                                                 self.dropout)
+        self.addnorm2 = AddNorm(self.dropout)
+        self.ffn = PositionWiseFFN(self.ffn_num_hiddens, self.num_hiddens)
+        self.addnorm3 = AddNorm(self.dropout)
+
+    def __call__(self, X, state, training=False):
+        enc_outputs, enc_valid_lens = state[0], state[1]
+        # During training, all the tokens of any output sequence are processed
+        # at the same time, so state[2][self.i] is None as initialized. When
+        # decoding any output sequence token by token during prediction,
+        # state[2][self.i] contains representations of the decoded output at
+        # the i-th block up to the current time step
+        if state[2][self.i] is None:
+            key_values = X
+        else:
+            key_values = jnp.concatenate((state[2][self.i], X), axis=1)
+        state[2][self.i] = key_values
+        if training:
+            batch_size, num_steps, _ = X.shape
+            # Shape of dec_valid_lens: (batch_size, num_steps), where every
+            # row is [1, 2, ..., num_steps]
+            dec_valid_lens = jnp.tile(jnp.arange(1, num_steps + 1),
+                                      (batch_size, 1))
+        else:
+            dec_valid_lens = None
+        # Self-attention
+        X2, attention_w1 = self.attention1(X, key_values, key_values,
+                                           dec_valid_lens, training=training)
+        Y = self.addnorm1(X, X2, training=training)
+        # Encoder-decoder attention. Shape of enc_outputs:
+        # (batch_size, num_steps, num_hiddens)
+        Y2, attention_w2 = self.attention2(Y, enc_outputs, enc_outputs,
+                                           enc_valid_lens, training=training)
+        Z = self.addnorm2(Y, Y2, training=training)
+        return self.addnorm3(Z, self.ffn(Z), training=training), state, attention_w1, attention_w2
+```
+
+To facilitate scaled dot product operations
+in the encoder--decoder attention
+and addition operations in the residual connections,
+[**the feature dimension (`num_hiddens`) of the decoder is
+the same as that of the encoder.**]
+
+```{.python .input}
+%%tab mxnet
+decoder_blk = TransformerDecoderBlock(24, 48, 8, 0.5, 0)
+decoder_blk.initialize()
+X = np.ones((2, 100, 24))
+state = [encoder_blk(X, valid_lens), valid_lens, [None]]
+d2l.check_shape(decoder_blk(X, state)[0], X.shape)
+```
+
+```{.python .input}
+%%tab pytorch
+decoder_blk = TransformerDecoderBlock(24, 48, 8, 0.5, 0)
+X = d2l.ones((2, 100, 24))
+state = [encoder_blk(X, valid_lens), valid_lens, [None]]
+d2l.check_shape(decoder_blk(X, state)[0], X.shape)
+```
+
+```{.python .input}
+%%tab tensorflow
+decoder_blk = TransformerDecoderBlock(24, 24, 24, 24, [1, 2], 48, 8, 0.5, 0)
+X = tf.ones((2, 100, 24))
+state = [encoder_blk(X, valid_lens), valid_lens, [None]]
+d2l.check_shape(decoder_blk(X, state, training=False)[0], X.shape)
+```
+
+```{.python .input}
+%%tab jax
+decoder_blk = TransformerDecoderBlock(24, 48, 8, 0.5, 0)
+X = d2l.ones((2, 100, 24))
+state = [encoder_blk.init_with_output(d2l.get_key(), X, valid_lens)[0][0],
+         valid_lens, [None]]
+d2l.check_shape(decoder_blk.init_with_output(d2l.get_key(), X, state)[0][0],
+                X.shape)
+```
+
+Now we [**construct the entire Transformer decoder**]
+composed of `num_blks` instances of `TransformerDecoderBlock`.
+In the end,
+a fully connected layer computes the prediction
+for all the `vocab_size` possible output tokens.
+Both of the decoder self-attention weights
+and the encoder--decoder attention weights
+are stored for later visualization.
+
+```{.python .input}
+%%tab mxnet
+class TransformerDecoder(d2l.AttentionDecoder):
+    def __init__(self, vocab_size, num_hiddens, ffn_num_hiddens, num_heads,
+                 num_blks, dropout):
+        super().__init__()
+        self.num_hiddens = num_hiddens
+        self.num_blks = num_blks
+        self.embedding = nn.Embedding(vocab_size, num_hiddens)
+        self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        self.blks = nn.Sequential()
+        for i in range(num_blks):
+            self.blks.add(TransformerDecoderBlock(
+                num_hiddens, ffn_num_hiddens, num_heads, dropout, i))
+        self.dense = nn.Dense(vocab_size, flatten=False)
+        self.initialize()
+
+    def init_state(self, enc_outputs, enc_valid_lens):
+        return [enc_outputs, enc_valid_lens, [None] * self.num_blks]
+
+    def forward(self, X, state):
+        X = self.pos_encoding(self.embedding(X) * math.sqrt(self.num_hiddens))
+        self._attention_weights = [[None] * len(self.blks) for _ in range (2)]
+        for i, blk in enumerate(self.blks):
+            X, state = blk(X, state)
+            # Decoder self-attention weights
+            self._attention_weights[0][
+                i] = blk.attention1.attention.attention_weights
+            # Encoder-decoder attention weights
+            self._attention_weights[1][
+                i] = blk.attention2.attention.attention_weights
+        return self.dense(X), state
+
+    @property
+    def attention_weights(self):
+        return self._attention_weights
+```
+
+```{.python .input}
+%%tab pytorch
+class TransformerDecoder(d2l.AttentionDecoder):
+    def __init__(self, vocab_size, num_hiddens, ffn_num_hiddens, num_heads,
+                 num_blks, dropout):
+        super().__init__()
+        self.num_hiddens = num_hiddens
+        self.num_blks = num_blks
+        self.embedding = nn.Embedding(vocab_size, num_hiddens)
+        self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        self.blks = nn.Sequential()
+        for i in range(num_blks):
+            self.blks.add_module("block"+str(i), TransformerDecoderBlock(
+                num_hiddens, ffn_num_hiddens, num_heads, dropout, i))
+        self.dense = nn.LazyLinear(vocab_size)
+
+    def init_state(self, enc_outputs, enc_valid_lens):
+        return [enc_outputs, enc_valid_lens, [None] * self.num_blks]
+
+    def forward(self, X, state):
+        X = self.pos_encoding(self.embedding(X) * math.sqrt(self.num_hiddens))
+        self._attention_weights = [[None] * len(self.blks) for _ in range (2)]
+        for i, blk in enumerate(self.blks):
+            X, state = blk(X, state)
+            # Decoder self-attention weights
+            self._attention_weights[0][
+                i] = blk.attention1.attention.attention_weights
+            # Encoder-decoder attention weights
+            self._attention_weights[1][
+                i] = blk.attention2.attention.attention_weights
+        return self.dense(X), state
+
+    @property
+    def attention_weights(self):
+        return self._attention_weights
+```
+
+```{.python .input}
+%%tab tensorflow
+class TransformerDecoder(d2l.AttentionDecoder):
+    def __init__(self, vocab_size, key_size, query_size, value_size,
+                 num_hiddens, norm_shape, ffn_num_hiddens, num_heads,
+                 num_blks, dropout):
+        super().__init__()
+        self.num_hiddens = num_hiddens
+        self.num_blks = num_blks
+        self.embedding = tf.keras.layers.Embedding(vocab_size, num_hiddens)
+        self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        self.blks = [TransformerDecoderBlock(
+            key_size, query_size, value_size, num_hiddens, norm_shape,
+            ffn_num_hiddens, num_heads, dropout, i)
+                     for i in range(num_blks)]
+        self.dense = tf.keras.layers.Dense(vocab_size)
+
+    def init_state(self, enc_outputs, enc_valid_lens):
+        return [enc_outputs, enc_valid_lens, [None] * self.num_blks]
+
+    def call(self, X, state, **kwargs):
+        X = self.pos_encoding(self.embedding(X) * tf.math.sqrt(
+            tf.cast(self.num_hiddens, dtype=tf.float32)), **kwargs)
+        # 2 attention layers in decoder
+        self._attention_weights = [[None] * len(self.blks) for _ in range(2)]
+        for i, blk in enumerate(self.blks):
+            X, state = blk(X, state, **kwargs)
+            # Decoder self-attention weights
+            self._attention_weights[0][i] = (
+                blk.attention1.attention.attention_weights)
+            # Encoder-decoder attention weights
+            self._attention_weights[1][i] = (
+                blk.attention2.attention.attention_weights)
+        return self.dense(X), state
+
+    @property
+    def attention_weights(self):
+        return self._attention_weights
+```
+
+```{.python .input}
+%%tab jax
+class TransformerDecoder(nn.Module):
+    vocab_size: int
+    num_hiddens: int
+    ffn_num_hiddens: int
+    num_heads: int
+    num_blks: int
+    dropout: float
+
+    def setup(self):
+        self.embedding = nn.Embed(self.vocab_size, self.num_hiddens)
+        self.pos_encoding = d2l.PositionalEncoding(self.num_hiddens,
+                                                   self.dropout)
+        self.blks = [TransformerDecoderBlock(self.num_hiddens,
+                                             self.ffn_num_hiddens,
+                                             self.num_heads, self.dropout, i)
+                     for i in range(self.num_blks)]
+        self.dense = nn.Dense(self.vocab_size)
+
+    def init_state(self, enc_outputs, enc_valid_lens):
+        return [enc_outputs, enc_valid_lens, [None] * self.num_blks]
+
+    def __call__(self, X, state, training=False):
+        X = self.embedding(X) * jnp.sqrt(jnp.float32(self.num_hiddens))
+        X = self.pos_encoding(X, training=training)
+        attention_weights = [[None] * len(self.blks) for _ in range(2)]
+        for i, blk in enumerate(self.blks):
+            X, state, attention_w1, attention_w2 = blk(X, state,
+                                                       training=training)
+            # Decoder self-attention weights
+            attention_weights[0][i] = attention_w1
+            # Encoder-decoder attention weights
+            attention_weights[1][i] = attention_w2
+        # Flax sow API is used to capture intermediate variables
+        self.sow('intermediates', 'dec_

@@ -1,0 +1,516 @@
+
+[**A related quantity is the *mean*, also called the *average*.**]
+We calculate the mean by dividing the sum
+by the total number of elements.
+Because computing the mean is so common,
+it gets a dedicated library function
+that works analogously to `sum`.
+
+```{.python .input}
+%%tab mxnet, jax
+A.mean(), A.sum() / A.size
+```
+
+```{.python .input}
+%%tab pytorch
+A.mean(), A.sum() / A.numel()
+```
+
+```{.python .input}
+%%tab tensorflow
+tf.reduce_mean(A), tf.reduce_sum(A) / tf.size(A).numpy()
+```
+
+Likewise, the function for calculating the mean
+can also reduce a tensor along specific axes.
+
+```{.python .input}
+%%tab mxnet, pytorch, jax
+A.mean(axis=0), A.sum(axis=0) / A.shape[0]
+```
+
+```{.python .input}
+%%tab tensorflow
+tf.reduce_mean(A, axis=0), tf.reduce_sum(A, axis=0) / A.shape[0]
+```
+
+## Non-Reduction Sum
+:label:`subsec_lin-alg-non-reduction`
+
+Sometimes it can be useful to [**keep the number of axes unchanged**]
+when invoking the function for calculating the sum or mean.
+This matters when we want to use the broadcast mechanism.
+
+```{.python .input}
+%%tab mxnet, pytorch, jax
+sum_A = A.sum(axis=1, keepdims=True)
+sum_A, sum_A.shape
+```
+
+```{.python .input}
+%%tab tensorflow
+sum_A = tf.reduce_sum(A, axis=1, keepdims=True)
+sum_A, sum_A.shape
+```
+
+For instance, since `sum_A` keeps its two axes after summing each row,
+we can (**divide `A` by `sum_A` with broadcasting**)
+to create a matrix where each row sums up to $1$.
+
+```{.python .input}
+%%tab all
+A / sum_A
+```
+
+If we want to calculate [**the cumulative sum of elements of `A` along some axis**],
+say `axis=0` (row by row), we can call the `cumsum` function.
+By design, this function does not reduce the input tensor along any axis.
+
+```{.python .input}
+%%tab mxnet, pytorch, jax
+A.cumsum(axis=0)
+```
+
+```{.python .input}
+%%tab tensorflow
+tf.cumsum(A, axis=0)
+```
+
+## Dot Products
+
+So far, we have only performed elementwise operations, sums, and averages.
+And if this was all we could do, linear algebra
+would not deserve its own section.
+Fortunately, this is where things get more interesting.
+One of the most fundamental operations is the dot product.
+Given two vectors $\mathbf{x}, \mathbf{y} \in \mathbb{R}^d$,
+their *dot product* $\mathbf{x}^\top \mathbf{y}$ (also known as *inner product*, $\langle \mathbf{x}, \mathbf{y}  \rangle$)
+is a sum over the products of the elements at the same position:
+$\mathbf{x}^\top \mathbf{y} = \sum_{i=1}^{d} x_i y_i$.
+
+[~~The *dot product* of two vectors is a sum over the products of the elements at the same position~~]
+
+```{.python .input}
+%%tab mxnet
+y = np.ones(3)
+x, y, np.dot(x, y)
+```
+
+```{.python .input}
+%%tab pytorch
+y = torch.ones(3, dtype = torch.float32)
+x, y, torch.dot(x, y)
+```
+
+```{.python .input}
+%%tab tensorflow
+y = tf.ones(3, dtype=tf.float32)
+x, y, tf.tensordot(x, y, axes=1)
+```
+
+```{.python .input}
+%%tab jax
+y = jnp.ones(3, dtype = jnp.float32)
+x, y, jnp.dot(x, y)
+```
+
+Equivalently, (**we can calculate the dot product of two vectors
+by performing an elementwise multiplication followed by a sum:**)
+
+```{.python .input}
+%%tab mxnet
+np.sum(x * y)
+```
+
+```{.python .input}
+%%tab pytorch
+torch.sum(x * y)
+```
+
+```{.python .input}
+%%tab tensorflow
+tf.reduce_sum(x * y)
+```
+
+```{.python .input}
+%%tab jax
+jnp.sum(x * y)
+```
+
+Dot products are useful in a wide range of contexts.
+For example, given some set of values,
+denoted by a vector $\mathbf{x}  \in \mathbb{R}^n$,
+and a set of weights, denoted by $\mathbf{w} \in \mathbb{R}^n$,
+the weighted sum of the values in $\mathbf{x}$
+according to the weights $\mathbf{w}$
+could be expressed as the dot product $\mathbf{x}^\top \mathbf{w}$.
+When the weights are nonnegative
+and sum to $1$, i.e., $\left(\sum_{i=1}^{n} {w_i} = 1\right)$,
+the dot product expresses a *weighted average*.
+After normalizing two vectors to have unit length,
+the dot products express the cosine of the angle between them.
+Later in this section, we will formally introduce this notion of *length*.
+
+
+## Matrix--Vector Products
+
+Now that we know how to calculate dot products,
+we can begin to understand the *product*
+between an $m \times n$ matrix $\mathbf{A}$
+and an $n$-dimensional vector $\mathbf{x}$.
+To start off, we visualize our matrix
+in terms of its row vectors
+
+$$\mathbf{A}=
+\begin{bmatrix}
+\mathbf{a}^\top_{1} \\
+\mathbf{a}^\top_{2} \\
+\vdots \\
+\mathbf{a}^\top_m \\
+\end{bmatrix},$$
+
+where each $\mathbf{a}^\top_{i} \in \mathbb{R}^n$
+is a row vector representing the $i^\textrm{th}$ row
+of the matrix $\mathbf{A}$.
+
+[**The matrix--vector product $\mathbf{A}\mathbf{x}$
+is simply a column vector of length $m$,
+whose $i^\textrm{th}$ element is the dot product
+$\mathbf{a}^\top_i \mathbf{x}$:**]
+
+$$
+\mathbf{A}\mathbf{x}
+= \begin{bmatrix}
+\mathbf{a}^\top_{1} \\
+\mathbf{a}^\top_{2} \\
+\vdots \\
+\mathbf{a}^\top_m \\
+\end{bmatrix}\mathbf{x}
+= \begin{bmatrix}
+ \mathbf{a}^\top_{1} \mathbf{x}  \\
+ \mathbf{a}^\top_{2} \mathbf{x} \\
+\vdots\\
+ \mathbf{a}^\top_{m} \mathbf{x}\\
+\end{bmatrix}.
+$$
+
+We can think of multiplication with a matrix
+$\mathbf{A}\in \mathbb{R}^{m \times n}$
+as a transformation that projects vectors
+from $\mathbb{R}^{n}$ to $\mathbb{R}^{m}$.
+These transformations are remarkably useful.
+For example, we can represent rotations
+as multiplications by certain square matrices.
+Matrix--vector products also describe
+the key calculation involved in computing
+the outputs of each layer in a neural network
+given the outputs from the previous layer.
+
+:begin_tab:`mxnet`
+To express a matrix--vector product in code,
+we use the same `dot` function.
+The operation is inferred
+based on the type of the arguments.
+Note that the column dimension of `A`
+(its length along axis 1)
+must be the same as the dimension of `x` (its length).
+:end_tab:
+
+:begin_tab:`pytorch`
+To express a matrix--vector product in code,
+we use the `mv` function.
+Note that the column dimension of `A`
+(its length along axis 1)
+must be the same as the dimension of `x` (its length).
+Python has a convenience operator `@`
+that can execute both matrix--vector
+and matrix--matrix products
+(depending on its arguments).
+Thus we can write `A@x`.
+:end_tab:
+
+:begin_tab:`tensorflow`
+To express a matrix--vector product in code,
+we use the `matvec` function.
+Note that the column dimension of `A`
+(its length along axis 1)
+must be the same as the dimension of `x` (its length).
+:end_tab:
+
+```{.python .input}
+%%tab mxnet
+A.shape, x.shape, np.dot(A, x)
+```
+
+```{.python .input}
+%%tab pytorch
+A.shape, x.shape, torch.mv(A, x), A@x
+```
+
+```{.python .input}
+%%tab tensorflow
+A.shape, x.shape, tf.linalg.matvec(A, x)
+```
+
+```{.python .input}
+%%tab jax
+A.shape, x.shape, jnp.matmul(A, x)
+```
+
+## Matrix--Matrix Multiplication
+
+Once you have gotten the hang of dot products and matrix--vector products,
+then *matrix--matrix multiplication* should be straightforward.
+
+Say that we have two matrices
+$\mathbf{A} \in \mathbb{R}^{n \times k}$
+and $\mathbf{B} \in \mathbb{R}^{k \times m}$:
+
+$$\mathbf{A}=\begin{bmatrix}
+ a_{11} & a_{12} & \cdots & a_{1k} \\
+ a_{21} & a_{22} & \cdots & a_{2k} \\
+\vdots & \vdots & \ddots & \vdots \\
+ a_{n1} & a_{n2} & \cdots & a_{nk} \\
+\end{bmatrix},\quad
+\mathbf{B}=\begin{bmatrix}
+ b_{11} & b_{12} & \cdots & b_{1m} \\
+ b_{21} & b_{22} & \cdots & b_{2m} \\
+\vdots & \vdots & \ddots & \vdots \\
+ b_{k1} & b_{k2} & \cdots & b_{km} \\
+\end{bmatrix}.$$
+
+
+Let $\mathbf{a}^\top_{i} \in \mathbb{R}^k$ denote
+the row vector representing the $i^\textrm{th}$ row
+of the matrix $\mathbf{A}$
+and let $\mathbf{b}_{j} \in \mathbb{R}^k$ denote
+the column vector from the $j^\textrm{th}$ column
+of the matrix $\mathbf{B}$:
+
+$$\mathbf{A}=
+\begin{bmatrix}
+\mathbf{a}^\top_{1} \\
+\mathbf{a}^\top_{2} \\
+\vdots \\
+\mathbf{a}^\top_n \\
+\end{bmatrix},
+\quad \mathbf{B}=\begin{bmatrix}
+ \mathbf{b}_{1} & \mathbf{b}_{2} & \cdots & \mathbf{b}_{m} \\
+\end{bmatrix}.
+$$
+
+
+To form the matrix product $\mathbf{C} \in \mathbb{R}^{n \times m}$,
+we simply compute each element $c_{ij}$
+as the dot product between
+the $i^{\textrm{th}}$ row of $\mathbf{A}$
+and the $j^{\textrm{th}}$ column of $\mathbf{B}$,
+i.e., $\mathbf{a}^\top_i \mathbf{b}_j$:
+
+$$\mathbf{C} = \mathbf{AB} = \begin{bmatrix}
+\mathbf{a}^\top_{1} \\
+\mathbf{a}^\top_{2} \\
+\vdots \\
+\mathbf{a}^\top_n \\
+\end{bmatrix}
+\begin{bmatrix}
+ \mathbf{b}_{1} & \mathbf{b}_{2} & \cdots & \mathbf{b}_{m} \\
+\end{bmatrix}
+= \begin{bmatrix}
+\mathbf{a}^\top_{1} \mathbf{b}_1 & \mathbf{a}^\top_{1}\mathbf{b}_2& \cdots & \mathbf{a}^\top_{1} \mathbf{b}_m \\
+ \mathbf{a}^\top_{2}\mathbf{b}_1 & \mathbf{a}^\top_{2} \mathbf{b}_2 & \cdots & \mathbf{a}^\top_{2} \mathbf{b}_m \\
+ \vdots & \vdots & \ddots &\vdots\\
+\mathbf{a}^\top_{n} \mathbf{b}_1 & \mathbf{a}^\top_{n}\mathbf{b}_2& \cdots& \mathbf{a}^\top_{n} \mathbf{b}_m
+\end{bmatrix}.
+$$
+
+[**We can think of the matrix--matrix multiplication $\mathbf{AB}$
+as performing $m$ matrix--vector products
+or $m \times n$ dot products
+and stitching the results together
+to form an $n \times m$ matrix.**]
+In the following snippet,
+we perform matrix multiplication on `A` and `B`.
+Here, `A` is a matrix with two rows and three columns,
+and `B` is a matrix with three rows and four columns.
+After multiplication, we obtain a matrix with two rows and four columns.
+
+```{.python .input}
+%%tab mxnet
+B = np.ones(shape=(3, 4))
+np.dot(A, B)
+```
+
+```{.python .input}
+%%tab pytorch
+B = torch.ones(3, 4)
+torch.mm(A, B), A@B
+```
+
+```{.python .input}
+%%tab tensorflow
+B = tf.ones((3, 4), tf.float32)
+tf.matmul(A, B)
+```
+
+```{.python .input}
+%%tab jax
+B = jnp.ones((3, 4))
+jnp.matmul(A, B)
+```
+
+The term *matrix--matrix multiplication* is
+often simplified to *matrix multiplication*,
+and should not be confused with the Hadamard product.
+
+
+## Norms
+:label:`subsec_lin-algebra-norms`
+
+Some of the most useful operators in linear algebra are *norms*.
+Informally, the norm of a vector tells us how *big* it is.
+For instance, the $\ell_2$ norm measures
+the (Euclidean) length of a vector.
+Here, we are employing a notion of *size* that concerns the magnitude of a vector's components
+(not its dimensionality).
+
+A norm is a function $\| \cdot \|$ that maps a vector
+to a scalar and satisfies the following three properties:
+
+1. Given any vector $\mathbf{x}$, if we scale (all elements of) the vector
+   by a scalar $\alpha \in \mathbb{R}$, its norm scales accordingly:
+   $$\|\alpha \mathbf{x}\| = |\alpha| \|\mathbf{x}\|.$$
+2. For any vectors $\mathbf{x}$ and $\mathbf{y}$:
+   norms satisfy the triangle inequality:
+   $$\|\mathbf{x} + \mathbf{y}\| \leq \|\mathbf{x}\| + \|\mathbf{y}\|.$$
+3. The norm of a vector is nonnegative and it only vanishes if the vector is zero:
+   $$\|\mathbf{x}\| > 0 \textrm{ for all } \mathbf{x} \neq 0.$$
+
+Many functions are valid norms and different norms
+encode different notions of size.
+The Euclidean norm that we all learned in elementary school geometry
+when calculating the hypotenuse of a right triangle
+is the square root of the sum of squares of a vector's elements.
+Formally, this is called [**the $\ell_2$ *norm***] and expressed as
+
+(**$$\|\mathbf{x}\|_2 = \sqrt{\sum_{i=1}^n x_i^2}.$$**)
+
+The method `norm` calculates the $\ell_2$ norm.
+
+```{.python .input}
+%%tab mxnet
+u = np.array([3, -4])
+np.linalg.norm(u)
+```
+
+```{.python .input}
+%%tab pytorch
+u = torch.tensor([3.0, -4.0])
+torch.norm(u)
+```
+
+```{.python .input}
+%%tab tensorflow
+u = tf.constant([3.0, -4.0])
+tf.norm(u)
+```
+
+```{.python .input}
+%%tab jax
+u = jnp.array([3.0, -4.0])
+jnp.linalg.norm(u)
+```
+
+[**The $\ell_1$ norm**] is also common
+and the associated measure is called the Manhattan distance.
+By definition, the $\ell_1$ norm sums
+the absolute values of a vector's elements:
+
+(**$$\|\mathbf{x}\|_1 = \sum_{i=1}^n \left|x_i \right|.$$**)
+
+Compared to the $\ell_2$ norm, it is less sensitive to outliers.
+To compute the $\ell_1$ norm,
+we compose the absolute value
+with the sum operation.
+
+```{.python .input}
+%%tab mxnet
+np.abs(u).sum()
+```
+
+```{.python .input}
+%%tab pytorch
+torch.abs(u).sum()
+```
+
+```{.python .input}
+%%tab tensorflow
+tf.reduce_sum(tf.abs(u))
+```
+
+```{.python .input}
+%%tab jax
+jnp.linalg.norm(u, ord=1) # same as jnp.abs(u).sum()
+```
+
+Both the $\ell_2$ and $\ell_1$ norms are special cases
+of the more general $\ell_p$ *norms*:
+
+$$\|\mathbf{x}\|_p = \left(\sum_{i=1}^n \left|x_i \right|^p \right)^{1/p}.$$
+
+In the case of matrices, matters are more complicated.
+After all, matrices can be viewed both as collections of individual entries
+*and* as objects that operate on vectors and transform them into other vectors.
+For instance, we can ask by how much longer
+the matrix--vector product $\mathbf{X} \mathbf{v}$
+could be relative to $\mathbf{v}$.
+This line of thought leads to what is called the *spectral* norm.
+For now, we introduce [**the *Frobenius norm*,
+which is much easier to compute**] and defined as
+the square root of the sum of the squares
+of a matrix's elements:
+
+[**$$\|\mathbf{X}\|_\textrm{F} = \sqrt{\sum_{i=1}^m \sum_{j=1}^n x_{ij}^2}.$$**]
+
+The Frobenius norm behaves as if it were
+an $\ell_2$ norm of a matrix-shaped vector.
+Invoking the following function will calculate
+the Frobenius norm of a matrix.
+
+```{.python .input}
+%%tab mxnet
+np.linalg.norm(np.ones((4, 9)))
+```
+
+```{.python .input}
+%%tab pytorch
+torch.norm(torch.ones((4, 9)))
+```
+
+```{.python .input}
+%%tab tensorflow
+tf.norm(tf.ones((4, 9)))
+```
+
+```{.python .input}
+%%tab jax
+jnp.linalg.norm(jnp.ones((4, 9)))
+```
+
+While we do not want to get too far ahead of ourselves,
+we already can plant some intuition about why these concepts are useful.
+In deep learning, we are often trying to solve optimization problems:
+*maximize* the probability assigned to observed data;
+*maximize* the revenue associated with a recommender model;
+*minimize* the distance between predictions
+and the ground truth observations;
+*minimize* the distance between representations
+of photos of the same person
+while *maximizing* the distance between representations
+of photos of different people.
+These distances, which constitute
+the objectives of deep learning algorithms,
+are often expressed as norms.
+
+
+## Discuss

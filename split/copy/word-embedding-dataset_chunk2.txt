@@ -1,0 +1,51 @@
+)
+            self.centers = centers
+            self.contexts = contexts
+            self.negatives = negatives
+
+        def __getitem__(self, index):
+            return (self.centers[index], self.contexts[index],
+                    self.negatives[index])
+
+        def __len__(self):
+            return len(self.centers)
+
+    dataset = PTBDataset(all_centers, all_contexts, all_negatives)
+
+    data_iter = torch.utils.data.DataLoader(dataset, batch_size, shuffle=True,
+                                      collate_fn=batchify,
+                                      num_workers=num_workers)
+    return data_iter, vocab
+```
+
+Let's print the first minibatch of the data iterator.
+
+```{.python .input}
+#@tab all
+data_iter, vocab = load_data_ptb(512, 5, 5)
+for batch in data_iter:
+    for name, data in zip(names, batch):
+        print(name, 'shape:', data.shape)
+    break
+```
+
+## Summary
+
+* High-frequency words may not be so useful in training. We can subsample them for speedup in training.
+* For computational efficiency, we load examples in minibatches. We can define other variables to distinguish paddings from non-paddings, and positive examples from negative ones.
+
+
+
+## Exercises
+
+1. How does the running time of code in this section changes if not using subsampling?
+1. The `RandomGenerator` class caches `k` random sampling results. Set `k` to other values and see how it affects the data loading speed.
+1. What other hyperparameters in the code of this section may affect the data loading speed?
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/383)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1330)
+:end_tab:

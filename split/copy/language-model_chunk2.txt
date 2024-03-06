@@ -1,0 +1,52 @@
+et_tensorloader([self.X, self.Y], train, idx)
+```
+
+As we can see in the following, 
+a minibatch of target sequences
+can be obtained 
+by shifting the input sequences
+by one token.
+
+```{.python .input  n=7}
+%%tab all
+data = d2l.TimeMachine(batch_size=2, num_steps=10)
+for X, Y in data.train_dataloader():
+    print('X:', X, '\nY:', Y)
+    break
+```
+
+## Summary and Discussion
+
+Language models estimate the joint probability of a text sequence. For long sequences, $n$-grams provide a convenient model by truncating the dependence. However, there is a lot of structure but not enough frequency to deal efficiently with infrequent word combinations via Laplace smoothing. Thus, we will focus on neural language modeling in subsequent sections.
+To train language models, we can randomly sample pairs of input sequences and target sequences in minibatches. After training, we will use perplexity to measure the language model quality.
+
+Language models can be scaled up with increased data size, model size, and amount in training compute. Large language models can perform desired tasks by predicting output text given input text instructions. As we will discuss later (e.g., :numref:`sec_large-pretraining-transformers`),
+at the present moment
+large language models form the basis of state-of-the-art systems across diverse tasks.
+
+
+## Exercises
+
+1. Suppose there are 100,000 words in the training dataset. How much word frequency and multi-word adjacent frequency does a four-gram need to store?
+1. How would you model a dialogue?
+1. What other methods can you think of for reading long sequence data?
+1. Consider our method for discarding a uniformly random number of the first few tokens at the beginning of each epoch.
+    1. Does it really lead to a perfectly uniform distribution over the sequences on the document?
+    1. What would you have to do to make things even more uniform? 
+1. If we want a sequence example to be a complete sentence, what kind of problem does this introduce in minibatch sampling? How can we fix it?
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/117)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/118)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/1049)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/18012)
+:end_tab:

@@ -1,0 +1,463 @@
+```{.python .input}
+%load_ext d2lbook.tab
+tab.interact_select('mxnet', 'pytorch', 'tensorflow', 'jax')
+```
+
+# The Transformer Architecture
+:label:`sec_transformer`
+
+
+We have compared CNNs, RNNs, and self-attention in
+:numref:`subsec_cnn-rnn-self-attention`.
+Notably, self-attention
+enjoys both parallel computation and
+the shortest maximum path length.
+Therefore,
+it is appealing to design deep architectures
+by using self-attention.
+Unlike earlier self-attention models
+that still rely on RNNs for input representations :cite:`Cheng.Dong.Lapata.2016,Lin.Feng.Santos.ea.2017,Paulus.Xiong.Socher.2017`,
+the Transformer model
+is solely based on attention mechanisms
+without any convolutional or recurrent layer :cite:`Vaswani.Shazeer.Parmar.ea.2017`.
+Though originally proposed
+for sequence-to-sequence learning on text data,
+Transformers have been
+pervasive in a wide range of
+modern deep learning applications,
+such as in areas to do with language, vision, speech, and reinforcement learning.
+
+```{.python .input}
+%%tab mxnet
+from d2l import mxnet as d2l
+import math
+from mxnet import autograd, init, np, npx
+from mxnet.gluon import nn
+import pandas as pd
+npx.set_np()
+```
+
+```{.python .input}
+%%tab pytorch
+from d2l import torch as d2l
+import math
+import pandas as pd
+import torch
+from torch import nn
+```
+
+```{.python .input}
+%%tab tensorflow
+from d2l import tensorflow as d2l
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+```
+
+```{.python .input}
+%%tab jax
+from d2l import jax as d2l
+from flax import linen as nn
+from jax import numpy as jnp
+import jax
+import math
+import pandas as pd
+```
+
+## Model
+
+As an instance of the encoder--decoder
+architecture,
+the overall architecture of
+the Transformer
+is presented in :numref:`fig_transformer`.
+As we can see,
+the Transformer is composed of an encoder and a decoder.
+In contrast to
+Bahdanau attention
+for sequence-to-sequence learning
+in :numref:`fig_s2s_attention_details`,
+the input (source) and output (target)
+sequence embeddings
+are added with positional encoding
+before being fed into
+the encoder and the decoder
+that stack modules based on self-attention.
+
+![The Transformer architecture.](../img/transformer.svg)
+:width:`320px`
+:label:`fig_transformer`
+
+
+Now we provide an overview of the
+Transformer architecture in :numref:`fig_transformer`.
+At a high level,
+the Transformer encoder is a stack of multiple identical layers,
+where each layer
+has two sublayers (either is denoted as $\textrm{sublayer}$).
+The first
+is a multi-head self-attention pooling
+and the second is a positionwise feed-forward network.
+Specifically,
+in the encoder self-attention,
+queries, keys, and values are all from the
+outputs of the previous encoder layer.
+Inspired by the ResNet design of :numref:`sec_resnet`,
+a residual connection is employed
+around both sublayers.
+In the Transformer,
+for any input $\mathbf{x} \in \mathbb{R}^d$ at any position of the sequence,
+we require that $\textrm{sublayer}(\mathbf{x}) \in \mathbb{R}^d$ so that
+the residual connection $\mathbf{x} + \textrm{sublayer}(\mathbf{x}) \in \mathbb{R}^d$ is feasible.
+This addition from the residual connection is immediately
+followed by layer normalization :cite:`Ba.Kiros.Hinton.2016`.
+As a result, the Transformer encoder outputs a $d$-dimensional vector representation
+for each position of the input sequence.
+
+The Transformer decoder is also a stack of multiple identical layers
+with residual connections and layer normalizations.
+As well as the two sublayers described in
+the encoder, the decoder inserts
+a third sublayer, known as
+the encoder--decoder attention,
+between these two.
+In the encoder--decoder attention,
+queries are from the
+outputs of the decoder's self-attention sublayer,
+and the keys and values are
+from the Transformer encoder outputs.
+In the decoder self-attention,
+queries, keys, and values are all from the
+outputs of the previous decoder layer.
+However, each position in the decoder is
+allowed only to attend to all positions in the decoder
+up to that position.
+This *masked* attention
+preserves the autoregressive property,
+ensuring that the prediction only depends
+on those output tokens that have been generated.
+
+
+We have already described and implemented
+multi-head attention based on scaled dot products
+in :numref:`sec_multihead-attention`
+and positional encoding in :numref:`subsec_positional-encoding`.
+In the following, we will implement
+the rest of the Transformer model.
+
+## [**Positionwise Feed-Forward Networks**]
+:label:`subsec_positionwise-ffn`
+
+The positionwise feed-forward network transforms
+the representation at all the sequence positions
+using the same MLP.
+This is why we call it *positionwise*.
+In the implementation below,
+the input `X` with shape
+(batch size, number of time steps or sequence length in tokens,
+number of hidden units or feature dimension)
+will be transformed by a two-layer MLP into
+an output tensor of shape
+(batch size, number of time steps, `ffn_num_outputs`).
+
+```{.python .input}
+%%tab mxnet
+class PositionWiseFFN(nn.Block):  #@save
+    """The positionwise feed-forward network."""
+    def __init__(self, ffn_num_hiddens, ffn_num_outputs):
+        super().__init__()
+        self.dense1 = nn.Dense(ffn_num_hiddens, flatten=False,
+                               activation='relu')
+        self.dense2 = nn.Dense(ffn_num_outputs, flatten=False)
+
+    def forward(self, X):
+        return self.dense2(self.dense1(X))
+```
+
+```{.python .input}
+%%tab pytorch
+class PositionWiseFFN(nn.Module):  #@save
+    """The positionwise feed-forward network."""
+    def __init__(self, ffn_num_hiddens, ffn_num_outputs):
+        super().__init__()
+        self.dense1 = nn.LazyLinear(ffn_num_hiddens)
+        self.relu = nn.ReLU()
+        self.dense2 = nn.LazyLinear(ffn_num_outputs)
+
+    def forward(self, X):
+        return self.dense2(self.relu(self.dense1(X)))
+```
+
+```{.python .input}
+%%tab tensorflow
+class PositionWiseFFN(tf.keras.layers.Layer):  #@save
+    """The positionwise feed-forward network."""
+    def __init__(self, ffn_num_hiddens, ffn_num_outputs):
+        super().__init__()
+        self.dense1 = tf.keras.layers.Dense(ffn_num_hiddens)
+        self.relu = tf.keras.layers.ReLU()
+        self.dense2 = tf.keras.layers.Dense(ffn_num_outputs)
+
+    def call(self, X):
+        return self.dense2(self.relu(self.dense1(X)))
+```
+
+```{.python .input}
+%%tab jax
+class PositionWiseFFN(nn.Module):  #@save
+    """The positionwise feed-forward network."""
+    ffn_num_hiddens: int
+    ffn_num_outputs: int
+
+    def setup(self):
+        self.dense1 = nn.Dense(self.ffn_num_hiddens)
+        self.dense2 = nn.Dense(self.ffn_num_outputs)
+
+    def __call__(self, X):
+        return self.dense2(nn.relu(self.dense1(X)))
+```
+
+The following example
+shows that [**the innermost dimension
+of a tensor changes**] to
+the number of outputs in
+the positionwise feed-forward network.
+Since the same MLP transforms
+at all the positions,
+when the inputs at all these positions are the same,
+their outputs are also identical.
+
+```{.python .input}
+%%tab mxnet
+ffn = PositionWiseFFN(4, 8)
+ffn.initialize()
+ffn(np.ones((2, 3, 4)))[0]
+```
+
+```{.python .input}
+%%tab pytorch
+ffn = PositionWiseFFN(4, 8)
+ffn.eval()
+ffn(d2l.ones((2, 3, 4)))[0]
+```
+
+```{.python .input}
+%%tab tensorflow
+ffn = PositionWiseFFN(4, 8)
+ffn(tf.ones((2, 3, 4)))[0]
+```
+
+```{.python .input}
+%%tab jax
+ffn = PositionWiseFFN(4, 8)
+ffn.init_with_output(d2l.get_key(), jnp.ones((2, 3, 4)))[0][0]
+```
+
+## Residual Connection and Layer Normalization
+
+Now let's focus on the "add & norm" component in :numref:`fig_transformer`.
+As we described at the beginning of this section,
+this is a residual connection immediately
+followed by layer normalization.
+Both are key to effective deep architectures.
+
+In :numref:`sec_batch_norm`,
+we explained how batch normalization
+recenters and rescales across the examples within
+a minibatch.
+As discussed in :numref:`subsec_layer-normalization-in-bn`,
+layer normalization is the same as batch normalization
+except that the former
+normalizes across the feature dimension,
+thus enjoying benefits of scale independence and batch size independence.
+Despite its pervasive applications
+in computer vision,
+batch normalization
+is usually empirically
+less effective than layer normalization
+in natural language processing
+tasks, where the inputs are often
+variable-length sequences.
+
+The following code snippet
+[**compares the normalization across different dimensions
+by layer normalization and batch normalization**].
+
+```{.python .input}
+%%tab mxnet
+ln = nn.LayerNorm()
+ln.initialize()
+bn = nn.BatchNorm()
+bn.initialize()
+X = d2l.tensor([[1, 2], [2, 3]])
+# Compute mean and variance from X in the training mode
+with autograd.record():
+    print('layer norm:', ln(X), '\nbatch norm:', bn(X))
+```
+
+```{.python .input}
+%%tab pytorch
+ln = nn.LayerNorm(2)
+bn = nn.LazyBatchNorm1d()
+X = d2l.tensor([[1, 2], [2, 3]], dtype=torch.float32)
+# Compute mean and variance from X in the training mode
+print('layer norm:', ln(X), '\nbatch norm:', bn(X))
+```
+
+```{.python .input}
+%%tab tensorflow
+ln = tf.keras.layers.LayerNormalization()
+bn = tf.keras.layers.BatchNormalization()
+X = tf.constant([[1, 2], [2, 3]], dtype=tf.float32)
+print('layer norm:', ln(X), '\nbatch norm:', bn(X, training=True))
+```
+
+```{.python .input}
+%%tab jax
+ln = nn.LayerNorm()
+bn = nn.BatchNorm()
+X = d2l.tensor([[1, 2], [2, 3]], dtype=d2l.float32)
+# Compute mean and variance from X in the training mode
+print('layer norm:', ln.init_with_output(d2l.get_key(), X)[0],
+      '\nbatch norm:', bn.init_with_output(d2l.get_key(), X,
+                                           use_running_average=False)[0])
+```
+
+Now we can implement the `AddNorm` class
+[**using a residual connection followed by layer normalization**].
+Dropout is also applied for regularization.
+
+```{.python .input}
+%%tab mxnet
+class AddNorm(nn.Block):  #@save
+    """The residual connection followed by layer normalization."""
+    def __init__(self, dropout):
+        super().__init__()
+        self.dropout = nn.Dropout(dropout)
+        self.ln = nn.LayerNorm()
+
+    def forward(self, X, Y):
+        return self.ln(self.dropout(Y) + X)
+```
+
+```{.python .input}
+%%tab pytorch
+class AddNorm(nn.Module):  #@save
+    """The residual connection followed by layer normalization."""
+    def __init__(self, norm_shape, dropout):
+        super().__init__()
+        self.dropout = nn.Dropout(dropout)
+        self.ln = nn.LayerNorm(norm_shape)
+
+    def forward(self, X, Y):
+        return self.ln(self.dropout(Y) + X)
+```
+
+```{.python .input}
+%%tab tensorflow
+class AddNorm(tf.keras.layers.Layer):  #@save
+    """The residual connection followed by layer normalization."""
+    def __init__(self, norm_shape, dropout):
+        super().__init__()
+        self.dropout = tf.keras.layers.Dropout(dropout)
+        self.ln = tf.keras.layers.LayerNormalization(norm_shape)
+
+    def call(self, X, Y, **kwargs):
+        return self.ln(self.dropout(Y, **kwargs) + X)
+```
+
+```{.python .input}
+%%tab jax
+class AddNorm(nn.Module):  #@save
+    """The residual connection followed by layer normalization."""
+    dropout: int
+
+    @nn.compact
+    def __call__(self, X, Y, training=False):
+        return nn.LayerNorm()(
+            nn.Dropout(self.dropout)(Y, deterministic=not training) + X)
+```
+
+The residual connection requires that
+the two inputs are of the same shape
+so that [**the output tensor also has the same shape after the addition operation**].
+
+```{.python .input}
+%%tab mxnet
+add_norm = AddNorm(0.5)
+add_norm.initialize()
+shape = (2, 3, 4)
+d2l.check_shape(add_norm(d2l.ones(shape), d2l.ones(shape)), shape)
+```
+
+```{.python .input}
+%%tab pytorch
+add_norm = AddNorm(4, 0.5)
+shape = (2, 3, 4)
+d2l.check_shape(add_norm(d2l.ones(shape), d2l.ones(shape)), shape)
+```
+
+```{.python .input}
+%%tab tensorflow
+# Normalized_shape is: [i for i in range(len(input.shape))][1:]
+add_norm = AddNorm([1, 2], 0.5)
+shape = (2, 3, 4)
+d2l.check_shape(add_norm(tf.ones(shape), tf.ones(shape), training=False),
+                shape)
+```
+
+```{.python .input}
+%%tab jax
+add_norm = AddNorm(0.5)
+shape = (2, 3, 4)
+output, _ = add_norm.init_with_output(d2l.get_key(), d2l.ones(shape),
+                                      d2l.ones(shape))
+d2l.check_shape(output, shape)
+```
+
+## Encoder
+:label:`subsec_transformer-encoder`
+
+With all the essential components to assemble
+the Transformer encoder,
+let's start by
+implementing [**a single layer within the encoder**].
+The following `TransformerEncoderBlock` class
+contains two sublayers: multi-head self-attention and positionwise feed-forward networks,
+where a residual connection followed by layer normalization is employed
+around both sublayers.
+
+```{.python .input}
+%%tab mxnet
+class TransformerEncoderBlock(nn.Block):  #@save
+    """The Transformer encoder block."""
+    def __init__(self, num_hiddens, ffn_num_hiddens, num_heads, dropout,
+                 use_bias=False):
+        super().__init__()
+        self.attention = d2l.MultiHeadAttention(
+            num_hiddens, num_heads, dropout, use_bias)
+        self.addnorm1 = AddNorm(dropout)
+        self.ffn = PositionWiseFFN(ffn_num_hiddens, num_hiddens)
+        self.addnorm2 = AddNorm(dropout)
+
+    def forward(self, X, valid_lens):
+        Y = self.addnorm1(X, self.attention(X, X, X, valid_lens))
+        return self.addnorm2(Y, self.ffn(Y))
+```
+
+```{.python .input}
+%%tab pytorch
+class TransformerEncoderBlock(nn.Module):  #@save
+    """The Transformer encoder block."""
+    def __init__(self, num_hiddens, ffn_num_hiddens, num_heads, dropout,
+                 use_bias=False):
+        super().__init__()
+        self.attention = d2l.MultiHeadAttention(num_hiddens, num_heads,
+                                                dropout, use_bias)
+        self.addnorm1 = AddNorm(num_hiddens, dropout)
+        self.ffn = PositionWiseFFN(ffn_num_hiddens, num_hiddens)
+        self.addnorm2 = AddNorm(num_hiddens, dropout)
+
+    def forward(self, X, valid_lens):
+        Y = self.addnorm1(X, self.attention(X, X, X, valid_lens))
+        retu

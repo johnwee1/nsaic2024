@@ -1,0 +1,308 @@
+xt bidirectionally for representing each token,
+BERT randomly masks tokens and uses tokens from the bidirectional context to
+predict the masked tokens in a self-supervised fashion.
+This task is referred to as a *masked language model*.
+
+In this pretraining task,
+15% of tokens will be selected at random as the masked tokens for prediction.
+To predict a masked token without cheating by using the label,
+one straightforward approach is to always replace it with a special “&lt;mask&gt;” token in the BERT input sequence.
+However, the artificial special token “&lt;mask&gt;” will never appear
+in fine-tuning.
+To avoid such a mismatch between pretraining and fine-tuning,
+if a token is masked for prediction (e.g., "great" is selected to be masked and predicted in "this movie is great"),
+in the input it will be replaced with:
+
+* a special “&lt;mask&gt;” token for 80% of the time (e.g., "this movie is great" becomes "this movie is &lt;mask&gt;");
+* a random token for 10% of the time (e.g., "this movie is great" becomes "this movie is drink");
+* the unchanged label token for 10% of the time (e.g., "this movie is great" becomes "this movie is great").
+
+Note that for 10% of 15% time a random token is inserted.
+This occasional noise encourages BERT to be less biased towards the masked token (especially when the label token remains unchanged) in its bidirectional context encoding.
+
+We implement the following `MaskLM` class to predict masked tokens
+in the masked language model task of BERT pretraining.
+The prediction uses a one-hidden-layer MLP (`self.mlp`).
+In forward inference, it takes two inputs:
+the encoded result of `BERTEncoder` and the token positions for prediction.
+The output is the prediction results at these positions.
+
+```{.python .input}
+#@tab mxnet
+#@save
+class MaskLM(nn.Block):
+    """The masked language model task of BERT."""
+    def __init__(self, vocab_size, num_hiddens, **kwargs):
+        super(MaskLM, self).__init__(**kwargs)
+        self.mlp = nn.Sequential()
+        self.mlp.add(
+            nn.Dense(num_hiddens, flatten=False, activation='relu'))
+        self.mlp.add(nn.LayerNorm())
+        self.mlp.add(nn.Dense(vocab_size, flatten=False))
+
+    def forward(self, X, pred_positions):
+        num_pred_positions = pred_positions.shape[1]
+        pred_positions = pred_positions.reshape(-1)
+        batch_size = X.shape[0]
+        batch_idx = np.arange(0, batch_size)
+        # Suppose that `batch_size` = 2, `num_pred_positions` = 3, then
+        # `batch_idx` is `np.array([0, 0, 0, 1, 1, 1])`
+        batch_idx = np.repeat(batch_idx, num_pred_positions)
+        masked_X = X[batch_idx, pred_positions]
+        masked_X = masked_X.reshape((batch_size, num_pred_positions, -1))
+        mlm_Y_hat = self.mlp(masked_X)
+        return mlm_Y_hat
+```
+
+```{.python .input}
+#@tab pytorch
+#@save
+class MaskLM(nn.Module):
+    """The masked language model task of BERT."""
+    def __init__(self, vocab_size, num_hiddens, **kwargs):
+        super(MaskLM, self).__init__(**kwargs)
+        self.mlp = nn.Sequential(nn.LazyLinear(num_hiddens),
+                                 nn.ReLU(),
+                                 nn.LayerNorm(num_hiddens),
+                                 nn.LazyLinear(vocab_size))
+
+    def forward(self, X, pred_positions):
+        num_pred_positions = pred_positions.shape[1]
+        pred_positions = pred_positions.reshape(-1)
+        batch_size = X.shape[0]
+        batch_idx = torch.arange(0, batch_size)
+        # Suppose that `batch_size` = 2, `num_pred_positions` = 3, then
+        # `batch_idx` is `torch.tensor([0, 0, 0, 1, 1, 1])`
+        batch_idx = torch.repeat_interleave(batch_idx, num_pred_positions)
+        masked_X = X[batch_idx, pred_positions]
+        masked_X = masked_X.reshape((batch_size, num_pred_positions, -1))
+        mlm_Y_hat = self.mlp(masked_X)
+        return mlm_Y_hat
+```
+
+To demonstrate [**the forward inference of `MaskLM`**],
+we create its instance `mlm` and initialize it.
+Recall that `encoded_X` from the forward inference of `BERTEncoder`
+represents 2 BERT input sequences.
+We define `mlm_positions` as the 3 indices to predict in either BERT input sequence of `encoded_X`.
+The forward inference of `mlm` returns prediction results `mlm_Y_hat`
+at all the masked positions `mlm_positions` of `encoded_X`.
+For each prediction, the size of the result is equal to the vocabulary size.
+
+```{.python .input}
+#@tab mxnet
+mlm = MaskLM(vocab_size, num_hiddens)
+mlm.initialize()
+mlm_positions = np.array([[1, 5, 2], [6, 1, 5]])
+mlm_Y_hat = mlm(encoded_X, mlm_positions)
+mlm_Y_hat.shape
+```
+
+```{.python .input}
+#@tab pytorch
+mlm = MaskLM(vocab_size, num_hiddens)
+mlm_positions = torch.tensor([[1, 5, 2], [6, 1, 5]])
+mlm_Y_hat = mlm(encoded_X, mlm_positions)
+mlm_Y_hat.shape
+```
+
+With the ground truth labels `mlm_Y` of the predicted tokens `mlm_Y_hat` under masks,
+we can calculate the cross-entropy loss of the masked language model task in BERT pretraining.
+
+```{.python .input}
+#@tab mxnet
+mlm_Y = np.array([[7, 8, 9], [10, 20, 30]])
+loss = gluon.loss.SoftmaxCrossEntropyLoss()
+mlm_l = loss(mlm_Y_hat.reshape((-1, vocab_size)), mlm_Y.reshape(-1))
+mlm_l.shape
+```
+
+```{.python .input}
+#@tab pytorch
+mlm_Y = torch.tensor([[7, 8, 9], [10, 20, 30]])
+loss = nn.CrossEntropyLoss(reduction='none')
+mlm_l = loss(mlm_Y_hat.reshape((-1, vocab_size)), mlm_Y.reshape(-1))
+mlm_l.shape
+```
+
+### [**Next Sentence Prediction**]
+:label:`subsec_nsp`
+
+Although masked language modeling is able to encode bidirectional context
+for representing words, it does not explicitly model the logical relationship
+between text pairs.
+To help understand the relationship between two text sequences,
+BERT considers a binary classification task, *next sentence prediction*, in its pretraining.
+When generating sentence pairs for pretraining,
+for half of the time they are indeed consecutive sentences with the label "True";
+while for the other half of the time the second sentence is randomly sampled from the corpus with the label "False".
+
+The following `NextSentencePred` class uses a one-hidden-layer MLP
+to predict whether the second sentence is the next sentence of the first
+in the BERT input sequence.
+Due to self-attention in the Transformer encoder,
+the BERT representation of the special token “&lt;cls&gt;”
+encodes both the two sentences from the input.
+Hence, the output layer (`self.output`) of the MLP classifier takes `X` as input,
+where `X` is the output of the MLP hidden layer whose input is the encoded “&lt;cls&gt;” token.
+
+```{.python .input}
+#@tab mxnet
+#@save
+class NextSentencePred(nn.Block):
+    """The next sentence prediction task of BERT."""
+    def __init__(self, **kwargs):
+        super(NextSentencePred, self).__init__(**kwargs)
+        self.output = nn.Dense(2)
+
+    def forward(self, X):
+        # `X` shape: (batch size, `num_hiddens`)
+        return self.output(X)
+```
+
+```{.python .input}
+#@tab pytorch
+#@save
+class NextSentencePred(nn.Module):
+    """The next sentence prediction task of BERT."""
+    def __init__(self, **kwargs):
+        super(NextSentencePred, self).__init__(**kwargs)
+        self.output = nn.LazyLinear(2)
+
+    def forward(self, X):
+        # `X` shape: (batch size, `num_hiddens`)
+        return self.output(X)
+```
+
+We can see that [**the forward inference of an `NextSentencePred`**] instance
+returns binary predictions for each BERT input sequence.
+
+```{.python .input}
+#@tab mxnet
+nsp = NextSentencePred()
+nsp.initialize()
+nsp_Y_hat = nsp(encoded_X)
+nsp_Y_hat.shape
+```
+
+```{.python .input}
+#@tab pytorch
+# PyTorch by default will not flatten the tensor as seen in mxnet where, if
+# flatten=True, all but the first axis of input data are collapsed together
+encoded_X = torch.flatten(encoded_X, start_dim=1)
+# input_shape for NSP: (batch size, `num_hiddens`)
+nsp = NextSentencePred()
+nsp_Y_hat = nsp(encoded_X)
+nsp_Y_hat.shape
+```
+
+The cross-entropy loss of the 2 binary classifications can also be computed.
+
+```{.python .input}
+#@tab mxnet
+nsp_y = np.array([0, 1])
+nsp_l = loss(nsp_Y_hat, nsp_y)
+nsp_l.shape
+```
+
+```{.python .input}
+#@tab pytorch
+nsp_y = torch.tensor([0, 1])
+nsp_l = loss(nsp_Y_hat, nsp_y)
+nsp_l.shape
+```
+
+It is noteworthy that all the labels in both the aforementioned pretraining tasks
+can be trivially obtained from the pretraining corpus without manual labeling effort.
+The original BERT has been pretrained on the concatenation of BookCorpus :cite:`Zhu.Kiros.Zemel.ea.2015`
+and English Wikipedia.
+These two text corpora are huge:
+they have 800 million words and 2.5 billion words, respectively.
+
+
+## [**Putting It All Together**]
+
+When pretraining BERT, the final loss function is a linear combination of
+both the loss functions for masked language modeling and next sentence prediction.
+Now we can define the `BERTModel` class by instantiating the three classes
+`BERTEncoder`, `MaskLM`, and `NextSentencePred`.
+The forward inference returns the encoded BERT representations `encoded_X`,
+predictions of masked language modeling `mlm_Y_hat`,
+and next sentence predictions `nsp_Y_hat`.
+
+```{.python .input}
+#@tab mxnet
+#@save
+class BERTModel(nn.Block):
+    """The BERT model."""
+    def __init__(self, vocab_size, num_hiddens, ffn_num_hiddens, num_heads,
+                 num_blks, dropout, max_len=1000):
+        super(BERTModel, self).__init__()
+        self.encoder = BERTEncoder(vocab_size, num_hiddens, ffn_num_hiddens,
+                                   num_heads, num_blks, dropout, max_len)
+        self.hidden = nn.Dense(num_hiddens, activation='tanh')
+        self.mlm = MaskLM(vocab_size, num_hiddens)
+        self.nsp = NextSentencePred()
+
+    def forward(self, tokens, segments, valid_lens=None, pred_positions=None):
+        encoded_X = self.encoder(tokens, segments, valid_lens)
+        if pred_positions is not None:
+            mlm_Y_hat = self.mlm(encoded_X, pred_positions)
+        else:
+            mlm_Y_hat = None
+        # The hidden layer of the MLP classifier for next sentence prediction.
+        # 0 is the index of the '<cls>' token
+        nsp_Y_hat = self.nsp(self.hidden(encoded_X[:, 0, :]))
+        return encoded_X, mlm_Y_hat, nsp_Y_hat
+```
+
+```{.python .input}
+#@tab pytorch
+#@save
+class BERTModel(nn.Module):
+    """The BERT model."""
+    def __init__(self, vocab_size, num_hiddens, ffn_num_hiddens, 
+                 num_heads, num_blks, dropout, max_len=1000):
+        super(BERTModel, self).__init__()
+        self.encoder = BERTEncoder(vocab_size, num_hiddens, ffn_num_hiddens,
+                                   num_heads, num_blks, dropout,
+                                   max_len=max_len)
+        self.hidden = nn.Sequential(nn.LazyLinear(num_hiddens),
+                                    nn.Tanh())
+        self.mlm = MaskLM(vocab_size, num_hiddens)
+        self.nsp = NextSentencePred()
+
+    def forward(self, tokens, segments, valid_lens=None, pred_positions=None):
+        encoded_X = self.encoder(tokens, segments, valid_lens)
+        if pred_positions is not None:
+            mlm_Y_hat = self.mlm(encoded_X, pred_positions)
+        else:
+            mlm_Y_hat = None
+        # The hidden layer of the MLP classifier for next sentence prediction.
+        # 0 is the index of the '<cls>' token
+        nsp_Y_hat = self.nsp(self.hidden(encoded_X[:, 0, :]))
+        return encoded_X, mlm_Y_hat, nsp_Y_hat
+```
+
+## Summary
+
+* Word embedding models such as word2vec and GloVe are context-independent. They assign the same pretrained vector to the same word regardless of the context of the word (if any). It is hard for them to handle well polysemy or complex semantics in natural languages.
+* For context-sensitive word representations such as ELMo and GPT, representations of words depend on their contexts.
+* ELMo encodes context bidirectionally but uses task-specific architectures (however, it is practically non-trivial to craft a specific architecture for every natural language processing task); while GPT is task-agnostic but encodes context left-to-right.
+* BERT combines the best of both worlds: it encodes context bidirectionally and requires minimal architecture changes for a wide range of natural language processing tasks.
+* The embeddings of the BERT input sequence are the sum of the token embeddings, segment embeddings, and positional embeddings.
+* Pretraining BERT is composed of two tasks: masked language modeling and next sentence prediction. The former is able to encode bidirectional context for representing words, while the latter explicitly models the logical relationship between text pairs.
+
+
+## Exercises
+
+1. All other things being equal, will a masked language model require more or fewer pretraining steps to converge than a left-to-right language model? Why?
+1. In the original implementation of BERT, the positionwise feed-forward network in `BERTEncoder` (via `d2l.TransformerEncoderBlock`) and the fully connected layer in `MaskLM` both use the Gaussian error linear unit (GELU) :cite:`Hendrycks.Gimpel.2016` as the activation function. Research into the difference between GELU and ReLU.
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/388)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1490)
+:end_tab:

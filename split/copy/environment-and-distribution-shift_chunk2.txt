@@ -1,0 +1,268 @@
+hift Correction
+:label:`subsec_covariate-shift-correction`
+
+Assume that we want to estimate
+some dependency $P(y \mid \mathbf{x})$
+for which we have labeled data $(\mathbf{x}_i, y_i)$.
+Unfortunately, the observations $\mathbf{x}_i$ are drawn
+from some *source distribution* $q(\mathbf{x})$
+rather than the *target distribution* $p(\mathbf{x})$.
+Fortunately,
+the dependency assumption means
+that the conditional distribution does not change: $p(y \mid \mathbf{x}) = q(y \mid \mathbf{x})$.
+If the source distribution $q(\mathbf{x})$ is "wrong",
+we can correct for that by using the following simple identity in the risk:
+
+$$
+\begin{aligned}
+\int\int l(f(\mathbf{x}), y) p(y \mid \mathbf{x})p(\mathbf{x}) \;d\mathbf{x}dy =
+\int\int l(f(\mathbf{x}), y) q(y \mid \mathbf{x})q(\mathbf{x})\frac{p(\mathbf{x})}{q(\mathbf{x})} \;d\mathbf{x}dy.
+\end{aligned}
+$$
+
+In other words, we need to reweigh each data example
+by the ratio of the
+probability
+that it would have been drawn from the correct distribution to that from the wrong one:
+
+$$\beta_i \stackrel{\textrm{def}}{=} \frac{p(\mathbf{x}_i)}{q(\mathbf{x}_i)}.$$
+
+Plugging in the weight $\beta_i$ for
+each data example $(\mathbf{x}_i, y_i)$
+we can train our model using
+*weighted empirical risk minimization*:
+
+$$\mathop{\mathrm{minimize}}_f \frac{1}{n} \sum_{i=1}^n \beta_i l(f(\mathbf{x}_i), y_i).$$
+:eqlabel:`eq_weighted-empirical-risk-min`
+
+
+
+Alas, we do not know that ratio,
+so before we can do anything useful we need to estimate it.
+Many methods are available,
+including some fancy operator-theoretic approaches
+that attempt to recalibrate the expectation operator directly
+using a minimum-norm or a maximum entropy principle.
+Note that for any such approach, we need samples
+drawn from both distributions---the "true" $p$, e.g.,
+by access to test data, and the one used
+for generating the training set $q$ (the latter is trivially available).
+Note however, that we only need features $\mathbf{x} \sim p(\mathbf{x})$;
+we do not need to access labels $y \sim p(y)$.
+
+In this case, there exists a very effective approach
+that will give almost as good results as the original: namely, logistic regression,
+which is a special case of softmax regression (see :numref:`sec_softmax`)
+for binary classification.
+This is all that is needed to compute estimated probability ratios.
+We learn a classifier to distinguish
+between data drawn from $p(\mathbf{x})$
+and data drawn from $q(\mathbf{x})$.
+If it is impossible to distinguish
+between the two distributions
+then it means that the associated instances
+are equally likely to come from
+either one of those two distributions.
+On the other hand, any instances
+that can be well discriminated
+should be significantly overweighted
+or underweighted accordingly.
+
+For simplicity's sake assume that we have
+an equal number of instances from both distributions
+$p(\mathbf{x})$
+and $q(\mathbf{x})$, respectively.
+Now denote by $z$ labels that are $1$
+for data drawn from $p$ and $-1$ for data drawn from $q$.
+Then the probability in a mixed dataset is given by
+
+$$P(z=1 \mid \mathbf{x}) = \frac{p(\mathbf{x})}{p(\mathbf{x})+q(\mathbf{x})} \textrm{ and hence } \frac{P(z=1 \mid \mathbf{x})}{P(z=-1 \mid \mathbf{x})} = \frac{p(\mathbf{x})}{q(\mathbf{x})}.$$
+
+Thus, if we use a logistic regression approach,
+where $P(z=1 \mid \mathbf{x})=\frac{1}{1+\exp(-h(\mathbf{x}))}$ ($h$ is a parametrized function),
+it follows that
+
+$$
+\beta_i = \frac{1/(1 + \exp(-h(\mathbf{x}_i)))}{\exp(-h(\mathbf{x}_i))/(1 + \exp(-h(\mathbf{x}_i)))} = \exp(h(\mathbf{x}_i)).
+$$
+
+As a result, we need to solve two problems:
+the first, to distinguish between
+data drawn from both distributions,
+and then a weighted empirical risk minimization problem
+in :eqref:`eq_weighted-empirical-risk-min`
+where we weigh terms by $\beta_i$.
+
+Now we are ready to describe a correction algorithm.
+Suppose that we have a training set $\{(\mathbf{x}_1, y_1), \ldots, (\mathbf{x}_n, y_n)\}$ and an unlabeled test set $\{\mathbf{u}_1, \ldots, \mathbf{u}_m\}$.
+For covariate shift,
+we assume that $\mathbf{x}_i$ for all $1 \leq i \leq n$ are drawn from some source distribution
+and $\mathbf{u}_i$ for all $1 \leq i \leq m$
+are drawn from the target distribution.
+Here is a prototypical algorithm
+for correcting covariate shift:
+
+1. Create a binary-classification training set: $\{(\mathbf{x}_1, -1), \ldots, (\mathbf{x}_n, -1), (\mathbf{u}_1, 1), \ldots, (\mathbf{u}_m, 1)\}$.
+1. Train a binary classifier using logistic regression to get the function $h$.
+1. Weigh training data using $\beta_i = \exp(h(\mathbf{x}_i))$ or better $\beta_i = \min(\exp(h(\mathbf{x}_i)), c)$ for some constant $c$.
+1. Use weights $\beta_i$ for training on $\{(\mathbf{x}_1, y_1), \ldots, (\mathbf{x}_n, y_n)\}$ in :eqref:`eq_weighted-empirical-risk-min`.
+
+Note that the above algorithm relies on a crucial assumption.
+For this scheme to work, we need that each data example
+in the target (e.g., test time) distribution
+had nonzero probability of occurring at training time.
+If we find a point where $p(\mathbf{x}) > 0$ but $q(\mathbf{x}) = 0$,
+then the corresponding importance weight should be infinity.
+
+
+
+
+
+
+### Label Shift Correction
+
+Assume that we are dealing with a
+classification task with $k$ categories.
+Using the same notation in :numref:`subsec_covariate-shift-correction`,
+$q$ and $p$ are the source distribution (e.g., training time) and target distribution (e.g., test time), respectively.
+Assume that the distribution of labels shifts over time:
+$q(y) \neq p(y)$, but the class-conditional distribution
+stays the same: $q(\mathbf{x} \mid y)=p(\mathbf{x} \mid y)$.
+If the source distribution $q(y)$ is "wrong",
+we can correct for that
+according to
+the following identity in the risk
+as defined in
+:eqref:`eq_true-risk`:
+
+$$
+\begin{aligned}
+\int\int l(f(\mathbf{x}), y) p(\mathbf{x} \mid y)p(y) \;d\mathbf{x}dy =
+\int\int l(f(\mathbf{x}), y) q(\mathbf{x} \mid y)q(y)\frac{p(y)}{q(y)} \;d\mathbf{x}dy.
+\end{aligned}
+$$
+
+
+
+Here, our importance weights will correspond to the
+label likelihood ratios:
+
+$$\beta_i \stackrel{\textrm{def}}{=} \frac{p(y_i)}{q(y_i)}.$$
+
+One nice thing about label shift is that
+if we have a reasonably good model
+on the source distribution,
+then we can get consistent estimates of these weights
+without ever having to deal with the ambient dimension.
+In deep learning, the inputs tend
+to be high-dimensional objects like images,
+while the labels are often simpler objects like categories.
+
+To estimate the target label distribution,
+we first take our reasonably good off-the-shelf classifier
+(typically trained on the training data)
+and compute its "confusion" matrix using the validation set
+(also from the training distribution).
+The *confusion matrix*, $\mathbf{C}$, is simply a $k \times k$ matrix,
+where each column corresponds to the label category (ground truth)
+and each row corresponds to our model's predicted category.
+Each cell's value $c_{ij}$ is the fraction of total predictions on the validation set
+where the true label was $j$ and our model predicted $i$.
+
+Now, we cannot calculate the confusion matrix
+on the target data directly
+because we do not get to see the labels for the examples
+that we see in the wild,
+unless we invest in a complex real-time annotation pipeline.
+What we can do, however, is average all of our model's predictions
+at test time together, yielding the mean model outputs $\mu(\hat{\mathbf{y}}) \in \mathbb{R}^k$,
+where the $i^\textrm{th}$ element $\mu(\hat{y}_i)$
+is the fraction of the total predictions on the test set
+where our model predicted $i$.
+
+It turns out that under some mild conditions---if
+our classifier was reasonably accurate in the first place,
+and if the target data contains only categories
+that we have seen before,
+and if the label shift assumption holds in the first place
+(the strongest assumption here)---we can estimate the test set label distribution
+by solving a simple linear system
+
+$$\mathbf{C} p(\mathbf{y}) = \mu(\hat{\mathbf{y}}),$$
+
+because as an estimate $\sum_{j=1}^k c_{ij} p(y_j) = \mu(\hat{y}_i)$ holds for all $1 \leq i \leq k$,
+where $p(y_j)$ is the $j^\textrm{th}$ element of the $k$-dimensional label distribution vector $p(\mathbf{y})$.
+If our classifier is sufficiently accurate to begin with,
+then the confusion matrix $\mathbf{C}$ will be invertible,
+and we get a solution $p(\mathbf{y}) = \mathbf{C}^{-1} \mu(\hat{\mathbf{y}})$.
+
+Because we observe the labels on the source data,
+it is easy to estimate the distribution $q(y)$.
+Then, for any training example $i$ with label $y_i$,
+we can take the ratio of our estimated $p(y_i)/q(y_i)$
+to calculate the weight $\beta_i$,
+and plug this into weighted empirical risk minimization
+in :eqref:`eq_weighted-empirical-risk-min`.
+
+
+### Concept Shift Correction
+
+Concept shift is much harder to fix in a principled manner.
+For instance, in a situation where suddenly the problem changes
+from distinguishing cats from dogs to one of
+distinguishing white from black animals,
+it will be unreasonable to assume
+that we can do much better than just collecting new labels
+and training from scratch.
+Fortunately, in practice, such extreme shifts are rare.
+Instead, what usually happens is that the task keeps on changing slowly.
+To make things more concrete, here are some examples:
+
+* In computational advertising, new products are launched,
+old products become less popular. This means that the distribution over ads and their popularity changes gradually and any click-through rate predictor needs to change gradually with it.
+* Traffic camera lenses degrade gradually due to environmental wear, affecting image quality progressively.
+* News content changes gradually (i.e., most of the news remains unchanged but new stories appear).
+
+In such cases, we can use the same approach that we used for training networks to make them adapt to the change in the data. In other words, we use the existing network weights and simply perform a few update steps with the new data rather than training from scratch.
+
+
+## A Taxonomy of Learning Problems
+
+Armed with knowledge about how to deal with changes in distributions, we can now consider some other aspects of machine learning problem formulation.
+
+
+### Batch Learning
+
+In *batch learning*, we have access to training features and labels $\{(\mathbf{x}_1, y_1), \ldots, (\mathbf{x}_n, y_n)\}$, which we use to train a model $f(\mathbf{x})$. Later on, we deploy this model to score new data $(\mathbf{x}, y)$ drawn from the same distribution. This is the default assumption for any of the problems that we discuss here. For instance, we might train a cat detector based on lots of pictures of cats and dogs. Once we have trained it, we ship it as part of a smart catdoor computer vision system that lets only cats in. This is then installed in a customer's home and is never updated again (barring extreme circumstances).
+
+
+### Online Learning
+
+Now imagine that the data $(\mathbf{x}_i, y_i)$ arrives one sample at a time. More specifically, assume that we first observe $\mathbf{x}_i$, then we need to come up with an estimate $f(\mathbf{x}_i)$. Only once we have done this do we observe $y_i$ and so receive a reward or incur a loss, given our decision.
+Many real problems fall into this category. For example, we need to predict tomorrow's stock price, which allows us to trade based on that estimate and at the end of the day we find out whether our estimate made us a profit. In other words, in *online learning*, we have the following cycle where we are continuously improving our model given new observations:
+
+$$\begin{aligned}&\textrm{model } f_t \longrightarrow \textrm{data }  \mathbf{x}_t \longrightarrow \textrm{estimate } f_t(\mathbf{x}_t) \longrightarrow\\ \textrm{obs}&\textrm{ervation } y_t \longrightarrow \textrm{loss } l(y_t, f_t(\mathbf{x}_t)) \longrightarrow \textrm{model } f_{t+1}\end{aligned}$$
+
+### Bandits
+
+*Bandits* are a special case of the problem above. While in most learning problems we have a continuously parametrized function $f$ where we want to learn its parameters (e.g., a deep network), in a *bandit* problem we only have a finite number of arms that we can pull, i.e., a finite number of actions that we can take. It is not very surprising that for this simpler problem stronger theoretical guarantees in terms of optimality can be obtained. We list it mainly since this problem is often (confusingly) treated as if it were a distinct learning setting.
+
+
+### Control
+
+In many cases the environment remembers what we did. Not necessarily in an adversarial manner but it will just remember and the response will depend on what happened before. For instance, a coffee boiler controller will observe different temperatures depending on whether it was heating the boiler previously. PID (proportional-integral-derivative) controller algorithms are a popular choice there.
+Likewise, a user's behavior on a news site will depend on what we showed them previously (e.g., they will read most news only once). Many such algorithms form a model of the environment in which they act so as to make their decisions appear less random.
+Recently,
+control theory (e.g., PID variants) has also been used
+to automatically tune hyperparameters
+to achieve better disentangling and reconstruction quality,
+and improve the diversity of generated text and the reconstruction quality of generated images :cite:`Shao.Yao.Sun.ea.2020`.
+
+
+
+
+### Reinforcement Learning
+
+In the more general case of an environment with memory, we may encounter situations where the environment is trying to cooperate with us (cooperative games, in particular for non-zero-sum games), or others where the environment will try to win. Chess, Go, Backgammon, or StarCraft are some of the cases in *reinforcement learning*. Likewise, we might want to build a good controller for autonomous cars. Other cars are likely to respond to the autonomous car's driving style in nontrivial ways, e.g., trying to avoid it, trying to cause an accident, or trying to cooperate with it.
+
+### Consi

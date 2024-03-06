@@ -1,0 +1,46 @@
+ [\mathsf{X}]_{i+a, j+b, c},$$
+:eqlabel:`eq_conv-layer-channels`
+
+where $d$ indexes the output channels in the hidden representations $\mathsf{H}$. The subsequent convolutional layer will go on to take a third-order tensor, $\mathsf{H}$, as input.
+We take
+:eqref:`eq_conv-layer-channels`,
+because of its generality, as
+the definition of a convolutional layer for multiple channels, where $\mathsf{V}$ is a kernel or filter of the layer.
+
+There are still many operations that we need to address.
+For instance, we need to figure out how to combine all the hidden representations
+to a single output, e.g., whether there is a Waldo *anywhere* in the image.
+We also need to decide how to compute things efficiently,
+how to combine multiple layers,
+appropriate activation functions,
+and how to make reasonable design choices
+to yield networks that are effective in practice.
+We turn to these issues in the remainder of the chapter.
+
+## Summary and Discussion
+
+In this section we derived the structure of convolutional neural networks from first principles. While it is unclear whether this was the route taken to the invention of CNNs, it is satisfying to know that they are the *right* choice when applying reasonable principles to how image processing and computer vision algorithms should operate, at least at lower levels. In particular, translation invariance in images implies that all patches of an image will be treated in the same manner. Locality means that only a small neighborhood of pixels will be used to compute the corresponding hidden representations. Some of the earliest references to CNNs are in the form of the Neocognitron :cite:`Fukushima.1982`. 
+
+A second principle that we encountered in our reasoning is how to reduce the number of parameters in a function class without limiting its expressive power, at least, whenever certain assumptions on the model hold. We saw a dramatic reduction of complexity as a result of this restriction, turning computationally and statistically infeasible problems into tractable models. 
+
+Adding channels allowed us to bring back some of the complexity that was lost due to the restrictions imposed on the convolutional kernel by locality and translation invariance. Note that it is quite natural to add channels other than just red, green, and blue. Many satellite 
+images, in particular for agriculture and meteorology, have tens to hundreds of channels, 
+generating hyperspectral images instead. They report data on many different wavelengths. In the following we will see how to use convolutions effectively to manipulate the dimensionality of the images they operate on, how to move from location-based to channel-based representations, and how to deal with large numbers of categories efficiently. 
+
+## Exercises
+
+1. Assume that the size of the convolution kernel is $\Delta = 0$.
+   Show that in this case the convolution kernel
+   implements an MLP independently for each set of channels. This leads to the Network in Network 
+   architectures :cite:`Lin.Chen.Yan.2013`. 
+1. Audio data is often represented as a one-dimensional sequence. 
+    1. When might you want to impose locality and translation invariance for audio? 
+    1. Derive the convolution operations for audio.
+    1. Can you treat audio using the same tools as computer vision? Hint: use the spectrogram.
+1. Why might translation invariance not be a good idea after all? Give an example. 
+1. Do you think that convolutional layers might also be applicable for text data?
+   Which problems might you encounter with language?
+1. What happens with convolutions when an object is at the boundary of an image?
+1. Prove that the convolution is symmetric, i.e., $f * g = g * f$.
+
+[Discussions](https://discuss.d2l.ai/t/64)

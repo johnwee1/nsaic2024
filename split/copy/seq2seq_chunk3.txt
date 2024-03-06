@@ -1,0 +1,156 @@
+ the intermediates collection
+        enc_attention_weights = inter_enc_vars[
+            'intermediates']['enc_attention_weights'][0]
+
+    dec_state = self.decoder.init_state(enc_all_outputs, src_valid_len)
+    outputs, attention_weights = [d2l.expand_dims(tgt[:,0], 1), ], []
+    for _ in range(num_steps):
+        (Y, dec_state), inter_dec_vars = self.decoder.apply(
+            {'params': params['decoder']}, outputs[-1], dec_state,
+            training=False, mutable='intermediates')
+        outputs.append(d2l.argmax(Y, 2))
+        # Save attention weights (to be covered later)
+        if save_attention_weights:
+            # Decoder Attention Weights saved in the intermediates collection
+            dec_attention_weights = inter_dec_vars[
+                'intermediates']['dec_attention_weights'][0]
+            attention_weights.append(dec_attention_weights)
+    return d2l.concat(outputs[1:], 1), (attention_weights,
+                                        enc_attention_weights)
+```
+
+## Evaluation of Predicted Sequences
+
+We can evaluate a predicted sequence
+by comparing it with the
+target sequence (the ground truth).
+But what precisely is the appropriate measure 
+for comparing similarity between two sequences?
+
+
+Bilingual Evaluation Understudy (BLEU),
+though originally proposed for evaluating
+machine translation results :cite:`Papineni.Roukos.Ward.ea.2002`,
+has been extensively used in measuring
+the quality of output sequences for different applications.
+In principle, for any $n$-gram (:numref:`subsec_markov-models-and-n-grams`) in the predicted sequence,
+BLEU evaluates whether this $n$-gram appears
+in the target sequence.
+
+Denote by $p_n$ the precision of an $n$-gram,
+defined as the ratio 
+of the number of matched $n$-grams in
+the predicted and target sequences
+to the number of $n$-grams in the predicted sequence.
+To explain, given a target sequence $A$, $B$, $C$, $D$, $E$, $F$,
+and a predicted sequence $A$, $B$, $B$, $C$, $D$,
+we have $p_1 = 4/5$,  $p_2 = 3/4$, $p_3 = 1/3$, and $p_4 = 0$.
+Now let $\textrm{len}_{\textrm{label}}$ and $\textrm{len}_{\textrm{pred}}$
+be the numbers of tokens in the target sequence 
+and the predicted sequence, respectively.
+Then, BLEU is defined as
+
+$$ \exp\left(\min\left(0, 1 - \frac{\textrm{len}_{\textrm{label}}}{\textrm{len}_{\textrm{pred}}}\right)\right) \prod_{n=1}^k p_n^{1/2^n},$$
+:eqlabel:`eq_bleu`
+
+where $k$ is the longest $n$-gram for matching.
+
+Based on the definition of BLEU in :eqref:`eq_bleu`,
+whenever the predicted sequence is the same as the target sequence, BLEU is 1.
+Moreover,
+since matching longer $n$-grams is more difficult,
+BLEU assigns a greater weight
+when a longer $n$-gram has high precision.
+Specifically, when $p_n$ is fixed,
+$p_n^{1/2^n}$ increases as $n$ grows (the original paper uses $p_n^{1/n}$).
+Furthermore,
+since
+predicting shorter sequences
+tends to yield a higher $p_n$ value,
+the coefficient before the multiplication term in :eqref:`eq_bleu`
+penalizes shorter predicted sequences.
+For example, when $k=2$,
+given the target sequence $A$, $B$, $C$, $D$, $E$, $F$ and the predicted sequence $A$, $B$,
+although $p_1 = p_2 = 1$, the penalty factor $\exp(1-6/2) \approx 0.14$ lowers the BLEU.
+
+We [**implement the BLEU measure**] as follows.
+
+```{.python .input}
+%%tab all
+def bleu(pred_seq, label_seq, k):  #@save
+    """Compute the BLEU."""
+    pred_tokens, label_tokens = pred_seq.split(' '), label_seq.split(' ')
+    len_pred, len_label = len(pred_tokens), len(label_tokens)
+    score = math.exp(min(0, 1 - len_label / len_pred))
+    for n in range(1, min(k, len_pred) + 1):
+        num_matches, label_subs = 0, collections.defaultdict(int)
+        for i in range(len_label - n + 1):
+            label_subs[' '.join(label_tokens[i: i + n])] += 1
+        for i in range(len_pred - n + 1):
+            if label_subs[' '.join(pred_tokens[i: i + n])] > 0:
+                num_matches += 1
+                label_subs[' '.join(pred_tokens[i: i + n])] -= 1
+        score *= math.pow(num_matches / (len_pred - n + 1), math.pow(0.5, n))
+    return score
+```
+
+In the end,
+we use the trained RNN encoder--decoder
+to [**translate a few English sentences into French**]
+and compute the BLEU of the results.
+
+```{.python .input}
+%%tab all
+engs = ['go .', 'i lost .', 'he\'s calm .', 'i\'m home .']
+fras = ['va !', 'j\'ai perdu .', 'il est calme .', 'je suis chez moi .']
+if tab.selected('pytorch', 'mxnet', 'tensorflow'):
+    preds, _ = model.predict_step(
+        data.build(engs, fras), d2l.try_gpu(), data.num_steps)
+if tab.selected('jax'):
+    preds, _ = model.predict_step(trainer.state.params, data.build(engs, fras),
+                                  data.num_steps)
+for en, fr, p in zip(engs, fras, preds):
+    translation = []
+    for token in data.tgt_vocab.to_tokens(p):
+        if token == '<eos>':
+            break
+        translation.append(token)        
+    print(f'{en} => {translation}, bleu,'
+          f'{bleu(" ".join(translation), fr, k=2):.3f}')
+```
+
+## Summary
+
+Following the design of the encoder--decoder architecture, we can use two RNNs to design a model for sequence-to-sequence learning.
+In encoder--decoder training, the teacher forcing approach feeds original output sequences (in contrast to predictions) into the decoder.
+When implementing the encoder and the decoder, we can use multilayer RNNs.
+We can use masks to filter out irrelevant computations, such as when calculating the loss.
+For evaluating output sequences,
+BLEU is a popular measure that matches $n$-grams between the predicted sequence and the target sequence.
+
+
+## Exercises
+
+1. Can you adjust the hyperparameters to improve the translation results?
+1. Rerun the experiment without using masks in the loss calculation. What results do you observe? Why?
+1. If the encoder and the decoder differ in the number of layers or the number of hidden units, how can we initialize the hidden state of the decoder?
+1. In training, replace teacher forcing with feeding the prediction at the previous time step into the decoder. How does this influence the performance?
+1. Rerun the experiment by replacing GRU with LSTM.
+1. Are there any other ways to design the output layer of the decoder?
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/345)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1062)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/3865)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/18022)
+:end_tab:
+

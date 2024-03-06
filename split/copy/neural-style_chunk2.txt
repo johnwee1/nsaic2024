@@ -1,0 +1,185 @@
+hesized image.
+
+```{.python .input}
+#@tab all
+content_weight, style_weight, tv_weight = 1, 1e4, 10
+
+def compute_loss(X, contents_Y_hat, styles_Y_hat, contents_Y, styles_Y_gram):
+    # Calculate the content, style, and total variance losses respectively
+    contents_l = [content_loss(Y_hat, Y) * content_weight for Y_hat, Y in zip(
+        contents_Y_hat, contents_Y)]
+    styles_l = [style_loss(Y_hat, Y) * style_weight for Y_hat, Y in zip(
+        styles_Y_hat, styles_Y_gram)]
+    tv_l = tv_loss(X) * tv_weight
+    # Add up all the losses
+    l = sum(styles_l + contents_l + [tv_l])
+    return contents_l, styles_l, tv_l, l
+```
+
+## [**Initializing the Synthesized Image**]
+
+In style transfer,
+the synthesized image is the only variable that needs to be updated during training.
+Thus, we can define a simple model, `SynthesizedImage`, and treat the synthesized image as the model parameters.
+In this model, forward propagation just returns the model parameters.
+
+```{.python .input}
+#@tab mxnet
+class SynthesizedImage(nn.Block):
+    def __init__(self, img_shape, **kwargs):
+        super(SynthesizedImage, self).__init__(**kwargs)
+        self.weight = self.params.get('weight', shape=img_shape)
+
+    def forward(self):
+        return self.weight.data()
+```
+
+```{.python .input}
+#@tab pytorch
+class SynthesizedImage(nn.Module):
+    def __init__(self, img_shape, **kwargs):
+        super(SynthesizedImage, self).__init__(**kwargs)
+        self.weight = nn.Parameter(torch.rand(*img_shape))
+
+    def forward(self):
+        return self.weight
+```
+
+Next, we define the `get_inits` function.
+This function creates a synthesized image model instance and initializes it to the image `X`.
+Gram matrices for the style image at various style layers, `styles_Y_gram`, are computed prior to training.
+
+```{.python .input}
+#@tab mxnet
+def get_inits(X, device, lr, styles_Y):
+    gen_img = SynthesizedImage(X.shape)
+    gen_img.initialize(init.Constant(X), ctx=device, force_reinit=True)
+    trainer = gluon.Trainer(gen_img.collect_params(), 'adam',
+                            {'learning_rate': lr})
+    styles_Y_gram = [gram(Y) for Y in styles_Y]
+    return gen_img(), styles_Y_gram, trainer
+```
+
+```{.python .input}
+#@tab pytorch
+def get_inits(X, device, lr, styles_Y):
+    gen_img = SynthesizedImage(X.shape).to(device)
+    gen_img.weight.data.copy_(X.data)
+    trainer = torch.optim.Adam(gen_img.parameters(), lr=lr)
+    styles_Y_gram = [gram(Y) for Y in styles_Y]
+    return gen_img(), styles_Y_gram, trainer
+```
+
+## [**Training**]
+
+
+When training the model for style transfer,
+we continuously extract
+content features and style features of the synthesized image, and calculate the loss function.
+Below defines the training loop.
+
+```{.python .input}
+#@tab mxnet
+def train(X, contents_Y, styles_Y, device, lr, num_epochs, lr_decay_epoch):
+    X, styles_Y_gram, trainer = get_inits(X, device, lr, styles_Y)
+    animator = d2l.Animator(xlabel='epoch', ylabel='loss',
+                            xlim=[10, num_epochs], ylim=[0, 20],
+                            legend=['content', 'style', 'TV'],
+                            ncols=2, figsize=(7, 2.5))
+    for epoch in range(num_epochs):
+        with autograd.record():
+            contents_Y_hat, styles_Y_hat = extract_features(
+                X, content_layers, style_layers)
+            contents_l, styles_l, tv_l, l = compute_loss(
+                X, contents_Y_hat, styles_Y_hat, contents_Y, styles_Y_gram)
+        l.backward()
+        trainer.step(1)
+        if (epoch + 1) % lr_decay_epoch == 0:
+            trainer.set_learning_rate(trainer.learning_rate * 0.8)
+        if (epoch + 1) % 10 == 0:
+            animator.axes[1].imshow(postprocess(X).asnumpy())
+            animator.add(epoch + 1, [float(sum(contents_l)),
+                                     float(sum(styles_l)), float(tv_l)])
+    return X
+```
+
+```{.python .input}
+#@tab pytorch
+def train(X, contents_Y, styles_Y, device, lr, num_epochs, lr_decay_epoch):
+    X, styles_Y_gram, trainer = get_inits(X, device, lr, styles_Y)
+    scheduler = torch.optim.lr_scheduler.StepLR(trainer, lr_decay_epoch, 0.8)
+    animator = d2l.Animator(xlabel='epoch', ylabel='loss',
+                            xlim=[10, num_epochs],
+                            legend=['content', 'style', 'TV'],
+                            ncols=2, figsize=(7, 2.5))
+    for epoch in range(num_epochs):
+        trainer.zero_grad()
+        contents_Y_hat, styles_Y_hat = extract_features(
+            X, content_layers, style_layers)
+        contents_l, styles_l, tv_l, l = compute_loss(
+            X, contents_Y_hat, styles_Y_hat, contents_Y, styles_Y_gram)
+        l.backward()
+        trainer.step()
+        scheduler.step()
+        if (epoch + 1) % 10 == 0:
+            animator.axes[1].imshow(postprocess(X))
+            animator.add(epoch + 1, [float(sum(contents_l)),
+                                     float(sum(styles_l)), float(tv_l)])
+    return X
+```
+
+Now we [**start to train the model**].
+We rescale the height and width of the content and style images to 300 by 450 pixels.
+We use the content image to initialize the synthesized image.
+
+```{.python .input}
+#@tab mxnet
+device, image_shape = d2l.try_gpu(), (450, 300)
+net.collect_params().reset_ctx(device)
+content_X, contents_Y = get_contents(image_shape, device)
+_, styles_Y = get_styles(image_shape, device)
+output = train(content_X, contents_Y, styles_Y, device, 0.9, 500, 50)
+```
+
+```{.python .input}
+#@tab pytorch
+device, image_shape = d2l.try_gpu(), (300, 450)  # PIL Image (h, w)
+net = net.to(device)
+content_X, contents_Y = get_contents(image_shape, device)
+_, styles_Y = get_styles(image_shape, device)
+output = train(content_X, contents_Y, styles_Y, device, 0.3, 500, 50)
+```
+
+We can see that the synthesized image
+retains the scenery and objects of the content image,
+and transfers the color of the style image
+at the same time.
+For example,
+the synthesized image has blocks of color like
+those in the style image.
+Some of these blocks even have the subtle texture of brush strokes.
+
+
+
+
+## Summary
+
+* The loss function commonly used in style transfer consists of three parts: (i) content loss makes the synthesized image and the content image close in content features; (ii) style loss makes the synthesized image and style image close in style features; and (iii) total variation loss helps to reduce the noise in the synthesized image.
+* We can use a pretrained CNN to extract image features and minimize the loss function to continuously update the synthesized image as model parameters during training.
+* We use Gram matrices to represent the style outputs from the style layers.
+
+
+## Exercises
+
+1. How does the output change when you select different content and style layers?
+1. Adjust the weight hyperparameters in the loss function. Does the output retain more content or have less noise?
+1. Use different content and style images. Can you create more interesting synthesized images?
+1. Can we apply style transfer for text? Hint: you may refer to the survey paper by :citet:`10.1145/3544903.3544906`.
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/378)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1476)
+:end_tab:

@@ -1,0 +1,79 @@
+ion
+
+In this section, we have reviewed all the linear algebra
+that you will need to understand
+a significant chunk of modern deep learning.
+There is a lot more to linear algebra, though,
+and much of it is useful for machine learning.
+For example, matrices can be decomposed into factors,
+and these decompositions can reveal
+low-dimensional structure in real-world datasets.
+There are entire subfields of machine learning
+that focus on using matrix decompositions
+and their generalizations to high-order tensors
+to discover structure in datasets
+and solve prediction problems.
+But this book focuses on deep learning.
+And we believe you will be more inclined
+to learn more mathematics
+once you have gotten your hands dirty
+applying machine learning to real datasets.
+So while we reserve the right
+to introduce more mathematics later on,
+we wrap up this section here.
+
+If you are eager to learn more linear algebra,
+there are many excellent books and online resources.
+For a more advanced crash course, consider checking out
+:citet:`Strang.1993`, :citet:`Kolter.2008`, and :citet:`Petersen.Pedersen.ea.2008`.
+
+To recap:
+
+* Scalars, vectors, matrices, and tensors are
+  the basic mathematical objects used in linear algebra
+  and have zero, one, two, and an arbitrary number of axes, respectively.
+* Tensors can be sliced or reduced along specified axes
+  via indexing, or operations such as `sum` and `mean`, respectively.
+* Elementwise products are called Hadamard products.
+  By contrast, dot products, matrix--vector products, and matrix--matrix products
+  are not elementwise operations and in general return objects
+  having shapes that are different from the the operands.
+* Compared to Hadamard products, matrix--matrix products
+  take considerably longer to compute (cubic rather than quadratic time).
+* Norms capture various notions of the magnitude of a vector (or matrix),
+  and are commonly applied to the difference of two vectors
+  to measure their distance apart.
+* Common vector norms include the $\ell_1$ and $\ell_2$ norms,
+   and common matrix norms include the *spectral* and *Frobenius* norms.
+
+
+## Exercises
+
+1. Prove that the transpose of the transpose of a matrix is the matrix itself: $(\mathbf{A}^\top)^\top = \mathbf{A}$.
+1. Given two matrices $\mathbf{A}$ and $\mathbf{B}$, show that sum and transposition commute: $\mathbf{A}^\top + \mathbf{B}^\top = (\mathbf{A} + \mathbf{B})^\top$.
+1. Given any square matrix $\mathbf{A}$, is $\mathbf{A} + \mathbf{A}^\top$ always symmetric? Can you prove the result by using only the results of the previous two exercises?
+1. We defined the tensor `X` of shape (2, 3, 4) in this section. What is the output of `len(X)`? Write your answer without implementing any code, then check your answer using code.
+1. For a tensor `X` of arbitrary shape, does `len(X)` always correspond to the length of a certain axis of `X`? What is that axis?
+1. Run `A / A.sum(axis=1)` and see what happens. Can you analyze the results?
+1. When traveling between two points in downtown Manhattan, what is the distance that you need to cover in terms of the coordinates, i.e., in terms of avenues and streets? Can you travel diagonally?
+1. Consider a tensor of shape (2, 3, 4). What are the shapes of the summation outputs along axes 0, 1, and 2?
+1. Feed a tensor with three or more axes to the `linalg.norm` function and observe its output. What does this function compute for tensors of arbitrary shape?
+1. Consider three large matrices, say $\mathbf{A} \in \mathbb{R}^{2^{10} \times 2^{16}}$, $\mathbf{B} \in \mathbb{R}^{2^{16} \times 2^{5}}$ and $\mathbf{C} \in \mathbb{R}^{2^{5} \times 2^{14}}$, initialized with Gaussian random variables. You want to compute the product $\mathbf{A} \mathbf{B} \mathbf{C}$. Is there any difference in memory footprint and speed, depending on whether you compute $(\mathbf{A} \mathbf{B}) \mathbf{C}$ or $\mathbf{A} (\mathbf{B} \mathbf{C})$? Why?
+1. Consider three large matrices, say $\mathbf{A} \in \mathbb{R}^{2^{10} \times 2^{16}}$, $\mathbf{B} \in \mathbb{R}^{2^{16} \times 2^{5}}$ and $\mathbf{C} \in \mathbb{R}^{2^{5} \times 2^{16}}$. Is there any difference in speed depending on whether you compute $\mathbf{A} \mathbf{B}$ or $\mathbf{A} \mathbf{C}^\top$? Why? What changes if you initialize $\mathbf{C} = \mathbf{B}^\top$ without cloning memory? Why?
+1. Consider three matrices, say $\mathbf{A}, \mathbf{B}, \mathbf{C} \in \mathbb{R}^{100 \times 200}$. Construct a tensor with three axes by stacking $[\mathbf{A}, \mathbf{B}, \mathbf{C}]$. What is the dimensionality? Slice out the second coordinate of the third axis to recover $\mathbf{B}$. Check that your answer is correct.
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/30)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/31)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/196)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/17968)
+:end_tab:

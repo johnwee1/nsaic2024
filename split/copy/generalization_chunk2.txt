@@ -1,0 +1,106 @@
+g among many models is aptly
+called *model selection*.
+
+In principle, we should not touch our test set
+until after we have chosen all our hyperparameters.
+Were we to use the test data in the model selection process,
+there is a risk that we might overfit the test data.
+Then we would be in serious trouble.
+If we overfit our training data,
+there is always the evaluation on test data to keep us honest.
+But if we overfit the test data, how would we ever know?
+See :citet:`ong2005learning` for an example of how
+this can lead to absurd results even for models where the complexity
+can be tightly controlled.
+
+Thus, we should never rely on the test data for model selection.
+And yet we cannot rely solely on the training data
+for model selection either because
+we cannot estimate the generalization error
+on the very data that we use to train the model.
+
+
+In practical applications, the picture gets muddier.
+While ideally we would only touch the test data once,
+to assess the very best model or to compare
+a small number of models with each other,
+real-world test data is seldom discarded after just one use.
+We can seldom afford a new test set for each round of experiments.
+In fact, recycling benchmark data for decades
+can have a significant impact on the
+development of algorithms,
+e.g., for [image classification](https://paperswithcode.com/sota/image-classification-on-imagenet)
+and [optical character recognition](https://paperswithcode.com/sota/image-classification-on-mnist).
+
+The common practice for addressing the problem of *training on the test set*
+is to split our data three ways,
+incorporating a *validation set*
+in addition to the training and test datasets.
+The result is a murky business where the boundaries
+between validation and test data are worryingly ambiguous.
+Unless explicitly stated otherwise, in the experiments in this book
+we are really working with what should rightly be called
+training data and validation data, with no true test sets.
+Therefore, the accuracy reported in each experiment of the book is really
+the validation accuracy and not a true test set accuracy.
+
+### Cross-Validation
+
+When training data is scarce,
+we might not even be able to afford to hold out
+enough data to constitute a proper validation set.
+One popular solution to this problem is to employ
+$K$*-fold cross-validation*.
+Here, the original training data is split into $K$ non-overlapping subsets.
+Then model training and validation are executed $K$ times,
+each time training on $K-1$ subsets and validating
+on a different subset (the one not used for training in that round).
+Finally, the training and validation errors are estimated
+by averaging over the results from the $K$ experiments.
+
+
+
+## Summary
+
+This section explored some of the  underpinnings
+of generalization in  machine learning.
+Some of these ideas become complicated
+and counterintuitive when we get to deeper models; here, models are capable of overfitting data badly,
+and the relevant notions of complexity
+can be both implicit and counterintuitive
+(e.g., larger architectures with more parameters
+generalizing better).
+We leave you with a few rules of thumb:
+
+1. Use validation sets (or $K$*-fold cross-validation*) for model selection;
+1. More complex models often require more data;
+1. Relevant notions of complexity include both the number of parameters and the range of values that they are allowed to take;
+1. Keeping all else equal, more data almost always leads to better generalization;
+1. This entire talk of generalization is all predicated on the IID assumption. If we relax this assumption, allowing for distributions to shift between the train and testing periods, then we cannot say anything about generalization absent a further (perhaps milder) assumption.
+
+
+## Exercises
+
+1. When can you solve the problem of polynomial regression exactly?
+1. Give at least five examples where dependent random variables make treating the problem as IID data inadvisable.
+1. Can you ever expect to see zero training error? Under which circumstances would you see zero generalization error?
+1. Why is $K$-fold cross-validation very expensive to compute?
+1. Why is the $K$-fold cross-validation error estimate biased?
+1. The VC dimension is defined as the maximum number of points that can be classified with arbitrary labels $\{\pm 1\}$ by a function of a class of functions. Why might this not be a good idea for measuring how complex the class of functions is? Hint: consider the magnitude of the functions.
+1. Your manager gives you a difficult dataset on which your current algorithm does not perform so well. How would you justify to him that you need more data? Hint: you cannot increase the data but you can decrease it.
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/96)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/97)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/234)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/17978)
+:end_tab:

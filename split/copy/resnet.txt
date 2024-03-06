@@ -1,0 +1,303 @@
+```{.python .input}
+%load_ext d2lbook.tab
+tab.interact_select(['mxnet', 'pytorch', 'tensorflow', 'jax'])
+```
+
+# Residual Networks (ResNet) and ResNeXt
+:label:`sec_resnet`
+
+As we design ever deeper networks it becomes imperative to understand how adding layers can increase the complexity and expressiveness of the network.
+Even more important is the ability to design networks where adding layers makes networks strictly more expressive rather than just different.
+To make some progress we need a bit of mathematics.
+
+```{.python .input}
+%%tab mxnet
+from d2l import mxnet as d2l
+from mxnet import np, npx, init
+from mxnet.gluon import nn
+npx.set_np()
+```
+
+```{.python .input}
+%%tab pytorch
+from d2l import torch as d2l
+import torch
+from torch import nn
+from torch.nn import functional as F
+```
+
+```{.python .input}
+%%tab tensorflow
+import tensorflow as tf
+from d2l import tensorflow as d2l
+```
+
+```{.python .input}
+%%tab jax
+from d2l import jax as d2l
+from flax import linen as nn
+from jax import numpy as jnp
+import jax
+```
+
+## Function Classes
+
+Consider $\mathcal{F}$, the class of functions that a specific network architecture (together with learning rates and other hyperparameter settings) can reach.
+That is, for all $f \in \mathcal{F}$ there exists some set of parameters (e.g., weights and biases) that can be obtained through training on a suitable dataset.
+Let's assume that $f^*$ is the "truth" function that we really would like to find.
+If it is in $\mathcal{F}$, we are in good shape but typically we will not be quite so lucky.
+Instead, we will try to find some $f^*_\mathcal{F}$ which is our best bet within $\mathcal{F}$.
+For instance,
+given a dataset with features $\mathbf{X}$
+and labels $\mathbf{y}$,
+we might try finding it by solving the following optimization problem:
+
+$$f^*_\mathcal{F} \stackrel{\textrm{def}}{=} \mathop{\mathrm{argmin}}_f L(\mathbf{X}, \mathbf{y}, f) \textrm{ subject to } f \in \mathcal{F}.$$
+
+We know that regularization :cite:`tikhonov1977solutions,morozov2012methods` may control complexity of $\mathcal{F}$
+and achieve consistency, so a larger size of training data
+generally leads to better $f^*_\mathcal{F}$.
+It is only reasonable to assume that if we design a different and more powerful architecture $\mathcal{F}'$ we should arrive at a better outcome. In other words, we would expect that $f^*_{\mathcal{F}'}$ is "better" than $f^*_{\mathcal{F}}$. However, if $\mathcal{F} \not\subseteq \mathcal{F}'$ there is no guarantee that this should even happen. In fact, $f^*_{\mathcal{F}'}$ might well be worse.
+As illustrated by :numref:`fig_functionclasses`,
+for non-nested function classes, a larger function class does not always move closer to the "truth" function $f^*$. For instance,
+on the left of :numref:`fig_functionclasses`,
+though $\mathcal{F}_3$ is closer to $f^*$ than $\mathcal{F}_1$, $\mathcal{F}_6$ moves away and there is no guarantee that further increasing the complexity can reduce the distance from $f^*$.
+With nested function classes
+where $\mathcal{F}_1 \subseteq \cdots \subseteq \mathcal{F}_6$
+on the right of :numref:`fig_functionclasses`,
+we can avoid the aforementioned issue from the non-nested function classes.
+
+
+![For non-nested function classes, a larger (indicated by area) function class does not guarantee we will get closer to the "truth" function ($\mathit{f}^*$). This does not happen in nested function classes.](../img/functionclasses.svg)
+:label:`fig_functionclasses`
+
+Thus,
+only if larger function classes contain the smaller ones are we guaranteed that increasing them strictly increases the expressive power of the network.
+For deep neural networks,
+if we can
+train the newly-added layer into an identity function $f(\mathbf{x}) = \mathbf{x}$, the new model will be as effective as the original model. As the new model may get a better solution to fit the training dataset, the added layer might make it easier to reduce training errors.
+
+This is the question that :citet:`He.Zhang.Ren.ea.2016` considered when working on very deep computer vision models.
+At the heart of their proposed *residual network* (*ResNet*) is the idea that every additional layer should
+more easily
+contain the identity function as one of its elements.
+These considerations are rather profound but they led to a surprisingly simple
+solution, a *residual block*.
+With it, ResNet won the ImageNet Large Scale Visual Recognition Challenge in 2015. The design had a profound influence on how to
+build deep neural networks. For instance, residual blocks have been added to recurrent networks :cite:`prakash2016neural,kim2017residual`. Likewise, Transformers :cite:`Vaswani.Shazeer.Parmar.ea.2017` use them to stack many layers of networks efficiently. It is also used in graph neural networks :cite:`Kipf.Welling.2016` and, as a basic concept, it has been used extensively in computer vision :cite:`Redmon.Farhadi.2018,Ren.He.Girshick.ea.2015`. 
+Note that residual networks are predated by highway networks :cite:`srivastava2015highway` that share some of the motivation, albeit without the elegant parametrization around the identity function.
+
+
+## (**Residual Blocks**)
+:label:`subsec_residual-blks`
+
+Let's focus on a local part of a neural network, as depicted in :numref:`fig_residual_block`. Denote the input by $\mathbf{x}$.
+We assume that $f(\mathbf{x})$, the desired underlying mapping we want to obtain by learning, is to be used as input to the activation function on the top.
+On the left,
+the portion within the dotted-line box
+must directly learn $f(\mathbf{x})$.
+On the right,
+the portion within the dotted-line box
+needs to
+learn the *residual mapping* $g(\mathbf{x}) = f(\mathbf{x}) - \mathbf{x}$,
+which is how the residual block derives its name.
+If the identity mapping $f(\mathbf{x}) = \mathbf{x}$ is the desired underlying mapping,
+the residual mapping amounts to $g(\mathbf{x}) = 0$ and it is thus easier to learn:
+we only need to push the weights and biases
+of the
+upper weight layer (e.g., fully connected layer and convolutional layer)
+within the dotted-line box
+to zero.
+The right figure illustrates the *residual block* of ResNet,
+where the solid line carrying the layer input
+$\mathbf{x}$ to the addition operator
+is called a *residual connection* (or *shortcut connection*).
+With residual blocks, inputs can
+forward propagate faster through the residual connections across layers.
+In fact,
+the residual block
+can be thought of as
+a special case of the multi-branch Inception block:
+it has two branches
+one of which is the identity mapping.
+
+![In a regular block (left), the portion within the dotted-line box must directly learn the mapping $\mathit{f}(\mathbf{x})$. In a residual block (right), the portion within the dotted-line box needs to learn the residual mapping $\mathit{g}(\mathbf{x}) = \mathit{f}(\mathbf{x}) - \mathbf{x}$, making the identity mapping $\mathit{f}(\mathbf{x}) = \mathbf{x}$ easier to learn.](../img/residual-block.svg)
+:label:`fig_residual_block`
+
+
+ResNet has VGG's full $3\times 3$ convolutional layer design. The residual block has two $3\times 3$ convolutional layers with the same number of output channels. Each convolutional layer is followed by a batch normalization layer and a ReLU activation function. Then, we skip these two convolution operations and add the input directly before the final ReLU activation function.
+This kind of design requires that the output of the two convolutional layers has to be of the same shape as the input, so that they can be added together. If we want to change the number of channels, we need to introduce an additional $1\times 1$ convolutional layer to transform the input into the desired shape for the addition operation. Let's have a look at the code below.
+
+```{.python .input}
+%%tab mxnet
+class Residual(nn.Block):  #@save
+    """The Residual block of ResNet models."""
+    def __init__(self, num_channels, use_1x1conv=False, strides=1, **kwargs):
+        super().__init__(**kwargs)
+        self.conv1 = nn.Conv2D(num_channels, kernel_size=3, padding=1,
+                               strides=strides)
+        self.conv2 = nn.Conv2D(num_channels, kernel_size=3, padding=1)
+        if use_1x1conv:
+            self.conv3 = nn.Conv2D(num_channels, kernel_size=1,
+                                   strides=strides)
+        else:
+            self.conv3 = None
+        self.bn1 = nn.BatchNorm()
+        self.bn2 = nn.BatchNorm()
+
+    def forward(self, X):
+        Y = npx.relu(self.bn1(self.conv1(X)))
+        Y = self.bn2(self.conv2(Y))
+        if self.conv3:
+            X = self.conv3(X)
+        return npx.relu(Y + X)
+```
+
+```{.python .input}
+%%tab pytorch
+class Residual(nn.Module):  #@save
+    """The Residual block of ResNet models."""
+    def __init__(self, num_channels, use_1x1conv=False, strides=1):
+        super().__init__()
+        self.conv1 = nn.LazyConv2d(num_channels, kernel_size=3, padding=1,
+                                   stride=strides)
+        self.conv2 = nn.LazyConv2d(num_channels, kernel_size=3, padding=1)
+        if use_1x1conv:
+            self.conv3 = nn.LazyConv2d(num_channels, kernel_size=1,
+                                       stride=strides)
+        else:
+            self.conv3 = None
+        self.bn1 = nn.LazyBatchNorm2d()
+        self.bn2 = nn.LazyBatchNorm2d()
+
+    def forward(self, X):
+        Y = F.relu(self.bn1(self.conv1(X)))
+        Y = self.bn2(self.conv2(Y))
+        if self.conv3:
+            X = self.conv3(X)
+        Y += X
+        return F.relu(Y)
+```
+
+```{.python .input}
+%%tab tensorflow
+class Residual(tf.keras.Model):  #@save
+    """The Residual block of ResNet models."""
+    def __init__(self, num_channels, use_1x1conv=False, strides=1):
+        super().__init__()
+        self.conv1 = tf.keras.layers.Conv2D(num_channels, padding='same',
+                                            kernel_size=3, strides=strides)
+        self.conv2 = tf.keras.layers.Conv2D(num_channels, kernel_size=3,
+                                            padding='same')
+        self.conv3 = None
+        if use_1x1conv:
+            self.conv3 = tf.keras.layers.Conv2D(num_channels, kernel_size=1,
+                                                strides=strides)
+        self.bn1 = tf.keras.layers.BatchNormalization()
+        self.bn2 = tf.keras.layers.BatchNormalization()
+
+    def call(self, X):
+        Y = tf.keras.activations.relu(self.bn1(self.conv1(X)))
+        Y = self.bn2(self.conv2(Y))
+        if self.conv3 is not None:
+            X = self.conv3(X)
+        Y += X
+        return tf.keras.activations.relu(Y)
+```
+
+```{.python .input}
+%%tab jax
+class Residual(nn.Module):  #@save
+    """The Residual block of ResNet models."""
+    num_channels: int
+    use_1x1conv: bool = False
+    strides: tuple = (1, 1)
+    training: bool = True
+
+    def setup(self):
+        self.conv1 = nn.Conv(self.num_channels, kernel_size=(3, 3),
+                             padding='same', strides=self.strides)
+        self.conv2 = nn.Conv(self.num_channels, kernel_size=(3, 3),
+                             padding='same')
+        if self.use_1x1conv:
+            self.conv3 = nn.Conv(self.num_channels, kernel_size=(1, 1),
+                                 strides=self.strides)
+        else:
+            self.conv3 = None
+        self.bn1 = nn.BatchNorm(not self.training)
+        self.bn2 = nn.BatchNorm(not self.training)
+
+    def __call__(self, X):
+        Y = nn.relu(self.bn1(self.conv1(X)))
+        Y = self.bn2(self.conv2(Y))
+        if self.conv3:
+            X = self.conv3(X)
+        Y += X
+        return nn.relu(Y)
+```
+
+This code generates two types of networks: one where we add the input to the output before applying the ReLU nonlinearity whenever `use_1x1conv=False`; and one where we adjust channels and resolution by means of a $1 \times 1$ convolution before adding. :numref:`fig_resnet_block` illustrates this.
+
+![ResNet block with and without $1 \times 1$ convolution, which transforms the input into the desired shape for the addition operation.](../img/resnet-block.svg)
+:label:`fig_resnet_block`
+
+Now let's look at [**a situation where the input and output are of the same shape**], where $1 \times 1$ convolution is not needed.
+
+```{.python .input}
+%%tab mxnet, pytorch
+if tab.selected('mxnet'):
+    blk = Residual(3)
+    blk.initialize()
+if tab.selected('pytorch'):
+    blk = Residual(3)
+X = d2l.randn(4, 3, 6, 6)
+blk(X).shape
+```
+
+```{.python .input}
+%%tab tensorflow
+blk = Residual(3)
+X = d2l.normal((4, 6, 6, 3))
+Y = blk(X)
+Y.shape
+```
+
+```{.python .input}
+%%tab jax
+blk = Residual(3)
+X = jax.random.normal(d2l.get_key(), (4, 6, 6, 3))
+blk.init_with_output(d2l.get_key(), X)[0].shape
+```
+
+We also have the option to [**halve the output height and width while increasing the number of output channels**].
+In this case we use $1 \times 1$ convolutions via `use_1x1conv=True`. This comes in handy at the beginning of each ResNet block to reduce the spatial dimensionality via `strides=2`.
+
+```{.python .input}
+%%tab pytorch, mxnet, tensorflow
+blk = Residual(6, use_1x1conv=True, strides=2)
+if tab.selected('mxnet'):
+    blk.initialize()
+blk(X).shape
+```
+
+```{.python .input}
+%%tab jax
+blk = Residual(6, use_1x1conv=True, strides=(2, 2))
+blk.init_with_output(d2l.get_key(), X)[0].shape
+```
+
+## [**ResNet Model**]
+
+The first two layers of ResNet are the same as those of the GoogLeNet we described before: the $7\times 7$ convolutional layer with 64 output channels and a stride of 2 is followed by the $3\times 3$ max-pooling layer with a stride of 2. The difference is the batch normalization layer added after each convolutional layer in ResNet.
+
+```{.python .input}
+%%tab pytorch, mxnet, tensorflow
+class ResNet(d2l.Classifier):
+    def b1(self):
+        if tab.selected('mxnet'):
+            net = nn.Sequential()
+            net.add(nn.Conv2D(64, kernel_size=7, strides=2, padding=3),
+                    nn.BatchNorm(), nn.Activation('relu'),
+                    nn.MaxPool2D(pool_size=3, strides=2, padding=1))
+            return net
+        if tab.selected('pyto

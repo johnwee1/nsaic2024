@@ -1,0 +1,53 @@
+odern_cnn`.
+
+```{.python .input}
+%%tab all
+img_size, patch_size = 96, 16
+num_hiddens, mlp_num_hiddens, num_heads, num_blks = 512, 2048, 8, 2
+emb_dropout, blk_dropout, lr = 0.1, 0.1, 0.1
+model = ViT(img_size, patch_size, num_hiddens, mlp_num_hiddens, num_heads,
+            num_blks, emb_dropout, blk_dropout, lr)
+trainer = d2l.Trainer(max_epochs=10, num_gpus=1)
+data = d2l.FashionMNIST(batch_size=128, resize=(img_size, img_size))
+trainer.fit(model, data)
+```
+
+## Summary and Discussion
+
+You may have noticed that for small datasets like Fashion-MNIST,
+our implemented vision Transformer
+does not outperform the ResNet in :numref:`sec_resnet`.
+Similar observations can be made even on the ImageNet dataset (1.2 million images).
+This is because Transformers *lack* those useful principles in convolution,
+such as translation invariance and locality (:numref:`sec_why-conv`).
+However, the picture changes when training larger models on larger datasets (e.g., 300 million images),
+where vision Transformers outperform ResNets by a large margin in image classification, demonstrating
+intrinsic superiority of Transformers in scalability :cite:`Dosovitskiy.Beyer.Kolesnikov.ea.2021`.
+The introduction of vision Transformers
+has changed the landscape of network design for modeling image data.
+They were soon shown to be effective on the ImageNet dataset
+with data-efficient training strategies of DeiT :cite:`touvron2021training`.
+However, the quadratic complexity of self-attention
+(:numref:`sec_self-attention-and-positional-encoding`)
+makes the Transformer architecture
+less suitable for higher-resolution images.
+Towards a general-purpose backbone network in computer vision,
+Swin Transformers addressed the quadratic computational complexity
+with respect to image size (:numref:`subsec_cnn-rnn-self-attention`)
+and reinstated convolution-like priors,
+extending the applicability of Transformers to a range of computer vision tasks
+beyond image classification with state-of-the-art results :cite:`liu2021swin`.
+
+## Exercises
+
+1. How does the value of `img_size` affect training time?
+1. Instead of projecting the “&lt;cls&gt;” token representation to the output, how would you project the averaged patch representations? Implement this change and see how it affects the accuracy.
+1. Can you modify hyperparameters to improve the accuracy of the vision Transformer?
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/8943)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/18032)
+:end_tab:

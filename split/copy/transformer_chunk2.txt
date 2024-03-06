@@ -1,0 +1,360 @@
+rn self.addnorm2(Y, self.ffn(Y))
+```
+
+```{.python .input}
+%%tab tensorflow
+class TransformerEncoderBlock(tf.keras.layers.Layer):  #@save
+    """The Transformer encoder block."""
+    def __init__(self, key_size, query_size, value_size, num_hiddens,
+                 norm_shape, ffn_num_hiddens, num_heads, dropout, bias=False):
+        super().__init__()
+        self.attention = d2l.MultiHeadAttention(
+            key_size, query_size, value_size, num_hiddens, num_heads, dropout,
+            bias)
+        self.addnorm1 = AddNorm(norm_shape, dropout)
+        self.ffn = PositionWiseFFN(ffn_num_hiddens, num_hiddens)
+        self.addnorm2 = AddNorm(norm_shape, dropout)
+
+    def call(self, X, valid_lens, **kwargs):
+        Y = self.addnorm1(X, self.attention(X, X, X, valid_lens, **kwargs),
+                          **kwargs)
+        return self.addnorm2(Y, self.ffn(Y), **kwargs)
+```
+
+```{.python .input}
+%%tab jax
+class TransformerEncoderBlock(nn.Module):  #@save
+    """The Transformer encoder block."""
+    num_hiddens: int
+    ffn_num_hiddens: int
+    num_heads: int
+    dropout: float
+    use_bias: bool = False
+
+    def setup(self):
+        self.attention = d2l.MultiHeadAttention(self.num_hiddens, self.num_heads,
+                                                self.dropout, self.use_bias)
+        self.addnorm1 = AddNorm(self.dropout)
+        self.ffn = PositionWiseFFN(self.ffn_num_hiddens, self.num_hiddens)
+        self.addnorm2 = AddNorm(self.dropout)
+
+    def __call__(self, X, valid_lens, training=False):
+        output, attention_weights = self.attention(X, X, X, valid_lens,
+                                                   training=training)
+        Y = self.addnorm1(X, output, training=training)
+        return self.addnorm2(Y, self.ffn(Y), training=training), attention_weights
+```
+
+As we can see,
+[**no layer in the Transformer encoder
+changes the shape of its input.**]
+
+```{.python .input}
+%%tab mxnet
+X = d2l.ones((2, 100, 24))
+valid_lens = d2l.tensor([3, 2])
+encoder_blk = TransformerEncoderBlock(24, 48, 8, 0.5)
+encoder_blk.initialize()
+d2l.check_shape(encoder_blk(X, valid_lens), X.shape)
+```
+
+```{.python .input}
+%%tab pytorch
+X = d2l.ones((2, 100, 24))
+valid_lens = d2l.tensor([3, 2])
+encoder_blk = TransformerEncoderBlock(24, 48, 8, 0.5)
+encoder_blk.eval()
+d2l.check_shape(encoder_blk(X, valid_lens), X.shape)
+```
+
+```{.python .input}
+%%tab tensorflow
+X = tf.ones((2, 100, 24))
+valid_lens = tf.constant([3, 2])
+norm_shape = [i for i in range(len(X.shape))][1:]
+encoder_blk = TransformerEncoderBlock(24, 24, 24, 24, norm_shape, 48, 8, 0.5)
+d2l.check_shape(encoder_blk(X, valid_lens, training=False), X.shape)
+```
+
+```{.python .input}
+%%tab jax
+X = jnp.ones((2, 100, 24))
+valid_lens = jnp.array([3, 2])
+encoder_blk = TransformerEncoderBlock(24, 48, 8, 0.5)
+(output, _), _ = encoder_blk.init_with_output(d2l.get_key(), X, valid_lens,
+                                              training=False)
+d2l.check_shape(output, X.shape)
+```
+
+In the following [**Transformer encoder**] implementation,
+we stack `num_blks` instances of the above `TransformerEncoderBlock` classes.
+Since we use the fixed positional encoding
+whose values are always between $-1$ and $1$,
+we multiply values of the learnable input embeddings
+by the square root of the embedding dimension
+to rescale before summing up the input embedding and the positional encoding.
+
+```{.python .input}
+%%tab mxnet
+class TransformerEncoder(d2l.Encoder):  #@save
+    """The Transformer encoder."""
+    def __init__(self, vocab_size, num_hiddens, ffn_num_hiddens,
+                 num_heads, num_blks, dropout, use_bias=False):
+        super().__init__()
+        self.num_hiddens = num_hiddens
+        self.embedding = nn.Embedding(vocab_size, num_hiddens)
+        self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        self.blks = nn.Sequential()
+        for _ in range(num_blks):
+            self.blks.add(TransformerEncoderBlock(
+                num_hiddens, ffn_num_hiddens, num_heads, dropout, use_bias))
+        self.initialize()
+
+    def forward(self, X, valid_lens):
+        # Since positional encoding values are between -1 and 1, the embedding
+        # values are multiplied by the square root of the embedding dimension
+        # to rescale before they are summed up
+        X = self.pos_encoding(self.embedding(X) * math.sqrt(self.num_hiddens))
+        self.attention_weights = [None] * len(self.blks)
+        for i, blk in enumerate(self.blks):
+            X = blk(X, valid_lens)
+            self.attention_weights[
+                i] = blk.attention.attention.attention_weights
+        return X
+```
+
+```{.python .input}
+%%tab pytorch
+class TransformerEncoder(d2l.Encoder):  #@save
+    """The Transformer encoder."""
+    def __init__(self, vocab_size, num_hiddens, ffn_num_hiddens,
+                 num_heads, num_blks, dropout, use_bias=False):
+        super().__init__()
+        self.num_hiddens = num_hiddens
+        self.embedding = nn.Embedding(vocab_size, num_hiddens)
+        self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        self.blks = nn.Sequential()
+        for i in range(num_blks):
+            self.blks.add_module("block"+str(i), TransformerEncoderBlock(
+                num_hiddens, ffn_num_hiddens, num_heads, dropout, use_bias))
+
+    def forward(self, X, valid_lens):
+        # Since positional encoding values are between -1 and 1, the embedding
+        # values are multiplied by the square root of the embedding dimension
+        # to rescale before they are summed up
+        X = self.pos_encoding(self.embedding(X) * math.sqrt(self.num_hiddens))
+        self.attention_weights = [None] * len(self.blks)
+        for i, blk in enumerate(self.blks):
+            X = blk(X, valid_lens)
+            self.attention_weights[
+                i] = blk.attention.attention.attention_weights
+        return X
+```
+
+```{.python .input}
+%%tab tensorflow
+class TransformerEncoder(d2l.Encoder):  #@save
+    """The Transformer encoder."""
+    def __init__(self, vocab_size, key_size, query_size, value_size,
+                 num_hiddens, norm_shape, ffn_num_hiddens, num_heads,
+                 num_blks, dropout, bias=False):
+        super().__init__()
+        self.num_hiddens = num_hiddens
+        self.embedding = tf.keras.layers.Embedding(vocab_size, num_hiddens)
+        self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        self.blks = [TransformerEncoderBlock(
+            key_size, query_size, value_size, num_hiddens, norm_shape,
+            ffn_num_hiddens, num_heads, dropout, bias) for _ in range(
+            num_blks)]
+
+    def call(self, X, valid_lens, **kwargs):
+        # Since positional encoding values are between -1 and 1, the embedding
+        # values are multiplied by the square root of the embedding dimension
+        # to rescale before they are summed up
+        X = self.pos_encoding(self.embedding(X) * tf.math.sqrt(
+            tf.cast(self.num_hiddens, dtype=tf.float32)), **kwargs)
+        self.attention_weights = [None] * len(self.blks)
+        for i, blk in enumerate(self.blks):
+            X = blk(X, valid_lens, **kwargs)
+            self.attention_weights[
+                i] = blk.attention.attention.attention_weights
+        return X
+```
+
+```{.python .input}
+%%tab jax
+class TransformerEncoder(d2l.Encoder):  #@save
+    """The Transformer encoder."""
+    vocab_size: int
+    num_hiddens:int
+    ffn_num_hiddens: int
+    num_heads: int
+    num_blks: int
+    dropout: float
+    use_bias: bool = False
+
+    def setup(self):
+        self.embedding = nn.Embed(self.vocab_size, self.num_hiddens)
+        self.pos_encoding = d2l.PositionalEncoding(self.num_hiddens, self.dropout)
+        self.blks = [TransformerEncoderBlock(self.num_hiddens,
+                                             self.ffn_num_hiddens,
+                                             self.num_heads,
+                                             self.dropout, self.use_bias)
+                     for _ in range(self.num_blks)]
+
+    def __call__(self, X, valid_lens, training=False):
+        # Since positional encoding values are between -1 and 1, the embedding
+        # values are multiplied by the square root of the embedding dimension
+        # to rescale before they are summed up
+        X = self.embedding(X) * math.sqrt(self.num_hiddens)
+        X = self.pos_encoding(X, training=training)
+        attention_weights = [None] * len(self.blks)
+        for i, blk in enumerate(self.blks):
+            X, attention_w = blk(X, valid_lens, training=training)
+            attention_weights[i] = attention_w
+        # Flax sow API is used to capture intermediate variables
+        self.sow('intermediates', 'enc_attention_weights', attention_weights)
+        return X
+```
+
+Below we specify hyperparameters to [**create a two-layer Transformer encoder**].
+The shape of the Transformer encoder output
+is (batch size, number of time steps, `num_hiddens`).
+
+```{.python .input}
+%%tab mxnet
+encoder = TransformerEncoder(200, 24, 48, 8, 2, 0.5)
+d2l.check_shape(encoder(np.ones((2, 100)), valid_lens), (2, 100, 24))
+```
+
+```{.python .input}
+%%tab pytorch
+encoder = TransformerEncoder(200, 24, 48, 8, 2, 0.5)
+d2l.check_shape(encoder(d2l.ones((2, 100), dtype=torch.long), valid_lens),
+                (2, 100, 24))
+```
+
+```{.python .input}
+%%tab tensorflow
+encoder = TransformerEncoder(200, 24, 24, 24, 24, [1, 2], 48, 8, 2, 0.5)
+d2l.check_shape(encoder(tf.ones((2, 100)), valid_lens, training=False),
+                (2, 100, 24))
+```
+
+```{.python .input}
+%%tab jax
+encoder = TransformerEncoder(200, 24, 48, 8, 2, 0.5)
+d2l.check_shape(encoder.init_with_output(d2l.get_key(),
+                                         jnp.ones((2, 100), dtype=jnp.int32),
+                                         valid_lens)[0],
+                (2, 100, 24))
+```
+
+## Decoder
+
+As shown in :numref:`fig_transformer`,
+[**the Transformer decoder
+is composed of multiple identical layers**].
+Each layer is implemented in the following
+`TransformerDecoderBlock` class,
+which contains three sublayers:
+decoder self-attention,
+encoder--decoder attention,
+and positionwise feed-forward networks.
+These sublayers employ
+a residual connection around them
+followed by layer normalization.
+
+
+As we described earlier in this section,
+in the masked multi-head decoder self-attention
+(the first sublayer),
+queries, keys, and values
+all come from the outputs of the previous decoder layer.
+When training sequence-to-sequence models,
+tokens at all the positions (time steps)
+of the output sequence
+are known.
+However,
+during prediction
+the output sequence is generated token by token;
+thus,
+at any decoder time step
+only the generated tokens
+can be used in the decoder self-attention.
+To preserve autoregression in the decoder,
+its masked self-attention
+specifies  `dec_valid_lens` so that
+any query
+only attends to
+all positions in the decoder
+up to the query position.
+
+```{.python .input}
+%%tab mxnet
+class TransformerDecoderBlock(nn.Block):
+    # The i-th block in the Transformer decoder
+    def __init__(self, num_hiddens, ffn_num_hiddens, num_heads, dropout, i):
+        super().__init__()
+        self.i = i
+        self.attention1 = d2l.MultiHeadAttention(num_hiddens, num_heads,
+                                                 dropout)
+        self.addnorm1 = AddNorm(dropout)
+        self.attention2 = d2l.MultiHeadAttention(num_hiddens, num_heads,
+                                                 dropout)
+        self.addnorm2 = AddNorm(dropout)
+        self.ffn = PositionWiseFFN(ffn_num_hiddens, num_hiddens)
+        self.addnorm3 = AddNorm(dropout)
+
+    def forward(self, X, state):
+        enc_outputs, enc_valid_lens = state[0], state[1]
+        # During training, all the tokens of any output sequence are processed
+        # at the same time, so state[2][self.i] is None as initialized. When
+        # decoding any output sequence token by token during prediction,
+        # state[2][self.i] contains representations of the decoded output at
+        # the i-th block up to the current time step
+        if state[2][self.i] is None:
+            key_values = X
+        else:
+            key_values = np.concatenate((state[2][self.i], X), axis=1)
+        state[2][self.i] = key_values
+
+        if autograd.is_training():
+            batch_size, num_steps, _ = X.shape
+            # Shape of dec_valid_lens: (batch_size, num_steps), where every
+            # row is [1, 2, ..., num_steps]
+            dec_valid_lens = np.tile(np.arange(1, num_steps + 1, ctx=X.ctx),
+                                     (batch_size, 1))
+        else:
+            dec_valid_lens = None
+        # Self-attention
+        X2 = self.attention1(X, key_values, key_values, dec_valid_lens)
+        Y = self.addnorm1(X, X2)
+        # Encoder-decoder attention. Shape of enc_outputs:
+        # (batch_size, num_steps, num_hiddens)
+        Y2 = self.attention2(Y, enc_outputs, enc_outputs, enc_valid_lens)
+        Z = self.addnorm2(Y, Y2)
+        return self.addnorm3(Z, self.ffn(Z)), state
+```
+
+```{.python .input}
+%%tab pytorch
+class TransformerDecoderBlock(nn.Module):
+    # The i-th block in the Transformer decoder
+    def __init__(self, num_hiddens, ffn_num_hiddens, num_heads, dropout, i):
+        super().__init__()
+        self.i = i
+        self.attention1 = d2l.MultiHeadAttention(num_hiddens, num_heads,
+                                                 dropout)
+        self.addnorm1 = AddNorm(num_hiddens, dropout)
+        self.attention2 = d2l.MultiHeadAttention(num_hiddens, num_heads,
+                                                 dropout)
+        self.addnorm2 = AddNorm(num_hiddens, dropout)
+        self.ffn = PositionWiseFFN(ffn_num_hiddens, num_hiddens)
+        self.addnorm3 = AddNorm(num_hiddens, dropout)
+
+    def forward(self, X, state):
+        enc_outputs, enc_valid_lens = state[0], state[1]
+        # During training, all the tokens of any output sequence are processed
+        # at the same time, so state[2][self.i] is None as initialized. When
+  

@@ -1,0 +1,113 @@
+rac{\hat\mu_n - \mu}{\hat\sigma_n/\sqrt{n}},
+$$
+
+we obtain a random variable following a well-known distribution called the *Student's t-distribution on* $n-1$ *degrees of freedom*.
+
+This distribution is very well studied, and it is known, for instance, that as $n\rightarrow \infty$, it is approximately a standard Gaussian, and thus by looking up values of the Gaussian c.d.f. in a table, we may conclude that the value of $T$ is in the interval $[-1.96, 1.96]$ at least $95\%$ of the time.  For finite values of $n$, the interval needs to be somewhat larger, but are well known and precomputed in tables.
+
+Thus, we may conclude that for large $n$,
+
+$$
+P\left(\frac{\hat\mu_n - \mu}{\hat\sigma_n/\sqrt{n}} \in [-1.96, 1.96]\right) \ge 0.95.
+$$
+
+Rearranging this by multiplying both sides by $\hat\sigma_n/\sqrt{n}$ and then adding $\hat\mu_n$, we obtain
+
+$$
+P\left(\mu \in \left[\hat\mu_n - 1.96\frac{\hat\sigma_n}{\sqrt{n}}, \hat\mu_n + 1.96\frac{\hat\sigma_n}{\sqrt{n}}\right]\right) \ge 0.95.
+$$
+
+Thus we know that we have found our $95\%$ confidence interval:
+$$\left[\hat\mu_n - 1.96\frac{\hat\sigma_n}{\sqrt{n}}, \hat\mu_n + 1.96\frac{\hat\sigma_n}{\sqrt{n}}\right].$$
+:eqlabel:`eq_gauss_confidence`
+
+It is safe to say that :eqref:`eq_gauss_confidence` is one of the most used formula in statistics.  Let's close our discussion of statistics by implementing it.  For simplicity, we assume we are in the asymptotic regime.  Small values of $N$ should include the correct value of `t_star` obtained either programmatically or from a $t$-table.
+
+```{.python .input}
+#@tab mxnet
+# Number of samples
+N = 1000
+
+# Sample dataset
+samples = np.random.normal(loc=0, scale=1, size=(N,))
+
+# Lookup Students's t-distribution c.d.f.
+t_star = 1.96
+
+# Construct interval
+mu_hat = np.mean(samples)
+sigma_hat = samples.std(ddof=1)
+(mu_hat - t_star*sigma_hat/np.sqrt(N), mu_hat + t_star*sigma_hat/np.sqrt(N))
+```
+
+```{.python .input}
+#@tab pytorch
+# PyTorch uses Bessel's correction by default, which means the use of ddof=1
+# instead of default ddof=0 in numpy. We can use unbiased=False to imitate
+# ddof=0.
+
+# Number of samples
+N = 1000
+
+# Sample dataset
+samples = torch.normal(0, 1, size=(N,))
+
+# Lookup Students's t-distribution c.d.f.
+t_star = 1.96
+
+# Construct interval
+mu_hat = torch.mean(samples)
+sigma_hat = samples.std(unbiased=True)
+(mu_hat - t_star*sigma_hat/torch.sqrt(torch.tensor(N, dtype=torch.float32)),\
+ mu_hat + t_star*sigma_hat/torch.sqrt(torch.tensor(N, dtype=torch.float32)))
+```
+
+```{.python .input}
+#@tab tensorflow
+# Number of samples
+N = 1000
+
+# Sample dataset
+samples = tf.random.normal((N,), 0, 1)
+
+# Lookup Students's t-distribution c.d.f.
+t_star = 1.96
+
+# Construct interval
+mu_hat = tf.reduce_mean(samples)
+sigma_hat = tf.math.reduce_std(samples)
+(mu_hat - t_star*sigma_hat/tf.sqrt(tf.constant(N, dtype=tf.float32)), \
+ mu_hat + t_star*sigma_hat/tf.sqrt(tf.constant(N, dtype=tf.float32)))
+```
+
+## Summary
+
+* Statistics focuses on inference problems, whereas deep learning emphasizes on making accurate predictions without explicitly programming and understanding.
+* There are three common statistics inference methods: evaluating and comparing estimators, conducting hypothesis tests, and constructing confidence intervals.
+* There are three most common estimators: statistical bias, standard deviation, and mean square error.
+* A confidence interval is an estimated range of a true population parameter that we can construct by given the samples.
+* Hypothesis testing is a way of evaluating some evidence against the default statement about a population.
+
+
+## Exercises
+
+1. Let $X_1, X_2, \ldots, X_n \overset{\textrm{iid}}{\sim} \textrm{Unif}(0, \theta)$, where "iid" stands for *independent and identically distributed*. Consider the following estimators of $\theta$:
+$$\hat{\theta} = \max \{X_1, X_2, \ldots, X_n \};$$
+$$\tilde{\theta} = 2 \bar{X_n} = \frac{2}{n} \sum_{i=1}^n X_i.$$
+    * Find the statistical bias, standard deviation, and mean square error of $\hat{\theta}.$
+    * Find the statistical bias, standard deviation, and mean square error of $\tilde{\theta}.$
+    * Which estimator is better?
+1. For our chemist example in introduction, can you derive the 5 steps to conduct a two-sided hypothesis testing? Given the statistical significance level $\alpha = 0.05$ and the statistical power $1 - \beta = 0.8$.
+1. Run the confidence interval code with $N=2$ and $\alpha = 0.5$ for $100$ independently generated dataset, and plot the resulting intervals (in this case `t_star = 1.0`).  You will see several very short intervals which are very far from containing the true mean $0$.  Does this contradict the interpretation of the confidence interval?  Do you feel comfortable using short intervals to indicate high precision estimates?
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/419)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1102)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/1103)
+:end_tab:

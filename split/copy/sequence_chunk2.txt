@@ -1,0 +1,292 @@
+e to influence
+what happens for $x_{t+1}$ going forward but not the converse.
+That is, if we change $x_t$, the distribution over past events will not change.
+In some contexts, this makes it easier to predict $P(x_{t+1} \mid x_t)$
+than to predict $P(x_t \mid x_{t+1})$.
+For instance, in some cases, we can find $x_{t+1} = f(x_t) + \epsilon$
+for some additive noise $\epsilon$,
+whereas the converse is not true :cite:`Hoyer.Janzing.Mooij.ea.2009`.
+This is great news, since it is typically the forward direction
+that we are interested in estimating.
+The book by :citet:`Peters.Janzing.Scholkopf.2017` contains more on this topic.
+We barely scratch the surface of it.
+
+
+## Training
+
+Before we focus our attention on text data,
+let's first try this out with some
+continuous-valued synthetic data.
+
+(**Here, our 1000 synthetic data will follow
+the trigonometric `sin` function,
+applied to 0.01 times the time step.
+To make the problem a little more interesting,
+we corrupt each sample with additive noise.**)
+From this sequence we extract training examples,
+each consisting of features and a label.
+
+```{.python .input  n=10}
+%%tab all
+class Data(d2l.DataModule):
+    def __init__(self, batch_size=16, T=1000, num_train=600, tau=4):
+        self.save_hyperparameters()
+        self.time = d2l.arange(1, T + 1, dtype=d2l.float32)
+        if tab.selected('mxnet', 'pytorch'):
+            self.x = d2l.sin(0.01 * self.time) + d2l.randn(T) * 0.2
+        if tab.selected('tensorflow'):
+            self.x = d2l.sin(0.01 * self.time) + d2l.normal([T]) * 0.2
+        if tab.selected('jax'):
+            key = d2l.get_key()
+            self.x = d2l.sin(0.01 * self.time) + jax.random.normal(key,
+                                                                   [T]) * 0.2
+```
+
+```{.python .input}
+%%tab all
+data = Data()
+d2l.plot(data.time, data.x, 'time', 'x', xlim=[1, 1000], figsize=(6, 3))
+```
+
+To begin, we try a model that acts as if
+the data satisfied a $\tau^{\textrm{th}}$-order Markov condition,
+and thus predicts $x_t$ using only the past $\tau$ observations.
+[**Thus for each time step we have an example
+with label $y  = x_t$ and features
+$\mathbf{x}_t = [x_{t-\tau}, \ldots, x_{t-1}]$.**]
+The astute reader might have noticed that
+this results in $1000-\tau$ examples,
+since we lack sufficient history for $y_1, \ldots, y_\tau$.
+While we could pad the first $\tau$ sequences with zeros,
+to keep things simple, we drop them for now.
+The resulting dataset contains $T - \tau$ examples,
+where each input to the model has sequence length $\tau$.
+We (**create a data iterator on the first 600 examples**),
+covering a period of the sin function.
+
+```{.python .input}
+%%tab all
+@d2l.add_to_class(Data)
+def get_dataloader(self, train):
+    features = [self.x[i : self.T-self.tau+i] for i in range(self.tau)]
+    self.features = d2l.stack(features, 1)
+    self.labels = d2l.reshape(self.x[self.tau:], (-1, 1))
+    i = slice(0, self.num_train) if train else slice(self.num_train, None)
+    return self.get_tensorloader([self.features, self.labels], train, i)
+```
+
+In this example our model will be a standard linear regression.
+
+```{.python .input}
+%%tab all
+model = d2l.LinearRegression(lr=0.01)
+trainer = d2l.Trainer(max_epochs=5)
+trainer.fit(model, data)
+```
+
+## Prediction
+
+[**To evaluate our model, we first check
+how well it performs at one-step-ahead prediction**].
+
+```{.python .input}
+%%tab pytorch, mxnet, tensorflow
+onestep_preds = d2l.numpy(model(data.features))
+d2l.plot(data.time[data.tau:], [data.labels, onestep_preds], 'time', 'x',
+         legend=['labels', '1-step preds'], figsize=(6, 3))
+```
+
+```{.python .input}
+%%tab jax
+onestep_preds = model.apply({'params': trainer.state.params}, data.features)
+d2l.plot(data.time[data.tau:], [data.labels, onestep_preds], 'time', 'x',
+         legend=['labels', '1-step preds'], figsize=(6, 3))
+```
+
+These predictions look good,
+even near the end at $t=1000$.
+
+But what if we only observed sequence data
+up until time step 604 (`n_train + tau`)
+and wished to make predictions several steps
+into the future?
+Unfortunately, we cannot directly compute
+the one-step-ahead prediction for time step 609,
+because we do not know the corresponding inputs,
+having seen only up to $x_{604}$.
+We can address this problem by plugging in
+our earlier predictions as inputs to our model
+for making subsequent predictions,
+projecting forward, one step at a time,
+until reaching the desired time step:
+
+$$\begin{aligned}
+\hat{x}_{605} &= f(x_{601}, x_{602}, x_{603}, x_{604}), \\
+\hat{x}_{606} &= f(x_{602}, x_{603}, x_{604}, \hat{x}_{605}), \\
+\hat{x}_{607} &= f(x_{603}, x_{604}, \hat{x}_{605}, \hat{x}_{606}),\\
+\hat{x}_{608} &= f(x_{604}, \hat{x}_{605}, \hat{x}_{606}, \hat{x}_{607}),\\
+\hat{x}_{609} &= f(\hat{x}_{605}, \hat{x}_{606}, \hat{x}_{607}, \hat{x}_{608}),\\
+&\vdots\end{aligned}$$
+
+Generally, for an observed sequence $x_1, \ldots, x_t$,
+its predicted output $\hat{x}_{t+k}$ at time step $t+k$
+is called the $k$*-step-ahead prediction*.
+Since we have observed up to $x_{604}$,
+its $k$-step-ahead prediction is $\hat{x}_{604+k}$.
+In other words, we will have to
+keep on using our own predictions
+to make multistep-ahead predictions.
+Let's see how well this goes.
+
+```{.python .input}
+%%tab mxnet, pytorch
+multistep_preds = d2l.zeros(data.T)
+multistep_preds[:] = data.x
+for i in range(data.num_train + data.tau, data.T):
+    multistep_preds[i] = model(
+        d2l.reshape(multistep_preds[i-data.tau : i], (1, -1)))
+multistep_preds = d2l.numpy(multistep_preds)
+```
+
+```{.python .input}
+%%tab tensorflow
+multistep_preds = tf.Variable(d2l.zeros(data.T))
+multistep_preds[:].assign(data.x)
+for i in range(data.num_train + data.tau, data.T):
+    multistep_preds[i].assign(d2l.reshape(model(
+        d2l.reshape(multistep_preds[i-data.tau : i], (1, -1))), ()))
+```
+
+```{.python .input}
+%%tab jax
+multistep_preds = d2l.zeros(data.T)
+multistep_preds = multistep_preds.at[:].set(data.x)
+for i in range(data.num_train + data.tau, data.T):
+    pred = model.apply({'params': trainer.state.params},
+                       d2l.reshape(multistep_preds[i-data.tau : i], (1, -1)))
+    multistep_preds = multistep_preds.at[i].set(pred.item())
+```
+
+```{.python .input}
+%%tab all
+d2l.plot([data.time[data.tau:], data.time[data.num_train+data.tau:]],
+         [onestep_preds, multistep_preds[data.num_train+data.tau:]], 'time',
+         'x', legend=['1-step preds', 'multistep preds'], figsize=(6, 3))
+```
+
+Unfortunately, in this case we fail spectacularly.
+The predictions decay to a constant
+pretty quickly after a few steps.
+Why did the algorithm perform so much worse
+when predicting further into the future?
+Ultimately, this is down to the fact
+that errors build up.
+Let's say that after step 1 we have some error $\epsilon_1 = \bar\epsilon$.
+Now the *input* for step 2 is perturbed by $\epsilon_1$,
+hence we suffer some error in the order of
+$\epsilon_2 = \bar\epsilon + c \epsilon_1$
+for some constant $c$, and so on.
+The predictions can diverge rapidly
+from the true observations.
+You may already be familiar
+with this common phenomenon.
+For instance, weather forecasts for the next 24 hours
+tend to be pretty accurate but beyond that,
+accuracy declines rapidly.
+We will discuss methods for improving this
+throughout this chapter and beyond.
+
+Let's [**take a closer look at the difficulties in $k$-step-ahead predictions**]
+by computing predictions on the entire sequence for $k = 1, 4, 16, 64$.
+
+```{.python .input}
+%%tab pytorch, mxnet, tensorflow
+def k_step_pred(k):
+    features = []
+    for i in range(data.tau):
+        features.append(data.x[i : i+data.T-data.tau-k+1])
+    # The (i+tau)-th element stores the (i+1)-step-ahead predictions
+    for i in range(k):
+        preds = model(d2l.stack(features[i : i+data.tau], 1))
+        features.append(d2l.reshape(preds, -1))
+    return features[data.tau:]
+```
+
+```{.python .input}
+%%tab jax
+def k_step_pred(k):
+    features = []
+    for i in range(data.tau):
+        features.append(data.x[i : i+data.T-data.tau-k+1])
+    # The (i+tau)-th element stores the (i+1)-step-ahead predictions
+    for i in range(k):
+        preds = model.apply({'params': trainer.state.params},
+                            d2l.stack(features[i : i+data.tau], 1))
+        features.append(d2l.reshape(preds, -1))
+    return features[data.tau:]
+```
+
+```{.python .input}
+%%tab all
+steps = (1, 4, 16, 64)
+preds = k_step_pred(steps[-1])
+d2l.plot(data.time[data.tau+steps[-1]-1:],
+         [d2l.numpy(preds[k-1]) for k in steps], 'time', 'x',
+         legend=[f'{k}-step preds' for k in steps], figsize=(6, 3))
+```
+
+This clearly illustrates how the quality of the prediction changes
+as we try to predict further into the future.
+While the 4-step-ahead predictions still look good,
+anything beyond that is almost useless.
+
+## Summary
+
+There is quite a difference in difficulty
+between interpolation and extrapolation.
+Consequently, if you have a sequence, always respect
+the temporal order of the data when training,
+i.e., never train on future data.
+Given this kind of data,
+sequence models require specialized statistical tools for estimation.
+Two popular choices are autoregressive models
+and latent-variable autoregressive models.
+For causal models (e.g., time going forward),
+estimating the forward direction is typically
+a lot easier than the reverse direction.
+For an observed sequence up to time step $t$,
+its predicted output at time step $t+k$
+is the $k$*-step-ahead prediction*.
+As we predict further in time by increasing $k$,
+the errors accumulate and the quality of the prediction degrades,
+often dramatically.
+
+## Exercises
+
+1. Improve the model in the experiment of this section.
+    1. Incorporate more than the past four observations? How many do you really need?
+    1. How many past observations would you need if there was no noise? Hint: you can write $\sin$ and $\cos$ as a differential equation.
+    1. Can you incorporate older observations while keeping the total number of features constant? Does this improve accuracy? Why?
+    1. Change the neural network architecture and evaluate the performance. You may train the new model with more epochs. What do you observe?
+1. An investor wants to find a good security to buy.
+   They look at past returns to decide which one is likely to do well.
+   What could possibly go wrong with this strategy?
+1. Does causality also apply to text? To which extent?
+1. Give an example for when a latent autoregressive model
+   might be needed to capture the dynamic of the data.
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/113)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/114)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/1048)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/18010)
+:end_tab:

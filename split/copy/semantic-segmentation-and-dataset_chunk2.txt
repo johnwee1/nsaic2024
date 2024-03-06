@@ -1,0 +1,88 @@
+ine the data iterator for the training set.
+Let's print the shape of the first minibatch.
+Different from in image classification or object detection, labels here are three-dimensional tensors.
+
+```{.python .input}
+#@tab mxnet
+batch_size = 64
+train_iter = gluon.data.DataLoader(voc_train, batch_size, shuffle=True,
+                                   last_batch='discard',
+                                   num_workers=d2l.get_dataloader_workers())
+for X, Y in train_iter:
+    print(X.shape)
+    print(Y.shape)
+    break
+```
+
+```{.python .input}
+#@tab pytorch
+batch_size = 64
+train_iter = torch.utils.data.DataLoader(voc_train, batch_size, shuffle=True,
+                                    drop_last=True,
+                                    num_workers=d2l.get_dataloader_workers())
+for X, Y in train_iter:
+    print(X.shape)
+    print(Y.shape)
+    break
+```
+
+### [**Putting It All Together**]
+
+Finally, we define the following `load_data_voc` function
+to download and read the Pascal VOC2012 semantic segmentation dataset.
+It returns data iterators for both the training and test datasets.
+
+```{.python .input}
+#@tab mxnet
+#@save
+def load_data_voc(batch_size, crop_size):
+    """Load the VOC semantic segmentation dataset."""
+    voc_dir = d2l.download_extract('voc2012', os.path.join(
+        'VOCdevkit', 'VOC2012'))
+    num_workers = d2l.get_dataloader_workers()
+    train_iter = gluon.data.DataLoader(
+        VOCSegDataset(True, crop_size, voc_dir), batch_size,
+        shuffle=True, last_batch='discard', num_workers=num_workers)
+    test_iter = gluon.data.DataLoader(
+        VOCSegDataset(False, crop_size, voc_dir), batch_size,
+        last_batch='discard', num_workers=num_workers)
+    return train_iter, test_iter
+```
+
+```{.python .input}
+#@tab pytorch
+#@save
+def load_data_voc(batch_size, crop_size):
+    """Load the VOC semantic segmentation dataset."""
+    voc_dir = d2l.download_extract('voc2012', os.path.join(
+        'VOCdevkit', 'VOC2012'))
+    num_workers = d2l.get_dataloader_workers()
+    train_iter = torch.utils.data.DataLoader(
+        VOCSegDataset(True, crop_size, voc_dir), batch_size,
+        shuffle=True, drop_last=True, num_workers=num_workers)
+    test_iter = torch.utils.data.DataLoader(
+        VOCSegDataset(False, crop_size, voc_dir), batch_size,
+        drop_last=True, num_workers=num_workers)
+    return train_iter, test_iter
+```
+
+## Summary
+
+* Semantic segmentation recognizes and understands what are in an image in pixel level by dividing the image into regions belonging to different semantic classes.
+* One of the most important semantic segmentation dataset is Pascal VOC2012.
+* In semantic segmentation, since the input image and  label correspond one-to-one on the pixel, the input image is randomly cropped to a fixed shape rather than rescaled.
+
+
+## Exercises
+
+1. How can semantic segmentation be applied in autonomous vehicles and medical image diagnostics? Can you think of other applications?
+1. Recall the descriptions of data augmentation in :numref:`sec_image_augmentation`. Which of the image augmentation methods used in image classification would be infeasible to be applied in semantic segmentation?
+
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/375)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1480)
+:end_tab:

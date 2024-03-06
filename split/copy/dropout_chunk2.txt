@@ -1,0 +1,80 @@
+X):
+        x = nn.relu(nn.Dense(self.num_hiddens_1)(X.reshape((X.shape[0], -1))))
+        x = nn.Dropout(self.dropout_1, deterministic=not self.training)(x)
+        x = nn.relu(nn.Dense(self.num_hiddens_2)(x))
+        x = nn.Dropout(self.dropout_2, deterministic=not self.training)(x)
+        return nn.Dense(self.num_outputs)(x)
+```
+
+:begin_tab:`jax`
+Note that we need to redefine the loss function since a network
+with a dropout layer needs a PRNGKey when using `Module.apply()`,
+and this RNG seed should be explicitly named `dropout`. This key is
+used by the `dropout` layer in Flax to generate the random dropout
+mask internally. It is important to use a unique `dropout_rng` key
+with every epoch in the training loop, otherwise the generated dropout
+mask will not be stochastic and different between the epoch runs.
+This `dropout_rng` can be stored in the
+`TrainState` object (in the `d2l.Trainer` class defined in
+:numref:`oo-design-training`) as an attribute and with every epoch
+it is replaced with a new `dropout_rng`. We already handled this with the
+`fit_epoch` method defined in :numref:`sec_linear_scratch`.
+:end_tab:
+
+```{.python .input}
+%%tab jax
+@d2l.add_to_class(d2l.Classifier)  #@save
+@partial(jax.jit, static_argnums=(0, 5))
+def loss(self, params, X, Y, state, averaged=True):
+    Y_hat = state.apply_fn({'params': params}, *X,
+                           mutable=False,  # To be used later (e.g., batch norm)
+                           rngs={'dropout': state.dropout_rng})
+    Y_hat = d2l.reshape(Y_hat, (-1, Y_hat.shape[-1]))
+    Y = d2l.reshape(Y, (-1,))
+    fn = optax.softmax_cross_entropy_with_integer_labels
+    # The returned empty dictionary is a placeholder for auxiliary data,
+    # which will be used later (e.g., for batch norm)
+    return (fn(Y_hat, Y).mean(), {}) if averaged else (fn(Y_hat, Y), {})
+```
+
+Next, we [**train the model**].
+
+```{.python .input}
+%%tab all
+model = DropoutMLP(**hparams)
+trainer.fit(model, data)
+```
+
+## Summary
+
+Beyond controlling the number of dimensions and the size of the weight vector, dropout is yet another tool for avoiding overfitting. Often tools are used jointly.
+Note that dropout is
+used only during training:
+it replaces an activation $h$ with a random variable with expected value $h$.
+
+
+## Exercises
+
+1. What happens if you change the dropout probabilities for the first and second layers? In particular, what happens if you switch the ones for both layers? Design an experiment to answer these questions, describe your results quantitatively, and summarize the qualitative takeaways.
+1. Increase the number of epochs and compare the results obtained when using dropout with those when not using it.
+1. What is the variance of the activations in each hidden layer when dropout is and is not applied? Draw a plot to show how this quantity evolves over time for both models.
+1. Why is dropout not typically used at test time?
+1. Using the model in this section as an example, compare the effects of using dropout and weight decay. What happens when dropout and weight decay are used at the same time? Are the results additive? Are there diminished returns (or worse)? Do they cancel each other out?
+1. What happens if we apply dropout to the individual weights of the weight matrix rather than the activations?
+1. Invent another technique for injecting random noise at each layer that is different from the standard dropout technique. Can you develop a method that outperforms dropout on the Fashion-MNIST dataset (for a fixed architecture)?
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/100)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/101)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/261)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/17987)
+:end_tab:

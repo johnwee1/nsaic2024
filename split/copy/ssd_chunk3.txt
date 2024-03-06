@@ -1,0 +1,105 @@
+x detection is a multiscale object detection model. Via its base network and several multiscale feature map blocks, single-shot multibox detection generates a varying number of anchor boxes with different sizes, and detects varying-size objects by predicting classes and offsets of these anchor boxes (thus the bounding boxes).
+* When training the single-shot multibox detection model, the loss function is calculated based on the predicted and labeled values of the anchor box classes and offsets.
+
+
+
+## Exercises
+
+1. Can you improve the single-shot multibox detection by improving the loss function? For example, replace $\ell_1$ norm loss with smooth $\ell_1$ norm loss for the predicted offsets. This loss function uses a square function around zero for smoothness, which is controlled by the hyperparameter $\sigma$:
+
+$$
+f(x) =
+    \begin{cases}
+    (\sigma x)^2/2,& \textrm{if }|x| < 1/\sigma^2\\
+    |x|-0.5/\sigma^2,& \textrm{otherwise}
+    \end{cases}
+$$
+
+When $\sigma$ is very large, this loss is similar to the $\ell_1$ norm loss. When its value is smaller, the loss function is smoother.
+
+```{.python .input}
+#@tab mxnet
+sigmas = [10, 1, 0.5]
+lines = ['-', '--', '-.']
+x = np.arange(-2, 2, 0.1)
+d2l.set_figsize()
+
+for l, s in zip(lines, sigmas):
+    y = npx.smooth_l1(x, scalar=s)
+    d2l.plt.plot(x.asnumpy(), y.asnumpy(), l, label='sigma=%.1f' % s)
+d2l.plt.legend();
+```
+
+```{.python .input}
+#@tab pytorch
+def smooth_l1(data, scalar):
+    out = []
+    for i in data:
+        if abs(i) < 1 / (scalar ** 2):
+            out.append(((scalar * i) ** 2) / 2)
+        else:
+            out.append(abs(i) - 0.5 / (scalar ** 2))
+    return torch.tensor(out)
+
+sigmas = [10, 1, 0.5]
+lines = ['-', '--', '-.']
+x = torch.arange(-2, 2, 0.1)
+d2l.set_figsize()
+
+for l, s in zip(lines, sigmas):
+    y = smooth_l1(x, scalar=s)
+    d2l.plt.plot(x, y, l, label='sigma=%.1f' % s)
+d2l.plt.legend();
+```
+
+Besides, in the experiment we used cross-entropy loss for class prediction:
+denoting by $p_j$ the predicted probability for the ground-truth class $j$, the cross-entropy loss is $-\log p_j$. We can also use the focal loss
+:cite:`Lin.Goyal.Girshick.ea.2017`: given hyperparameters $\gamma > 0$
+and $\alpha > 0$, this loss is defined as:
+
+$$ - \alpha (1-p_j)^{\gamma} \log p_j.$$
+
+As we can see, increasing $\gamma$
+can effectively reduce the relative loss
+for well-classified examples (e.g., $p_j > 0.5$)
+so the training
+can focus more on those difficult examples that are misclassified.
+
+```{.python .input}
+#@tab mxnet
+def focal_loss(gamma, x):
+    return -(1 - x) ** gamma * np.log(x)
+
+x = np.arange(0.01, 1, 0.01)
+for l, gamma in zip(lines, [0, 1, 5]):
+    y = d2l.plt.plot(x.asnumpy(), focal_loss(gamma, x).asnumpy(), l,
+                     label='gamma=%.1f' % gamma)
+d2l.plt.legend();
+```
+
+```{.python .input}
+#@tab pytorch
+def focal_loss(gamma, x):
+    return -(1 - x) ** gamma * torch.log(x)
+
+x = torch.arange(0.01, 1, 0.01)
+for l, gamma in zip(lines, [0, 1, 5]):
+    y = d2l.plt.plot(x, focal_loss(gamma, x), l, label='gamma=%.1f' % gamma)
+d2l.plt.legend();
+```
+
+2. Due to space limitations, we have omitted some implementation details of the single shot multibox detection model in this section. Can you further improve the model in the following aspects:
+    1. When an object is much smaller compared with the image, the model could resize the input image bigger.
+    1. There are typically a vast number of negative anchor boxes. To make the class distribution more balanced, we could downsample negative anchor boxes.
+    1. In the loss function, assign different weight hyperparameters to the class loss and the offset loss.
+    1. Use other methods to evaluate the object detection model, such as those in the single shot multibox detection paper :cite:`Liu.Anguelov.Erhan.ea.2016`.
+
+
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/373)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1604)
+:end_tab:

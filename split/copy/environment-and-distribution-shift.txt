@@ -1,0 +1,342 @@
+# Environment and Distribution Shift
+:label:`sec_environment-and-distribution-shift`
+
+In the previous sections, we worked through
+a number of hands-on applications of machine learning,
+fitting models to a variety of datasets.
+And yet, we never stopped to contemplate
+either where data came from in the first place
+or what we ultimately plan to do
+with the outputs from our models.
+Too often, machine learning developers
+in possession of data rush to develop models
+without pausing to consider these fundamental issues.
+
+Many failed machine learning deployments
+can be traced back to this failure.
+Sometimes models appear to perform marvelously
+as measured by test set accuracy
+but fail catastrophically in deployment
+when the distribution of data suddenly shifts.
+More insidiously, sometimes the very deployment of a model
+can be the catalyst that perturbs the data distribution.
+Say, for example, that we trained a model
+to predict who will repay rather than default on a loan,
+finding that an applicant's choice of footwear
+was associated with the risk of default
+(Oxfords indicate repayment, sneakers indicate default).
+We might be inclined 
+thereafter to grant a loan
+to any applicant wearing Oxfords
+and to deny all applicants wearing sneakers.
+
+In this case, our ill-considered leap from
+pattern recognition to decision-making
+and our failure to critically consider the environment
+might have disastrous consequences.
+For starters, as soon as we began
+making decisions based on footwear,
+customers would catch on and change their behavior.
+Before long, all applicants would be wearing Oxfords,
+without any coincident improvement in credit-worthiness.
+Take a minute to digest this because similar issues abound
+in many applications of machine learning:
+by introducing our model-based decisions to the environment,
+we might break the model.
+
+While we cannot possibly give these topics
+a complete treatment in one section,
+we aim here to expose some common concerns,
+and to stimulate the critical thinking
+required to detect such situations early,
+mitigate damage, and use machine learning responsibly.
+Some of the solutions are simple
+(ask for the "right" data),
+some are technically difficult
+(implement a reinforcement learning system),
+and others require that we step outside the realm of
+statistical prediction altogether and
+grapple with difficult philosophical questions
+concerning the ethical application of algorithms.
+
+## Types of Distribution Shift
+
+To begin, we stick with the passive prediction setting
+considering the various ways that data distributions might shift
+and what might be done to salvage model performance.
+In one classic setup, we assume that our training data
+was sampled from some distribution $p_S(\mathbf{x},y)$
+but that our test data will consist
+of unlabeled examples drawn from
+some different distribution $p_T(\mathbf{x},y)$.
+Already, we must confront a sobering reality.
+Absent any assumptions on how $p_S$
+and $p_T$ relate to each other,
+learning a robust classifier is impossible.
+
+Consider a binary classification problem,
+where we wish to distinguish between dogs and cats.
+If the distribution can shift in arbitrary ways,
+then our setup permits the pathological case
+in which the distribution over inputs remains
+constant: $p_S(\mathbf{x}) = p_T(\mathbf{x})$,
+but the labels are all flipped:
+$p_S(y \mid \mathbf{x}) = 1 - p_T(y \mid \mathbf{x})$.
+In other words, if God can suddenly decide
+that in the future all "cats" are now dogs
+and what we previously called "dogs" are now cats---without
+any change in the distribution of inputs $p(\mathbf{x})$,
+then we cannot possibly distinguish this setting
+from one in which the distribution did not change at all.
+
+Fortunately, under some restricted assumptions
+on the ways our data might change in the future,
+principled algorithms can detect shift
+and sometimes even adapt on the fly,
+improving on the accuracy of the original classifier.
+
+### Covariate Shift
+
+Among categories of distribution shift,
+covariate shift may be the most widely studied.
+Here, we assume that while the distribution of inputs
+may change over time, the labeling function,
+i.e., the conditional distribution
+$P(y \mid \mathbf{x})$ does not change.
+Statisticians call this *covariate shift*
+because the problem arises due to a
+shift in the distribution of the covariates (features).
+While we can sometimes reason about distribution shift
+without invoking causality, we note that covariate shift
+is the natural assumption to invoke in settings
+where we believe that $\mathbf{x}$ causes $y$.
+
+Consider the challenge of distinguishing cats and dogs.
+Our training data might consist of images of the kind in :numref:`fig_cat-dog-train`.
+
+![Training data for distinguishing cats and dogs (illustrations: Lafeez Hossain / 500px / Getty Images; ilkermetinkursova / iStock / Getty Images Plus; GlobalP / iStock / Getty Images Plus; Musthafa Aboobakuru / 500px / Getty Images).](../img/cat-dog-train.png)
+:label:`fig_cat-dog-train`
+
+
+At test time we are asked to classify the images in :numref:`fig_cat-dog-test`.
+
+![Test data for distinguishing cats and dogs (illustrations: SIBAS_minich / iStock / Getty Images Plus; Ghrzuzudu / iStock / Getty Images Plus; id-work / DigitalVision Vectors / Getty Images; Yime / iStock / Getty Images Plus).](../img/cat-dog-test.png)
+:label:`fig_cat-dog-test`
+
+The training set consists of photos,
+while the test set contains only cartoons.
+Training on a dataset with substantially different
+characteristics from the test set
+can spell trouble absent a coherent plan
+for how to adapt to the new domain.
+
+### Label Shift
+
+*Label shift* describes the converse problem.
+Here, we assume that the label marginal $P(y)$
+can change
+but the class-conditional distribution
+$P(\mathbf{x} \mid y)$ remains fixed across domains.
+Label shift is a reasonable assumption to make
+when we believe that $y$ causes $\mathbf{x}$.
+For example, we may want to predict diagnoses
+given their symptoms (or other manifestations),
+even as the relative prevalence of diagnoses
+are changing over time.
+Label shift is the appropriate assumption here
+because diseases cause symptoms.
+In some degenerate cases the label shift
+and covariate shift assumptions can hold simultaneously.
+For example, when the label is deterministic,
+the covariate shift assumption will be satisfied,
+even when $y$ causes $\mathbf{x}$.
+Interestingly, in these cases,
+it is often advantageous to work with methods
+that flow from the label shift assumption.
+That is because these methods tend
+to involve manipulating objects that look like labels (often low-dimensional),
+as opposed to objects that look like inputs,
+which tend to be high-dimensional in deep learning.
+
+### Concept Shift
+
+We may also encounter the related problem of *concept shift*,
+which arises when the very definitions of labels can change.
+This sounds weird---a *cat* is a *cat*, no?
+However, other categories are subject to changes in usage over time.
+Diagnostic criteria for mental illness,
+what passes for fashionable, and job titles,
+are all subject to considerable
+amounts of concept shift.
+It turns out that if we navigate around the United States,
+shifting the source of our data by geography,
+we will find considerable concept shift regarding
+the distribution of names for *soft drinks*
+as shown in :numref:`fig_popvssoda`.
+
+![Concept shift for soft drink names in the United States (CC-BY: Alan McConchie, PopVsSoda.com).](../img/popvssoda.png)
+:width:`400px`
+:label:`fig_popvssoda`
+
+If we were to build a machine translation system,
+the distribution $P(y \mid \mathbf{x})$ might be different
+depending on our location.
+This problem can be tricky to spot.
+We might hope to exploit knowledge
+that shift only takes place gradually
+either in a temporal or geographic sense.
+
+## Examples of Distribution Shift
+
+Before delving into formalism and algorithms,
+we can discuss some concrete situations
+where covariate or concept shift might not be obvious.
+
+
+### Medical Diagnostics
+
+Imagine that you want to design an algorithm to detect cancer.
+You collect data from healthy and sick people
+and you train your algorithm.
+It works fine, giving you high accuracy
+and you conclude that you are ready
+for a successful career in medical diagnostics.
+*Not so fast.*
+
+The distributions that gave rise to the training data
+and those you will encounter in the wild might differ considerably.
+This happened to an unfortunate startup
+that some of we authors worked with years ago.
+They were developing a blood test for a disease
+that predominantly affects older men
+and hoped to study it using blood samples
+that they had collected from patients.
+However, it is considerably more difficult
+to obtain blood samples from healthy men
+than from sick patients already in the system.
+To compensate, the startup solicited
+blood donations from students on a university campus
+to serve as healthy controls in developing their test.
+Then they asked whether we could help them
+to build a classifier for detecting the disease.
+
+As we explained to them,
+it would indeed be easy to distinguish
+between the healthy and sick cohorts
+with near-perfect accuracy.
+However, that is because the test subjects
+differed in age, hormone levels,
+physical activity, diet, alcohol consumption,
+and many more factors unrelated to the disease.
+This was unlikely to be the case with real patients.
+Due to their sampling procedure,
+we could expect to encounter extreme covariate shift.
+Moreover, this case was unlikely to be
+correctable via conventional methods.
+In short, they wasted a significant sum of money.
+
+
+
+### Self-Driving Cars
+
+Say a company wanted to leverage machine learning
+for developing self-driving cars.
+One key component here is a roadside detector.
+Since real annotated data is expensive to get,
+they had the (smart and questionable) idea
+to use synthetic data from a game rendering engine
+as additional training data.
+This worked really well on "test data"
+drawn from the rendering engine.
+Alas, inside a real car it was a disaster.
+As it turned out, the roadside had been rendered
+with a very simplistic texture.
+More importantly, *all* the roadside had been rendered
+with the *same* texture and the roadside detector
+learned about this "feature" very quickly.
+
+A similar thing happened to the US Army
+when they first tried to detect tanks in the forest.
+They took aerial photographs of the forest without tanks,
+then drove the tanks into the forest
+and took another set of pictures.
+The classifier appeared to work *perfectly*.
+Unfortunately, it had merely learned
+how to distinguish trees with shadows
+from trees without shadows---the first set
+of pictures was taken in the early morning,
+the second set at noon.
+
+### Nonstationary Distributions
+
+A much more subtle situation arises
+when the distribution changes slowly
+(also known as *nonstationary distribution*)
+and the model is not updated adequately.
+Below are some typical cases.
+
+* We train a computational advertising model and then fail to update it frequently (e.g., we forget to incorporate that an obscure new device called an iPad was just launched).
+* We build a spam filter. It works well at detecting all spam that we have seen so far. But then the spammers wise up and craft new messages that look unlike anything we have seen before.
+* We build a product recommendation system. It works throughout the winter but then continues to recommend Santa hats long after Christmas.
+
+### More Anecdotes
+
+* We build a face detector. It works well on all benchmarks. Unfortunately it fails on test data---the offending examples are close-ups where the face fills the entire image (no such data was in the training set).
+* We build a web search engine for the US market and want to deploy it in the UK.
+* We train an image classifier by compiling a large dataset where each among a large set of classes is equally represented in the dataset, say 1000 categories, represented by 1000 images each. Then we deploy the system in the real world, where the actual label distribution of photographs is decidedly non-uniform.
+
+
+
+
+
+
+## Correction of Distribution Shift
+
+As we have discussed, there are many cases
+where training and test distributions
+$P(\mathbf{x}, y)$ are different.
+In some cases, we get lucky and the models work
+despite covariate, label, or concept shift.
+In other cases, we can do better by employing
+principled strategies to cope with the shift.
+The remainder of this section grows considerably more technical.
+The impatient reader could continue on to the next section
+as this material is not prerequisite to subsequent concepts.
+
+### Empirical Risk and  Risk
+:label:`subsec_empirical-risk-and-risk`
+
+Let's first reflect on what exactly
+is happening during model training:
+we iterate over features and associated labels
+of training data
+$\{(\mathbf{x}_1, y_1), \ldots, (\mathbf{x}_n, y_n)\}$
+and update the parameters of a model $f$ after every minibatch.
+For simplicity we do not consider regularization,
+so we largely minimize the loss on the training:
+
+$$\mathop{\mathrm{minimize}}_f \frac{1}{n} \sum_{i=1}^n l(f(\mathbf{x}_i), y_i),$$
+:eqlabel:`eq_empirical-risk-min`
+
+where $l$ is the loss function
+measuring "how bad" the prediction $f(\mathbf{x}_i)$ is given the associated label $y_i$.
+Statisticians call the term in :eqref:`eq_empirical-risk-min` *empirical risk*.
+The *empirical risk* is an average loss over the training data
+for approximating the *risk*,
+which is the
+expectation of the loss over the entire population of data drawn from their true distribution
+$p(\mathbf{x},y)$:
+
+$$E_{p(\mathbf{x}, y)} [l(f(\mathbf{x}), y)] = \int\int l(f(\mathbf{x}), y) p(\mathbf{x}, y) \;d\mathbf{x}dy.$$
+:eqlabel:`eq_true-risk`
+
+However, in practice we typically cannot obtain the entire population of data.
+Thus, *empirical risk minimization*,
+which is minimizing the empirical risk in :eqref:`eq_empirical-risk-min`,
+is a practical strategy for machine learning,
+with the hope of approximately
+minimizing the risk.
+
+
+
+### Covariate S

@@ -1,0 +1,322 @@
+bility`, 
+this can result in numerical instability, 
+causing the gradients either to explode or vanish,
+depending on the properties of the weight matrices. 
+
+Dealing with vanishing and exploding gradients 
+is a fundamental problem when designing RNNs
+and has inspired some of the biggest advances
+in modern neural network architectures.
+In the next chapter, we will talk about
+specialized architectures that were designed
+in hopes of mitigating the vanishing gradient problem.
+However, even modern RNNs often suffer
+from exploding gradients.
+One inelegant but ubiquitous solution
+is to simply clip the gradients 
+forcing the resulting "clipped" gradients
+to take smaller values. 
+
+
+Generally speaking, when optimizing some objective
+by gradient descent, we iteratively update
+the parameter of interest, say a vector $\mathbf{x}$,
+but pushing it in the direction of the 
+negative gradient $\mathbf{g}$
+(in stochastic gradient descent, 
+we calculate this gradient
+on a randomly sampled minibatch).
+For example, with learning rate $\eta > 0$,
+each update takes the form 
+$\mathbf{x} \gets \mathbf{x} - \eta \mathbf{g}$.
+Let's further assume that the objective function $f$
+is sufficiently smooth. 
+Formally, we say that the objective 
+is *Lipschitz continuous* with constant $L$,
+meaning that for any $\mathbf{x}$ and $\mathbf{y}$, we have
+
+$$|f(\mathbf{x}) - f(\mathbf{y})| \leq L \|\mathbf{x} - \mathbf{y}\|.$$
+
+As you can see, when we update the parameter vector by subtracting $\eta \mathbf{g}$,
+the change in the value of the objective
+depends on the learning rate,
+the norm of the gradient and $L$ as follows:
+
+$$|f(\mathbf{x}) - f(\mathbf{x} - \eta\mathbf{g})| \leq L \eta\|\mathbf{g}\|.$$
+
+In other words, the objective cannot
+change by more than $L \eta \|\mathbf{g}\|$. 
+Having a small value for this upper bound 
+might be viewed as good or bad.
+On the downside, we are limiting the speed
+at which we can reduce the value of the objective.
+On the bright side, this limits by just how much
+we can go wrong in any one gradient step.
+
+
+When we say that gradients explode, 
+we mean that $\|\mathbf{g}\|$ 
+becomes excessively large.
+In this worst case, we might do so much
+damage in a single gradient step that we
+could undo all of the progress made over
+the course of thousands of training iterations.
+When gradients can be so large,
+neural network training often diverges,
+failing to reduce the value of the objective.
+At other times, training eventually converges
+but is unstable owing to massive spikes in the loss.
+
+
+One way to limit the size of $L \eta \|\mathbf{g}\|$ 
+is to shrink the learning rate $\eta$ to tiny values.
+This has the advantage that we do not bias the updates.
+But what if we only *rarely* get large gradients?
+This drastic move slows down our progress at all steps,
+just to deal with the rare exploding gradient events.
+A popular alternative is to adopt a *gradient clipping* heuristic
+projecting the gradients $\mathbf{g}$ onto a ball 
+of some given radius $\theta$ as follows:
+
+(**$$\mathbf{g} \leftarrow \min\left(1, \frac{\theta}{\|\mathbf{g}\|}\right) \mathbf{g}.$$**)
+
+This ensures that the gradient norm never exceeds $\theta$ 
+and that the updated gradient is entirely aligned 
+with the original direction of $\mathbf{g}$.
+It also has the desirable side-effect 
+of limiting the influence any given minibatch 
+(and within it any given sample) 
+can exert on the parameter vector. 
+This bestows a certain degree of robustness to the model. 
+To be clear, it is a hack. 
+Gradient clipping means that we are not always
+following the true gradient and it is hard 
+to reason analytically about the possible side effects.
+However, it is a very useful hack,
+and is widely adopted in RNN implementations
+in most deep learning frameworks.
+
+
+Below we define a method to clip gradients,
+which is invoked by the `fit_epoch` method of
+the `d2l.Trainer` class (see :numref:`sec_linear_scratch`).
+Note that when computing the gradient norm,
+we are concatenating all model parameters,
+treating them as a single giant parameter vector.
+
+```{.python .input}
+%%tab mxnet
+@d2l.add_to_class(d2l.Trainer)  #@save
+def clip_gradients(self, grad_clip_val, model):
+    params = model.parameters()
+    if not isinstance(params, list):
+        params = [p.data() for p in params.values()]    
+    norm = math.sqrt(sum((p.grad ** 2).sum() for p in params))
+    if norm > grad_clip_val:
+        for param in params:
+            param.grad[:] *= grad_clip_val / norm
+```
+
+```{.python .input}
+%%tab pytorch
+@d2l.add_to_class(d2l.Trainer)  #@save
+def clip_gradients(self, grad_clip_val, model):
+    params = [p for p in model.parameters() if p.requires_grad]
+    norm = torch.sqrt(sum(torch.sum((p.grad ** 2)) for p in params))
+    if norm > grad_clip_val:
+        for param in params:
+            param.grad[:] *= grad_clip_val / norm
+```
+
+```{.python .input}
+%%tab tensorflow
+@d2l.add_to_class(d2l.Trainer)  #@save
+def clip_gradients(self, grad_clip_val, grads):
+    grad_clip_val = tf.constant(grad_clip_val, dtype=tf.float32)
+    new_grads = [tf.convert_to_tensor(grad) if isinstance(
+        grad, tf.IndexedSlices) else grad for grad in grads]    
+    norm = tf.math.sqrt(sum((tf.reduce_sum(grad ** 2)) for grad in new_grads))
+    if tf.greater(norm, grad_clip_val):
+        for i, grad in enumerate(new_grads):
+            new_grads[i] = grad * grad_clip_val / norm
+        return new_grads
+    return grads
+```
+
+```{.python .input  n=27}
+%%tab jax
+@d2l.add_to_class(d2l.Trainer)  #@save
+def clip_gradients(self, grad_clip_val, grads):
+    grad_leaves, _ = jax.tree_util.tree_flatten(grads)
+    norm = jnp.sqrt(sum(jnp.vdot(x, x) for x in grad_leaves))
+    clip = lambda grad: jnp.where(norm < grad_clip_val,
+                                  grad, grad * (grad_clip_val / norm))
+    return jax.tree_util.tree_map(clip, grads)
+```
+
+## Training
+
+Using *The Time Machine* dataset (`data`),
+we train a character-level language model (`model`)
+based on the RNN (`rnn`) implemented from scratch.
+Note that we first calculate the gradients,
+then clip them, and finally 
+update the model parameters
+using the clipped gradients.
+
+```{.python .input}
+%%tab all
+data = d2l.TimeMachine(batch_size=1024, num_steps=32)
+if tab.selected('mxnet', 'pytorch', 'jax'):
+    rnn = RNNScratch(num_inputs=len(data.vocab), num_hiddens=32)
+    model = RNNLMScratch(rnn, vocab_size=len(data.vocab), lr=1)
+    trainer = d2l.Trainer(max_epochs=100, gradient_clip_val=1, num_gpus=1)
+if tab.selected('tensorflow'):
+    with d2l.try_gpu():
+        rnn = RNNScratch(num_inputs=len(data.vocab), num_hiddens=32)
+        model = RNNLMScratch(rnn, vocab_size=len(data.vocab), lr=1)
+    trainer = d2l.Trainer(max_epochs=100, gradient_clip_val=1)
+trainer.fit(model, data)
+```
+
+## Decoding
+
+Once a language model has been learned,
+we can use it not only to predict the next token
+but to continue predicting each subsequent one,
+treating the previously predicted token as though
+it were the next in the input. 
+Sometimes we will just want to generate text
+as though we were starting at the beginning 
+of a document. 
+However, it is often useful to condition
+the language model on a user-supplied prefix.
+For example, if we were developing an
+autocomplete feature for a search engine
+or to assist users in writing emails,
+we would want to feed in what they 
+had written so far (the prefix), 
+and then generate a likely continuation.
+
+
+[**The following `predict` method
+generates a continuation, one character at a time,
+after ingesting a user-provided `prefix`**].
+When looping through the characters in `prefix`,
+we keep passing the hidden state
+to the next time step 
+but do not generate any output.
+This is called the *warm-up* period.
+After ingesting the prefix, we are now
+ready to begin emitting the subsequent characters,
+each of which will be fed back into the model 
+as the input at the next time step.
+
+```{.python .input}
+%%tab pytorch, mxnet, tensorflow
+@d2l.add_to_class(RNNLMScratch)  #@save
+def predict(self, prefix, num_preds, vocab, device=None):
+    state, outputs = None, [vocab[prefix[0]]]
+    for i in range(len(prefix) + num_preds - 1):
+        if tab.selected('mxnet'):
+            X = d2l.tensor([[outputs[-1]]], ctx=device)
+        if tab.selected('pytorch'):
+            X = d2l.tensor([[outputs[-1]]], device=device)
+        if tab.selected('tensorflow'):
+            X = d2l.tensor([[outputs[-1]]])
+        embs = self.one_hot(X)
+        rnn_outputs, state = self.rnn(embs, state)
+        if i < len(prefix) - 1:  # Warm-up period
+            outputs.append(vocab[prefix[i + 1]])
+        else:  # Predict num_preds steps
+            Y = self.output_layer(rnn_outputs)
+            outputs.append(int(d2l.reshape(d2l.argmax(Y, axis=2), 1)))
+    return ''.join([vocab.idx_to_token[i] for i in outputs])
+```
+
+```{.python .input}
+%%tab jax
+@d2l.add_to_class(RNNLMScratch)  #@save
+def predict(self, prefix, num_preds, vocab, params):
+    state, outputs = None, [vocab[prefix[0]]]
+    for i in range(len(prefix) + num_preds - 1):
+        X = d2l.tensor([[outputs[-1]]])
+        embs = self.one_hot(X)
+        rnn_outputs, state = self.rnn.apply({'params': params['rnn']},
+                                            embs, state)
+        if i < len(prefix) - 1:  # Warm-up period
+            outputs.append(vocab[prefix[i + 1]])
+        else:  # Predict num_preds steps
+            Y = self.apply({'params': params}, rnn_outputs,
+                           method=self.output_layer)
+            outputs.append(int(d2l.reshape(d2l.argmax(Y, axis=2), 1)))
+    return ''.join([vocab.idx_to_token[i] for i in outputs])
+```
+
+In the following, we specify the prefix 
+and have it generate 20 additional characters.
+
+```{.python .input}
+%%tab mxnet, pytorch
+model.predict('it has', 20, data.vocab, d2l.try_gpu())
+```
+
+```{.python .input}
+%%tab tensorflow
+model.predict('it has', 20, data.vocab)
+```
+
+```{.python .input}
+%%tab jax
+model.predict('it has', 20, data.vocab, trainer.state.params)
+```
+
+While implementing the above RNN model from scratch is instructive, it is not convenient.
+In the next section, we will see how to leverage deep learning frameworks to whip up RNNs
+using standard architectures, and to reap performance gains 
+by relying on highly optimized library functions.
+
+
+## Summary
+
+We can train RNN-based language models to generate text following the user-provided text prefix. 
+A simple RNN language model consists of input encoding, RNN modeling, and output generation.
+During training, gradient clipping can mitigate the problem of exploding gradients but does not address the problem of vanishing gradients. In the experiment, we implemented a simple RNN language model and trained it with gradient clipping on sequences of text, tokenized at the character level. By conditioning on a prefix, we can use a language model to generate likely continuations, which proves useful in many applications, e.g., autocomplete features.
+
+
+## Exercises
+
+1. Does the implemented language model predict the next token based on all the past tokens up to the very first token in *The Time Machine*? 
+1. Which hyperparameter controls the length of history used for prediction?
+1. Show that one-hot encoding is equivalent to picking a different embedding for each object.
+1. Adjust the hyperparameters (e.g., number of epochs, number of hidden units, number of time steps in a minibatch, and learning rate) to improve the perplexity. How low can you go while sticking with this simple architecture?
+1. Replace one-hot encoding with learnable embeddings. Does this lead to better performance?
+1. Conduct an experiment to determine how well this language model 
+   trained on *The Time Machine* works on other books by H. G. Wells,
+   e.g., *The War of the Worlds*.
+1. Conduct another experiment to evaluate the perplexity of this model
+   on books written by other authors. 
+1. Modify the prediction method so as to use sampling 
+   rather than picking the most likely next character.
+    * What happens?
+    * Bias the model towards more likely outputs, e.g., 
+    by sampling from $q(x_t \mid x_{t-1}, \ldots, x_1) \propto P(x_t \mid x_{t-1}, \ldots, x_1)^\alpha$ for $\alpha > 1$.
+1. Run the code in this section without clipping the gradient. What happens?
+1. Replace the activation function used in this section with ReLU 
+   and repeat the experiments in this section. Do we still need gradient clipping? Why?
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/336)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/486)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/1052)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/18014)
+:end_tab:

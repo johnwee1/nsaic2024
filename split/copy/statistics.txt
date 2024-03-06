@@ -1,0 +1,259 @@
+# Statistics
+:label:`sec_statistics`
+
+Undoubtedly, to be a top deep learning practitioner, the ability to train the state-of-the-art and high accurate models is crucial.  However, it is often unclear when improvements are significant, or only the result of random fluctuations in the training process.  To be able to discuss uncertainty in estimated values, we must learn some statistics.
+
+
+The earliest reference of *statistics* can be traced back to an Arab scholar Al-Kindi in the $9^{\textrm{th}}$-century, who gave a detailed description of how to use statistics and frequency analysis to decipher encrypted messages. After 800 years, the modern statistics arose from Germany in 1700s, when the researchers focused on the demographic and economic data collection and analysis. Today, statistics is the science subject that concerns the collection, processing, analysis, interpretation and visualization of data. What is more, the core theory of statistics has been widely used in the research within academia, industry, and government.
+
+
+More specifically, statistics can be divided to *descriptive statistics* and *statistical inference*. The former focus on summarizing and illustrating the features of a collection of observed data, which is referred to as a *sample*. The sample is drawn from a *population*, denotes the total set of similar individuals, items, or events of our experiment interests. Contrary to descriptive statistics, *statistical inference* further deduces the characteristics of a population from the given *samples*, based on the assumptions that the sample distribution can replicate the population distribution at some degree.
+
+
+You may wonder: “What is the essential difference between machine learning and statistics?” Fundamentally speaking, statistics focuses on the inference problem. This type of problems includes modeling the relationship between the variables, such as causal inference, and testing the statistically significance of model parameters, such as A/B testing. In contrast, machine learning emphasizes on making accurate predictions, without explicitly programming and understanding each parameter's functionality.
+
+
+In this section, we will introduce three types of statistics inference methods: evaluating and comparing estimators, conducting hypothesis tests, and constructing confidence intervals. These methods can help us infer the characteristics of a given population, i.e., the true parameter $\theta$. For brevity, we assume that the true parameter $\theta$ of a given population is a scalar value. It is straightforward to extend to the case where $\theta$ is a vector or a tensor, thus we omit it in our discussion.
+
+
+
+## Evaluating and Comparing Estimators
+
+In statistics, an *estimator* is a function of given samples used to estimate the true parameter $\theta$. We will write $\hat{\theta}_n = \hat{f}(x_1, \ldots, x_n)$ for the estimate of $\theta$ after observing the samples {$x_1, x_2, \ldots, x_n$}.
+
+We have seen simple examples of estimators before in section :numref:`sec_maximum_likelihood`.  If you have a number of samples from a Bernoulli random variable, then the maximum likelihood estimate for the probability the random variable is one can be obtained by counting the number of ones observed and dividing by the total number of samples.  Similarly, an exercise asked you to show that the maximum likelihood estimate of the mean of a Gaussian given a number of samples is given by the average value of all the samples.  These estimators will almost never give the true value of the parameter, but ideally for a large number of samples the estimate will be close.
+
+As an example, we show below the true density of a Gaussian random variable with mean zero and variance one, along with a collection samples from that Gaussian.  We constructed the $y$ coordinate so every point is visible and the relationship to the original density is clearer.
+
+```{.python .input}
+#@tab mxnet
+from d2l import mxnet as d2l
+from mxnet import np, npx
+import random
+npx.set_np()
+
+# Sample datapoints and create y coordinate
+epsilon = 0.1
+random.seed(8675309)
+xs = np.random.normal(loc=0, scale=1, size=(300,))
+
+ys = [np.sum(np.exp(-(xs[:i] - xs[i])**2 / (2 * epsilon**2))
+             / np.sqrt(2*np.pi*epsilon**2)) / len(xs) for i in range(len(xs))]
+
+# Compute true density
+xd = np.arange(np.min(xs), np.max(xs), 0.01)
+yd = np.exp(-xd**2/2) / np.sqrt(2 * np.pi)
+
+# Plot the results
+d2l.plot(xd, yd, 'x', 'density')
+d2l.plt.scatter(xs, ys)
+d2l.plt.axvline(x=0)
+d2l.plt.axvline(x=np.mean(xs), linestyle='--', color='purple')
+d2l.plt.title(f'sample mean: {float(np.mean(xs)):.2f}')
+d2l.plt.show()
+```
+
+```{.python .input}
+#@tab pytorch
+from d2l import torch as d2l
+import torch
+
+torch.pi = torch.acos(torch.zeros(1)) * 2  #define pi in torch
+
+# Sample datapoints and create y coordinate
+epsilon = 0.1
+torch.manual_seed(8675309)
+xs = torch.randn(size=(300,))
+
+ys = torch.tensor(
+    [torch.sum(torch.exp(-(xs[:i] - xs[i])**2 / (2 * epsilon**2))\
+               / torch.sqrt(2*torch.pi*epsilon**2)) / len(xs)\
+     for i in range(len(xs))])
+
+# Compute true density
+xd = torch.arange(torch.min(xs), torch.max(xs), 0.01)
+yd = torch.exp(-xd**2/2) / torch.sqrt(2 * torch.pi)
+
+# Plot the results
+d2l.plot(xd, yd, 'x', 'density')
+d2l.plt.scatter(xs, ys)
+d2l.plt.axvline(x=0)
+d2l.plt.axvline(x=torch.mean(xs), linestyle='--', color='purple')
+d2l.plt.title(f'sample mean: {float(torch.mean(xs).item()):.2f}')
+d2l.plt.show()
+```
+
+```{.python .input}
+#@tab tensorflow
+from d2l import tensorflow as d2l
+import tensorflow as tf
+
+tf.pi = tf.acos(tf.zeros(1)) * 2  # define pi in TensorFlow
+
+# Sample datapoints and create y coordinate
+epsilon = 0.1
+xs = tf.random.normal((300,))
+
+ys = tf.constant(
+    [(tf.reduce_sum(tf.exp(-(xs[:i] - xs[i])**2 / (2 * epsilon**2)) \
+               / tf.sqrt(2*tf.pi*epsilon**2)) / tf.cast(
+        tf.size(xs), dtype=tf.float32)).numpy() \
+     for i in range(tf.size(xs))])
+
+# Compute true density
+xd = tf.range(tf.reduce_min(xs), tf.reduce_max(xs), 0.01)
+yd = tf.exp(-xd**2/2) / tf.sqrt(2 * tf.pi)
+
+# Plot the results
+d2l.plot(xd, yd, 'x', 'density')
+d2l.plt.scatter(xs, ys)
+d2l.plt.axvline(x=0)
+d2l.plt.axvline(x=tf.reduce_mean(xs), linestyle='--', color='purple')
+d2l.plt.title(f'sample mean: {float(tf.reduce_mean(xs).numpy()):.2f}')
+d2l.plt.show()
+```
+
+There can be many ways to compute an estimator of a parameter $\hat{\theta}_n$.  In this section, we introduce three common methods to evaluate and compare estimators: the mean squared error, the standard deviation, and statistical bias.
+
+### Mean Squared Error
+
+Perhaps the simplest metric used to evaluate estimators is the *mean squared error (MSE)* (or $l_2$ loss) estimator which can be defined as
+
+$$\textrm{MSE} (\hat{\theta}_n, \theta) = E[(\hat{\theta}_n - \theta)^2].$$
+:eqlabel:`eq_mse_est`
+
+This allows us to quantify the average squared deviation from the true value.  MSE is always non-negative. If you have read :numref:`sec_linear_regression`, you will recognize it as the most commonly used regression loss function. As a measure to evaluate an estimator, the closer its value is to zero, the closer the estimator is to the true parameter $\theta$.
+
+
+### Statistical Bias
+
+The MSE provides a natural metric, but we can easily imagine multiple different phenomena that might make it large.  Two fundamentally important are fluctuation in the estimator due to randomness in the dataset, and systematic error in the estimator due to the estimation procedure.
+
+
+First, let's measure the systematic error. For an estimator $\hat{\theta}_n$, the mathematical illustration of *statistical bias* can be defined as
+
+$$\textrm{bias}(\hat{\theta}_n) = E(\hat{\theta}_n - \theta) = E(\hat{\theta}_n) - \theta.$$
+:eqlabel:`eq_bias`
+
+Note that when $\textrm{bias}(\hat{\theta}_n) = 0$, the expectation of the estimator $\hat{\theta}_n$ is equal to the true value of parameter.  In this case, we say $\hat{\theta}_n$ is an unbiased estimator.  In general, an unbiased estimator is better than a biased estimator since its expectation is the same as the true parameter.
+
+
+It is worth being aware, however, that biased estimators are frequently used in practice.  There are cases where unbiased estimators do not exist without further assumptions, or are intractable to compute.  This may seem like a significant flaw in an estimator, however the majority of estimators encountered in practice are at least asymptotically unbiased in the sense that the bias tends to zero as the number of available samples tends to infinity: $\lim_{n \rightarrow \infty} \textrm{bias}(\hat{\theta}_n) = 0$.
+
+
+### Variance and Standard Deviation
+
+Second, let's measure the randomness in the estimator.  Recall from :numref:`sec_random_variables`, the *standard deviation* (or *standard error*) is defined as the squared root of the variance.  We may measure the degree of fluctuation of an estimator by measuring the standard deviation or variance of that estimator.
+
+$$\sigma_{\hat{\theta}_n} = \sqrt{\textrm{Var} (\hat{\theta}_n )} = \sqrt{E[(\hat{\theta}_n - E(\hat{\theta}_n))^2]}.$$
+:eqlabel:`eq_var_est`
+
+It is important to compare :eqref:`eq_var_est` to :eqref:`eq_mse_est`.  In this equation we do not compare to the true population value $\theta$, but instead to $E(\hat{\theta}_n)$, the expected sample mean.  Thus we are not measuring how far the estimator tends to be from the true value, but instead we are measuring the fluctuation of the estimator itself.
+
+
+### The Bias-Variance Trade-off
+
+It is intuitively clear that these two main components contribute to the mean squared error.  What is somewhat shocking is that we can show that this is actually a *decomposition* of the mean squared error into these two contributions plus a third one. That is to say that we can write the mean squared error as the sum of the square of the bias, the variance and the irreducible error.
+
+$$
+\begin{aligned}
+\textrm{MSE} (\hat{\theta}_n, \theta) &= E[(\hat{\theta}_n - \theta)^2] \\
+ &= E[(\hat{\theta}_n)^2] + E[\theta^2] - 2E[\hat{\theta}_n\theta] \\
+ &= \textrm{Var} [\hat{\theta}_n] + E[\hat{\theta}_n]^2 + \textrm{Var} [\theta] + E[\theta]^2 - 2E[\hat{\theta}_n]E[\theta] \\
+ &= (E[\hat{\theta}_n] - E[\theta])^2 + \textrm{Var} [\hat{\theta}_n] + \textrm{Var} [\theta] \\
+ &= (E[\hat{\theta}_n - \theta])^2 + \textrm{Var} [\hat{\theta}_n] + \textrm{Var} [\theta] \\
+ &= (\textrm{bias} [\hat{\theta}_n])^2 + \textrm{Var} (\hat{\theta}_n) + \textrm{Var} [\theta].\\
+\end{aligned}
+$$
+
+We refer the above formula as *bias-variance trade-off*. The mean squared error can be divided into three sources of error: the error from high bias, the error from high variance and the irreducible error. The bias error is commonly seen in a simple model (such as a linear regression model), which cannot extract high dimensional relations between the features and the outputs. If a model suffers from high bias error, we often say it is *underfitting* or lack of *flexibility* as introduced in (:numref:`sec_generalization_basics`). The high variance usually results from a too complex model, which overfits the training data. As a result, an *overfitting* model is sensitive to small fluctuations in the data. If a model suffers from high variance, we often say it is *overfitting* and lack of *generalization* as introduced in (:numref:`sec_generalization_basics`). The irreducible error is the result from noise in the $\theta$ itself.
+
+
+### Evaluating Estimators in Code
+
+Since the standard deviation of an estimator has been implementing by simply calling `a.std()` for a tensor `a`, we will skip it but implement the statistical bias and the mean squared error.
+
+```{.python .input}
+#@tab mxnet
+# Statistical bias
+def stat_bias(true_theta, est_theta):
+    return(np.mean(est_theta) - true_theta)
+
+# Mean squared error
+def mse(data, true_theta):
+    return(np.mean(np.square(data - true_theta)))
+```
+
+```{.python .input}
+#@tab pytorch
+# Statistical bias
+def stat_bias(true_theta, est_theta):
+    return(torch.mean(est_theta) - true_theta)
+
+# Mean squared error
+def mse(data, true_theta):
+    return(torch.mean(torch.square(data - true_theta)))
+```
+
+```{.python .input}
+#@tab tensorflow
+# Statistical bias
+def stat_bias(true_theta, est_theta):
+    return(tf.reduce_mean(est_theta) - true_theta)
+
+# Mean squared error
+def mse(data, true_theta):
+    return(tf.reduce_mean(tf.square(data - true_theta)))
+```
+
+To illustrate the equation of the bias-variance trade-off, let's simulate of normal distribution $\mathcal{N}(\theta, \sigma^2)$ with $10,000$ samples. Here, we use a $\theta = 1$ and $\sigma = 4$. As the estimator is a function of the given samples, here we use the mean of the samples as an estimator for true $\theta$ in this normal distribution $\mathcal{N}(\theta, \sigma^2)$ .
+
+```{.python .input}
+#@tab mxnet
+theta_true = 1
+sigma = 4
+sample_len = 10000
+samples = np.random.normal(theta_true, sigma, sample_len)
+theta_est = np.mean(samples)
+theta_est
+```
+
+```{.python .input}
+#@tab pytorch
+theta_true = 1
+sigma = 4
+sample_len = 10000
+samples = torch.normal(theta_true, sigma, size=(sample_len, 1))
+theta_est = torch.mean(samples)
+theta_est
+```
+
+```{.python .input}
+#@tab tensorflow
+theta_true = 1
+sigma = 4
+sample_len = 10000
+samples = tf.random.normal((sample_len, 1), theta_true, sigma)
+theta_est = tf.reduce_mean(samples)
+theta_est
+```
+
+Let's validate the trade-off equation by calculating the summation of the squared bias and the variance of our estimator. First, calculate the MSE of our estimator.
+
+```{.python .input}
+#@tab all
+mse(samples, theta_true)
+```
+
+Next, we calculate $\textrm{Var} (\hat{\theta}_n) + [\textrm{bias} (\hat{\theta}_n)]^2$ as below. As you can see, the two values agree to numerical precision.
+
+```{.python .input}
+#@tab mxnet
+bias = stat_bias(theta_true, theta_est)
+np.square(samples.std()) + np.square(bias)
+```
+
+```{.python .input}
+#@tab pytorch
+bias = stat_bias(theta_true, theta_est)
+torch.square(samples.std(unbiased=False)) + tor

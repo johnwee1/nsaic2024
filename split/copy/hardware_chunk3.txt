@@ -1,0 +1,68 @@
+25 ns | 65 cycles                                       |
+| Mutex lock/unlock                          |  25 ns |                                                 |
+| L3 cache hit (modified in another core)    |  29 ns | 75 cycles                                       |
+| L3 cache hit (on a remote CPU socket)      |  40 ns | 100 ~ 300 cycles (40 ~ 116 ns)                  |
+| QPI hop to a another CPU (per hop)         |  40 ns |                                                 |
+| 64MB memory ref. (local CPU)          |  46 ns | TinyMemBench on Broadwell E5-2690v4             |
+| 64MB memory ref. (remote CPU)         |  70 ns | TinyMemBench on Broadwell E5-2690v4             |
+| 256MB memory ref. (local CPU)         |  75 ns | TinyMemBench on Broadwell E5-2690v4             |
+| Intel Optane random write                  |  94 ns | UCSD Non-Volatile Systems Lab                   |
+| 256MB memory ref. (remote CPU)        | 120 ns | TinyMemBench on Broadwell E5-2690v4             |
+| Intel Optane random read                   | 305 ns | UCSD Non-Volatile Systems Lab                   |
+| Send 4KB over 100 Gbps HPC fabric          |   1 μs | MVAPICH2 over Intel Omni-Path                   |
+| Compress 1KB with Google Snappy            |   3 μs |                                                 |
+| Send 4KB over 10 Gbps ethernet             |  10 μs |                                                 |
+| Write 4KB randomly to NVMe SSD             |  30 μs | DC P3608 NVMe SSD (QOS 99% is 500μs)            |
+| Transfer 1MB to/from NVLink GPU            |  30 μs | ~33GB/s on NVIDIA 40GB NVLink                 |
+| Transfer 1MB to/from PCI-E GPU             |  80 μs | ~12GB/s on PCIe 3.0 x16 link                  |
+| Read 4KB randomly from NVMe SSD            | 120 μs | DC P3608 NVMe SSD (QOS 99%)                     |
+| Read 1MB sequentially from NVMe SSD        | 208 μs | ~4.8GB/s DC P3608 NVMe SSD                    |
+| Write 4KB randomly to SATA SSD             | 500 μs | DC S3510 SATA SSD (QOS 99.9%)                   |
+| Read 4KB randomly from SATA SSD            | 500 μs | DC S3510 SATA SSD (QOS 99.9%)                   |
+| Round trip within same data center          | 500 μs | One-way ping is ~250μs                          |
+| Read 1MB sequentially from SATA SSD        |   2 ms | ~550MB/s DC S3510 SATA SSD                    |
+| Read 1MB sequentially from disk            |   5 ms | ~200MB/s server HDD                           |
+| Random Disk Access (seek+rotation)         |  10 ms |                                                 |
+| Send packet CA->Netherlands->CA            | 150 ms |                                                 |
+:label:`table_latency_numbers`
+
+:Latency Numbers for NVIDIA Tesla GPUs.
+
+| Action | Time | Notes |
+| :------------------------------ | -----: | :---------------------------------------- |
+| GPU Shared Memory access        |  30 ns | 30~90 cycles (bank conflicts add latency) |
+| GPU Global Memory access        | 200 ns | 200~800 cycles                            |
+| Launch CUDA kernel on GPU       |  10 μs | Host CPU instructs GPU to start kernel    |
+| Transfer 1MB to/from NVLink GPU |  30 μs | ~33GB/s on NVIDIA 40GB NVLink           |
+| Transfer 1MB to/from PCI-E GPU  |  80 μs | ~12GB/s on PCI-Express x16 link         |
+:label:`table_latency_numbers_tesla`
+
+## Summary
+
+* Devices have overheads for operations. Hence it is important to aim for a small number of large transfers rather than many small ones. This applies to RAM, SSDs, networks and GPUs.
+* Vectorization is key for performance. Make sure you are aware of the specific abilities of your accelerator. E.g., some Intel Xeon CPUs are particularly good for INT8 operations, NVIDIA Volta GPUs excel at FP16 matrix-matrix operations and NVIDIA Turing shines at FP16, INT8, and INT4 operations.
+* Numerical overflow due to small data types can be a problem during training (and to a lesser extent during inference).
+* Aliasing can significantly degrade performance. For instance, memory alignment on 64 bit CPUs should be done with respect to 64 bit boundaries. On GPUs it is a good idea to keep convolution sizes aligned, e.g., to tensor cores.
+* Match your algorithms to the hardware (e.g., memory footprint, and bandwidth). Great speedup (orders of magnitude) can be achieved when fitting the parameters into caches.
+* We recommend that you sketch out the performance of a novel algorithm on paper before verifying the experimental results. Discrepancies of an order-of-magnitude or more are reasons for concern.
+* Use profilers to debug performance bottlenecks.
+* Training and inference hardware have different sweet spots in terms of price and performance.
+
+## Exercises
+
+1. Write C code to test whether there is any difference in speed between accessing memory aligned or misaligned relative to the external memory interface. Hint: be careful of caching effects.
+1. Test the difference in speed between accessing memory in sequence or with a given stride.
+1. How could you measure the cache sizes on a CPU?
+1. How would you lay out data across multiple memory channels for maximum bandwidth? How would you lay it out if you had many small threads?
+1. An enterprise-class HDD is spinning at 10,000 rpm. What is the absolutely minimum time an HDD needs to spend worst case before it can read data (you can assume that heads move almost instantaneously)? Why are 2.5" HDDs becoming popular for commercial servers (relative to 3.5" and 5.25" drives)?
+1. Assume that an HDD manufacturer increases the storage density from 1 Tbit per square inch to 5 Tbit per square inch. How much information can you store on a ring on a 2.5" HDD? Is there a difference between the inner and outer tracks?
+1. Going from 8 bit to 16 bit data types increases the amount of silicon approximately by four times. Why? Why might NVIDIA have added INT4 operations to their Turing GPUs?
+1. How much faster is it to read forward through memory vs. reading backwards? Does this number differ between different computers and CPU vendors? Why? Write C code and experiment with it.
+1. Can you measure the cache size of your disk? What is it for a typical HDD? Do SSDs need a cache?
+1. Measure the packet overhead when sending messages across the Ethernet. Look up the difference between UDP and TCP/IP connections.
+1. Direct memory access allows devices other than the CPU to write (and read) directly to (from) memory. Why is this a good idea?
+1. Look at the performance numbers for the Turing T4 GPU. Why does the performance "only" double as you go from FP16 to INT8 and INT4?
+1. What is the shortest time it should take for a packet on a round trip between San Francisco and Amsterdam? Hint: you can assume that the distance is 10,000 km.
+
+
+[Discussions](https://discuss.d2l.ai/t/363)

@@ -1,0 +1,215 @@
+r X in inputs:
+        I = d2l.sigmoid(d2l.matmul(X, self.W_xi) +
+                        d2l.matmul(H, self.W_hi) + self.b_i)
+        F = d2l.sigmoid(d2l.matmul(X, self.W_xf) +
+                        d2l.matmul(H, self.W_hf) + self.b_f)
+        O = d2l.sigmoid(d2l.matmul(X, self.W_xo) +
+                        d2l.matmul(H, self.W_ho) + self.b_o)
+        C_tilde = d2l.tanh(d2l.matmul(X, self.W_xc) +
+                           d2l.matmul(H, self.W_hc) + self.b_c)
+        C = F * C + I * C_tilde
+        H = O * d2l.tanh(C)
+        outputs.append(H)
+    return outputs, (H, C)
+```
+
+```{.python .input}
+%%tab jax
+@d2l.add_to_class(LSTMScratch)
+def forward(self, inputs, H_C=None):
+    # Use lax.scan primitive instead of looping over the
+    # inputs, since scan saves time in jit compilation.
+    def scan_fn(carry, X):
+        H, C = carry
+        I = d2l.sigmoid(d2l.matmul(X, self.W_xi) + (
+            d2l.matmul(H, self.W_hi)) + self.b_i)
+        F = d2l.sigmoid(d2l.matmul(X, self.W_xf) +
+                        d2l.matmul(H, self.W_hf) + self.b_f)
+        O = d2l.sigmoid(d2l.matmul(X, self.W_xo) +
+                        d2l.matmul(H, self.W_ho) + self.b_o)
+        C_tilde = d2l.tanh(d2l.matmul(X, self.W_xc) +
+                           d2l.matmul(H, self.W_hc) + self.b_c)
+        C = F * C + I * C_tilde
+        H = O * d2l.tanh(C)
+        return (H, C), H  # return carry, y
+
+    if H_C is None:
+        batch_size = inputs.shape[1]
+        carry = jnp.zeros((batch_size, self.num_hiddens)), \
+                jnp.zeros((batch_size, self.num_hiddens))
+    else:
+        carry = H_C
+
+    # scan takes the scan_fn, initial carry state, xs with leading axis to be scanned
+    carry, outputs = jax.lax.scan(scan_fn, carry, inputs)
+    return outputs, carry
+```
+
+### [**Training**] and Prediction
+
+Let's train an LSTM model by instantiating the `RNNLMScratch` class from :numref:`sec_rnn-scratch`.
+
+```{.python .input}
+%%tab all
+data = d2l.TimeMachine(batch_size=1024, num_steps=32)
+if tab.selected('mxnet', 'pytorch', 'jax'):
+    lstm = LSTMScratch(num_inputs=len(data.vocab), num_hiddens=32)
+    model = d2l.RNNLMScratch(lstm, vocab_size=len(data.vocab), lr=4)
+    trainer = d2l.Trainer(max_epochs=50, gradient_clip_val=1, num_gpus=1)
+if tab.selected('tensorflow'):
+    with d2l.try_gpu():
+        lstm = LSTMScratch(num_inputs=len(data.vocab), num_hiddens=32)
+        model = d2l.RNNLMScratch(lstm, vocab_size=len(data.vocab), lr=4)
+    trainer = d2l.Trainer(max_epochs=50, gradient_clip_val=1)
+trainer.fit(model, data)
+```
+
+## [**Concise Implementation**]
+
+Using high-level APIs,
+we can directly instantiate an LSTM model.
+This encapsulates all the configuration details 
+that we made explicit above. 
+The code is significantly faster as it uses 
+compiled operators rather than Python
+for many details that we spelled out before.
+
+```{.python .input}
+%%tab mxnet
+class LSTM(d2l.RNN):
+    def __init__(self, num_hiddens):
+        d2l.Module.__init__(self)
+        self.save_hyperparameters()
+        self.rnn = rnn.LSTM(num_hiddens)
+
+    def forward(self, inputs, H_C=None):
+        if H_C is None: H_C = self.rnn.begin_state(
+            inputs.shape[1], ctx=inputs.ctx)
+        return self.rnn(inputs, H_C)
+```
+
+```{.python .input}
+%%tab pytorch
+class LSTM(d2l.RNN):
+    def __init__(self, num_inputs, num_hiddens):
+        d2l.Module.__init__(self)
+        self.save_hyperparameters()
+        self.rnn = nn.LSTM(num_inputs, num_hiddens)
+
+    def forward(self, inputs, H_C=None):
+        return self.rnn(inputs, H_C)
+```
+
+```{.python .input}
+%%tab tensorflow
+class LSTM(d2l.RNN):
+    def __init__(self, num_hiddens):
+        d2l.Module.__init__(self)
+        self.save_hyperparameters()
+        self.rnn = tf.keras.layers.LSTM(
+                num_hiddens, return_sequences=True,
+                return_state=True, time_major=True)
+
+    def forward(self, inputs, H_C=None):
+        outputs, *H_C = self.rnn(inputs, H_C)
+        return outputs, H_C
+```
+
+```{.python .input}
+%%tab jax
+class LSTM(d2l.RNN):
+    num_hiddens: int
+
+    @nn.compact
+    def __call__(self, inputs, H_C=None, training=False):
+        if H_C is None:
+            batch_size = inputs.shape[1]
+            H_C = nn.OptimizedLSTMCell.initialize_carry(jax.random.PRNGKey(0),
+                                                        (batch_size,),
+                                                        self.num_hiddens)
+
+        LSTM = nn.scan(nn.OptimizedLSTMCell, variable_broadcast="params",
+                       in_axes=0, out_axes=0, split_rngs={"params": False})
+
+        H_C, outputs = LSTM()(H_C, inputs)
+        return outputs, H_C
+```
+
+```{.python .input}
+%%tab all
+if tab.selected('pytorch'):
+    lstm = LSTM(num_inputs=len(data.vocab), num_hiddens=32)
+if tab.selected('mxnet', 'tensorflow', 'jax'):
+    lstm = LSTM(num_hiddens=32)
+if tab.selected('mxnet', 'pytorch', 'jax'):
+    model = d2l.RNNLM(lstm, vocab_size=len(data.vocab), lr=4)
+if tab.selected('tensorflow'):
+    with d2l.try_gpu():
+        model = d2l.RNNLM(lstm, vocab_size=len(data.vocab), lr=4)
+trainer.fit(model, data)
+```
+
+```{.python .input}
+%%tab mxnet, pytorch
+model.predict('it has', 20, data.vocab, d2l.try_gpu())
+```
+
+```{.python .input}
+%%tab tensorflow
+model.predict('it has', 20, data.vocab)
+```
+
+```{.python .input}
+%%tab jax
+model.predict('it has', 20, data.vocab, trainer.state.params)
+```
+
+LSTMs are the prototypical latent variable autoregressive model with nontrivial state control.
+Many variants thereof have been proposed over the years, e.g., multiple layers, residual connections, different types of regularization. However, training LSTMs and other sequence models (such as GRUs) is quite costly because of the long range dependency of the sequence.
+Later we will encounter alternative models such as Transformers that can be used in some cases.
+
+
+## Summary
+
+While LSTMs were published in 1997, 
+they rose to great prominence 
+with some victories in prediction competitions in the mid-2000s,
+and became the dominant models for sequence learning from 2011 
+until the rise of Transformer models, starting in 2017.
+Even Tranformers owe some of their key ideas 
+to architecture design innovations introduced by the LSTM.
+
+
+LSTMs have three types of gates: 
+input gates, forget gates, and output gates 
+that control the flow of information.
+The hidden layer output of LSTM includes the hidden state and the memory cell internal state. 
+Only the hidden state is passed into the output layer while 
+the memory cell internal state remains entirely internal.
+LSTMs can alleviate vanishing and exploding gradients.
+
+
+
+## Exercises
+
+1. Adjust the hyperparameters and analyze their influence on running time, perplexity, and the output sequence.
+1. How would you need to change the model to generate proper words rather than just sequences of characters?
+1. Compare the computational cost for GRUs, LSTMs, and regular RNNs for a given hidden dimension. Pay special attention to the training and inference cost.
+1. Since the candidate memory cell ensures that the value range is between $-1$ and $1$ by  using the $\tanh$ function, why does the hidden state need to use the $\tanh$ function again to ensure that the output value range is between $-1$ and $1$?
+1. Implement an LSTM model for time series prediction rather than character sequence prediction.
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/343)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1057)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/3861)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/18016)
+:end_tab:

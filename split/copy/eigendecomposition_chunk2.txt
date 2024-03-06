@@ -1,0 +1,253 @@
+):
+    norm_ratio_list.append(norm_list[i]/norm_list[i - 1])
+
+d2l.plot(np.arange(1, 100), norm_ratio_list, 'Iteration', 'Ratio')
+```
+
+```{.python .input}
+#@tab pytorch
+# Compute the scaling factor of the norms
+norm_ratio_list = []
+for i in range(1, 100):
+    norm_ratio_list.append(norm_list[i]/norm_list[i - 1])
+
+d2l.plot(torch.arange(1, 100), norm_ratio_list, 'Iteration', 'Ratio')
+```
+
+```{.python .input}
+#@tab tensorflow
+# Compute the scaling factor of the norms
+norm_ratio_list = []
+for i in range(1, 100):
+    norm_ratio_list.append(norm_list[i]/norm_list[i - 1])
+
+d2l.plot(tf.range(1, 100), norm_ratio_list, 'Iteration', 'Ratio')
+```
+
+If we look at the last portion of the above computation,
+we see that the random vector is stretched by a factor of `1.974459321485[...]`,
+where the portion at the end shifts a little,
+but the stretching factor is stable.
+
+### Relating Back to Eigenvectors
+
+We have seen that eigenvectors and eigenvalues correspond
+to the amount something is stretched,
+but that was for specific vectors, and specific stretches.
+Let's take a look at what they are for $\mathbf{A}$.
+A bit of a caveat here: it turns out that to see them all,
+we will need to go to complex numbers.
+You can think of these as stretches and rotations.
+By taking the norm of the complex number
+(square root of the sums of squares of real and imaginary parts)
+we can measure that stretching factor. Let's also sort them.
+
+```{.python .input}
+#@tab mxnet
+# Compute the eigenvalues
+eigs = np.linalg.eigvals(A).tolist()
+norm_eigs = [np.absolute(x) for x in eigs]
+norm_eigs.sort()
+print(f'norms of eigenvalues: {norm_eigs}')
+```
+
+```{.python .input}
+#@tab pytorch
+# Compute the eigenvalues
+eigs = torch.linalg.eig(A).eigenvalues.tolist()
+norm_eigs = [torch.abs(torch.tensor(x)) for x in eigs]
+norm_eigs.sort()
+print(f'norms of eigenvalues: {norm_eigs}')
+```
+
+```{.python .input}
+#@tab tensorflow
+# Compute the eigenvalues
+eigs = tf.linalg.eigh(A)[0].numpy().tolist()
+norm_eigs = [tf.abs(tf.constant(x, dtype=tf.float64)) for x in eigs]
+norm_eigs.sort()
+print(f'norms of eigenvalues: {norm_eigs}')
+```
+
+### An Observation
+
+We see something a bit unexpected happening here:
+that number we identified before for the
+long term stretching of our matrix $\mathbf{A}$
+applied to a random vector is *exactly*
+(accurate to thirteen decimal places!)
+the largest eigenvalue of $\mathbf{A}$.
+This is clearly not a coincidence!
+
+But, if we now think about what is happening geometrically,
+this starts to make sense. Consider a random vector.
+This random vector points a little in every direction,
+so in particular, it points at least a little bit
+in the same direction as the eigenvector of $\mathbf{A}$
+associated with the largest eigenvalue.
+This is so important that it is called
+the *principle eigenvalue* and *principle eigenvector*.
+After applying $\mathbf{A}$, our random vector
+gets stretched in every possible direction,
+as is associated with every possible eigenvector,
+but it is stretched most of all in the direction
+associated with this principle eigenvector.
+What this means is that after apply in $A$,
+our random vector is longer, and points in a direction
+closer to being aligned with the principle eigenvector.
+After applying the matrix many times,
+the alignment with the principle eigenvector becomes closer and closer until,
+for all practical purposes, our random vector has been transformed
+into the principle eigenvector!
+Indeed this algorithm is the basis
+for what is known as the *power iteration*
+for finding the largest eigenvalue and eigenvector of a matrix. For details see, for example, :cite:`Golub.Van-Loan.1996`.
+
+### Fixing the Normalization
+
+Now, from above discussions, we concluded
+that we do not want a random vector to be stretched or squished at all,
+we would like random vectors to stay about the same size throughout the entire process.
+To do so, we now rescale our matrix by this principle eigenvalue
+so that the largest eigenvalue is instead now just one.
+Let's see what happens in this case.
+
+```{.python .input}
+#@tab mxnet
+# Rescale the matrix `A`
+A /= norm_eigs[-1]
+
+# Do the same experiment again
+v_in = np.random.randn(k, 1)
+
+norm_list = [np.linalg.norm(v_in)]
+for i in range(1, 100):
+    v_in = A.dot(v_in)
+    norm_list.append(np.linalg.norm(v_in))
+
+d2l.plot(np.arange(0, 100), norm_list, 'Iteration', 'Value')
+```
+
+```{.python .input}
+#@tab pytorch
+# Rescale the matrix `A`
+A /= norm_eigs[-1]
+
+# Do the same experiment again
+v_in = torch.randn(k, 1, dtype=torch.float64)
+
+norm_list = [torch.norm(v_in).item()]
+for i in range(1, 100):
+    v_in = A @ v_in
+    norm_list.append(torch.norm(v_in).item())
+
+d2l.plot(torch.arange(0, 100), norm_list, 'Iteration', 'Value')
+```
+
+```{.python .input}
+#@tab tensorflow
+# Rescale the matrix `A`
+A /= norm_eigs[-1]
+
+# Do the same experiment again
+v_in = tf.random.normal((k, 1), dtype=tf.float64)
+
+norm_list = [tf.norm(v_in).numpy()]
+for i in range(1, 100):
+    v_in = tf.matmul(A, v_in)
+    norm_list.append(tf.norm(v_in).numpy())
+
+d2l.plot(tf.range(0, 100), norm_list, 'Iteration', 'Value')
+```
+
+We can also plot the ratio between consecutive norms as before and see that indeed it stabilizes.
+
+```{.python .input}
+#@tab mxnet
+# Also plot the ratio
+norm_ratio_list = []
+for i in range(1, 100):
+    norm_ratio_list.append(norm_list[i]/norm_list[i-1])
+
+d2l.plot(np.arange(1, 100), norm_ratio_list, 'Iteration', 'Ratio')
+```
+
+```{.python .input}
+#@tab pytorch
+# Also plot the ratio
+norm_ratio_list = []
+for i in range(1, 100):
+    norm_ratio_list.append(norm_list[i]/norm_list[i-1])
+
+d2l.plot(torch.arange(1, 100), norm_ratio_list, 'Iteration', 'Ratio')
+```
+
+```{.python .input}
+#@tab tensorflow
+# Also plot the ratio
+norm_ratio_list = []
+for i in range(1, 100):
+    norm_ratio_list.append(norm_list[i]/norm_list[i-1])
+
+d2l.plot(tf.range(1, 100), norm_ratio_list, 'Iteration', 'Ratio')
+```
+
+## Discussion
+
+We now see exactly what we hoped for!
+After normalizing the matrices by the principal eigenvalue,
+we see that the random data does not explode as before,
+but rather eventually equilibrates to a specific value.
+It would be nice to be able to do these things from first principles,
+and it turns out that if we look deeply at the mathematics of it,
+we can see that the largest eigenvalue
+of a large random matrix with independent mean zero,
+variance one Gaussian entries is on average about $\sqrt{n}$,
+or in our case $\sqrt{5} \approx 2.2$,
+due to a fascinating fact known as the *circular law* :cite:`Ginibre.1965`.
+The relationship between the eigenvalues (and a related object called singular values) of random matrices has been shown to have deep connections to proper initialization of neural networks as was discussed in :citet:`Pennington.Schoenholz.Ganguli.2017` and subsequent works.
+
+## Summary
+* Eigenvectors are vectors which are stretched by a matrix without changing direction.
+* Eigenvalues are the amount that the eigenvectors are stretched by the application of the matrix.
+* The eigendecomposition of a matrix can allow for many operations to be reduced to operations on the eigenvalues.
+* The Gershgorin Circle Theorem can provide approximate values for the eigenvalues of a matrix.
+* The behavior of iterated matrix powers depends primarily on the size of the largest eigenvalue.  This understanding has many applications in the theory of neural network initialization.
+
+## Exercises
+1. What are the eigenvalues and eigenvectors of
+$$
+\mathbf{A} = \begin{bmatrix}
+2 & 1 \\
+1 & 2
+\end{bmatrix}?
+$$
+1.  What are the eigenvalues and eigenvectors of the following matrix, and what is strange about this example compared to the previous one?
+$$
+\mathbf{A} = \begin{bmatrix}
+2 & 1 \\
+0 & 2
+\end{bmatrix}.
+$$
+1. Without computing the eigenvalues, is it possible that the smallest eigenvalue of the following matrix is less that $0.5$? *Note*: this problem can be done in your head.
+$$
+\mathbf{A} = \begin{bmatrix}
+3.0 & 0.1 & 0.3 & 1.0 \\
+0.1 & 1.0 & 0.1 & 0.2 \\
+0.3 & 0.1 & 5.0 & 0.0 \\
+1.0 & 0.2 & 0.0 & 1.8
+\end{bmatrix}.
+$$
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/411)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1086)
+:end_tab:
+
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/1087)
+:end_tab:

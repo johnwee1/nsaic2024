@@ -1,0 +1,358 @@
+mathcal{B}_t} \partial_{(\mathbf{w},b)} l^{(i)}(\mathbf{w},b).$$
+
+In summary, minibatch SGD proceeds as follows:
+(i) initialize the values of the model parameters, typically at random;
+(ii) iteratively sample random minibatches from the data,
+updating the parameters in the direction of the negative gradient.
+For quadratic losses and affine transformations,
+this has a closed-form expansion:
+
+$$\begin{aligned} \mathbf{w} & \leftarrow \mathbf{w} - \frac{\eta}{|\mathcal{B}|} \sum_{i \in \mathcal{B}_t} \partial_{\mathbf{w}} l^{(i)}(\mathbf{w}, b) && = \mathbf{w} - \frac{\eta}{|\mathcal{B}|} \sum_{i \in \mathcal{B}_t} \mathbf{x}^{(i)} \left(\mathbf{w}^\top \mathbf{x}^{(i)} + b - y^{(i)}\right)\\ b &\leftarrow b -  \frac{\eta}{|\mathcal{B}|} \sum_{i \in \mathcal{B}_t} \partial_b l^{(i)}(\mathbf{w}, b) &&  = b - \frac{\eta}{|\mathcal{B}|} \sum_{i \in \mathcal{B}_t} \left(\mathbf{w}^\top \mathbf{x}^{(i)} + b - y^{(i)}\right). \end{aligned}$$
+:eqlabel:`eq_linreg_batch_update`
+
+Since we pick a minibatch $\mathcal{B}$
+we need to normalize by its size $|\mathcal{B}|$.
+Frequently minibatch size and learning rate are user-defined.
+Such tunable parameters that are not updated
+in the training loop are called *hyperparameters*.
+They can be tuned automatically by a number of techniques, such as Bayesian optimization
+:cite:`Frazier.2018`. In the end, the quality of the solution is
+typically assessed on a separate *validation dataset* (or *validation set*).
+
+After training for some predetermined number of iterations
+(or until some other stopping criterion is met),
+we record the estimated model parameters,
+denoted $\hat{\mathbf{w}}, \hat{b}$.
+Note that even if our function is truly linear and noiseless,
+these parameters will not be the exact minimizers of the loss, nor even deterministic.
+Although the algorithm converges slowly towards the minimizers
+it typically will not find them exactly in a finite number of steps.
+Moreover, the minibatches $\mathcal{B}$
+used for updating the parameters are chosen at random.
+This breaks determinism.
+
+Linear regression happens to be a learning problem
+with a global minimum
+(whenever $\mathbf{X}$ is full rank, or equivalently,
+whenever $\mathbf{X}^\top \mathbf{X}$ is invertible).
+However, the loss surfaces for deep networks contain many saddle points and minima.
+Fortunately, we typically do not care about finding
+an exact set of parameters but merely any set of parameters
+that leads to accurate predictions (and thus low loss).
+In practice, deep learning practitioners
+seldom struggle to find parameters
+that minimize the loss *on training sets*
+:cite:`Izmailov.Podoprikhin.Garipov.ea.2018,Frankle.Carbin.2018`.
+The more formidable task is to find parameters
+that lead to accurate predictions on previously unseen data,
+a challenge called *generalization*.
+We return to these topics throughout the book.
+
+### Predictions
+
+Given the model $\hat{\mathbf{w}}^\top \mathbf{x} + \hat{b}$,
+we can now make *predictions* for a new example,
+e.g., predicting the sales price of a previously unseen house
+given its area $x_1$ and age $x_2$.
+Deep learning practitioners have taken to calling the prediction phase *inference*
+but this is a bit of a misnomer---*inference* refers broadly
+to any conclusion reached on the basis of evidence,
+including both the values of the parameters
+and the likely label for an unseen instance.
+If anything, in the statistics literature
+*inference* more often denotes parameter inference
+and this overloading of terminology creates unnecessary confusion
+when deep learning practitioners talk to statisticians.
+In the following we will stick to *prediction* whenever possible.
+
+
+
+## Vectorization for Speed
+
+When training our models, we typically want to process
+whole minibatches of examples simultaneously.
+Doing this efficiently requires that (**we**) (~~should~~)
+(**vectorize the calculations and leverage
+fast linear algebra libraries
+rather than writing costly for-loops in Python.**)
+
+To see why this matters so much,
+let's (**consider two methods for adding vectors.**)
+To start, we instantiate two 10,000-dimensional vectors
+containing all 1s.
+In the first method, we loop over the vectors with a Python for-loop.
+In the second, we rely on a single call to `+`.
+
+```{.python .input}
+%%tab all
+n = 10000
+a = d2l.ones(n)
+b = d2l.ones(n)
+```
+
+Now we can benchmark the workloads.
+First, [**we add them, one coordinate at a time,
+using a for-loop.**]
+
+```{.python .input}
+%%tab mxnet, pytorch
+c = d2l.zeros(n)
+t = time.time()
+for i in range(n):
+    c[i] = a[i] + b[i]
+f'{time.time() - t:.5f} sec'
+```
+
+```{.python .input}
+%%tab tensorflow
+c = tf.Variable(d2l.zeros(n))
+t = time.time()
+for i in range(n):
+    c[i].assign(a[i] + b[i])
+f'{time.time() - t:.5f} sec'
+```
+
+```{.python .input}
+%%tab jax
+# JAX arrays are immutable, meaning that once created their contents
+# cannot be changed. For updating individual elements, JAX provides
+# an indexed update syntax that returns an updated copy
+c = d2l.zeros(n)
+t = time.time()
+for i in range(n):
+    c = c.at[i].set(a[i] + b[i])
+f'{time.time() - t:.5f} sec'
+```
+
+(**Alternatively, we rely on the reloaded `+` operator to compute the elementwise sum.**)
+
+```{.python .input}
+%%tab all
+t = time.time()
+d = a + b
+f'{time.time() - t:.5f} sec'
+```
+
+The second method is dramatically faster than the first.
+Vectorizing code often yields order-of-magnitude speedups.
+Moreover, we push more of the mathematics to the library
+so we do not have to write as many calculations ourselves,
+reducing the potential for errors and increasing portability of the code.
+
+
+## The Normal Distribution and Squared Loss
+:label:`subsec_normal_distribution_and_squared_loss`
+
+So far we have given a fairly functional motivation
+of the squared loss objective:
+the optimal parameters return the conditional expectation $E[Y\mid X]$
+whenever the underlying pattern is truly linear,
+and the loss assigns large penalties for outliers.
+We can also provide a more formal motivation
+for the squared loss objective
+by making probabilistic assumptions
+about the distribution of noise.
+
+Linear regression was invented at the turn of the 19th century.
+While it has long been debated whether Gauss or Legendre
+first thought up the idea,
+it was Gauss who also discovered the normal distribution
+(also called the *Gaussian*).
+It turns out that the normal distribution
+and linear regression with squared loss
+share a deeper connection than common parentage.
+
+To begin, recall that a normal distribution
+with mean $\mu$ and variance $\sigma^2$ (standard deviation $\sigma$)
+is given as
+
+$$p(x) = \frac{1}{\sqrt{2 \pi \sigma^2}} \exp\left(-\frac{1}{2 \sigma^2} (x - \mu)^2\right).$$
+
+Below [**we define a function to compute the normal distribution**].
+
+```{.python .input}
+%%tab all
+def normal(x, mu, sigma):
+    p = 1 / math.sqrt(2 * math.pi * sigma**2)
+    if tab.selected('jax'):
+        return p * jnp.exp(-0.5 * (x - mu)**2 / sigma**2)
+    if tab.selected('pytorch', 'mxnet', 'tensorflow'):
+        return p * np.exp(-0.5 * (x - mu)**2 / sigma**2)
+```
+
+We can now (**visualize the normal distributions**).
+
+```{.python .input}
+%%tab mxnet
+# Use NumPy again for visualization
+x = np.arange(-7, 7, 0.01)
+
+# Mean and standard deviation pairs
+params = [(0, 1), (0, 2), (3, 1)]
+d2l.plot(x.asnumpy(), [normal(x, mu, sigma).asnumpy() for mu, sigma in params], xlabel='x',
+         ylabel='p(x)', figsize=(4.5, 2.5),
+         legend=[f'mean {mu}, std {sigma}' for mu, sigma in params])
+```
+
+```{.python .input}
+
+%%tab pytorch, tensorflow, jax
+if tab.selected('jax'):
+    # Use JAX NumPy for visualization
+    x = jnp.arange(-7, 7, 0.01)
+if tab.selected('pytorch', 'mxnet', 'tensorflow'):
+    # Use NumPy again for visualization
+    x = np.arange(-7, 7, 0.01)
+
+# Mean and standard deviation pairs
+params = [(0, 1), (0, 2), (3, 1)]
+d2l.plot(x, [normal(x, mu, sigma) for mu, sigma in params], xlabel='x',
+         ylabel='p(x)', figsize=(4.5, 2.5),
+         legend=[f'mean {mu}, std {sigma}' for mu, sigma in params])
+```
+
+Note that changing the mean corresponds
+to a shift along the $x$-axis,
+and increasing the variance
+spreads the distribution out,
+lowering its peak.
+
+One way to motivate linear regression with squared loss
+is to assume that observations arise from noisy measurements,
+where the noise $\epsilon$ follows the normal distribution 
+$\mathcal{N}(0, \sigma^2)$:
+
+$$y = \mathbf{w}^\top \mathbf{x} + b + \epsilon \textrm{ where } \epsilon \sim \mathcal{N}(0, \sigma^2).$$
+
+Thus, we can now write out the *likelihood*
+of seeing a particular $y$ for a given $\mathbf{x}$ via
+
+$$P(y \mid \mathbf{x}) = \frac{1}{\sqrt{2 \pi \sigma^2}} \exp\left(-\frac{1}{2 \sigma^2} (y - \mathbf{w}^\top \mathbf{x} - b)^2\right).$$
+
+As such, the likelihood factorizes.
+According to *the principle of maximum likelihood*,
+the best values of parameters $\mathbf{w}$ and $b$ are those
+that maximize the *likelihood* of the entire dataset:
+
+$$P(\mathbf y \mid \mathbf X) = \prod_{i=1}^{n} p(y^{(i)} \mid \mathbf{x}^{(i)}).$$
+
+The equality follows since all pairs $(\mathbf{x}^{(i)}, y^{(i)})$
+were drawn independently of each other.
+Estimators chosen according to the principle of maximum likelihood
+are called *maximum likelihood estimators*.
+While, maximizing the product of many exponential functions,
+might look difficult,
+we can simplify things significantly, without changing the objective,
+by maximizing the logarithm of the likelihood instead.
+For historical reasons, optimizations are more often expressed
+as minimization rather than maximization.
+So, without changing anything,
+we can *minimize* the *negative log-likelihood*,
+which we can express as follows:
+
+$$-\log P(\mathbf y \mid \mathbf X) = \sum_{i=1}^n \frac{1}{2} \log(2 \pi \sigma^2) + \frac{1}{2 \sigma^2} \left(y^{(i)} - \mathbf{w}^\top \mathbf{x}^{(i)} - b\right)^2.$$
+
+If we assume that $\sigma$ is fixed,
+we can ignore the first term,
+because it does not depend on $\mathbf{w}$ or $b$.
+The second term is identical
+to the squared error loss introduced earlier,
+except for the multiplicative constant $\frac{1}{\sigma^2}$.
+Fortunately, the solution does not depend on $\sigma$ either.
+It follows that minimizing the mean squared error
+is equivalent to the maximum likelihood estimation
+of a linear model under the assumption of additive Gaussian noise.
+
+
+## Linear Regression as a Neural Network
+
+While linear models are not sufficiently rich
+to express the many complicated networks
+that we will introduce in this book,
+(artificial) neural networks are rich enough
+to subsume linear models as networks
+in which every feature is represented by an input neuron,
+all of which are connected directly to the output.
+
+:numref:`fig_single_neuron` depicts
+linear regression as a neural network.
+The diagram highlights the connectivity pattern,
+such as how each input is connected to the output,
+but not the specific values taken by the weights or biases.
+
+![Linear regression is a single-layer neural network.](../img/singleneuron.svg)
+:label:`fig_single_neuron`
+
+The inputs are $x_1, \ldots, x_d$.
+We refer to $d$ as the *number of inputs*
+or the *feature dimensionality* in the input layer.
+The output of the network is $o_1$.
+Because we are just trying to predict
+a single numerical value,
+we have only one output neuron.
+Note that the input values are all *given*.
+There is just a single *computed* neuron.
+In summary, we can think of linear regression
+as a single-layer fully connected neural network.
+We will encounter networks
+with far more layers
+in later chapters.
+
+### Biology
+
+Because linear regression predates computational neuroscience,
+it might seem anachronistic to describe
+linear regression in terms of neural networks.
+Nonetheless, they were a natural place to start
+when the cyberneticists and neurophysiologists
+Warren McCulloch and Walter Pitts began to develop
+models of artificial neurons.
+Consider the cartoonish picture
+of a biological neuron in :numref:`fig_Neuron`,
+consisting of *dendrites* (input terminals),
+the *nucleus* (CPU), the *axon* (output wire),
+and the *axon terminals* (output terminals),
+enabling connections to other neurons via *synapses*.
+
+![The real neuron (source: "Anatomy and Physiology" by the US National Cancer Institute's Surveillance, Epidemiology and End Results (SEER) Program).](../img/neuron.svg)
+:label:`fig_Neuron`
+
+Information $x_i$ arriving from other neurons
+(or environmental sensors) is received in the dendrites.
+In particular, that information is weighted
+by *synaptic weights* $w_i$,
+determining the effect of the inputs,
+e.g., activation or inhibition via the product $x_i w_i$.
+The weighted inputs arriving from multiple sources
+are aggregated in the nucleus
+as a weighted sum $y = \sum_i x_i w_i + b$,
+possibly subject to some nonlinear postprocessing via a function $\sigma(y)$.
+This information is then sent via the axon to the axon terminals,
+where it reaches its destination
+(e.g., an actuator such as a muscle)
+or it is fed into another neuron via its dendrites.
+
+Certainly, the high-level idea that many such units
+could be combined, provided they have the correct connectivity and learning algorithm,
+to produce far more interesting and complex behavior
+than any one neuron alone could express
+arises from our study of real biological neural systems.
+At the same time, most research in deep learning today
+draws inspiration from a much wider source.
+We invoke :citet:`Russell.Norvig.2016`
+who pointed out that although airplanes might have been *inspired* by birds,
+ornithology has not been the primary driver
+of aeronautics innovation for some centuries.
+Likewise, inspiration in deep learning these days
+comes in equal or greater measure
+from mathematics, linguistics, psychology,
+statistics, computer science, and many other fields.
+
+## Summary
+
+In this section, we introduced
+traditional linear regression,
+where the parameters of a linear function
+are chosen to minimize squared loss on the training set.
+We also motivated this choice of objective
+both via some practical consider

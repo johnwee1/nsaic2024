@@ -1,0 +1,157 @@
+
+            for l in ls:
+                l.backward()
+            trainer.step(batch_size)
+            metric.add(sum([float(l.sum()) for l in ls]), labels.shape[0])
+            timer.stop()
+            if (i + 1) % (num_batches // 5) == 0 or i == num_batches - 1:
+                animator.add(epoch + (i + 1) / num_batches,
+                             (metric[0] / metric[1], None))
+        if valid_iter is not None:
+            valid_loss = evaluate_loss(valid_iter, net, devices)
+            animator.add(epoch + 1, (None, valid_loss))
+    measures = f'train loss {metric[0] / metric[1]:.3f}'
+    if valid_iter is not None:
+        measures += f', valid loss {valid_loss:.3f}'
+    print(measures + f'\n{metric[1] * num_epochs / timer.sum():.1f}'
+          f' examples/sec on {str(devices)}')
+```
+
+```{.python .input}
+#@tab pytorch
+def train(net, train_iter, valid_iter, num_epochs, lr, wd, devices, lr_period,
+          lr_decay):
+    # Only train the small custom output network
+    net = nn.DataParallel(net, device_ids=devices).to(devices[0])
+    trainer = torch.optim.SGD((param for param in net.parameters()
+                               if param.requires_grad), lr=lr,
+                              momentum=0.9, weight_decay=wd)
+    scheduler = torch.optim.lr_scheduler.StepLR(trainer, lr_period, lr_decay)
+    num_batches, timer = len(train_iter), d2l.Timer()
+    legend = ['train loss']
+    if valid_iter is not None:
+        legend.append('valid loss')
+    animator = d2l.Animator(xlabel='epoch', xlim=[1, num_epochs],
+                            legend=legend)
+    for epoch in range(num_epochs):
+        metric = d2l.Accumulator(2)
+        for i, (features, labels) in enumerate(train_iter):
+            timer.start()
+            features, labels = features.to(devices[0]), labels.to(devices[0])
+            trainer.zero_grad()
+            output = net(features)
+            l = loss(output, labels).sum()
+            l.backward()
+            trainer.step()
+            metric.add(l, labels.shape[0])
+            timer.stop()
+            if (i + 1) % (num_batches // 5) == 0 or i == num_batches - 1:
+                animator.add(epoch + (i + 1) / num_batches,
+                             (metric[0] / metric[1], None))
+        measures = f'train loss {metric[0] / metric[1]:.3f}'
+        if valid_iter is not None:
+            valid_loss = evaluate_loss(valid_iter, net, devices)
+            animator.add(epoch + 1, (None, valid_loss.detach().cpu()))
+        scheduler.step()
+    if valid_iter is not None:
+        measures += f', valid loss {valid_loss:.3f}'
+    print(measures + f'\n{metric[1] * num_epochs / timer.sum():.1f}'
+          f' examples/sec on {str(devices)}')
+```
+
+## [**Training and Validating the Model**]
+
+Now we can train and validate the model.
+The following hyperparameters are all tunable.
+For example, the number of epochs can be increased. Because `lr_period` and `lr_decay` are set to 2 and 0.9, respectively, the learning rate of the optimization algorithm will be multiplied by 0.9 after every 2 epochs.
+
+```{.python .input}
+#@tab mxnet
+devices, num_epochs, lr, wd = d2l.try_all_gpus(), 10, 5e-3, 1e-4
+lr_period, lr_decay, net = 2, 0.9, get_net(devices)
+net.hybridize()
+train(net, train_iter, valid_iter, num_epochs, lr, wd, devices, lr_period,
+      lr_decay)
+```
+
+```{.python .input}
+#@tab pytorch
+devices, num_epochs, lr, wd = d2l.try_all_gpus(), 10, 1e-4, 1e-4
+lr_period, lr_decay, net = 2, 0.9, get_net(devices)
+train(net, train_iter, valid_iter, num_epochs, lr, wd, devices, lr_period,
+      lr_decay)
+```
+
+## [**Classifying the Testing Set**] and Submitting Results on Kaggle
+
+
+Similar to the final step in :numref:`sec_kaggle_cifar10`,
+in the end all the labeled data (including the validation set) are used for training the model and classifying the testing set.
+We will use the trained custom output network
+for classification.
+
+```{.python .input}
+#@tab mxnet
+net = get_net(devices)
+net.hybridize()
+train(net, train_valid_iter, None, num_epochs, lr, wd, devices, lr_period,
+      lr_decay)
+
+preds = []
+for data, label in test_iter:
+    output_features = net.features(data.as_in_ctx(devices[0]))
+    output = npx.softmax(net.output_new(output_features))
+    preds.extend(output.asnumpy())
+ids = sorted(os.listdir(
+    os.path.join(data_dir, 'train_valid_test', 'test', 'unknown')))
+with open('submission.csv', 'w') as f:
+    f.write('id,' + ','.join(train_valid_ds.synsets) + '\n')
+    for i, output in zip(ids, preds):
+        f.write(i.split('.')[0] + ',' + ','.join(
+            [str(num) for num in output]) + '\n')
+```
+
+```{.python .input}
+#@tab pytorch
+net = get_net(devices)
+train(net, train_valid_iter, None, num_epochs, lr, wd, devices, lr_period,
+      lr_decay)
+
+preds = []
+for data, label in test_iter:
+    output = torch.nn.functional.softmax(net(data.to(devices[0])), dim=1)
+    preds.extend(output.cpu().detach().numpy())
+ids = sorted(os.listdir(
+    os.path.join(data_dir, 'train_valid_test', 'test', 'unknown')))
+with open('submission.csv', 'w') as f:
+    f.write('id,' + ','.join(train_valid_ds.classes) + '\n')
+    for i, output in zip(ids, preds):
+        f.write(i.split('.')[0] + ',' + ','.join(
+            [str(num) for num in output]) + '\n')
+```
+
+The above code
+will generate a `submission.csv` file
+to be submitted
+to Kaggle in the same way described in :numref:`sec_kaggle_house`.
+
+
+## Summary
+
+
+* Images in the ImageNet dataset are larger (with varying dimensions) than CIFAR-10 images. We may modify image augmentation operations for tasks on a different dataset.
+* To classify a subset of the ImageNet dataset, we can leverage pre-trained models on the full ImageNet dataset to extract features and only train a custom small-scale output network. This will lead to less computational time and memory cost.
+
+
+## Exercises
+
+1. When using the full Kaggle competition dataset, what results can you achieve when you increase `batch_size` (batch size) and `num_epochs` (number of epochs) while setting some other hyperparameters as `lr = 0.01`, `lr_period = 10`, and `lr_decay = 0.1`?
+1. Do you get better results if you use a deeper pretrained model? How do you tune hyperparameters? Can you further improve the results?
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/380)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1481)
+:end_tab:

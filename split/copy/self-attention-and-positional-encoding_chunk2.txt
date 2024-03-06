@@ -1,0 +1,125 @@
+ 2.5), legend=["Col %d" % d for d in d2l.arange(6, 10)])
+```
+
+### Absolute Positional Information
+
+To see how the monotonically decreased frequency
+along the encoding dimension relates to absolute positional information,
+let's print out [**the binary representations**] of $0, 1, \ldots, 7$.
+As we can see, the lowest bit, the second-lowest bit, 
+and the third-lowest bit alternate on every number, 
+every two numbers, and every four numbers, respectively.
+
+```{.python .input}
+%%tab all
+for i in range(8):
+    print(f'{i} in binary is {i:>03b}')
+```
+
+In binary representations, a higher bit 
+has a lower frequency than a lower bit.
+Similarly, as demonstrated in the heat map below,
+[**the positional encoding decreases
+frequencies along the encoding dimension**]
+by using trigonometric functions.
+Since the outputs are float numbers,
+such continuous representations
+are more space-efficient
+than binary representations.
+
+```{.python .input}
+%%tab mxnet
+P = np.expand_dims(np.expand_dims(P[0, :, :], 0), 0)
+d2l.show_heatmaps(P, xlabel='Column (encoding dimension)',
+                  ylabel='Row (position)', figsize=(3.5, 4), cmap='Blues')
+```
+
+```{.python .input}
+%%tab pytorch
+P = P[0, :, :].unsqueeze(0).unsqueeze(0)
+d2l.show_heatmaps(P, xlabel='Column (encoding dimension)',
+                  ylabel='Row (position)', figsize=(3.5, 4), cmap='Blues')
+```
+
+```{.python .input}
+%%tab tensorflow
+P = tf.expand_dims(tf.expand_dims(P[0, :, :], axis=0), axis=0)
+d2l.show_heatmaps(P, xlabel='Column (encoding dimension)',
+                  ylabel='Row (position)', figsize=(3.5, 4), cmap='Blues')
+```
+
+```{.python .input}
+%%tab jax
+P = jnp.expand_dims(jnp.expand_dims(P[0, :, :], axis=0), axis=0)
+d2l.show_heatmaps(P, xlabel='Column (encoding dimension)',
+                  ylabel='Row (position)', figsize=(3.5, 4), cmap='Blues')
+```
+
+### Relative Positional Information
+
+Besides capturing absolute positional information,
+the above positional encoding
+also allows
+a model to easily learn to attend by relative positions.
+This is because
+for any fixed position offset $\delta$,
+the positional encoding at position $i + \delta$
+can be represented by a linear projection
+of that at position $i$.
+
+
+This projection can be explained
+mathematically.
+Denoting
+$\omega_j = 1/10000^{2j/d}$,
+any pair of $(p_{i, 2j}, p_{i, 2j+1})$ 
+in :eqref:`eq_positional-encoding-def`
+can 
+be linearly projected to $(p_{i+\delta, 2j}, p_{i+\delta, 2j+1})$
+for any fixed offset $\delta$:
+
+$$\begin{aligned}
+\begin{bmatrix} \cos(\delta \omega_j) & \sin(\delta \omega_j) \\  -\sin(\delta \omega_j) & \cos(\delta \omega_j) \\ \end{bmatrix}
+\begin{bmatrix} p_{i, 2j} \\  p_{i, 2j+1} \\ \end{bmatrix}
+=&\begin{bmatrix} \cos(\delta \omega_j) \sin(i \omega_j) + \sin(\delta \omega_j) \cos(i \omega_j) \\  -\sin(\delta \omega_j) \sin(i \omega_j) + \cos(\delta \omega_j) \cos(i \omega_j) \\ \end{bmatrix}\\
+=&\begin{bmatrix} \sin\left((i+\delta) \omega_j\right) \\  \cos\left((i+\delta) \omega_j\right) \\ \end{bmatrix}\\
+=& 
+\begin{bmatrix} p_{i+\delta, 2j} \\  p_{i+\delta, 2j+1} \\ \end{bmatrix},
+\end{aligned}$$
+
+where the $2\times 2$ projection matrix does not depend on any position index $i$.
+
+## Summary
+
+In self-attention, the queries, keys, and values all come from the same place.
+Both CNNs and self-attention enjoy parallel computation
+and self-attention has the shortest maximum path length.
+However, the quadratic computational complexity
+with respect to the sequence length
+makes self-attention prohibitively slow
+for very long sequences.
+To use the sequence order information, 
+we can inject absolute or relative positional information 
+by adding positional encoding to the input representations.
+
+## Exercises
+
+1. Suppose that we design a deep architecture to represent a sequence by stacking self-attention layers with positional encoding. What could the possible issues be?
+1. Can you design a learnable positional encoding method?
+1. Can we assign different learned embeddings according to different offsets between queries and keys that are compared in self-attention? Hint: you may refer to relative position embeddings :cite:`shaw2018self,huang2018music`.
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/1651)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1652)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/3870)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/18030)
+:end_tab:

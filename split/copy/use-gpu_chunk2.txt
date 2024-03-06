@@ -1,0 +1,148 @@
+RNGKey(0))
+x = jax.random.normal(key1, (10,))  # Dummy input
+params = net.init(key2, x)  # Initialization call
+```
+
+We will see many more examples of
+how to run models on GPUs in the following chapters,
+simply because the models will become somewhat more computationally intensive.
+
+For example, when the input is a tensor on the GPU, the model will calculate the result on the same GPU.
+
+```{.python .input}
+%%tab mxnet, pytorch, tensorflow
+net(X)
+```
+
+```{.python .input}
+%%tab jax
+net.apply(params, x)
+```
+
+Let's (**confirm that the model parameters are stored on the same GPU.**)
+
+```{.python .input}
+%%tab mxnet
+net[0].weight.data().ctx
+```
+
+```{.python .input}
+%%tab pytorch
+net[0].weight.data.device
+```
+
+```{.python .input}
+%%tab tensorflow
+net.layers[0].weights[0].device, net.layers[0].weights[1].device
+```
+
+```{.python .input}
+%%tab jax
+print(jax.tree_util.tree_map(lambda x: x.device(), params))
+```
+
+Let the trainer support GPU.
+
+```{.python .input}
+%%tab mxnet
+@d2l.add_to_class(d2l.Module)  #@save
+def set_scratch_params_device(self, device):
+    for attr in dir(self):
+        a = getattr(self, attr)
+        if isinstance(a, np.ndarray):
+            with autograd.record():
+                setattr(self, attr, a.as_in_ctx(device))
+            getattr(self, attr).attach_grad()
+        if isinstance(a, d2l.Module):
+            a.set_scratch_params_device(device)
+        if isinstance(a, list):
+            for elem in a:
+                elem.set_scratch_params_device(device)
+```
+
+```{.python .input}
+%%tab mxnet, pytorch
+@d2l.add_to_class(d2l.Trainer)  #@save
+def __init__(self, max_epochs, num_gpus=0, gradient_clip_val=0):
+    self.save_hyperparameters()
+    self.gpus = [d2l.gpu(i) for i in range(min(num_gpus, d2l.num_gpus()))]
+
+@d2l.add_to_class(d2l.Trainer)  #@save
+def prepare_batch(self, batch):
+    if self.gpus:
+        batch = [d2l.to(a, self.gpus[0]) for a in batch]
+    return batch
+
+@d2l.add_to_class(d2l.Trainer)  #@save
+def prepare_model(self, model):
+    model.trainer = self
+    model.board.xlim = [0, self.max_epochs]
+    if self.gpus:
+        if tab.selected('mxnet'):
+            model.collect_params().reset_ctx(self.gpus[0])
+            model.set_scratch_params_device(self.gpus[0])
+        if tab.selected('pytorch'):
+            model.to(self.gpus[0])
+    self.model = model
+```
+
+```{.python .input}
+%%tab jax
+@d2l.add_to_class(d2l.Trainer)  #@save
+def __init__(self, max_epochs, num_gpus=0, gradient_clip_val=0):
+    self.save_hyperparameters()
+    self.gpus = [d2l.gpu(i) for i in range(min(num_gpus, d2l.num_gpus()))]
+
+@d2l.add_to_class(d2l.Trainer)  #@save
+def prepare_batch(self, batch):
+    if self.gpus:
+        batch = [d2l.to(a, self.gpus[0]) for a in batch]
+    return batch
+```
+
+In short, as long as all data and parameters are on the same device, we can learn models efficiently. In the following chapters we will see several such examples.
+
+## Summary
+
+We can specify devices for storage and calculation, such as the CPU or GPU.
+  By default, data is created in the main memory
+  and then uses the CPU for calculations.
+The deep learning framework requires all input data for calculation
+  to be on the same device,
+  be it CPU or the same GPU.
+You can lose significant performance by moving data without care.
+  A typical mistake is as follows: computing the loss
+  for every minibatch on the GPU and reporting it back
+  to the user on the command line (or logging it in a NumPy `ndarray`)
+  will trigger a global interpreter lock which stalls all GPUs.
+  It is much better to allocate memory
+  for logging inside the GPU and only move larger logs.
+
+## Exercises
+
+1. Try a larger computation task, such as the multiplication of large matrices,
+   and see the difference in speed between the CPU and GPU.
+   What about a task with a small number of calculations?
+1. How should we read and write model parameters on the GPU?
+1. Measure the time it takes to compute 1000
+   matrix--matrix multiplications of $100 \times 100$ matrices
+   and log the Frobenius norm of the output matrix one result at a time. Compare it with keeping a log on the GPU and transferring only the final result.
+1. Measure how much time it takes to perform two matrix--matrix multiplications
+   on two GPUs at the same time. Compare it with computing in in sequence
+   on one GPU. Hint: you should see almost linear scaling.
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/62)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/63)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/270)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/17995)
+:end_tab:

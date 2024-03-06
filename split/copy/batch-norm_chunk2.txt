@@ -1,0 +1,305 @@
+s also independent of whether we are in training or test regime. In other words, it is simply a deterministic transformation that standardizes the activations to a given scale. This can be very beneficial in preventing divergence in optimization. We skip further details and recommend that interested readers consult the original paper.
+
+### Batch Normalization During Prediction
+
+As we mentioned earlier, batch normalization typically behaves differently
+in training mode than in prediction mode.
+First, the noise in the sample mean and the sample variance
+arising from estimating each on minibatches
+is no longer desirable once we have trained the model.
+Second, we might not have the luxury
+of computing per-batch normalization statistics.
+For example,
+we might need to apply our model to make one prediction at a time.
+
+Typically, after training, we use the entire dataset
+to compute stable estimates of the variable statistics
+and then fix them at prediction time.
+Hence, batch normalization behaves differently during training than at test time.
+Recall that dropout also exhibits this characteristic.
+
+## (**Implementation from Scratch**)
+
+To see how batch normalization works in practice, we implement one from scratch below.
+
+```{.python .input}
+%%tab mxnet
+def batch_norm(X, gamma, beta, moving_mean, moving_var, eps, momentum):
+    # Use autograd to determine whether we are in training mode
+    if not autograd.is_training():
+        # In prediction mode, use mean and variance obtained by moving average
+        X_hat = (X - moving_mean) / np.sqrt(moving_var + eps)
+    else:
+        assert len(X.shape) in (2, 4)
+        if len(X.shape) == 2:
+            # When using a fully connected layer, calculate the mean and
+            # variance on the feature dimension
+            mean = X.mean(axis=0)
+            var = ((X - mean) ** 2).mean(axis=0)
+        else:
+            # When using a two-dimensional convolutional layer, calculate the
+            # mean and variance on the channel dimension (axis=1). Here we
+            # need to maintain the shape of X, so that the broadcasting
+            # operation can be carried out later
+            mean = X.mean(axis=(0, 2, 3), keepdims=True)
+            var = ((X - mean) ** 2).mean(axis=(0, 2, 3), keepdims=True)
+        # In training mode, the current mean and variance are used 
+        X_hat = (X - mean) / np.sqrt(var + eps)
+        # Update the mean and variance using moving average
+        moving_mean = (1.0 - momentum) * moving_mean + momentum * mean
+        moving_var = (1.0 - momentum) * moving_var + momentum * var
+    Y = gamma * X_hat + beta  # Scale and shift
+    return Y, moving_mean, moving_var
+```
+
+```{.python .input}
+%%tab pytorch
+def batch_norm(X, gamma, beta, moving_mean, moving_var, eps, momentum):
+    # Use is_grad_enabled to determine whether we are in training mode
+    if not torch.is_grad_enabled():
+        # In prediction mode, use mean and variance obtained by moving average
+        X_hat = (X - moving_mean) / torch.sqrt(moving_var + eps)
+    else:
+        assert len(X.shape) in (2, 4)
+        if len(X.shape) == 2:
+            # When using a fully connected layer, calculate the mean and
+            # variance on the feature dimension
+            mean = X.mean(dim=0)
+            var = ((X - mean) ** 2).mean(dim=0)
+        else:
+            # When using a two-dimensional convolutional layer, calculate the
+            # mean and variance on the channel dimension (axis=1). Here we
+            # need to maintain the shape of X, so that the broadcasting
+            # operation can be carried out later
+            mean = X.mean(dim=(0, 2, 3), keepdim=True)
+            var = ((X - mean) ** 2).mean(dim=(0, 2, 3), keepdim=True)
+        # In training mode, the current mean and variance are used 
+        X_hat = (X - mean) / torch.sqrt(var + eps)
+        # Update the mean and variance using moving average
+        moving_mean = (1.0 - momentum) * moving_mean + momentum * mean
+        moving_var = (1.0 - momentum) * moving_var + momentum * var
+    Y = gamma * X_hat + beta  # Scale and shift
+    return Y, moving_mean.data, moving_var.data
+```
+
+```{.python .input}
+%%tab tensorflow
+def batch_norm(X, gamma, beta, moving_mean, moving_var, eps):
+    # Compute reciprocal of square root of the moving variance elementwise
+    inv = tf.cast(tf.math.rsqrt(moving_var + eps), X.dtype)
+    # Scale and shift
+    inv *= gamma
+    Y = X * inv + (beta - moving_mean * inv)
+    return Y
+```
+
+```{.python .input}
+%%tab jax
+def batch_norm(X, deterministic, gamma, beta, moving_mean, moving_var, eps,
+               momentum):
+    # Use `deterministic` to determine whether the current mode is training
+    # mode or prediction mode
+    if deterministic:
+        # In prediction mode, use mean and variance obtained by moving average
+        # `linen.Module.variables` have a `value` attribute containing the array
+        X_hat = (X - moving_mean.value) / jnp.sqrt(moving_var.value + eps)
+    else:
+        assert len(X.shape) in (2, 4)
+        if len(X.shape) == 2:
+            # When using a fully connected layer, calculate the mean and
+            # variance on the feature dimension
+            mean = X.mean(axis=0)
+            var = ((X - mean) ** 2).mean(axis=0)
+        else:
+            # When using a two-dimensional convolutional layer, calculate the
+            # mean and variance on the channel dimension (axis=1). Here we
+            # need to maintain the shape of `X`, so that the broadcasting
+            # operation can be carried out later
+            mean = X.mean(axis=(0, 2, 3), keepdims=True)
+            var = ((X - mean) ** 2).mean(axis=(0, 2, 3), keepdims=True)
+        # In training mode, the current mean and variance are used
+        X_hat = (X - mean) / jnp.sqrt(var + eps)
+        # Update the mean and variance using moving average
+        moving_mean.value = momentum * moving_mean.value + (1.0 - momentum) * mean
+        moving_var.value = momentum * moving_var.value + (1.0 - momentum) * var
+    Y = gamma * X_hat + beta  # Scale and shift
+    return Y
+```
+
+We can now [**create a proper `BatchNorm` layer.**]
+Our layer will maintain proper parameters
+for scale `gamma` and shift `beta`,
+both of which will be updated in the course of training.
+Additionally, our layer will maintain
+moving averages of the means and variances
+for subsequent use during model prediction.
+
+Putting aside the algorithmic details,
+note the design pattern underlying our implementation of the layer.
+Typically, we define the mathematics in a separate function, say `batch_norm`.
+We then integrate this functionality into a custom layer,
+whose code mostly addresses bookkeeping matters,
+such as moving data to the right device context,
+allocating and initializing any required variables,
+keeping track of moving averages (here for mean and variance), and so on.
+This pattern enables a clean separation of mathematics from boilerplate code.
+Also note that for the sake of convenience
+we did not worry about automatically inferring the input shape here;
+thus we need to specify the number of features throughout.
+By now all modern deep learning frameworks offer automatic detection of size and shape in the
+high-level batch normalization APIs (in practice we will use this instead).
+
+```{.python .input}
+%%tab mxnet
+class BatchNorm(nn.Block):
+    # `num_features`: the number of outputs for a fully connected layer
+    # or the number of output channels for a convolutional layer. `num_dims`:
+    # 2 for a fully connected layer and 4 for a convolutional layer
+    def __init__(self, num_features, num_dims, **kwargs):
+        super().__init__(**kwargs)
+        if num_dims == 2:
+            shape = (1, num_features)
+        else:
+            shape = (1, num_features, 1, 1)
+        # The scale parameter and the shift parameter (model parameters) are
+        # initialized to 1 and 0, respectively
+        self.gamma = self.params.get('gamma', shape=shape, init=init.One())
+        self.beta = self.params.get('beta', shape=shape, init=init.Zero())
+        # The variables that are not model parameters are initialized to 0 and
+        # 1
+        self.moving_mean = np.zeros(shape)
+        self.moving_var = np.ones(shape)
+
+    def forward(self, X):
+        # If `X` is not on the main memory, copy `moving_mean` and
+        # `moving_var` to the device where `X` is located
+        if self.moving_mean.ctx != X.ctx:
+            self.moving_mean = self.moving_mean.copyto(X.ctx)
+            self.moving_var = self.moving_var.copyto(X.ctx)
+        # Save the updated `moving_mean` and `moving_var`
+        Y, self.moving_mean, self.moving_var = batch_norm(
+            X, self.gamma.data(), self.beta.data(), self.moving_mean,
+            self.moving_var, eps=1e-12, momentum=0.1)
+        return Y
+```
+
+```{.python .input}
+%%tab pytorch
+class BatchNorm(nn.Module):
+    # num_features: the number of outputs for a fully connected layer or the
+    # number of output channels for a convolutional layer. num_dims: 2 for a
+    # fully connected layer and 4 for a convolutional layer
+    def __init__(self, num_features, num_dims):
+        super().__init__()
+        if num_dims == 2:
+            shape = (1, num_features)
+        else:
+            shape = (1, num_features, 1, 1)
+        # The scale parameter and the shift parameter (model parameters) are
+        # initialized to 1 and 0, respectively
+        self.gamma = nn.Parameter(torch.ones(shape))
+        self.beta = nn.Parameter(torch.zeros(shape))
+        # The variables that are not model parameters are initialized to 0 and
+        # 1
+        self.moving_mean = torch.zeros(shape)
+        self.moving_var = torch.ones(shape)
+
+    def forward(self, X):
+        # If X is not on the main memory, copy moving_mean and moving_var to
+        # the device where X is located
+        if self.moving_mean.device != X.device:
+            self.moving_mean = self.moving_mean.to(X.device)
+            self.moving_var = self.moving_var.to(X.device)
+        # Save the updated moving_mean and moving_var
+        Y, self.moving_mean, self.moving_var = batch_norm(
+            X, self.gamma, self.beta, self.moving_mean,
+            self.moving_var, eps=1e-5, momentum=0.1)
+        return Y
+```
+
+```{.python .input}
+%%tab tensorflow
+class BatchNorm(tf.keras.layers.Layer):
+    def __init__(self, **kwargs):
+        super(BatchNorm, self).__init__(**kwargs)
+
+    def build(self, input_shape):
+        weight_shape = [input_shape[-1], ]
+        # The scale parameter and the shift parameter (model parameters) are
+        # initialized to 1 and 0, respectively
+        self.gamma = self.add_weight(name='gamma', shape=weight_shape,
+            initializer=tf.initializers.ones, trainable=True)
+        self.beta = self.add_weight(name='beta', shape=weight_shape,
+            initializer=tf.initializers.zeros, trainable=True)
+        # The variables that are not model parameters are initialized to 0
+        self.moving_mean = self.add_weight(name='moving_mean',
+            shape=weight_shape, initializer=tf.initializers.zeros,
+            trainable=False)
+        self.moving_variance = self.add_weight(name='moving_variance',
+            shape=weight_shape, initializer=tf.initializers.ones,
+            trainable=False)
+        super(BatchNorm, self).build(input_shape)
+
+    def assign_moving_average(self, variable, value):
+        momentum = 0.1
+        delta = (1.0 - momentum) * variable + momentum * value
+        return variable.assign(delta)
+
+    @tf.function
+    def call(self, inputs, training):
+        if training:
+            axes = list(range(len(inputs.shape) - 1))
+            batch_mean = tf.reduce_mean(inputs, axes, keepdims=True)
+            batch_variance = tf.reduce_mean(tf.math.squared_difference(
+                inputs, tf.stop_gradient(batch_mean)), axes, keepdims=True)
+            batch_mean = tf.squeeze(batch_mean, axes)
+            batch_variance = tf.squeeze(batch_variance, axes)
+            mean_update = self.assign_moving_average(
+                self.moving_mean, batch_mean)
+            variance_update = self.assign_moving_average(
+                self.moving_variance, batch_variance)
+            self.add_update(mean_update)
+            self.add_update(variance_update)
+            mean, variance = batch_mean, batch_variance
+        else:
+            mean, variance = self.moving_mean, self.moving_variance
+        output = batch_norm(inputs, moving_mean=mean, moving_var=variance,
+            beta=self.beta, gamma=self.gamma, eps=1e-5)
+        return output
+```
+
+```{.python .input}
+%%tab jax
+class BatchNorm(nn.Module):
+    # `num_features`: the number of outputs for a fully connected layer
+    # or the number of output channels for a convolutional layer.
+    # `num_dims`: 2 for a fully connected layer and 4 for a convolutional layer
+    # Use `deterministic` to determine whether the current mode is training
+    # mode or prediction mode
+    num_features: int
+    num_dims: int
+    deterministic: bool = False
+
+    @nn.compact
+    def __call__(self, X):
+        if self.num_dims == 2:
+            shape = (1, self.num_features)
+        else:
+            shape = (1, 1, 1, self.num_features)
+
+        # The scale parameter and the shift parameter (model parameters) are
+        # initialized to 1 and 0, respectively
+        gamma = self.param('gamma', jax.nn.initializers.ones, shape)
+        beta = self.param('beta', jax.nn.initializers.zeros, shape)
+
+        # The variables that are not model parameters are initialized to 0 and
+        # 1. Save them to the 'batch_stats' collection
+        moving_mean = self.variable('batch_stats', 'moving_mean', jnp.zeros, shape)
+        moving_var = self.variable('batch_stats', 'moving_var', jnp.ones, shape)
+        Y = batch_norm(X, self.deterministic, gamma, beta,
+                       moving_mean, moving_var, eps=1e-5, momentum=0.9)
+
+        return Y
+```
+
+We used `momentum` to govern the aggregation over past mean and variance estimates.

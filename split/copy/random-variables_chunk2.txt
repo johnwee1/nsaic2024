@@ -1,0 +1,311 @@
+ the mean, we arrive at the variance
+
+$$\sigma_X^2 = \textrm{Var}(X) = E\left[(X-\mu_X)^2\right] = E[X^2] - \mu_X^2.$$
+:eqlabel:`eq_var_def`
+
+The last equality in :eqref:`eq_var_def` holds by expanding out the definition in the middle, and applying the properties of expectation.
+
+Let's look at our example where $X$ is the random variable which takes the value $a-2$ with probability $p$, $a+2$ with probability $p$ and $a$ with probability $1-2p$.  In this case $\mu_X = a$, so all we need to compute is $E\left[X^2\right]$.  This can readily be done:
+
+$$
+E\left[X^2\right] = (a-2)^2p + a^2(1-2p) + (a+2)^2p = a^2 + 8p.
+$$
+
+Thus, we see that by :eqref:`eq_var_def` our variance is
+
+$$
+\sigma_X^2 = \textrm{Var}(X) = E[X^2] - \mu_X^2 = a^2 + 8p - a^2 = 8p.
+$$
+
+This result again makes sense.  The largest $p$ can be is $1/2$ which corresponds to picking $a-2$ or $a+2$ with a coin flip.  The variance of this being $4$ corresponds to the fact that both $a-2$ and $a+2$ are $2$ units away from the mean, and $2^2 = 4$.  On the other end of the spectrum, if $p=0$, this random variable always takes the value $0$ and so it has no variance at all.
+
+We will list a few properties of variance below:
+
+* For any random variable $X$, $\textrm{Var}(X) \ge 0$, with $\textrm{Var}(X) = 0$ if and only if $X$ is a constant.
+* For any random variable $X$ and numbers $a$ and $b$, we have that $\textrm{Var}(aX+b) = a^2\textrm{Var}(X)$.
+* If we have two *independent* random variables $X$ and $Y$, we have $\textrm{Var}(X+Y) = \textrm{Var}(X) + \textrm{Var}(Y)$.
+
+When interpreting these values, there can be a bit of a hiccup.  In particular, let's try imagining what happens if we keep track of units through this computation.  Suppose that we are working with the star rating assigned to a product on the web page.  Then $a$, $a-2$, and $a+2$ are all measured in units of stars.  Similarly, the mean $\mu_X$ is then also measured in stars (being a weighted average).  However, if we get to the variance, we immediately encounter an issue, which is we want to look at $(X-\mu_X)^2$, which is in units of *squared stars*.  This means that the variance itself is not comparable to the original measurements.  To make it interpretable, we will need to return to our original units.
+
+### Standard Deviations
+
+This summary statistics can always be deduced from the variance by taking the square root!  Thus we define the *standard deviation* to be
+
+$$
+\sigma_X = \sqrt{\textrm{Var}(X)}.
+$$
+
+In our example, this means we now have the standard deviation is $\sigma_X = 2\sqrt{2p}$.  If we are dealing with units of stars for our review example, $\sigma_X$ is again in units of stars.
+
+The properties we had for the variance can be restated for the standard deviation.
+
+* For any random variable $X$, $\sigma_{X} \ge 0$.
+* For any random variable $X$ and numbers $a$ and $b$, we have that $\sigma_{aX+b} = |a|\sigma_{X}$
+* If we have two *independent* random variables $X$ and $Y$, we have $\sigma_{X+Y} = \sqrt{\sigma_{X}^2 + \sigma_{Y}^2}$.
+
+It is natural at this moment to ask, "If the standard deviation is in the units of our original random variable, does it represent something we can draw with regards to that random variable?"  The answer is a resounding yes!  Indeed much like the mean told us the typical location of our random variable, the standard deviation gives the typical range of variation of that random variable.  We can make this rigorous with what is known as Chebyshev's inequality:
+
+$$P\left(X \not\in [\mu_X - \alpha\sigma_X, \mu_X + \alpha\sigma_X]\right) \le \frac{1}{\alpha^2}.$$
+:eqlabel:`eq_chebyshev`
+
+Or to state it verbally in the case of $\alpha=10$, $99\%$ of the samples from any random variable fall within $10$ standard deviations of the mean.  This gives an immediate interpretation to our standard summary statistics.
+
+To see how this statement is rather subtle, let's take a look at our running example again where  $X$ is the random variable which takes the value $a-2$ with probability $p$, $a+2$ with probability $p$ and $a$ with probability $1-2p$.  We saw that the mean was $a$ and the standard deviation was $2\sqrt{2p}$.  This means, if we take Chebyshev's inequality :eqref:`eq_chebyshev` with $\alpha = 2$, we see that the expression is
+
+$$
+P\left(X \not\in [a - 4\sqrt{2p}, a + 4\sqrt{2p}]\right) \le \frac{1}{4}.
+$$
+
+This means that $75\%$ of the time, this random variable will fall within this interval for any value of $p$.  Now, notice that as $p \rightarrow 0$, this interval also converges to the single point $a$.  But we know that our random variable takes the values $a-2, a$, and $a+2$ only so eventually we can be certain $a-2$ and $a+2$ will fall outside the interval!  The question is, at what $p$ does that happen.  So we want to solve: for what $p$ does $a+4\sqrt{2p} = a+2$, which is solved when $p=1/8$, which is *exactly* the first $p$ where it could possibly happen without violating our claim that no more than $1/4$ of samples from the distribution would fall outside the interval ($1/8$ to the left, and $1/8$ to the right).
+
+Let's visualize this.  We will show the probability of getting the three values as three vertical bars with height proportional to the probability.  The interval will be drawn as a horizontal line in the middle.  The first plot shows what happens for $p > 1/8$ where the interval safely contains all points.
+
+```{.python .input}
+#@tab mxnet
+# Define a helper to plot these figures
+def plot_chebyshev(a, p):
+    d2l.set_figsize()
+    d2l.plt.stem([a-2, a, a+2], [p, 1-2*p, p], use_line_collection=True)
+    d2l.plt.xlim([-4, 4])
+    d2l.plt.xlabel('x')
+    d2l.plt.ylabel('p.m.f.')
+
+    d2l.plt.hlines(0.5, a - 4 * np.sqrt(2 * p),
+                   a + 4 * np.sqrt(2 * p), 'black', lw=4)
+    d2l.plt.vlines(a - 4 * np.sqrt(2 * p), 0.53, 0.47, 'black', lw=1)
+    d2l.plt.vlines(a + 4 * np.sqrt(2 * p), 0.53, 0.47, 'black', lw=1)
+    d2l.plt.title(f'p = {p:.3f}')
+
+    d2l.plt.show()
+
+# Plot interval when p > 1/8
+plot_chebyshev(0.0, 0.2)
+```
+
+```{.python .input}
+#@tab pytorch
+# Define a helper to plot these figures
+def plot_chebyshev(a, p):
+    d2l.set_figsize()
+    d2l.plt.stem([a-2, a, a+2], [p, 1-2*p, p], use_line_collection=True)
+    d2l.plt.xlim([-4, 4])
+    d2l.plt.xlabel('x')
+    d2l.plt.ylabel('p.m.f.')
+
+    d2l.plt.hlines(0.5, a - 4 * torch.sqrt(2 * p),
+                   a + 4 * torch.sqrt(2 * p), 'black', lw=4)
+    d2l.plt.vlines(a - 4 * torch.sqrt(2 * p), 0.53, 0.47, 'black', lw=1)
+    d2l.plt.vlines(a + 4 * torch.sqrt(2 * p), 0.53, 0.47, 'black', lw=1)
+    d2l.plt.title(f'p = {p:.3f}')
+
+    d2l.plt.show()
+
+# Plot interval when p > 1/8
+plot_chebyshev(0.0, torch.tensor(0.2))
+```
+
+```{.python .input}
+#@tab tensorflow
+# Define a helper to plot these figures
+def plot_chebyshev(a, p):
+    d2l.set_figsize()
+    d2l.plt.stem([a-2, a, a+2], [p, 1-2*p, p], use_line_collection=True)
+    d2l.plt.xlim([-4, 4])
+    d2l.plt.xlabel('x')
+    d2l.plt.ylabel('p.m.f.')
+
+    d2l.plt.hlines(0.5, a - 4 * tf.sqrt(2 * p),
+                   a + 4 * tf.sqrt(2 * p), 'black', lw=4)
+    d2l.plt.vlines(a - 4 * tf.sqrt(2 * p), 0.53, 0.47, 'black', lw=1)
+    d2l.plt.vlines(a + 4 * tf.sqrt(2 * p), 0.53, 0.47, 'black', lw=1)
+    d2l.plt.title(f'p = {p:.3f}')
+
+    d2l.plt.show()
+
+# Plot interval when p > 1/8
+plot_chebyshev(0.0, tf.constant(0.2))
+```
+
+The second shows that at $p = 1/8$, the interval exactly touches the two points.  This shows that the inequality is *sharp*, since no smaller interval could be taken while keeping the inequality true.
+
+```{.python .input}
+#@tab mxnet
+# Plot interval when p = 1/8
+plot_chebyshev(0.0, 0.125)
+```
+
+```{.python .input}
+#@tab pytorch
+# Plot interval when p = 1/8
+plot_chebyshev(0.0, torch.tensor(0.125))
+```
+
+```{.python .input}
+#@tab tensorflow
+# Plot interval when p = 1/8
+plot_chebyshev(0.0, tf.constant(0.125))
+```
+
+The third shows that for $p < 1/8$ the interval only contains the center.  This does not invalidate the inequality since we only needed to ensure that no more than $1/4$ of the probability falls outside the interval, which means that once $p < 1/8$, the two points at $a-2$ and $a+2$ can be discarded.
+
+```{.python .input}
+#@tab mxnet
+# Plot interval when p < 1/8
+plot_chebyshev(0.0, 0.05)
+```
+
+```{.python .input}
+#@tab pytorch
+# Plot interval when p < 1/8
+plot_chebyshev(0.0, torch.tensor(0.05))
+```
+
+```{.python .input}
+#@tab tensorflow
+# Plot interval when p < 1/8
+plot_chebyshev(0.0, tf.constant(0.05))
+```
+
+### Means and Variances in the Continuum
+
+This has all been in terms of discrete random variables, but the case of continuous random variables is similar.  To intuitively understand how this works, imagine that we split the real number line into intervals of length $\epsilon$ given by $(\epsilon i, \epsilon (i+1)]$.  Once we do this, our continuous random variable has been made discrete and we can use :eqref:`eq_exp_def` say that
+
+$$
+\begin{aligned}
+\mu_X & \approx \sum_{i} (\epsilon i)P(X \in (\epsilon i, \epsilon (i+1)]) \\
+& \approx \sum_{i} (\epsilon i)p_X(\epsilon i)\epsilon, \\
+\end{aligned}
+$$
+
+where $p_X$ is the density of $X$.  This is an approximation to the integral of $xp_X(x)$, so we can conclude that
+
+$$
+\mu_X = \int_{-\infty}^\infty xp_X(x) \; dx.
+$$
+
+Similarly, using :eqref:`eq_var_def` the variance can be written as
+
+$$
+\sigma^2_X = E[X^2] - \mu_X^2 = \int_{-\infty}^\infty x^2p_X(x) \; dx - \left(\int_{-\infty}^\infty xp_X(x) \; dx\right)^2.
+$$
+
+Everything stated above about the mean, the variance, and the standard deviation still applies in this case.  For instance, if we consider the random variable with density
+
+$$
+p(x) = \begin{cases}
+1 & x \in [0,1], \\
+0 & \textrm{otherwise}.
+\end{cases}
+$$
+
+we can compute
+
+$$
+\mu_X = \int_{-\infty}^\infty xp(x) \; dx = \int_0^1 x \; dx = \frac{1}{2}.
+$$
+
+and
+
+$$
+\sigma_X^2 = \int_{-\infty}^\infty x^2p(x) \; dx - \left(\frac{1}{2}\right)^2 = \frac{1}{3} - \frac{1}{4} = \frac{1}{12}.
+$$
+
+As a warning, let's examine one more example, known as the *Cauchy distribution*.  This is the distribution with p.d.f. given by
+
+$$
+p(x) = \frac{1}{1+x^2}.
+$$
+
+```{.python .input}
+#@tab mxnet
+# Plot the Cauchy distribution p.d.f.
+x = np.arange(-5, 5, 0.01)
+p = 1 / (1 + x**2)
+
+d2l.plot(x, p, 'x', 'p.d.f.')
+```
+
+```{.python .input}
+#@tab pytorch
+# Plot the Cauchy distribution p.d.f.
+x = torch.arange(-5, 5, 0.01)
+p = 1 / (1 + x**2)
+
+d2l.plot(x, p, 'x', 'p.d.f.')
+```
+
+```{.python .input}
+#@tab tensorflow
+# Plot the Cauchy distribution p.d.f.
+x = tf.range(-5, 5, 0.01)
+p = 1 / (1 + x**2)
+
+d2l.plot(x, p, 'x', 'p.d.f.')
+```
+
+This function looks innocent, and indeed consulting a table of integrals will show it has area one under it, and thus it defines a continuous random variable.
+
+To see what goes astray, let's try to compute the variance of this.  This would involve using :eqref:`eq_var_def` computing
+
+$$
+\int_{-\infty}^\infty \frac{x^2}{1+x^2}\; dx.
+$$
+
+The function on the inside looks like this:
+
+```{.python .input}
+#@tab mxnet
+# Plot the integrand needed to compute the variance
+x = np.arange(-20, 20, 0.01)
+p = x**2 / (1 + x**2)
+
+d2l.plot(x, p, 'x', 'integrand')
+```
+
+```{.python .input}
+#@tab pytorch
+# Plot the integrand needed to compute the variance
+x = torch.arange(-20, 20, 0.01)
+p = x**2 / (1 + x**2)
+
+d2l.plot(x, p, 'x', 'integrand')
+```
+
+```{.python .input}
+#@tab tensorflow
+# Plot the integrand needed to compute the variance
+x = tf.range(-20, 20, 0.01)
+p = x**2 / (1 + x**2)
+
+d2l.plot(x, p, 'x', 'integrand')
+```
+
+This function clearly has infinite area under it since it is essentially the constant one with a small dip near zero, and indeed we could show that
+
+$$
+\int_{-\infty}^\infty \frac{x^2}{1+x^2}\; dx = \infty.
+$$
+
+This means it does not have a well-defined finite variance.
+
+However, looking deeper shows an even more disturbing result.  Let's try to compute the mean using :eqref:`eq_exp_def`.  Using the change of variables formula, we see
+
+$$
+\mu_X = \int_{-\infty}^{\infty} \frac{x}{1+x^2} \; dx = \frac{1}{2}\int_1^\infty \frac{1}{u} \; du.
+$$
+
+The integral inside is the definition of the logarithm, so this is in essence $\log(\infty) = \infty$, so there is no well-defined average value either!
+
+Machine learning scientists define their models so that we most often do not need to deal with these issues, and will in the vast majority of cases deal with random variables with well-defined means and variances.  However, every so often random variables with *heavy tails* (that is those random variables where the probabilities of getting large values are large enough to make things like the mean or variance undefined) are helpful in modeling physical systems, thus it is worth knowing that they exist.
+
+### Joint Density Functions
+
+The above work all assumes we are working with a single real valued random variable.  But what if we are dealing with two or more potentially highly correlated random variables?  This circumstance is the norm in machine learning: imagine random variables like $R_{i, j}$ which encode the red value of the pixel at the $(i, j)$ coordinate in an image, or $P_t$ which is a random variable given by a stock price at time $t$.  Nearby pixels tend to have similar color, and nearby times tend to have similar prices.  We cannot treat them as separate random variables, and expect to create a successful model (we will see in :numref:`sec_naive_bayes` a model that under-performs due to such an assumption).  We need to develop the mathematical language to handle these correlated continuous random variables.
+
+Thankfully, with the multiple integrals in :numref:`sec_integral_calculus` we can develop such a language.  Suppose that we have, for simplicity, two random variables $X, Y$ which can be correlated.  Then, similar to the case of a single variable, we can ask the question:
+
+$$
+P(X \;\textrm{is in an}\; \epsilon \textrm{-sized interval around}\; x \; \textrm{and} \;Y \;\textrm{is in an}\; \epsilon \textrm{-sized interval around}\; y ).
+$$
+
+Similar reasoning to the single variable 

@@ -1,0 +1,186 @@
+f:`sec_maximum_likelihood`, but we see the phenomena clearly here in practice.
+
+As discussed in that section, we fix this by use the fact that $\log a b = \log a + \log b$, i.e., we switch to summing logarithms.
+Even if both $a$ and $b$ are small numbers, the logarithm values should be in a proper range.
+
+```{.python .input}
+#@tab mxnet
+a = 0.1
+print('underflow:', a**784)
+print('logarithm is normal:', 784*math.log(a))
+```
+
+```{.python .input}
+#@tab pytorch
+a = 0.1
+print('underflow:', a**784)
+print('logarithm is normal:', 784*math.log(a))
+```
+
+```{.python .input}
+#@tab tensorflow
+a = 0.1
+print('underflow:', a**784)
+print('logarithm is normal:', 784*tf.math.log(a).numpy())
+```
+
+Since the logarithm is an increasing function, we can rewrite :eqref:`eq_naive_bayes_estimation` as
+
+$$ \hat{y} = \mathrm{argmax}_y \ \log P_y[y] + \sum_{i=1}^d \Big[t_i\log P_{xy}[x_i, y] + (1-t_i) \log (1 - P_{xy}[x_i, y]) \Big].$$
+
+We can implement the following stable version:
+
+```{.python .input}
+#@tab mxnet
+log_P_xy = np.log(P_xy)
+log_P_xy_neg = np.log(1 - P_xy)
+log_P_y = np.log(P_y)
+
+def bayes_pred_stable(x):
+    x = np.expand_dims(x, axis=0)  # (28, 28) -> (1, 28, 28)
+    p_xy = log_P_xy * x + log_P_xy_neg * (1 - x)
+    p_xy = p_xy.reshape(10, -1).sum(axis=1)  # p(x|y)
+    return p_xy + log_P_y
+
+py = bayes_pred_stable(image)
+py
+```
+
+```{.python .input}
+#@tab pytorch
+log_P_xy = torch.log(P_xy)
+log_P_xy_neg = torch.log(1 - P_xy)
+log_P_y = torch.log(P_y)
+
+def bayes_pred_stable(x):
+    x = x.unsqueeze(0)  # (28, 28) -> (1, 28, 28)
+    p_xy = log_P_xy * x + log_P_xy_neg * (1 - x)
+    p_xy = p_xy.reshape(10, -1).sum(axis=1)  # p(x|y)
+    return p_xy + log_P_y
+
+py = bayes_pred_stable(image)
+py
+```
+
+```{.python .input}
+#@tab tensorflow
+log_P_xy = tf.math.log(P_xy)
+log_P_xy_neg = tf.math.log(1 - P_xy)
+log_P_y = tf.math.log(P_y)
+
+def bayes_pred_stable(x):
+    x = tf.expand_dims(x, axis=0)  # (28, 28) -> (1, 28, 28)
+    p_xy = log_P_xy * x + log_P_xy_neg * (1 - x)
+    p_xy = tf.math.reduce_sum(tf.reshape(p_xy, (10, -1)), axis=1)  # p(x|y)
+    return p_xy + log_P_y
+
+py = bayes_pred_stable(image)
+py
+```
+
+We may now check if the prediction is correct.
+
+```{.python .input}
+#@tab mxnet
+# Convert label which is a scalar tensor of int32 dtype to a Python scalar
+# integer for comparison
+py.argmax(axis=0) == int(label)
+```
+
+```{.python .input}
+#@tab pytorch
+py.argmax(dim=0) == label
+```
+
+```{.python .input}
+#@tab tensorflow
+tf.argmax(py, axis=0, output_type = tf.int32) == label
+```
+
+If we now predict a few validation examples, we can see the Bayes
+classifier works pretty well.
+
+```{.python .input}
+#@tab mxnet
+def predict(X):
+    return [bayes_pred_stable(x).argmax(axis=0).astype(np.int32) for x in X]
+
+X, y = mnist_test[:18]
+preds = predict(X)
+d2l.show_images(X, 2, 9, titles=[str(d) for d in preds]);
+```
+
+```{.python .input}
+#@tab pytorch
+def predict(X):
+    return [bayes_pred_stable(x).argmax(dim=0).type(torch.int32).item()
+            for x in X]
+
+X = torch.stack([mnist_test[i][0] for i in range(18)], dim=0)
+y = torch.tensor([mnist_test[i][1] for i in range(18)])
+preds = predict(X)
+d2l.show_images(X, 2, 9, titles=[str(d) for d in preds]);
+```
+
+```{.python .input}
+#@tab tensorflow
+def predict(X):
+    return [tf.argmax(
+        bayes_pred_stable(x), axis=0, output_type = tf.int32).numpy()
+            for x in X]
+
+X = tf.stack([train_images[i] for i in range(10, 38)], axis=0)
+y = tf.constant([train_labels[i].numpy() for i in range(10, 38)])
+preds = predict(X)
+d2l.show_images(X, 2, 9, titles=[str(d) for d in preds]);
+```
+
+Finally, let's compute the overall accuracy of the classifier.
+
+```{.python .input}
+#@tab mxnet
+X, y = mnist_test[:]
+preds = np.array(predict(X), dtype=np.int32)
+float((preds == y).sum()) / len(y)  # Validation accuracy
+```
+
+```{.python .input}
+#@tab pytorch
+X = torch.stack([mnist_test[i][0] for i in range(len(mnist_test))], dim=0)
+y = torch.tensor([mnist_test[i][1] for i in range(len(mnist_test))])
+preds = torch.tensor(predict(X), dtype=torch.int32)
+float((preds == y).sum()) / len(y)  # Validation accuracy
+```
+
+```{.python .input}
+#@tab tensorflow
+X = test_images
+y = test_labels
+preds = tf.constant(predict(X), dtype=tf.int32)
+# Validation accuracy
+tf.reduce_sum(tf.cast(preds == y, tf.float32)).numpy() / len(y)
+```
+
+Modern deep networks achieve error rates of less than $0.01$. The relatively poor performance is due to the incorrect statistical assumptions that we made in our model: we assumed that each and every pixel are *independently* generated, depending only on the label. This is clearly not how humans write digits, and this wrong assumption led to the downfall of our overly naive (Bayes) classifier.
+
+## Summary
+* Using Bayes' rule, a classifier can be made by assuming all observed features are independent.
+* This classifier can be trained on a dataset by counting the number of occurrences of combinations of labels and pixel values.
+* This classifier was the gold standard for decades for tasks such as spam detection.
+
+## Exercises
+1. Consider the dataset $[[0,0], [0,1], [1,0], [1,1]]$ with labels given by the XOR of the two elements $[0,1,1,0]$.  What are the probabilities for a Naive Bayes classifier built on this dataset.  Does it successfully classify our points?  If not, what assumptions are violated?
+1. Suppose that we did not use Laplace smoothing when estimating probabilities and a data example arrived at testing time which contained a value never observed in training.  What would the model output?
+1. The naive Bayes classifier is a specific example of a Bayesian network, where the dependence of random variables are encoded with a graph structure.  While the full theory is beyond the scope of this section (see :citet:`Koller.Friedman.2009` for full details), explain why allowing explicit dependence between the two input variables in the XOR model allows for the creation of a successful classifier.
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/418)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1100)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/1101)
+:end_tab:

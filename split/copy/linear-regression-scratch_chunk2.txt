@@ -1,0 +1,169 @@
+rainer)  #@save
+def fit_epoch(self):
+    self.model.training = True
+    if self.state.batch_stats:
+        # Mutable states will be used later (e.g., for batch norm)
+        for batch in self.train_dataloader:
+            (_, mutated_vars), grads = self.model.training_step(self.state.params,
+                                                           self.prepare_batch(batch),
+                                                           self.state)
+            self.state = self.state.apply_gradients(grads=grads)
+            # Can be ignored for models without Dropout Layers
+            self.state = self.state.replace(
+                dropout_rng=jax.random.split(self.state.dropout_rng)[0])
+            self.state = self.state.replace(batch_stats=mutated_vars['batch_stats'])
+            self.train_batch_idx += 1
+    else:
+        for batch in self.train_dataloader:
+            _, grads = self.model.training_step(self.state.params,
+                                                self.prepare_batch(batch),
+                                                self.state)
+            self.state = self.state.apply_gradients(grads=grads)
+            # Can be ignored for models without Dropout Layers
+            self.state = self.state.replace(
+                dropout_rng=jax.random.split(self.state.dropout_rng)[0])
+            self.train_batch_idx += 1
+
+    if self.val_dataloader is None:
+        return
+    self.model.training = False
+    for batch in self.val_dataloader:
+        self.model.validation_step(self.state.params,
+                                   self.prepare_batch(batch),
+                                   self.state)
+        self.val_batch_idx += 1
+```
+
+We are almost ready to train the model,
+but first we need some training data.
+Here we use the `SyntheticRegressionData` class 
+and pass in some ground truth parameters.
+Then we train our model with 
+the learning rate `lr=0.03` 
+and set `max_epochs=3`. 
+Note that in general, both the number of epochs 
+and the learning rate are hyperparameters.
+In general, setting hyperparameters is tricky
+and we will usually want to use a three-way split,
+one set for training, 
+a second for hyperparameter selection,
+and the third reserved for the final evaluation.
+We elide these details for now but will revise them
+later.
+
+```{.python .input  n=20}
+%%tab all
+model = LinearRegressionScratch(2, lr=0.03)
+data = d2l.SyntheticRegressionData(w=d2l.tensor([2, -3.4]), b=4.2)
+trainer = d2l.Trainer(max_epochs=3)
+trainer.fit(model, data)
+```
+
+Because we synthesized the dataset ourselves,
+we know precisely what the true parameters are.
+Thus, we can [**evaluate our success in training
+by comparing the true parameters
+with those that we learned**] through our training loop.
+Indeed they turn out to be very close to each other.
+
+```{.python .input  n=21}
+%%tab pytorch
+with torch.no_grad():
+    print(f'error in estimating w: {data.w - d2l.reshape(model.w, data.w.shape)}')
+    print(f'error in estimating b: {data.b - model.b}')
+```
+
+```{.python .input  n=22}
+%%tab mxnet, tensorflow
+print(f'error in estimating w: {data.w - d2l.reshape(model.w, data.w.shape)}')
+print(f'error in estimating b: {data.b - model.b}')
+```
+
+```{.python .input  n=23}
+%%tab jax
+params = trainer.state.params
+print(f"error in estimating w: {data.w - d2l.reshape(params['w'], data.w.shape)}")
+print(f"error in estimating b: {data.b - params['b']}")
+```
+
+We should not take the ability to exactly recover 
+the ground truth parameters for granted.
+In general, for deep models unique solutions
+for the parameters do not exist,
+and even for linear models,
+exactly recovering the parameters
+is only possible when no feature 
+is linearly dependent on the others.
+However, in machine learning, 
+we are often less concerned
+with recovering true underlying parameters,
+but rather with parameters 
+that lead to highly accurate prediction :cite:`Vapnik.1992`.
+Fortunately, even on difficult optimization problems,
+stochastic gradient descent can often find remarkably good solutions,
+owing partly to the fact that, for deep networks,
+there exist many configurations of the parameters
+that lead to highly accurate prediction.
+
+
+## Summary
+
+In this section, we took a significant step 
+towards designing deep learning systems 
+by implementing a fully functional 
+neural network model and training loop.
+In this process, we built a data loader, 
+a model, a loss function, an optimization procedure,
+and a visualization and monitoring tool. 
+We did this by composing a Python object 
+that contains all relevant components for training a model. 
+While this is not yet a professional-grade implementation
+it is perfectly functional and code like this 
+could already help you to solve small problems quickly.
+In the coming sections, we will see how to do this
+both *more concisely* (avoiding boilerplate code)
+and *more efficiently* (using our GPUs to their full potential).
+
+
+
+## Exercises
+
+1. What would happen if we were to initialize the weights to zero. Would the algorithm still work? What if we
+   initialized the parameters with variance $1000$ rather than $0.01$?
+1. Assume that you are [Georg Simon Ohm](https://en.wikipedia.org/wiki/Georg_Ohm) trying to come up
+   with a model for resistance that relates voltage and current. Can you use automatic
+   differentiation to learn the parameters of your model?
+1. Can you use [Planck's Law](https://en.wikipedia.org/wiki/Planck%27s_law) to determine the temperature of an object
+   using spectral energy density? For reference, the spectral density $B$ of radiation emanating from a black body is
+   $B(\lambda, T) = \frac{2 hc^2}{\lambda^5} \cdot \left(\exp \frac{h c}{\lambda k T} - 1\right)^{-1}$. Here
+   $\lambda$ is the wavelength, $T$ is the temperature, $c$ is the speed of light, $h$ is Planck's constant, and $k$ is the
+   Boltzmann constant. You measure the energy for different wavelengths $\lambda$ and you now need to fit the spectral
+   density curve to Planck's law.
+1. What are the problems you might encounter if you wanted to compute the second derivatives of the loss? How would
+   you fix them?
+1. Why is the `reshape` method needed in the `loss` function?
+1. Experiment using different learning rates to find out how quickly the loss function value drops. Can you reduce the
+   error by increasing the number of epochs of training?
+1. If the number of examples cannot be divided by the batch size, what happens to `data_iter` at the end of an epoch?
+1. Try implementing a different loss function, such as the absolute value loss `(y_hat - d2l.reshape(y, y_hat.shape)).abs().sum()`.
+    1. Check what happens for regular data.
+    1. Check whether there is a difference in behavior if you actively perturb some entries, such as $y_5 = 10000$, of $\mathbf{y}$.
+    1. Can you think of a cheap solution for combining the best aspects of squared loss and absolute value loss?
+       Hint: how can you avoid really large gradient values?
+1. Why do we need to reshuffle the dataset? Can you design a case where a maliciously constructed dataset would break the optimization algorithm otherwise?
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/42)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/43)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/201)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/17976)
+:end_tab:

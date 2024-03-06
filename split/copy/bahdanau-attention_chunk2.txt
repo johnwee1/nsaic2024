@@ -1,0 +1,227 @@
+  vocab_size: int
+    embed_size: int
+    num_hiddens: int
+    num_layers: int
+    dropout: float = 0
+
+    def setup(self):
+        self.attention = d2l.AdditiveAttention(self.num_hiddens, self.dropout)
+        self.embedding = nn.Embed(self.vocab_size, self.embed_size)
+        self.dense = nn.Dense(self.vocab_size)
+        self.rnn = d2l.GRU(num_hiddens, num_layers, dropout=self.dropout)
+
+    def init_state(self, enc_outputs, enc_valid_lens, *args):
+        # Shape of outputs: (num_steps, batch_size, num_hiddens).
+        # Shape of hidden_state: (num_layers, batch_size, num_hiddens)
+        outputs, hidden_state = enc_outputs
+        # Attention Weights are returned as part of state; init with None
+        return (outputs.transpose(1, 0, 2), hidden_state, enc_valid_lens)
+
+    @nn.compact
+    def __call__(self, X, state, training=False):
+        # Shape of enc_outputs: (batch_size, num_steps, num_hiddens).
+        # Shape of hidden_state: (num_layers, batch_size, num_hiddens)
+        # Ignore Attention value in state
+        enc_outputs, hidden_state, enc_valid_lens = state
+        # Shape of the output X: (num_steps, batch_size, embed_size)
+        X = self.embedding(X).transpose(1, 0, 2)
+        outputs, attention_weights = [], []
+        for x in X:
+            # Shape of query: (batch_size, 1, num_hiddens)
+            query = jnp.expand_dims(hidden_state[-1], axis=1)
+            # Shape of context: (batch_size, 1, num_hiddens)
+            context, attention_w = self.attention(query, enc_outputs,
+                                                  enc_outputs, enc_valid_lens,
+                                                  training=training)
+            # Concatenate on the feature dimension
+            x = jnp.concatenate((context, jnp.expand_dims(x, axis=1)), axis=-1)
+            # Reshape x as (1, batch_size, embed_size + num_hiddens)
+            out, hidden_state = self.rnn(x.transpose(1, 0, 2), hidden_state,
+                                         training=training)
+            outputs.append(out)
+            attention_weights.append(attention_w)
+
+        # Flax sow API is used to capture intermediate variables
+        self.sow('intermediates', 'dec_attention_weights', attention_weights)
+
+        # After fully connected layer transformation, shape of outputs:
+        # (num_steps, batch_size, vocab_size)
+        outputs = self.dense(jnp.concatenate(outputs, axis=0))
+        return outputs.transpose(1, 0, 2), [enc_outputs, hidden_state,
+                                            enc_valid_lens]
+```
+
+In the following, we [**test the implemented
+decoder**] with attention
+using a minibatch of four sequences, each of which are seven time steps long.
+
+```{.python .input}
+%%tab all
+vocab_size, embed_size, num_hiddens, num_layers = 10, 8, 16, 2
+batch_size, num_steps = 4, 7
+encoder = d2l.Seq2SeqEncoder(vocab_size, embed_size, num_hiddens, num_layers)
+decoder = Seq2SeqAttentionDecoder(vocab_size, embed_size, num_hiddens,
+                                  num_layers)
+if tab.selected('mxnet'):
+    X = d2l.zeros((batch_size, num_steps))
+    state = decoder.init_state(encoder(X), None)
+    output, state = decoder(X, state)
+if tab.selected('pytorch'):
+    X = d2l.zeros((batch_size, num_steps), dtype=torch.long)
+    state = decoder.init_state(encoder(X), None)
+    output, state = decoder(X, state)
+if tab.selected('tensorflow'):
+    X = tf.zeros((batch_size, num_steps))
+    state = decoder.init_state(encoder(X, training=False), None)
+    output, state = decoder(X, state, training=False)
+if tab.selected('jax'):
+    X = jnp.zeros((batch_size, num_steps), dtype=jnp.int32)
+    state = decoder.init_state(encoder.init_with_output(d2l.get_key(),
+                                                        X, training=False)[0],
+                               None)
+    (output, state), _ = decoder.init_with_output(d2l.get_key(), X,
+                                                  state, training=False)
+d2l.check_shape(output, (batch_size, num_steps, vocab_size))
+d2l.check_shape(state[0], (batch_size, num_steps, num_hiddens))
+d2l.check_shape(state[1][0], (batch_size, num_hiddens))
+```
+
+## [**Training**]
+
+Now that we specified the new decoder we can proceed analogously to :numref:`sec_seq2seq_training`:
+specify the hyperparameters, instantiate
+a regular encoder and a decoder with attention,
+and train this model for machine translation.
+
+```{.python .input}
+%%tab all
+data = d2l.MTFraEng(batch_size=128)
+embed_size, num_hiddens, num_layers, dropout = 256, 256, 2, 0.2
+if tab.selected('mxnet', 'pytorch', 'jax'):
+    encoder = d2l.Seq2SeqEncoder(
+        len(data.src_vocab), embed_size, num_hiddens, num_layers, dropout)
+    decoder = Seq2SeqAttentionDecoder(
+        len(data.tgt_vocab), embed_size, num_hiddens, num_layers, dropout)
+if tab.selected('mxnet', 'pytorch'):
+    model = d2l.Seq2Seq(encoder, decoder, tgt_pad=data.tgt_vocab['<pad>'],
+                        lr=0.005)
+if tab.selected('jax'):
+    model = d2l.Seq2Seq(encoder, decoder, tgt_pad=data.tgt_vocab['<pad>'],
+                        lr=0.005, training=True)
+if tab.selected('mxnet', 'pytorch', 'jax'):
+    trainer = d2l.Trainer(max_epochs=30, gradient_clip_val=1, num_gpus=1)
+if tab.selected('tensorflow'):
+    with d2l.try_gpu():
+        encoder = d2l.Seq2SeqEncoder(
+            len(data.src_vocab), embed_size, num_hiddens, num_layers, dropout)
+        decoder = Seq2SeqAttentionDecoder(
+            len(data.tgt_vocab), embed_size, num_hiddens, num_layers, dropout)
+        model = d2l.Seq2Seq(encoder, decoder, tgt_pad=data.tgt_vocab['<pad>'],
+                            lr=0.005)
+    trainer = d2l.Trainer(max_epochs=30, gradient_clip_val=1)
+trainer.fit(model, data)
+```
+
+After the model is trained,
+we use it to [**translate a few English sentences**]
+into French and compute their BLEU scores.
+
+```{.python .input}
+%%tab all
+engs = ['go .', 'i lost .', 'he\'s calm .', 'i\'m home .']
+fras = ['va !', 'j\'ai perdu .', 'il est calme .', 'je suis chez moi .']
+if tab.selected('pytorch', 'mxnet', 'tensorflow'):
+    preds, _ = model.predict_step(
+        data.build(engs, fras), d2l.try_gpu(), data.num_steps)
+if tab.selected('jax'):
+    preds, _ = model.predict_step(
+        trainer.state.params, data.build(engs, fras), data.num_steps)
+for en, fr, p in zip(engs, fras, preds):
+    translation = []
+    for token in data.tgt_vocab.to_tokens(p):
+        if token == '<eos>':
+            break
+        translation.append(token)
+    print(f'{en} => {translation}, bleu,'
+          f'{d2l.bleu(" ".join(translation), fr, k=2):.3f}')
+```
+
+Let's [**visualize the attention weights**]
+when translating the last English sentence.
+We see that each query assigns non-uniform weights
+over key--value pairs.
+It shows that at each decoding step,
+different parts of the input sequences
+are selectively aggregated in the attention pooling.
+
+```{.python .input}
+%%tab all
+if tab.selected('pytorch', 'mxnet', 'tensorflow'):
+    _, dec_attention_weights = model.predict_step(
+        data.build([engs[-1]], [fras[-1]]), d2l.try_gpu(), data.num_steps, True)
+if tab.selected('jax'):
+    _, (dec_attention_weights, _) = model.predict_step(
+        trainer.state.params, data.build([engs[-1]], [fras[-1]]),
+        data.num_steps, True)
+attention_weights = d2l.concat(
+    [step[0][0][0] for step in dec_attention_weights], 0)
+attention_weights = d2l.reshape(attention_weights, (1, 1, -1, data.num_steps))
+```
+
+```{.python .input}
+%%tab mxnet
+# Plus one to include the end-of-sequence token
+d2l.show_heatmaps(
+    attention_weights[:, :, :, :len(engs[-1].split()) + 1],
+    xlabel='Key positions', ylabel='Query positions')
+```
+
+```{.python .input}
+%%tab pytorch
+# Plus one to include the end-of-sequence token
+d2l.show_heatmaps(
+    attention_weights[:, :, :, :len(engs[-1].split()) + 1].cpu(),
+    xlabel='Key positions', ylabel='Query positions')
+```
+
+```{.python .input}
+%%tab tensorflow
+# Plus one to include the end-of-sequence token
+d2l.show_heatmaps(attention_weights[:, :, :, :len(engs[-1].split()) + 1],
+                  xlabel='Key positions', ylabel='Query positions')
+```
+
+```{.python .input}
+%%tab jax
+# Plus one to include the end-of-sequence token
+d2l.show_heatmaps(attention_weights[:, :, :, :len(engs[-1].split()) + 1],
+                  xlabel='Key positions', ylabel='Query positions')
+```
+
+## Summary
+
+When predicting a token, if not all the input tokens are relevant, the RNN encoder--decoder with the Bahdanau attention mechanism selectively aggregates different parts of the input sequence. This is achieved by treating the state (context variable) as an output of additive attention pooling.
+In the RNN encoder--decoder, the Bahdanau attention mechanism treats the decoder hidden state at the previous time step as the query, and the encoder hidden states at all the time steps as both the keys and values.
+
+
+## Exercises
+
+1. Replace GRU with LSTM in the experiment.
+1. Modify the experiment to replace the additive attention scoring function with the scaled dot-product. How does it influence the training efficiency?
+
+:begin_tab:`mxnet`
+[Discussions](https://discuss.d2l.ai/t/347)
+:end_tab:
+
+:begin_tab:`pytorch`
+[Discussions](https://discuss.d2l.ai/t/1065)
+:end_tab:
+
+:begin_tab:`tensorflow`
+[Discussions](https://discuss.d2l.ai/t/3868)
+:end_tab:
+
+:begin_tab:`jax`
+[Discussions](https://discuss.d2l.ai/t/18028)
+:end_tab:
+

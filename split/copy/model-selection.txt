@@ -1,0 +1,243 @@
+```{.python .input  n=1}
+%load_ext d2lbook.tab
+tab.interact_select(['mxnet', 'pytorch', 'tensorflow'])
+```
+
+# Model Selection
+:label:`sec_model_selection`
+
+As machine learning scientists,
+our goal is to discover *patterns*.
+But how can we be sure that we have
+truly discovered a *general* pattern
+and not simply memorized our data?
+For example, imagine that we wanted to hunt
+for patterns among genetic markers
+linking patients to their dementia status,
+where the labels are drawn from the set
+$\{\text{dementia}, \text{mild cognitive impairment}, \text{healthy}\}$.
+Because each person's genes identify them uniquely
+(ignoring identical siblings),
+it is possible to memorize the entire dataset.
+
+We do not want our model to say
+*"That's Bob! I remember him! He has dementia!"*
+The reason why is simple.
+When we deploy the model in the future,
+we will encounter patients
+that the model has never seen before.
+Our predictions will only be useful
+if our model has truly discovered a *general* pattern.
+
+To recapitulate more formally,
+our goal is to discover patterns
+that capture regularities in the underlying population
+from which our training set was drawn.
+If we are successful in this endeavor,
+then we could successfully assess risk
+even for individuals that we have never encountered before.
+This problem---how to discover patterns that *generalize*---is
+the fundamental problem of machine learning.
+
+The danger is that when we train models,
+we access just a small sample of data.
+The largest *labeled* public image datasets, such as Imagenet :cite:`Deng.Dong.Socher.ea.2009` contain
+roughly one million images. Unlabeled image collections such as the Flickr YFC100M dataset can be significantly larger, containing 100 million images :cite:`Thomee.Shamma.Friedland.ea.2016`. While both numbers seem large, they are tiny compared to the space of all possible images that one could take at, say, 1 Megapixel resolution.
+Worse still, we frequently must learn from only hundreds of examples. For instance,
+a hospital might only have data of 100 occurrences of an infrequent disease.
+When working with finite samples, we run the risk
+that we might discover apparent associations
+that turn out not to hold up when we collect more data.
+
+The phenomenon of fitting our training data
+more closely than we fit the underlying distribution is called *overfitting*, and the techniques used to combat overfitting are called *regularization*. While the following is no substitute for a proper introduction to statistical learning theory :cite:`Vapnik.1998,Boucheron.Bousquet.Lugosi.2005`, it should at least make you aware of some of the phenomena that arise in learning. Overfitting is really quite prevalent. In the previous sections, you might have observed
+overfitting while experimenting with the Fashion-MNIST dataset.
+If you altered the model structure or the hyperparameters during the experiment, you might have noticed that with enough neurons, layers, and training epochs, the model can eventually reach perfect accuracy on the training set, while the accuracy on test data deteriorates.
+
+
+## Training Error and Generalization Error
+
+In order to discuss this phenomenon more formally,
+we need to differentiate between training error and generalization error.
+The *training error* $R_\mathrm{emp}$ is the error of our model
+as calculated on the training dataset,
+while *generalization error* $R$ is the expectation of our model's error
+were we to apply it to an infinite stream of additional data examples
+drawn from the same underlying data distribution as our original sample.
+They are defined as follows:
+
+$$R_\mathrm{emp}[\mathbf{X}, \mathbf{Y}, f] = \frac{1}{m} \sum_{i=1}^m l(\mathbf{x}_i, \mathbf{y}_i, f(\mathbf{x}_i))
+\text{ and }
+R[p, f] = E_{(\mathbf{x}, \mathbf{y}) \sim p} [l(\mathbf{x}, \mathbf{y}, f(\mathbf{x}))]$$
+
+Problematically, we can never calculate the generalization error $R$ exactly.
+That is because the stream of infinite data is an imaginary object.
+In practice, we must *estimate* the generalization error
+by applying our model to an independent test set
+constituted of a random selection of examples $\mathbf{X}'$ and labels $\mathbf{Y}'$
+that were withheld from our training set. This yields $R_\mathrm{emp}[\mathbf{X}', \mathbf{Y}', f]$.
+
+The following three thought experiments
+will help illustrate this situation better.
+Consider a college student trying to prepare for his final exam.
+A diligent student will strive to practice well
+and test his abilities using exams from previous years.
+Nonetheless, doing well on past exams is no guarantee
+that he will excel when it matters.
+For instance, the student might try to prepare
+by rote learning the answers to the exam questions.
+This requires the student to memorize many things.
+She might even remember the answers for past exams perfectly.
+Another student might prepare by trying to understand
+the reasons for giving certain answers.
+While this tends to work well for drivers license exams,
+it has poor outcomes when the set of exam questions is more
+varied and drawn from a larger, possibly infinite pool.
+
+Likewise, consider a model that simply uses a lookup table to answer questions. If the set of allowable inputs is discrete and reasonably small, then perhaps after viewing *many* training examples, this approach would perform well. Still this model has no ability to do better than random guessing when faced with examples that it has never seen before.
+In reality the input spaces are far too large to memorize the answers corresponding to every conceivable input. For example, consider the black and white $28\times28$ images. If each pixel can take one among $256$ grayscale values, then there are $256^{784} \approx 10^{1888}$ possible images. That means that there are far more low-resolution grayscale thumbnail-sized images than the approximately $10^{82}$ atoms in the universe. Even if we could encounter such data, we could never afford to store the lookup table. This explosion in the number of required samples is closely related to the curse of dimensionality where simple problems become rather difficult once the data is high dimensional :cite:`Friedman.1997`.
+
+Last, consider the problem of trying
+to classify the outcomes of coin tosses (class 0: heads, class 1: tails)
+based on some contextual features that might be available.
+Suppose that the coin is fair.
+No matter what algorithm we come up with,
+the generalization error will always be $\frac{1}{2}$.
+However, for most algorithms,
+we should expect our training error to be considerably lower,
+depending on the luck of the draw,
+even if we did not have any features!
+Consider the dataset {0, 1, 1, 1, 0, 1}.
+Our feature-less algorithm would have to fall back on always predicting
+the *majority class*, which appears from our limited sample to be *1*.
+In this case, the model that always predicts class 1
+will incur an error of $\frac{1}{3}$,
+considerably better than our generalization error.
+As we increase the amount of data,
+the probability that the fraction of heads
+will deviate significantly from $\frac{1}{2}$ diminishes,
+and our training error would come to match the generalization error.
+
+### Statistical Learning Theory
+
+Since generalization is the fundamental problem in machine learning,
+you might not be surprised to learn
+that many mathematicians and theorists have dedicated their lives
+to developing formal theories to describe this phenomenon.
+In their [epoynmous theorem](https://en.wikipedia.org/wiki/Glivenko%E2%80%93Cantelli_theorem) Glivenko and Cantelli derived the rate at which the training error
+converges to the generalization error :cite:`Glivenko.1933,Cantelli.1933`.
+In a series of seminal papers, Vapnik and Chervonenkis
+extended this theory to more general classes of functions
+:cite:`Vapnik.Chervonenkis.1964,Vapnik.Chervonenkis.1968,Vapnik.Chervonenkis.1971,Vapnik.Chervonenkis.1981,Vapnik.Chervonenkis.1991,Vapnik.Chervonenkis.1974*1`.
+This work laid the foundations of statistical learning theory.
+
+In the standard supervised learning setting, which we have addressed
+up until now and will stick with throughout most of this book,
+we assume that both the training data and the test data
+are drawn *independently* from *identical* distributions.
+This is commonly called the *IID assumption*. It means that
+all samples are drawn from the same distribution. It also means that,
+knowing all $n-1$ samples makes it no easier for us to predict the $n$-th sample
+than it is to predict the first one.
+
+Being a good machine learning scientist requires thinking critically,
+and already you should be poking holes in this assumption,
+coming up with common cases where the assumption fails.
+What if we train a mortality risk predictor
+on data collected from patients at UCSF Medical Center,
+and apply it on patients at Massachusetts General Hospital?
+These distributions are simply not identical. This is a well-studied
+problem in statistics :cite:`Rosenbaum.Rubin.1983`.
+Moreover, draws might be correlated in time.
+What if we are classifying the topics of Tweets?
+The news cycle would create temporal dependencies
+in the topics being discussed, violating any assumptions of independence.
+
+Sometimes we can get away with minor violations of the IID assumption
+and our models will continue to work remarkably well.
+After all, nearly every real-world application
+involves at least some minor violation of the IID assumption,
+and yet we have many useful tools for
+various applications such as
+face recognition,
+speech recognition, and language translation. :cite:`Yu.1994` provides
+a quantitative handle on this behavior.
+
+Other violations are sure to cause trouble.
+Imagine, for example, if we try to train
+a face recognition system by training it
+exclusively on university students
+and then want to deploy it as a tool
+for monitoring geriatrics in a nursing home population.
+This is unlikely to work well since college students
+tend to look considerably different from the elderly.
+
+In subsequent chapters, we will discuss problems
+arising from violations of the IID assumption.
+For now, even taking the IID assumption for granted,
+understanding generalization is a formidable problem.
+Moreover, elucidating the precise theoretical foundations
+that might explain why deep neural networks generalize as well as they do
+continues to vex the greatest minds in learning theory :cite:`Frankle.Carbin.2018,Bartlett.Montanari.Rakhlin.2021,Nagarajan.Kolter.2019,Kawaguchi.Kaelbling.Bengio.2017`.
+
+When we train our models, we attempt to search for a function
+that fits the training data as well as possible.
+If the function is so flexible that it can catch on to spurious patterns
+just as easily as to true associations,
+then it might perform *too well* without producing a model
+that generalizes well to unseen data.
+This is precisely what we want to avoid or at least control.
+Many of the techniques in deep learning are heuristics and tricks
+aimed at guarding against overfitting (:numref:`sec_weight_decay`, :numref:`sec_dropout`, :numref:`sec_batch_norm`).
+
+### Model Complexity
+
+When we have simple models and abundant data,
+we expect the generalization error to resemble the training error.
+When we work with more complex models and fewer examples,
+we expect the training error to go down but the generalization gap to grow.
+What precisely constitutes model complexity is a complex matter.
+Many factors govern whether a model will generalize well.
+For example a model with more parameters might be considered more complex in general.
+Note, though, that this is not necessarily true. For instance, kernel methods operate in spaces with infinite numbers of parameters, yet they exhibit very well-controlled model complexity :cite:`Scholkopf.Smola.2002`.
+Instead, a better way to think about this is that a
+model whose parameters can take a wider range of values
+might be more complex.
+Often with neural networks, we think of a model
+that takes more training iterations as more complex,
+and one subject to *early stopping* (fewer training iterations) as less complex :cite:`Prechelt.1998`.
+
+It can be difficult to compare the complexity among members
+of substantially different model classes
+(say, decision trees vs. neural networks).
+For now, a simple rule of thumb is quite useful:
+a model that can readily explain arbitrary facts
+is what statisticians view as complex,
+whereas one that has only a limited expressive power
+but still manages to explain the data well
+is probably closer to the truth :cite:`Vapnik.Levin.Le-Cun.1994`.
+In philosophy, this is closely related to Popper's
+criterion of falsifiability
+of a scientific theory: a theory is good if it fits data
+and if there are specific tests that can be used to disprove it.
+This is important since all statistical estimation is
+*post hoc*,
+i.e., we estimate after we observe the facts,
+hence vulnerable to the associated fallacy :cite:`Corfield.Scholkopf.Vapnik.2009`.
+For now, we will put the philosophy aside and stick to more tangible issues.
+
+In this section, to give you some intuition,
+we will focus on a few factors that tend
+to influence the generalizability of a model class:
+
+1. The number of tunable parameters. When the number of tunable parameters, sometimes called the *degrees of freedom*, is large, models tend to be more susceptible to overfitting :cite:`Murata.Yoshizawa.Amari.1994`.
+1. The values taken by the parameters. When weights can take a wider range of values, models can be more susceptible to overfitting :cite:`Krogh.Hertz.1992`.
+1. The number of training examples. It is trivially easy to overfit a dataset containing only one or two examples even if your model is simple. But overfitting a dataset with millions of examples requires an extremely flexible model :cite:`Henighan.Kaplan.Katz.ea.2020`.
+
+## Model Selection
+
+In machine learning, we usually select our final model
+after evaluating several candidate models.
+This process is called *model selection*.
+Sometimes the models subject to comparison
+are fundamentally
