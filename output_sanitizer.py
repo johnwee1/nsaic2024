@@ -4,7 +4,7 @@ import os
 """Helper script to sanitize the output from gpt files. idk how useful this will be but whatevs"""
 
 ### the .txt suffix IS NEEDED HERE!
-FILENAME = "deeplearning1_qns.txt"
+FILENAME = "copy_qns.txt"
 
 
 def parse_text_file(input_file, output_file):
@@ -24,27 +24,26 @@ def parse_text_file(input_file, output_file):
 
 
 def strp_refs(input_file, output_file):
-    """deletes [[x]] where x is a number"""
+    """Deletes [[x]] where x is a number and anything that comes after [[x]] in each line."""
     with open(input_file, "r", errors='replace') as infile, open(output_file, "w+", errors='replace') as outfile:
         for line in infile:
-            if re.search(r"\[\[\d+\]\]$", line):
-                # If the line ends with a pattern like [[x]], remove it
-                outfile.write(re.sub(r"\[\[\d+\]\]$", "", line))
-            else:
-                outfile.write(line)
+            # If the line contains a pattern like [[x]], remove it along with anything that comes after
+            modified_line = re.sub(r"\[\[\d+\]\].*", "", line)
+            outfile.write(modified_line)
 
 
-def questionize(input_file, output_file):
-    """
-    Turns a statement, "Support vector machine" into a question:
-    'What is the concept of Support vector machine?'"""
-    with open(input_file, "r", errors='replace') as infile, open(output_file, "w+", errors='replace') as outfile:
-        for line in infile:
-            if not line.strip().endswith("?"):
-                # If the line ends with a question mark, replace it with the modified question format
-                outfile.write(f"What is the concept of '{line.strip()}'?\n")
-            else:
-                outfile.write(line)
+# questionize isnt actually good
+# def questionize(input_file, output_file):
+#     """
+#     Turns a statement, "Support vector machine" into a question:
+#     'What is the concept of Support vector machine?'"""
+#     with open(input_file, "r", errors='replace') as infile, open(output_file, "w+", errors='replace') as outfile:
+#         for line in infile:
+#             if not line.strip().endswith("?"):
+#                 # If the line ends with a question mark, replace it with the modified question format
+#                 outfile.write(f"What is the concept of '{line.strip()}'?\n")
+#             else:
+#                 outfile.write(line)
 
 
 def sanitize(input):
