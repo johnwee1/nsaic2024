@@ -50,7 +50,7 @@ def sanitize(input):
     output = f"sanitized_{input}"
     parse_text_file(input, "temp1.txt")
     strp_refs("temp1.txt", "temp2.txt")
-    questionize("temp2.txt", output)
+    # questionize("temp2.txt", output)
     os.remove("temp1.txt")
     os.remove("temp2.txt")
 
