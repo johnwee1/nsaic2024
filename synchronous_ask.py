@@ -56,7 +56,7 @@ def createResponse(provider):
 def log_to_jsonl(question, answer):
     answer = remove_markdown_links(answer)
     log_entry = {"instruction": question, "context": "", "response": answer}
-    with open("gpt_answers.jsonl", mode="a", encoding="utf-8") as file:
+    with open("presorted_gpt_answers.jsonl", mode="a+", encoding="utf-8") as file:
         json.dump(log_entry, file)
         file.write("\n")
 
