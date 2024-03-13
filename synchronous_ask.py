@@ -23,7 +23,7 @@ retryprovider = RetryProvider(
 ########### CHANGE this if you want
 answerprompt = "Give a detailed answer to the following question that is asked in the context of machine learning.\n"
 
-# change the filename to ur manually cleaned file
+# change the filename to ur MANUALLY cleaned file
 # txt_filename = "YOURFILENAMEHERE.txt"
 with open(txt_filename, "r") as f:
     text = f.readlines()

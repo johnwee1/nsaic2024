@@ -19,14 +19,17 @@ err = []
 
 # performs the checks
 for line in x:
-    if contains_pattern(line) or len(line) > 3000:
+    if contains_pattern(line) or len(line) > 3800 or not line.isascii():
+        if not line.isascii():
+            print(line)
         err.append(line)
     else:
         validated.append(line)
 
 
+# THIS OVERRIDES THE CURRENT FILE!
 def pf(arr, file):
-    with open(file, "a+") as f:
+    with open(file, "w+") as f:
         f.writelines(arr)
 
 
