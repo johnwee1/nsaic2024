@@ -14,14 +14,30 @@ def contains_pattern(text):
         return False
 
 
+def replace_escaped_unicode_backslash_with_space(input_string):
+    # Use regex to find escaped Unicode characters
+    escaped_unicode_regex = r"\\u([0-9a-fA-F]{4})"
+    matches = re.finditer(escaped_unicode_regex, input_string)
+
+    # Replace the backslash with a space for each match
+    cleaned_string = input_string
+    for match in matches:
+        escaped_unicode = match.group(0)
+        cleaned_string = cleaned_string.replace(
+            escaped_unicode, " " + escaped_unicode[1:]
+        )
+
+    return cleaned_string
+
+
 validated = []
 err = []
 
 # performs the checks
 for line in x:
-    if contains_pattern(line) or len(line) > 3800 or not line.isascii():
-        if not line.isascii():
-            print(line)
+    line = replace_escaped_unicode_backslash_with_space(line)
+    if contains_pattern(line) or len(line) > 7800:
+        print(line)
         err.append(line)
     else:
         validated.append(line)
