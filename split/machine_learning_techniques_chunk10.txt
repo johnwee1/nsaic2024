@@ -1,0 +1,320 @@
+ estimate  of  the  generalization  error  will  not  be  quite
+enough to convince you to launch: what if it is just 0.1% better than the model cur‐
+rently in production? You might want to have an idea of how precise this estimate is.
+For this, you can compute a 95% confidence interval for the generalization error using
+scipy.stats.t.interval():
+
+>>> from scipy import stats
+>>> confidence = 0.95
+>>> squared_errors = (final_predictions - y_test) ** 2
+>>> np.sqrt(stats.t.interval(confidence, len(squared_errors) - 1,
+...                          loc=squared_errors.mean(),
+...                          scale=stats.sem(squared_errors)))
+...
+array([45685.10470776, 49691.25001878])
+
+If  you  did  a  lot  of  hyperparameter  tuning,  the  performance  will  usually  be  slightly
+worse than what you measured using cross-validation (because your system ends up
+fine-tuned to perform well on the validation data and will likely not perform as well
+on unknown datasets). It is not the case in this example, but when this happens you
+must resist the temptation to tweak the hyperparameters to make the numbers look
+good on the test set; the improvements would be unlikely to generalize to new data.
+
+Now  comes  the  project  prelaunch  phase:  you  need  to  present  your  solution  (high‐
+lighting  what  you  have  learned,  what  worked  and  what  did  not,  what  assumptions
+were made, and what your system’s limitations are), document everything, and create
+nice  presentations  with  clear  visualizations  and  easy-to-remember  statements  (e.g.,
+“the median income is the number one predictor of housing prices”). In this Califor‐
+nia  housing  example,  the  final  performance  of  the  system  is  not  better  than  the
+experts’ price estimates, which were often off by about 20%, but it may still be a good
+idea to launch it, especially if this frees up some time for the experts so they can work
+on more interesting and productive tasks.
+
+Launch, Monitor, and Maintain Your System
+Perfect, you got approval to launch! You now need to get your solution ready for pro‐
+duction (e.g., polish the code, write documentation and tests, and so on). Then you
+can deploy your model to your production environment. One way to do this is to save
+the trained Scikit-Learn model (e.g., using joblib), including the full preprocessing
+and  prediction  pipeline,  then  load  this  trained  model  within  your  production  envi‐
+ronment and use it to make predictions by calling its predict() method. For exam‐
+ple, perhaps the model will be used within a website: the user will type in some data
+
+80 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+about a new district and click the Estimate Price button. This will send a query con‐
+taining the data to the web server, which will forward it to your web application, and
+finally your code will simply call the model’s predict() method (you want to load the
+model upon server startup, rather than every time the model is used). Alternatively,
+you can wrap the model within a dedicated web service that your web application can
+query through a REST API23 (see Figure 2-17). This makes it easier to upgrade your
+model  to  new  versions  without  interrupting  the  main  application.  It  also  simplifies
+scaling,  since  you  can  start  as  many  web  services  as  needed  and  load-balance  the
+requests  coming  from  your  web  application  across  these  web  services.  Moreover,  it
+allows your web application to use any language, not just Python.
+
+Figure 2-17. A model deployed as a web service and used by a web application
+
+Another popular strategy is to deploy your model on the cloud, for example on Goo‐
+gle Cloud AI Platform (formerly known as Google Cloud ML Engine): just save your
+model using joblib and upload it to Google Cloud Storage (GCS), then head over to
+Google  Cloud  AI  Platform  and  create  a  new  model  version,  pointing  it  to  the  GCS
+file. That’s it! This gives you a simple web service that takes care of load balancing and
+scaling for you. It take JSON requests containing the input data (e.g., of a district) and
+returns JSON responses containing the predictions. You can then use this web service
+in your website (or whatever production environment you are using). As we will see
+in  Chapter  19,  deploying  TensorFlow  models  on  AI  Platform  is  not  much  different
+from deploying Scikit-Learn models.
+
+But deployment is not the end of the story. You also need to write monitoring code to
+check  your  system’s  live  performance  at  regular  intervals  and  trigger  alerts  when  it
+drops. This could be a steep drop, likely due to a broken component in your infra‐
+structure, but be aware that it could also be a gentle decay that could easily go unno‐
+ticed for a long time. This is quite common because models tend to “rot” over time:
+indeed, the world changes, so if the model was trained with last year’s data, it may not
+be adapted to today’s data.
+
+23 In a nutshell, a REST (or RESTful) API is an HTTP-based API that follows some conventions, such as using
+standard HTTP verbs to read, update, create, or delete resources (GET, POST, PUT, and DELETE) and using
+JSON for the inputs and outputs.
+
+Launch, Monitor, and Maintain Your System 
+
+| 
+
+81
+
+Even a model trained to classify pictures of cats and dogs may need
+to  be  retrained  regularly,  not  because  cats  and  dogs  will  mutate
+overnight,  but  because  cameras  keep  changing,  along  with  image
+formats,  sharpness,  brightness,  and  size  ratios.  Moreover,  people
+may  love  different  breeds  next  year,  or  they  may  decide  to  dress
+their pets with tiny hats—who knows?
+
+So you need to monitor your model’s live performance. But how do you that? Well, it
+depends. In some cases, the model’s performance can be inferred from downstream
+metrics. For example, if your model is part of a recommender system and it suggests
+products that the users may be interested in, then it’s easy to monitor the number of
+recommended  products  sold  each  day.  If  this  number  drops  (compared  to  non-
+recommended products), then the prime suspect is the model. This may be because
+the data pipeline is broken, or perhaps the model needs to be retrained on fresh data
+(as we will discuss shortly).
+
+However, it’s not always possible to determine the model’s performance without any
+human analysis. For example, suppose you trained an image classification model (see
+Chapter 3) to detect several product defects on a production line. How can you get an
+alert  if  the  model’s  performance  drops,  before  thousands  of  defective  products  get
+shipped to your clients? One solution is to send to human raters a sample of all the
+pictures  that  the  model  classified  (especially  pictures  that  the  model  wasn’t  so  sure
+about).  Depending  on  the  task,  the  raters  may  need  to  be  experts,  or  they  could  be
+nonspecialists, such as workers on a crowdsourcing platform (e.g., Amazon Mechani‐
+cal Turk). In some applications they could even be the users themselves, responding
+for example via surveys or repurposed captchas.24
+
+Either  way,  you  need  to  put  in  place  a  monitoring  system  (with  or  without  human
+raters to evaluate the live model), as well as all the relevant processes to define what to
+do in case of failures and how to prepare for them. Unfortunately, this can be a lot of
+work. In fact, it is often much more work than building and training a model.
+
+If  the  data  keeps  evolving,  you  will  need  to  update  your  datasets  and  retrain  your
+model regularly. You should probably automate the whole process as much as possi‐
+ble. Here are a few things you can automate:
+
+• Collect fresh data regularly and label it (e.g., using human raters).
+
+• Write  a  script  to  train  the  model  and  fine-tune  the  hyperparameters  automati‐
+cally. This script could run automatically, for example every day or every week,
+depending on your needs.
+
+24 A captcha is a test to ensure a user is not a robot. These tests have often been used as a cheap way to label
+
+training data.
+
+82 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+• Write  another  script  that  will  evaluate  both  the  new  model  and  the  previous
+model on the updated test set, and deploy the model to production if the perfor‐
+mance has not decreased (if it did, make sure you investigate why).
+
+You  should  also  make  sure  you  evaluate  the  model’s  input  data  quality.  Sometimes
+performance  will  degrade  slightly  because  of  a  poor-quality  signal  (e.g.,  a  malfunc‐
+tioning sensor sending random values, or another team’s output becoming stale), but
+it may take a while before your system’s performance degrades enough to trigger an
+alert. If you monitor your model’s inputs, you may catch this earlier. For example, you
+could trigger an alert if more and more inputs are missing a feature, or if its mean or
+standard deviation drifts too far from the training set, or a categorical feature starts
+containing new categories.
+
+Finally, make sure you keep backups of every model you create and have the process
+and  tools  in  place  to  roll  back  to  a  previous  model  quickly,  in  case  the  new  model
+starts failing badly for some reason. Having backups also makes it possible to easily
+compare new models with previous ones. Similarly, you should keep backups of every
+version of your datasets so that you can roll back to a previous dataset if the new one
+ever gets corrupted (e.g., if the fresh data that gets added to it turns out to be full of
+outliers).  Having  backups  of  your  datasets  also  allows  you  to  evaluate  any  model
+against any previous dataset.
+
+You  may  want  to  create  several  subsets  of  the  test  set  in  order  to
+evaluate  how  well  your  model  performs  on  specific  parts  of  the
+data. For example, you may want to have a subset containing only
+the most recent data, or a test set for specific kinds of inputs (e.g.,
+districts  located  inland  versus  districts  located  near  the  ocean).
+This  will  give  you  a  deeper  understanding  of  your  model’s
+strengths and weaknesses.
+
+As you can see, Machine Learning involves quite a lot of infrastructure, so don’t be
+surprised if your first ML project takes a lot of effort and time to build and deploy to
+production.  Fortunately,  once  all  the  infrastructure  is  in  place,  going  from  idea  to
+production will be much faster.
+
+Try It Out!
+Hopefully  this  chapter  gave  you  a  good  idea  of  what  a  Machine  Learning  project
+looks like as well as showing you some of the tools you can use to train a great system.
+As you can see, much of the work is in the data preparation step: building monitoring
+tools, setting up human evaluation pipelines, and automating regular model training.
+The Machine Learning algorithms are important, of course, but it is probably prefera‐
+
+Try It Out! 
+
+| 
+
+83
+
+ble to be comfortable with the overall process and know three or four algorithms well
+rather than to spend all your time exploring advanced algorithms.
+
+So, if you have not already done so, now is a good time to pick up a laptop, select a
+dataset that you are interested in, and try to go through the whole process from A to
+Z.  A  good  place  to  start  is  on  a  competition  website  such  as  http://kaggle.com/:  you
+will have a dataset to play with, a clear goal, and people to share the experience with.
+Have fun!
+
+Exercises
+The following exercises are all based on this chapter’s housing dataset:
+
+1. Try a Support Vector Machine regressor (sklearn.svm.SVR) with various hyper‐
+parameters, such as kernel="linear" (with various values for the C hyperpara‐
+meter)  or  kernel="rbf"  (with  various  values 
+the  C  and  gamma
+hyperparameters). Don’t worry about what these hyperparameters mean for now.
+How does the best SVR predictor perform?
+
+for 
+
+2. Try replacing GridSearchCV with RandomizedSearchCV.
+
+3. Try  adding  a  transformer  in  the  preparation  pipeline  to  select  only  the  most
+
+important attributes.
+
+4. Try  creating  a  single  pipeline  that  does  the  full  data  preparation  plus  the  final
+
+prediction.
+
+5. Automatically explore some preparation options using GridSearchCV.
+
+Solutions to these exercises can be found in the Jupyter notebooks available at https://
+github.com/ageron/handson-ml2.
+
+84 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+CHAPTER 3
+Classification
+
+In  Chapter  1  I  mentioned  that  the  most  common  supervised  learning  tasks  are
+regression (predicting values) and classification (predicting classes). In Chapter 2 we
+explored a regression task, predicting housing values, using various algorithms such
+as Linear Regression, Decision Trees, and Random Forests (which will be explained
+in  further  detail  in  later  chapters).  Now  we  will  turn  our  attention  to  classification
+systems.
+
+MNIST
+In  this  chapter  we  will  be  using  the  MNIST  dataset,  which  is  a  set  of  70,000  small
+images of digits handwritten by high school students and employees of the US Cen‐
+sus Bureau. Each image is labeled with the digit it represents. This set has been stud‐
+ied so much that it is often called the “hello world” of Machine Learning: whenever
+people come up with a new classification algorithm they are curious to see how it will
+perform  on  MNIST,  and  anyone  who  learns  Machine  Learning  tackles  this  dataset
+sooner or later.
+
+Scikit-Learn provides many helper functions to download popular datasets. MNIST is
+one of them. The following code fetches the MNIST dataset:1
+
+>>> from sklearn.datasets import fetch_openml
+>>> mnist = fetch_openml('mnist_784', version=1)
+>>> mnist.keys()
+dict_keys(['data', 'target', 'feature_names', 'DESCR', 'details',
+           'categories', 'url'])
+
+1 By default Scikit-Learn caches downloaded datasets in a directory called $HOME/scikit_learn_data.
+
+85
+
+Datasets loaded by Scikit-Learn generally have a similar dictionary structure, includ‐
+ing the following:
+
+• A DESCR key describing the dataset
+• A data key containing an array with one row per instance and one column per
+
+feature
+
+• A target key containing an array with the labels
+
+Let’s look at these arrays:
+
+>>> X, y = mnist["data"], mnist["target"]
+>>> X.shape
+(70000, 784)
+>>> y.shape
+(70000,)
+
+There are 70,000 images, and each image has 784 features. This is because each image
+is  28  ×  28  pixels,  and  each  feature  simply  represents  one  pixel’s  intensity,  from  0
+(white) to 255 (black). Let’s take a peek at one digit from the dataset. All you need to
+do  is  grab  an  instance’s  feature  vector,  reshape  it  to  a  28  ×  28  array,  and  display  it
+using Matplotlib’s imshow() function:
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+some_digit = X[0]
+some_digit_image = some_digit.reshape(28, 28)
+
+plt.imshow(some_digit_image, cmap="binary")
+plt.axis("off")
+plt.show()
+
+This looks like a 5, and indeed that’s what the label tells us:
+
+>>> y[0]
+'5'
+
+Note that the label is a string. Most ML algorithms expect numbers, so let’s cast y to
+integer:
+
+>>> y = y.astype(np.uint8)
+
+86 
+
+| 
+
+Chapter 3: Classification
+
+To give you a feel for the complexity of the classification task, Figure 3-1 shows a few
+more images from the MNIST dataset.
+
+Figure 3-1. Digits from the MNIST dataset
+
+But wait! You should always create a test set and set it aside before inspecting the data
+closely. The MNIST dataset is actually already split int

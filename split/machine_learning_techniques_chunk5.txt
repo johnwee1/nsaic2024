@@ -1,0 +1,362 @@
+r  dependencies).  You  can  use  your
+system’s  packaging  system  (e.g.,  apt-get  on  Ubuntu,  or  MacPorts  or  Homebrew  on
+macOS), install a Scientific Python distribution such as Anaconda and use its packag‐
+ing  system,  or  just  use  Python’s  own  packaging  system,  pip,  which  is  included  by
+
+5 The latest version of Python 3 is recommended. Python 2.7+ may work too, but now that it’s deprecated, all
+major scientific libraries are dropping support for it, so you should migrate to Python 3 as soon as possible.
+
+42 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+default with the Python binary installers (since Python 2.7.9).6 You can check to see if
+pip is installed by typing the following command:
+
+$ python3 -m pip --version
+pip 19.3.1 from [...]/lib/python3.7/site-packages/pip (python 3.7)
+
+You should make sure you have a recent version of pip installed. To upgrade the pip
+module, type the following (the exact version may differ):7
+
+$ python3 -m pip install --user -U pip
+Collecting pip
+[...]
+Successfully installed pip-19.3.1
+
+Creating an Isolated Environment
+If  you  would  like  to  work  in  an  isolated  environment  (which  is  strongly  recom‐
+mended so that you can work on different projects without having conflicting library
+versions),  install  virtualenv8  by  running  the  following  pip  command  (again,  if  you
+want virtualenv to be installed for all users on your machine, remove --user and run
+this command with administrator rights):
+
+$ python3 -m pip install --user -U virtualenv
+Collecting virtualenv
+[...]
+Successfully installed virtualenv-16.7.6
+
+Now you can create an isolated Python environment by typing this:
+
+$ cd $ML_PATH
+$ python3 -m virtualenv my_env
+Using base prefix '[...]'
+New python executable in [...]/ml/my_env/bin/python3
+Also creating executable in [...]/ml/my_env/bin/python
+Installing setuptools, pip, wheel...done.
+
+Now every time you want to activate this environment, just open a terminal and type
+the following:
+
+6 I’ll show the installation steps using pip in a bash shell on a Linux or macOS system. You may need to adapt
+
+these commands to your own system. On Windows, I recommend installing Anaconda instead.
+
+7 If you want to upgrade pip for all users on your machine rather than just your own user, you should remove
+the --user option and make sure you have administrator rights (e.g., by adding sudo before the whole com‐
+mand on Linux or macOS).
+
+8 Alternative tools include venv (very similar to virtualenv and included in the standard library), virtualenv‐
+wrapper (provides extra functionalities on top of virtualenv), pyenv (allows easy switching between Python
+versions), and pipenv (a great packaging tool by the same author as the popular requests library, built on top
+of pip and virtualenv).
+
+Get the Data 
+
+| 
+
+43
+
+$ cd $ML_PATH
+$ source my_env/bin/activate # on Linux or macOS
+$ .\my_env\Scripts\activate  # on Windows
+
+To  deactivate  this  environment,  type  deactivate.  While  the  environment  is  active,
+any package you install using pip will be installed in this isolated environment, and
+Python will only have access to these packages (if you also want access to the system’s
+packages,  you  should  create  the  environment  using  virtualenv’s  --system-site-
+packages option). Check out virtualenv’s documentation for more information.
+
+Now you can install all the required modules and their dependencies using this sim‐
+ple pip command (if you are not using a virtualenv, you will need the --user option
+or administrator rights):
+
+$ python3 -m pip install -U jupyter matplotlib numpy pandas scipy scikit-learn
+Collecting jupyter
+  Downloading https://[...]/jupyter-1.0.0-py2.py3-none-any.whl
+Collecting matplotlib
+  [...]
+
+If you created a virtualenv, you need to register it to Jupyter and give it a name:
+
+$ python3 -m ipykernel install --user --name=python3
+
+Now you can fire up Jupyter by typing the following command:
+
+$ jupyter notebook
+[...] Serving notebooks from local directory: [...]/ml
+[...] The Jupyter Notebook is running at:
+[...] http://localhost:8888/?token=60995e108e44ac8d8865a[...]
+[...]  or http://127.0.0.1:8889/?token=60995e108e44ac8d8865a[...]
+[...] Use Control-C to stop this server and shut down all kernels [...]
+
+A Jupyter server is now running in your terminal, listening to port 8888. You can visit
+this  server  by  opening  your  web  browser  to  http://localhost:8888/  (this  usually  hap‐
+pens  automatically  when  the  server  starts).  You  should  see  your  empty  workspace
+directory (containing only the env directory if you followed the preceding virtualenv
+instructions).
+
+Now  create  a  new  Python  notebook  by  clicking  the  New  button  and  selecting  the
+appropriate Python version9 (see Figure 2-3). Doing that will create a new notebook
+file called Untitled.ipynb in your workspace, start a Jupyter Python kernel to run the
+notebook,  and  open  this  notebook  in  a  new  tab.  You  should  start  by  renaming  this
+notebook to “Housing” (this will automatically rename the file to Housing.ipynb) by
+clicking Untitled and typing the new name.
+
+9 Note that Jupyter can handle multiple versions of Python, and even many other languages such as R or
+
+Octave.
+
+44 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+Figure 2-3. Your workspace in Jupyter
+
+A notebook contains a list of cells. Each cell can contain executable code or formatted
+text. Right now the notebook contains only one empty code cell, labeled “In [1]:”. Try
+typing  print("Hello  world!")  in  the  cell  and  clicking  the  play  button  (see
+Figure  2-4)  or  pressing  Shift-Enter.  This  sends  the  current  cell  to  this  notebook’s
+Python kernel, which runs it and returns the output. The result is displayed below the
+cell, and since you’ve reached the end of the notebook, a new cell is automatically cre‐
+ated.  Go  through  the  User  Interface  Tour  from  Jupyter’s  Help  menu  to  learn  the
+basics.
+
+Figure 2-4. Hello world Python notebook
+
+Get the Data 
+
+| 
+
+45
+
+Download the Data
+In  typical  environments  your  data  would  be  available  in  a  relational  database  (or
+some  other  common  data  store)  and  spread  across  multiple  tables/documents/files.
+To access it, you would first need to get your credentials and access authorizations10
+and  familiarize  yourself  with  the  data  schema.  In  this  project,  however,  things  are
+much  simpler:  you  will  just  download  a  single  compressed  file,  housing.tgz,  which
+contains a comma-separated values (CSV) file called housing.csv with all the data.
+
+You could use your web browser to download the file and run tar xzf housing.tgz
+to decompress it and extract the CSV file, but it is preferable to create a small func‐
+tion to do that. Having a function that downloads the data is useful in particular if the
+data changes regularly: you can write a small script that uses the function to fetch the
+latest data (or you can set up a scheduled job to do that automatically at regular inter‐
+vals). Automating the process of fetching the data is also useful if you need to install
+the dataset on multiple machines.
+
+Here is the function to fetch the data:11
+
+import os
+import tarfile
+import urllib
+
+DOWNLOAD_ROOT = "https://raw.githubusercontent.com/ageron/handson-ml2/master/"
+HOUSING_PATH = os.path.join("datasets", "housing")
+HOUSING_URL = DOWNLOAD_ROOT + "datasets/housing/housing.tgz"
+
+def fetch_housing_data(housing_url=HOUSING_URL, housing_path=HOUSING_PATH):
+    os.makedirs(housing_path, exist_ok=True)
+    tgz_path = os.path.join(housing_path, "housing.tgz")
+    urllib.request.urlretrieve(housing_url, tgz_path)
+    housing_tgz = tarfile.open(tgz_path)
+    housing_tgz.extractall(path=housing_path)
+    housing_tgz.close()
+
+Now when you call fetch_housing_data(), it creates a datasets/housing directory in
+your workspace, downloads the housing.tgz file, and extracts the housing.csv file from
+it in this directory.
+
+10 You might also need to check legal constraints, such as private fields that should never be copied to unsafe
+
+data stores.
+
+11 In a real project you would save this code in a Python file, but for now you can just write it in your Jupyter
+
+notebook.
+
+46 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+Now let’s load the data using pandas. Once again, you should write a small function
+to load the data:
+
+import pandas as pd
+
+def load_housing_data(housing_path=HOUSING_PATH):
+    csv_path = os.path.join(housing_path, "housing.csv")
+    return pd.read_csv(csv_path)
+
+This function returns a pandas DataFrame object containing all the data.
+
+Take a Quick Look at the Data Structure
+Let’s  take  a  look  at  the  top  five  rows  using  the  DataFrame’s  head()  method  (see
+Figure 2-5).
+
+Figure 2-5. Top five rows in the dataset
+
+Each row represents one district. There are 10 attributes (you can see the first 6 in the
+screenshot):  longitude,  latitude,  housing_median_age,  total_rooms,  total_bed
+rooms,  population,  households,  median_income,  median_house_value,  and
+ocean_proximity.
+
+The info() method is useful to get a quick description of the data, in particular the
+total  number  of  rows,  each  attribute’s  type,  and  the  number  of  nonnull  values  (see
+Figure 2-6).
+
+Get the Data 
+
+| 
+
+47
+
+Figure 2-6. Housing info
+
+There  are  20,640  instances  in  the  dataset,  which  means  that  it  is  fairly  small  by
+Machine Learning standards, but it’s perfect to get started. Notice that the total_bed
+rooms attribute has only 20,433 nonnull values, meaning that 207 districts are missing
+this feature. We will need to take care of this later.
+
+All attributes are numerical, except the ocean_proximity field. Its type is object, so it
+could hold any kind of Python object. But since you loaded this data from a CSV file,
+you know that it must be a text attribute. When you looked at the top five rows, you
+probably  noticed  that  the  values  in  the  ocean_proximity  column  were  repetitive,
+which  means  that  it  is  probably  a  categorical  attribute.  You  can  find  out  what  cate‐
+gories  exist  and  how  many  districts  belong  to  each  category  by  using  the
+value_counts() method:
+
+>>> housing["ocean_proximity"].value_counts()
+<1H OCEAN     9136
+INLAND        6551
+NEAR OCEAN    2658
+NEAR BAY      2290
+ISLAND           5
+Name: ocean_proximity, dtype: int64
+
+Let’s  look  at  the  other  fields.  The  describe()  method  shows  a  summary  of  the
+numerical attributes (Figure 2-7).
+
+48 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+Figure 2-7. Summary of each numerical attribute
+
+The count, mean, min, and max rows are self-explanatory. Note that the null values are
+ignored  (so,  for  example,  the  count  of  total_bedrooms  is  20,433,  not  20,640).  The
+std row shows the standard deviation, which measures how dispersed the values are.12
+The 25%, 50%, and 75% rows show the corresponding percentiles: a percentile indi‐
+cates the value below which a given percentage of observations in a group of observa‐
+tions  fall.  For  example,  25%  of  the  districts  have  a  housing_median_age  lower  than
+18, while 50% are lower than 29 and 75% are lower than 37. These are often called the
+25th  percentile  (or  first  quartile),  the  median,  and  the  75th  percentile  (or  third
+quartile).
+
+Another quick way to get a feel of the type of data you are dealing with is to plot a
+histogram for each numerical attribute. A histogram shows the number of instances
+(on the vertical axis) that have a given value range (on the horizontal axis). You can
+either  plot  this  one  attribute  at  a  time,  or  you  can  call  the  hist()  method  on  the
+whole dataset (as shown in the following code example), and it will plot a histogram
+for each numerical attribute (see Figure 2-8):
+
+%matplotlib inline   # only in a Jupyter notebook
+import matplotlib.pyplot as plt
+housing.hist(bins=50, figsize=(20,15))
+plt.show()
+
+12 The standard deviation is generally denoted σ (the Greek letter sigma), and it is the square root of the var‐
+
+iance, which is the average of the squared deviation from the mean. When a feature has a bell-shaped normal
+distribution (also called a Gaussian distribution), which is very common, the “68-95-99.7” rule applies: about
+68% of the values fall within 1σ of the mean, 95% within 2σ, and 99.7% within 3σ.
+
+Get the Data 
+
+| 
+
+49
+
+The hist() method relies on Matplotlib, which in turn relies on a
+user-specified graphical backend to draw on your screen. So before
+you can plot anything, you need to specify which backend Matplot‐
+lib should use. The simplest option is to use Jupyter’s magic com‐
+mand %matplotlib inline. This tells Jupyter to set up Matplotlib
+so it uses Jupyter’s own backend. Plots are then rendered within the
+notebook  itself.  Note  that  calling  show()  is  optional  in  a  Jupyter
+notebook, as Jupyter will automatically display plots when a cell is
+executed.
+
+Figure 2-8. A histogram for each numerical attribute
+
+There are a few things you might notice in these histograms:
+
+1. First, the median income attribute does not look like it is expressed in US dollars
+(USD). After checking with the team that collected the data, you are told that the
+data  has  been  scaled  and  capped  at  15  (actually,  15.0001)  for  higher  median
+incomes,  and  at  0.5  (actually,  0.4999)  for  lower  median  incomes.  The  numbers
+represent  roughly  tens  of  thousands  of  dollars  (e.g.,  3  actually  means  about
+$30,000). Working with preprocessed attributes is common in Machine Learning,
+
+50 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+and  it  is  not  necessarily  a  problem,  but  you  should  try  to  understand  how  the
+data was computed.
+
+2. The housing median age and the median house value were also capped. The lat‐
+ter may be a serious problem since it is your target attribute (your labels). Your
+Machine Learning algorithms may learn that prices never go beyond that limit.
+You need to check with your client team (the team that will use your system’s out‐
+put) to see if this is a problem or not. If they tell you that they need precise pre‐
+dictions even beyond $500,000, then you have two options:
+
+a. Collect proper labels for the districts whose labels were capped.
+
+b. Remove those districts from the training set (and also from the test set, since
+your  system  should  not  be  evaluated  poorly  if  it  predicts  values  beyond
+$500,000).
+
+3. These attributes have very different scales. We will discuss this later in this chap‐
+
+ter, when we explore feature scaling.
+
+4. Finally, many histograms are tail-heavy: they extend much farther to the right of
+the  median  than  to  the  left.  This  may  make  it  a  bit  harder  for  some  Machine
+Learning algorithms to detect patterns. We will try transforming these attributes
+later on to have more bell-shaped distributions.
+
+Hopefully you now have a better understanding of the kind of data you are dealing
+with.
+
+Wait! Before you look at the data any further, you need to create a
+test set, put it aside, and never look at it.
+
+Create a Test Set
+It may sound strange to voluntarily set aside part of the data at this stage. After all,
+you have only taken a quick glance at the data, and surely you should learn a whole
+lot  more  about  it  before  you  decide  what  algorithms  to  use,  right?  This  is  true,  but
+your  brain  is  an  amazing  pattern  detection  system,  which  means  that  it  is  highly
+prone to ove

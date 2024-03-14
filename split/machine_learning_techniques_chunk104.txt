@@ -1,0 +1,302 @@
+tically  “repair”  the  image  in  a  reasonable  way.  You  can  also  use  a  generative
+model for classification. Just add a few visible neurons to encode the training image’s
+class (e.g., add 10 visible neurons and turn on only the fifth neuron when the training
+image represents a 5). Then, when given a new image, the network will automatically
+turn on the appropriate visible neurons, indicating the image’s class (e.g., it will turn
+on the fifth visible neuron if the image represents a 5).
+
+Unfortunately, there is no efficient technique to train Boltzmann machines. However,
+fairly efficient algorithms have been developed to train restricted Boltzmann machines
+(RBMs).
+
+Restricted Boltzmann Machines
+An RBM is simply a Boltzmann machine in which there are no connections between
+visible  units  or  between  hidden  units,  only  between  visible  and  hidden  units.  For
+example,  Figure  E-3  represents  an  RBM  with  three  visible  units  and  four  hidden
+units.
+
+776 
+
+|  Appendix E: Other Popular ANN Architectures
+
+Figure E-3. Restricted Boltzmann machine
+
+A  very  efficient  training  algorithm  called  Contrastive  Divergence  was  introduced  in
+2005 by Miguel Á. Carreira-Perpiñán and Geoffrey Hinton.1 Here is how it works: for
+each training instance x, the algorithm starts by feeding it to the network by setting
+the state of the visible units to x1, x2, ⋯, xn. Then you compute the state of the hidden
+units by applying the stochastic equation described before (Equation E-1). This gives
+you a hidden vector h (where hi is equal to the state of the ith unit). Next you compute
+the state of the visible units, by applying the same stochastic equation. This gives you
+a vector xʹ. Then once again you compute the state of the hidden units, which gives
+you a vector hʹ. Now you can update each connection weight by applying the rule in
+Equation E-2, where η is the learning rate.
+
+Equation E-2. Contrastive divergence weight update
+
+wi, j
+
+wi, j + η xh⊺ − x′h′⊺
+
+The great benefit of this algorithm is that it does not require waiting for the network
+to reach thermal equilibrium: it just goes forward, backward, and forward again, and
+that’s it. This makes it incomparably more efficient than previous algorithms, and it
+was a key ingredient to the first success of Deep Learning based on multiple stacked
+RBMs.
+
+Deep Belief Nets
+Several layers of RBMs can be stacked; the hidden units of the first-level RBM serve
+as the visible units for the second-layer RBM, and so on. Such an RBM stack is called
+a deep belief net (DBN).
+
+1 Miguel Á. Carreira-Perpiñán and Geoffrey E. Hinton, “On Contrastive Divergence Learning,” Proceedings of
+
+the 10th International Workshop on Artificial Intelligence and Statistics (2005): 59–66.
+
+Other Popular ANN Architectures 
+
+| 
+
+777
+
+Yee-Whye  Teh,  one  of  Geoffrey  Hinton’s  students,  observed  that  it  was  possible  to
+train DBNs one layer at a time using Contrastive Divergence, starting with the lower
+layers and then gradually moving up to the top layers. This led to the groundbreaking
+article that kickstarted the Deep Learning tsunami in 2006.2
+
+Just like RBMs, DBNs learn to reproduce the probability distribution of their inputs,
+without any supervision. However, they are much better at it, for the same reason that
+deep neural networks are more powerful than shallow ones: real-world data is often
+organized in hierarchical patterns, and DBNs take advantage of that. Their lower lay‐
+ers  learn  low-level  features  in  the  input  data,  while  higher  layers  learn  high-level
+features.
+
+Just like RBMs, DBNs are fundamentally unsupervised, but you can also train them
+in  a  supervised  manner  by  adding  some  visible  units  to  represent  the  labels.  More‐
+over, one great feature of DBNs is that they can be trained in a semisupervised fash‐
+ion. Figure E-4 represents such a DBN configured for semisupervised learning.
+
+Figure E-4. A deep belief network configured for semisupervised learning
+
+First, RBM 1 is trained without supervision. It learns low-level features in the training
+data.  Then  RBM  2  is  trained  with  RBM  1’s  hidden  units  as  inputs,  again  without
+
+2 Geoffrey E. Hinton et al., “A Fast Learning Algorithm for Deep Belief Nets,” Neural Computation 18 (2006):
+
+1527–1554.
+
+778 
+
+|  Appendix E: Other Popular ANN Architectures
+
+supervision:  it  learns  higher-level  features  (note  that  RBM  2’s  hidden  units  include
+only  the  three  rightmost  units,  not  the  label  units).  Several  more  RBMs  could  be
+stacked this way, but you get the idea. So far, training was 100% unsupervised. Lastly,
+RBM 3 is trained using RBM 2’s hidden units as inputs, as well as extra visible units
+used  to  represent  the  target  labels  (e.g.,  a  one-hot  vector  representing  the  instance
+class). It learns to associate high-level features with training labels. This is the super‐
+vised step.
+
+At the end of training, if you feed RBM 1 a new instance, the signal will propagate up
+to RBM 2, then up to the top of RBM 3, and then back down to the label units; hope‐
+fully,  the  appropriate  label  will  light  up.  This  is  how  a  DBN  can  be  used  for
+classification.
+
+One  great  benefit  of  this  semisupervised  approach  is  that  you  don’t  need  much
+labeled training data. If the unsupervised RBMs do a good enough job, then only a
+small  amount  of  labeled  training  instances  per  class  will  be  necessary.  Similarly,  a
+baby  learns  to  recognize  objects  without  supervision,  so  when  you  point  to  a  chair
+and say “chair,” the baby can associate the word “chair” with the class of objects it has
+already learned to recognize on its own. You don’t need to point to every single chair
+and say “chair”; only a few examples will suffice (just enough so the baby can be sure
+that you are indeed referring to the chair, not to its color or one of the chair’s parts).
+
+Quite amazingly, DBNs can also work in reverse. If you activate one of the label units,
+the signal will propagate up to the hidden units of RBM 3, then down to RBM 2, and
+then RBM 1, and a new instance will be output by the visible units of RBM 1. This
+new instance will usually look like a regular instance of the class whose label unit you
+activated.  This  generative  capability  of  DBNs  is  quite  powerful.  For  example,  it  has
+been used to automatically generate captions for images, and vice versa: first a DBN is
+trained (without supervision) to learn features in images, and another DBN is trained
+(again  without  supervision)  to  learn  features  in  sets  of  captions  (e.g.,  “car”  often
+comes with “automobile”). Then an RBM is stacked on top of both DBNs and trained
+with a set of images along with their captions; it learns to associate high-level features
+in  images  with  high-level  features  in  captions.  Next,  if  you  feed  the  image  DBN  an
+image  of  a  car,  the  signal  will  propagate  through  the  network,  up  to  the  top-level
+RBM, and back down to the bottom of the caption DBN, producing a caption. Due to
+the stochastic nature of RBMs and DBNs, the caption will keep changing randomly,
+but it will generally be appropriate for the image. If you generate a few hundred cap‐
+tions,  the  most  frequently  generated  ones  will  likely  be  a  good  description  of  the
+image.3
+
+3 See this video by Geoffrey Hinton for more details and a demo: https://homl.info/137.
+
+Other Popular ANN Architectures 
+
+| 
+
+779
+
+Self-Organizing Maps
+Self-organizing maps (SOMs) are quite different from all the other types of neural net‐
+works we have discussed so far. They are used to produce a low-dimensional repre‐
+sentation  of  a  high-dimensional  dataset,  generally  for  visualization,  clustering,  or
+classification.  The  neurons  are  spread  across  a  map  (typically  2D  for  visualization,
+but it can be any number of dimensions you want), as shown in Figure E-5, and each
+neuron has a weighted connection to every input (note that the diagram shows just
+two  inputs,  but  there  are  typically  a  very  large  number,  since  the  whole  point  of
+SOMs is to reduce dimensionality).
+
+Figure E-5. Self-organizing map
+
+Once the network is trained, you can feed it a new instance and this will activate only
+one neuron (i.e., one point on the map): the neuron whose weight vector is closest to
+the input vector. In general, instances that are nearby in the original input space will
+activate  neurons  that  are  nearby  on  the  map.  This  makes  SOMs  useful  not  only  for
+visualization (in particular, you can easily identify clusters on the map), but also for
+applications  like  speech  recognition.  For  example,  if  each  instance  represents  an
+audio  recording  of  a  person  pronouncing  a  vowel,  then  different  pronunciations  of
+the vowel “a” will activate neurons in the same area of the map, while instances of the
+vowel “e” will activate neurons in another area, and intermediate sounds will gener‐
+ally activate intermediate neurons on the map.
+
+780 
+
+|  Appendix E: Other Popular ANN Architectures
+
+One important difference from the other dimensionality reduction
+techniques discussed in Chapter 8 is that all instances get mapped
+to  a  discrete  number  of  points  in  the  low-dimensional  space  (one
+point per neuron). When there are very few neurons, this techni‐
+que  is  better  described  as  clustering  rather  than  dimensionality
+reduction.
+
+The training algorithm is unsupervised. It works by having all the neurons compete
+against  each  other.  First,  all  the  weights  are  initialized  randomly.  Then  a  training
+instance  is  picked  randomly  and  fed  to  the  network.  All  neurons  compute  the  dis‐
+tance between their weight vector and the input vector (this is very different from the
+artificial  neurons  we  have  seen  so  far).  The  neuron  that  measures  the  smallest  dis‐
+tance wins and tweaks its weight vector to be slightly closer to the input vector, mak‐
+ing it more likely to win future competitions for other inputs similar to this one. It
+also recruits its neighboring neurons, and they too update their weight vectors to be
+slightly closer to the input vector (but they don’t update their weights as much as the
+winning neuron). Then the algorithm picks another training instance and repeats the
+process,  again  and  again.  This  algorithm  tends  to  make  nearby  neurons  gradually
+specialize in similar inputs.4
+
+4 You can imagine a class of young children with roughly similar skills. One child happens to be slightly better
+at basketball. This motivates them to practice more, especially with their friends. After a while, this group of
+friends gets so good at basketball that other kids cannot compete. But that’s okay, because the other kids spe‐
+cialize in other areas. After a while, the class is full of little specialized groups.
+
+Other Popular ANN Architectures 
+
+| 
+
+781
+
+APPENDIX F
+Special Data Structures
+
+In  this  appendix  we  will  take  a  very  quick  look  at  the  data  structures  supported  by
+TensorFlow, beyond regular float or integer tensors. This includes strings, ragged ten‐
+sors, sparse tensors, tensor arrays, sets, and queues.
+
+Strings
+Tensors can hold byte strings, which is useful in particular for natural language pro‐
+cessing (see Chapter 16):
+
+>>> tf.constant(b"hello world")
+<tf.Tensor: id=149, shape=(), dtype=string, numpy=b'hello world'>
+
+If you try to build a tensor with a Unicode string, TensorFlow automatically encodes
+it to UTF-8:
+
+>>> tf.constant("café")
+<tf.Tensor: id=138, shape=(), dtype=string, numpy=b'caf\xc3\xa9'>
+
+It is also possible to create tensors representing Unicode strings. Just create an array
+of 32-bit integers, each representing a single Unicode code point:1
+
+>>> tf.constant([ord(c) for c in "café"])
+<tf.Tensor: id=211, shape=(4,), dtype=int32,
+            numpy=array([ 99,  97, 102, 233], dtype=int32)>
+
+1 If you are not familiar with Unicode code points, please check out https://homl.info/unicode.
+
+783
+
+In tensors of type tf.string, the string length is not part of the ten‐
+sor’s shape. In other words, strings are considered as atomic values.
+However,  in  a  Unicode  string  tensor  (i.e.,  an  int32  tensor),  the
+length of the string is part of the tensor’s shape.
+
+The  tf.strings  package  contains  several  functions  to  manipulate  string  tensors,
+such  as  length()  to  count  the  number  of  bytes  in  a  byte  string  (or  the  number  of
+code  points  if  you  set  unit="UTF8_CHAR"),  unicode_encode()  to  convert  a  Unicode
+string tensor (i.e., int32 tensor) to a byte string tensor, and unicode_decode() to do
+the reverse:
+
+>>> b = tf.strings.unicode_encode(u, "UTF-8")
+>>> tf.strings.length(b, unit="UTF8_CHAR")
+<tf.Tensor: id=386, shape=(), dtype=int32, numpy=4>
+>>> tf.strings.unicode_decode(b, "UTF-8")
+<tf.Tensor: id=393, shape=(4,), dtype=int32,
+            numpy=array([ 99,  97, 102, 233], dtype=int32)>
+
+You can also manipulate tensors containing multiple strings:
+
+>>> p = tf.constant(["Café", "Coffee", "caffè", "咖啡"])
+>>> tf.strings.length(p, unit="UTF8_CHAR")
+<tf.Tensor: id=299, shape=(4,), dtype=int32,
+            numpy=array([4, 6, 5, 2], dtype=int32)>
+>>> r = tf.strings.unicode_decode(p, "UTF8")
+>>> r
+tf.RaggedTensor(values=tf.Tensor(
+[   67    97   102   233    67   111   102   102   101   101    99    97
+   102   102   232 21654 21857], shape=(17,), dtype=int32),
+   row_splits=tf.Tensor([ 0  4 10 15 17], shape=(5,), dtype=int64))
+>>> print(r)
+<tf.RaggedTensor [[67, 97, 102, 233], [67, 111, 102, 102, 101, 101],
+                  [99, 97, 102, 102, 232], [21654, 21857]]>
+
+Notice that the decoded strings are stored in a RaggedTensor. What is that?
+
+Ragged Tensors
+A ragged tensor is a special kind of tensor that represents a list of arrays of different
+sizes.  More  generally,  it  is  a  tensor  with  one  or  more  ragged  dimensions,  meaning
+dimensions whose slices may have different lengths. In the ragged tensor r, the sec‐
+ond  dimension  is  a  ragged  dimension.  In  all  ragged  tensors,  the  first  dimension  is
+always a regular dimension (also called a uniform dimension).
+
+784 
+
+|  Appendix F: Special Data Structures
+
+All the elements of the ragged tensor r are regular tensors. For example, let’s look at
+the second element of the ragged tensor:
+
+>>> print(r[1])
+tf.Tensor([ 67 111 102 102 101 101], shape=(6,), dtype=int32)
+
+The  tf.ragged  package  contains  several  functions  to  create  and  manipulate  ragged
+tensors. Let’s create a second ragged tensor using tf.ragged.constant() and concat‐
+enate it with the first ragged tensor, along axis 0:
+
+>>> r2 = tf.ragged.constant([[65, 66], [], [67]])
+>>> print(tf.concat([r, r2], axis=0))
+<tf.RaggedTensor [[67, 97, 102, 233], [67, 111, 102, 102, 101, 101], [99, 97,
+102, 102, 232], [21654, 21857], [65, 66], [], [67]]>
+
+The result is not too surprising: the tensors in r2 were appended after the tensors in r
+along axis 0. But what if we concatenate r and another ragged tensor along axis 1?
+
+>>> r3 = tf.ragged.constant([[68, 69, 70], [71], [], [72, 73]])
+>>> print(tf.concat([r, r3], axis=1))
+<tf.RaggedTensor [[67, 97, 102, 233, 68, 69, 70], [67, 111, 102, 102, 101, 101,
+71], [99, 97, 102, 102, 232], [21654, 21857, 72, 73]]>
+
+This  time,  notice  that  the  ith  tensor  in  r  and  the  ith  tensor  in  r3  were  concatenated.
+Now that’s more unusual, since all of these tensors can have different lengths.
+
+If  you  call  the

@@ -1,0 +1,319 @@
+on images and 17,000 classes). Just like Inception-v4, it merges the ideas of Goo‐
+gLeNet and ResNet, but it replaces the inception modules with a special type of layer
+called  a  depthwise  separable  convolution  layer  (or  separable  convolution  layer  for
+short20). These layers had been used before in some CNN architectures, but they were
+not  as  central  as  in  the  Xception  architecture.  While  a  regular  convolutional  layer
+uses filters that try to simultaneously capture spatial patterns (e.g., an oval) and cross-
+channel patterns (e.g., mouth + nose + eyes = face), a separable convolutional layer
+makes the strong assumption that spatial patterns and cross-channel patterns can be
+modeled separately (see Figure 14-19). Thus, it is composed of two parts: the first part
+applies  a  single  spatial  filter  for  each  input  feature  map,  then  the  second  part  looks
+
+17 It is a common practice when describing a neural network to count only layers with parameters.
+
+18 Christian Szegedy et al., “Inception–v4, Inception-ResNet and the Impact of Residual Connections on Learn‐
+
+ing,” arXiv preprint arXiv:1602.07261 (2016).
+
+19 François Chollet, “Xception: Deep Learning with Depthwise Separable Convolutions,” arXiv preprint arXiv:
+
+1610.02357 (2016).
+
+20 This name can sometimes be ambiguous, since spatially separable convolutions are often called “separable
+
+convolutions” as well.
+
+474 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+exclusively for cross-channel patterns—it is just a regular convolutional layer with 1 ×
+1 filters.
+
+Figure 14-19. Depthwise separable convolutional layer
+
+Since  separable  convolutional  layers  only  have  one  spatial  filter  per  input  channel,
+you should avoid using them after layers that have too few channels, such as the input
+layer (granted, that’s what Figure 14-19 represents, but it is just for illustration pur‐
+poses). For this reason, the Xception architecture starts with 2 regular convolutional
+layers,  but  then  the  rest  of  the  architecture  uses  only  separable  convolutions  (34  in
+all), plus a few max pooling layers and the usual final layers (a global average pooling
+layer and a dense output layer).
+
+You might wonder why Xception is considered a variant of GoogLeNet, since it con‐
+tains no inception module at all. Well, as we discussed earlier, an inception module
+contains  convolutional  layers  with  1  ×  1  filters:  these  look  exclusively  for  cross-
+channel patterns. However, the convolutional layers that sit on top of them are regu‐
+lar convolutional layers that look both for spatial and cross-channel patterns. So you
+can think of an inception module as an intermediate between a regular convolutional
+layer (which considers spatial patterns and cross-channel patterns jointly) and a sepa‐
+rable convolutional layer (which considers them separately). In practice, it seems that
+separable convolutional layers generally perform better.
+
+CNN Architectures 
+
+| 
+
+475
+
+Separable convolutional layers use fewer parameters, less memory,
+and  fewer  computations  than  regular  convolutional  layers,  and  in
+general  they  even  perform  better,  so  you  should  consider  using
+them by default (except after layers with few channels).
+
+The ILSVRC 2016 challenge was won by the CUImage team from the Chinese Uni‐
+versity of Hong Kong. They used an ensemble of many different techniques, includ‐
+ing  a  sophisticated  object-detection  system  called  GBD-Net,21  to  achieve  a  top-five
+error rate below 3%. Although this result is unquestionably impressive, the complex‐
+ity of the solution contrasted with the simplicity of ResNets. Moreover, one year later
+another fairly simple architecture performed even better, as we will see now.
+
+SENet
+The  winning  architecture  in  the  ILSVRC  2017  challenge  was  the  Squeeze-and-
+Excitation Network (SENet).22 This architecture extends existing architectures such as
+inception networks and ResNets, and boosts their performance. This allowed SENet
+to win the competition with an astonishing 2.25% top-five error rate! The extended
+versions  of  inception  networks  and  ResNets  are  called  SE-Inception  and  SE-ResNet,
+respectively. The boost comes from the fact that a SENet adds a small neural network,
+called  an  SE  block,  to  every  unit  in  the  original  architecture  (i.e.,  every  inception
+module or every residual unit), as shown in Figure 14-20.
+
+Figure 14-20. SE-Inception module (left) and SE-ResNet unit (right)
+
+21 Xingyu Zeng et al., “Crafting GBD-Net for Object Detection,” IEEE Transactions on Pattern Analysis and
+
+Machine Intelligence 40, no. 9 (2018): 2109–2123.
+
+22 Jie Hu et al., “Squeeze-and-Excitation Networks,” Proceedings of the IEEE Conference on Computer Vision and
+
+Pattern Recognition (2018): 7132–7141.
+
+476 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+An SE block analyzes the output of the unit it is attached to, focusing exclusively on
+the depth dimension (it does not look for any spatial pattern), and it learns which fea‐
+tures are usually most active together. It then uses this information to recalibrate the
+feature  maps,  as  shown  in  Figure  14-21.  For  example,  an  SE  block  may  learn  that
+mouths, noses, and eyes usually appear together in pictures: if you see a mouth and a
+nose, you should expect to see eyes as well. So if the block sees a strong activation in
+the mouth and nose feature maps, but only mild activation in the eye feature map, it
+will  boost  the  eye  feature  map  (more  accurately,  it  will  reduce  irrelevant  feature
+maps).  If  the  eyes  were  somewhat  confused  with  something  else,  this  feature  map
+recalibration will help resolve the ambiguity.
+
+Figure 14-21. An SE block performs feature map recalibration
+
+An SE block is composed of just three layers: a global average pooling layer, a hidden
+dense  layer  using  the  ReLU  activation  function,  and  a  dense  output  layer  using  the
+sigmoid activation function (see Figure 14-22).
+
+Figure 14-22. SE block architecture
+
+As earlier, the global average pooling layer computes the mean activation for each fea‐
+ture  map:  for  example,  if  its  input  contains  256  feature  maps,  it  will  output  256
+
+CNN Architectures 
+
+| 
+
+477
+
+numbers  representing  the  overall  level  of  response  for  each  filter.  The  next  layer  is
+where  the  “squeeze”  happens:  this  layer  has  significantly  fewer  than  256  neurons—
+typically 16 times fewer than the number of feature maps (e.g., 16 neurons)—so the
+256 numbers get compressed into a small vector (e.g., 16 dimensions). This is a low-
+dimensional vector representation (i.e., an embedding) of the distribution of feature
+responses. This bottleneck step forces the SE block to learn a general representation
+of the feature combinations (we will see this principle in action again when we dis‐
+cuss autoencoders in Chapter 17). Finally, the output layer takes the embedding and
+outputs  a  recalibration  vector  containing  one  number  per  feature  map  (e.g.,  256),
+each between 0 and 1. The feature maps are then multiplied by this recalibration vec‐
+tor, so irrelevant features (with a low recalibration score) get scaled down while rele‐
+vant features (with a recalibration score close to 1) are left alone.
+
+Implementing a ResNet-34 CNN Using Keras
+Most  CNN  architectures  described  so  far  are  fairly  straightforward  to  implement
+(although generally you would load a pretrained network instead, as we will see). To
+illustrate the process, let’s implement a ResNet-34 from scratch using Keras. First, let’s
+create a ResidualUnit layer:
+
+class ResidualUnit(keras.layers.Layer):
+    def __init__(self, filters, strides=1, activation="relu", **kwargs):
+        super().__init__(**kwargs)
+        self.activation = keras.activations.get(activation)
+        self.main_layers = [
+            keras.layers.Conv2D(filters, 3, strides=strides,
+                                padding="same", use_bias=False),
+            keras.layers.BatchNormalization(),
+            self.activation,
+            keras.layers.Conv2D(filters, 3, strides=1,
+                                padding="same", use_bias=False),
+            keras.layers.BatchNormalization()]
+        self.skip_layers = []
+        if strides > 1:
+            self.skip_layers = [
+                keras.layers.Conv2D(filters, 1, strides=strides,
+                                    padding="same", use_bias=False),
+                keras.layers.BatchNormalization()]
+
+    def call(self, inputs):
+        Z = inputs
+        for layer in self.main_layers:
+            Z = layer(Z)
+        skip_Z = inputs
+        for layer in self.skip_layers:
+            skip_Z = layer(skip_Z)
+        return self.activation(Z + skip_Z)
+
+478 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+As you can see, this code matches Figure 14-18 pretty closely. In the constructor, we
+create all the layers we will need: the main layers are the ones on the right side of the
+diagram,  and  the  skip  layers  are  the  ones  on  the  left  (only  needed  if  the  stride  is
+greater than 1). Then in the call() method, we make the inputs go through the main
+layers and the skip layers (if any), then we add both outputs and apply the activation
+function.
+
+Next,  we  can  build  the  ResNet-34  using  a  Sequential  model,  since  it’s  really  just  a
+long sequence of layers (we can treat each residual unit as a single layer now that we
+have the ResidualUnit class):
+
+model = keras.models.Sequential()
+model.add(keras.layers.Conv2D(64, 7, strides=2, input_shape=[224, 224, 3],
+                              padding="same", use_bias=False))
+model.add(keras.layers.BatchNormalization())
+model.add(keras.layers.Activation("relu"))
+model.add(keras.layers.MaxPool2D(pool_size=3, strides=2, padding="same"))
+prev_filters = 64
+for filters in [64] * 3 + [128] * 4 + [256] * 6 + [512] * 3:
+    strides = 1 if filters == prev_filters else 2
+    model.add(ResidualUnit(filters, strides=strides))
+    prev_filters = filters
+model.add(keras.layers.GlobalAvgPool2D())
+model.add(keras.layers.Flatten())
+model.add(keras.layers.Dense(10, activation="softmax"))
+
+The only slightly tricky part in this code is the loop that adds the ResidualUnit layers
+to the model: as explained earlier, the first 3 RUs have 64 filters, then the next 4 RUs
+have 128 filters, and so on. We then set the stride to 1 when the number of filters is
+the same as in the previous RU, or else we set it to 2. Then we add the ResidualUnit,
+and finally we update prev_filters.
+
+It is amazing that in fewer than 40 lines of code, we can build the model that won the
+ILSVRC  2015  challenge!  This  demonstrates  both  the  elegance  of  the  ResNet  model
+and the expressiveness of the Keras API. Implementing the other CNN architectures
+is not much harder. However, Keras comes with several of these architectures built in,
+so why not use them instead?
+
+Using Pretrained Models from Keras
+In general, you won’t have to implement standard models like GoogLeNet or ResNet
+manually, since pretrained networks are readily available with a single line of code in
+the  keras.applications package. For example, you can load the ResNet-50 model,
+pretrained on ImageNet, with the following line of code:
+
+model = keras.applications.resnet50.ResNet50(weights="imagenet")
+
+Using Pretrained Models from Keras 
+
+| 
+
+479
+
+That’s  all!  This  will  create  a  ResNet-50  model  and  download  weights  pretrained  on
+the ImageNet dataset. To use it, you first need to ensure that the images have the right
+size.  A  ResNet-50  model  expects  224  ×  224-pixel  images  (other  models  may  expect
+other sizes, such as 299 × 299), so let’s use TensorFlow’s tf.image.resize() function
+to resize the images we loaded earlier:
+
+images_resized = tf.image.resize(images, [224, 224])
+
+The tf.image.resize() will not preserve the aspect ratio. If this is
+a problem, try cropping the images to the appropriate aspect ratio
+before  resizing.  Both  operations  can  be  done  in  one  shot  with
+tf.image.crop_and_resize().
+
+The pretrained models assume that the images are preprocessed in a specific way. In
+some cases they may expect the inputs to be scaled from 0 to 1, or –1 to 1, and so on.
+Each model provides a preprocess_input() function that you can use to preprocess
+your images. These functions assume that the pixel values range from 0 to 255, so we
+must multiply them by 255 (since earlier we scaled them to the 0–1 range):
+
+inputs = keras.applications.resnet50.preprocess_input(images_resized * 255)
+
+Now we can use the pretrained model to make predictions:
+
+Y_proba = model.predict(inputs)
+
+As usual, the output Y_proba is a matrix with one row per image and one column per
+class  (in  this  case,  there  are  1,000  classes).  If  you  want  to  display  the  top  K  predic‐
+tions, including the class name and the estimated probability of each predicted class,
+use the decode_predictions() function. For each image, it returns an array contain‐
+ing the top K predictions, where each prediction is represented as an array containing
+the class identifier,23 its name, and the corresponding confidence score:
+
+top_K = keras.applications.resnet50.decode_predictions(Y_proba, top=3)
+for image_index in range(len(images)):
+    print("Image #{}".format(image_index))
+    for class_id, name, y_proba in top_K[image_index]:
+        print("  {} - {:12s} {:.2f}%".format(class_id, name, y_proba * 100))
+    print()
+
+The output looks like this:
+
+Image #0
+  n03877845 - palace       42.87%
+  n02825657 - bell_cote    40.57%
+  n03781244 - monastery    14.56%
+
+23 In the ImageNet dataset, each image is associated to a word in the WordNet dataset: the class ID is just a
+
+WordNet ID.
+
+480 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+Image #1
+  n04522168 - vase         46.83%
+  n07930864 - cup          7.78%
+  n11939491 - daisy        4.87%
+
+The  correct  classes  (monastery  and  daisy)  appear  in  the  top  three  results  for  both
+images.  That’s  pretty  good,  considering  that  the  model  had  to  choose  from  among
+1,000 classes.
+
+As  you  can  see,  it  is  very  easy  to  create  a  pretty  good  image  classifier  using  a  pre‐
+trained model. Other vision models are available in keras.applications, including
+several  ResNet  variants,  GoogLeNet  variants  like  Inception-v3  and  Xception,
+VGGNet  variants,  and  MobileNet  and  MobileNetV2  (lightweight  models  for  use  in
+mobile applications).
+
+But what if you want to use an image classifier for classes of images that are not part
+of ImageNet? In that case, you may still benefit from the pretrained models to per‐
+form transfer learning.
+
+Pretrained Models for Transfer Learning
+If  you  want  to  build  an  image  classifier  but  you  do  not  have  enough  training  data,
+then it is often a good idea to reuse the lower layers of a pretrained model, as we dis‐
+cussed in Chapter 11. For example, let’s train a model to classify pictures of flowers,
+reusing  a  pretrained  Xception  model.  First,  let’s  load  the  dataset  using  TensorFlow
+Datasets (see Chapter 13):
+
+import tensorflow_datasets as tfds
+
+dataset, info = tfds.load("tf_flowers", as_supervised=True, with_info=True)
+dataset_size = info.splits["train"].num_examples # 3670
+class_names = info.features["label"].names # ["dandelion", "daisy", ...]
+n_classes = i

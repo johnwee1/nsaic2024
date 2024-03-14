@@ -1,0 +1,345 @@
+d  Device”  on  page  685).  Again,  check  out  TF-
+MOT.
+
+• If  you  are  building  a  risk-sensitive  application,  or  inference  latency  is  not  very
+important  in  your  application,  you  can  use  MC  Dropout  to  boost  performance
+and get more reliable probability estimates, along with uncertainty estimates.
+
+With these guidelines, you are now ready to train very deep nets! I hope you are now
+convinced that you can go quite a long way using just Keras. There may come a time,
+however, when you need to have even more control; for example, to write a custom
+loss function or to tweak the training algorithm. For such cases you will need to use
+TensorFlow’s lower-level API, as you will see in the next chapter.
+
+372 
+
+| 
+
+Chapter 11: Training Deep Neural Networks
+
+Exercises
+
+1. Is  it  OK  to  initialize  all  the  weights  to  the  same  value  as  long  as  that  value  is
+
+selected randomly using He initialization?
+
+2. Is it OK to initialize the bias terms to 0?
+
+3. Name three advantages of the SELU activation function over ReLU.
+
+4. In which cases would you want to use each of the following activation functions:
+
+SELU, leaky ReLU (and its variants), ReLU, tanh, logistic, and softmax?
+
+5. What  may  happen  if  you  set  the  momentum  hyperparameter  too  close  to  1  (e.g.,
+
+0.99999) when using an SGD optimizer?
+
+6. Name three ways you can produce a sparse model.
+
+7. Does  dropout  slow  down  training?  Does  it  slow  down  inference  (i.e.,  making
+
+predictions on new instances)? What about MC Dropout?
+
+8. Practice training a deep neural network on the CIFAR10 image dataset:
+
+a. Build a DNN with 20 hidden layers of 100 neurons each (that’s too many, but
+it’s  the  point  of  this  exercise).  Use  He  initialization  and  the  ELU  activation
+function.
+
+b. Using  Nadam  optimization  and  early  stopping,  train  the  network  on  the
+CIFAR10  dataset.  You  can  load  it  with  keras.datasets.cifar10.load_
+data(). The dataset is composed of 60,000 32 × 32–pixel color images (50,000
+for training, 10,000 for testing) with 10 classes, so you’ll need a softmax out‐
+put layer with 10 neurons. Remember to search for the right learning rate each
+time you change the model’s architecture or hyperparameters.
+
+c. Now  try  adding  Batch  Normalization  and  compare  the  learning  curves:  Is  it
+converging  faster  than  before?  Does  it  produce  a  better  model?  How  does  it
+affect training speed?
+
+d. Try replacing Batch Normalization with SELU, and make the necessary adjust‐
+ements to ensure the network self-normalizes (i.e., standardize the input fea‐
+tures,  use  LeCun  normal  initialization,  make  sure  the  DNN  contains  only  a
+sequence of dense layers, etc.).
+
+e. Try regularizing the model with alpha dropout. Then, without retraining your
+
+model, see if you can achieve better accuracy using MC Dropout.
+
+f. Retrain  your  model  using  1cycle  scheduling  and  see  if  it  improves  training
+
+speed and model accuracy.
+
+Solutions to these exercises are available in Appendix A.
+
+Exercises 
+
+| 
+
+373
+
+CHAPTER 12
+Custom Models and Training
+with TensorFlow
+
+Up until now, we’ve used only TensorFlow’s high-level API, tf.keras, but it already got
+us pretty far: we built various neural network architectures, including regression and
+classification  nets,  Wide  &  Deep  nets,  and  self-normalizing  nets,  using  all  sorts  of
+techniques,  such  as  Batch  Normalization,  dropout,  and  learning  rate  schedules.  In
+fact,  95%  of  the  use  cases  you  will  encounter  will  not  require  anything  other  than
+tf.keras (and tf.data; see Chapter 13). But now it’s time to dive deeper into TensorFlow
+and take a look at its lower-level Python API. This will be useful when you need extra
+control  to  write  custom  loss  functions,  custom  metrics,  layers,  models,  initializers,
+regularizers,  weight  constraints,  and  more.  You  may  even  need  to  fully  control  the
+training loop itself, for example to apply special transformations or constraints to the
+gradients (beyond just clipping them) or to use multiple optimizers for different parts
+of the network. We will cover all these cases in this chapter, and we will also look at
+how you can boost your custom models and training algorithms using TensorFlow’s
+automatic graph generation feature. But first, let’s take a quick tour of TensorFlow.
+
+TensorFlow  2.0  (beta)  was  released  in  June  2019,  making  Tensor‐
+Flow much easier to use. The first edition of this book used TF 1,
+while this edition uses TF 2.
+
+Custom Models and Training with TensorFlow 
+
+| 
+
+375
+
+A Quick Tour of TensorFlow
+As you know, TensorFlow is a powerful library for numerical computation, particu‐
+larly well suited and fine-tuned for large-scale Machine Learning (but you could use
+it for anything else that requires heavy computations). It was developed by the Google
+Brain team and it powers many of Google’s large-scale services, such as Google Cloud
+Speech, Google Photos, and Google Search. It was open sourced in November 2015,
+and it is now the most popular Deep Learning library (in terms of citations in papers,
+adoption in companies, stars on GitHub, etc.). Countless projects use TensorFlow for
+all  sorts  of  Machine  Learning  tasks,  such  as  image  classification,  natural  language
+processing, recommender systems, and time series forecasting.
+
+So what does TensorFlow offer? Here’s a summary:
+
+• Its core is very similar to NumPy, but with GPU support.
+
+• It supports distributed computing (across multiple devices and servers).
+
+• It includes a kind of just-in-time (JIT) compiler that allows it to optimize compu‐
+tations  for  speed  and  memory  usage.  It  works  by  extracting  the  computation
+graph  from  a  Python  function,  then  optimizing  it  (e.g.,  by  pruning  unused
+nodes),  and  finally  running  it  efficiently  (e.g.,  by  automatically  running  inde‐
+pendent operations in parallel).
+
+• Computation  graphs  can  be  exported  to  a  portable  format,  so  you  can  train  a
+TensorFlow model in one environment (e.g., using Python on Linux) and run it
+in another (e.g., using Java on an Android device).
+
+• It  implements  autodiff  (see  Chapter  10  and  Appendix  D)  and  provides  some
+excellent optimizers, such as RMSProp and Nadam (see Chapter 11), so you can
+easily minimize all sorts of loss functions.
+
+TensorFlow  offers  many  more  features  built  on  top  of  these  core  features:  the  most
+important is of course tf.keras,1 but it also has data loading and preprocessing ops
+(tf.data,  tf.io,  etc.),  image  processing  ops  (tf.image),  signal  processing  ops
+(tf.signal),  and  more  (see  Figure  12-1  for  an  overview  of  TensorFlow’s  Python
+API).
+
+1 TensorFlow includes another Deep Learning API called the Estimators API, but the TensorFlow team recom‐
+
+mends using tf.keras instead.
+
+376 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+We  will  cover  many  of  the  packages  and  functions  of  the  Tensor‐
+Flow API, but it’s impossible to cover them all, so you should really
+take some time to browse through the API; you will find that it is
+quite rich and well documented.
+
+Figure 12-1. TensorFlow’s Python API
+
+At  the  lowest  level,  each  TensorFlow  operation  (op  for  short)  is  implemented  using
+highly  efficient  C++  code.2  Many  operations  have  multiple  implementations  called
+kernels:  each  kernel  is  dedicated  to  a  specific  device  type,  such  as  CPUs,  GPUs,  or
+even TPUs (tensor processing units). As you may know, GPUs can dramatically speed
+up  computations  by  splitting  them  into  many  smaller  chunks  and  running  them  in
+parallel across many GPU threads. TPUs are even faster: they are custom ASIC chips
+built specifically for Deep Learning operations3 (we will discuss how to use Tensor‐
+Flow with GPUs or TPUs in Chapter 19).
+
+TensorFlow’s  architecture  is  shown  in  Figure  12-2.  Most  of  the  time  your  code  will
+use the high-level APIs (especially tf.keras and tf.data); but when you need more flex‐
+ibility,  you  will  use  the  lower-level  Python  API,  handling  tensors  directly.  Note  that
+
+2 If you ever need to (but you probably won’t), you can write your own operations using the C++ API.
+
+3 To learn more about TPUs and how they work, check out https://homl.info/tpus.
+
+A Quick Tour of TensorFlow 
+
+| 
+
+377
+
+APIs  for  other  languages  are  also  available.  In  any  case,  TensorFlow’s  execution
+engine will take care of running the operations efficiently, even across multiple devi‐
+ces and machines if you tell it to.
+
+Figure 12-2. TensorFlow’s architecture
+
+TensorFlow runs not only on Windows, Linux, and macOS, but also on mobile devi‐
+ces (using TensorFlow Lite), including both iOS and Android (see Chapter 19). If you
+do not want to use the Python API, there are C++, Java, Go, and Swift APIs. There is
+even  a  JavaScript  implementation  called  TensorFlow.js  that  makes  it  possible  to  run
+your models directly in your browser.
+
+There’s more to TensorFlow than the library. TensorFlow is at the center of an exten‐
+sive  ecosystem  of  libraries.  First,  there’s  TensorBoard  for  visualization  (see  Chap‐
+ter 10). Next, there’s TensorFlow Extended (TFX), which is a set of libraries built by
+Google  to  productionize  TensorFlow  projects:  it  includes  tools  for  data  validation,
+preprocessing, model analysis, and serving (with TF Serving; see Chapter 19). Goo‐
+gle’s TensorFlow Hub provides a way to easily download and reuse pretrained neural
+networks.  You  can  also  get  many  neural  network  architectures,  some  of  them  pre‐
+trained,  in  TensorFlow’s  model  garden.  Check  out  the  TensorFlow  Resources  and
+https://github.com/jtoy/awesome-tensorflow for more TensorFlow-based projects. You
+will find hundreds of TensorFlow projects on GitHub, so it is often easy to find exist‐
+ing code for whatever you are trying to do.
+
+More and more ML papers are released along with their implemen‐
+tations,  and  sometimes  even  with  pretrained  models.  Check  out
+https://paperswithcode.com/ to easily find them.
+
+378 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+Last but not least, TensorFlow has a dedicated team of passionate and helpful devel‐
+opers,  as  well  as  a  large  community  contributing  to  improving  it.  To  ask  technical
+questions, you should use http://stackoverflow.com/ and tag your question with ten‐
+sorflow and python. You can file bugs and feature requests through GitHub. For gen‐
+eral discussions, join the Google group.
+
+OK, it’s time to start coding!
+
+Using TensorFlow like NumPy
+TensorFlow’s API revolves around tensors, which flow from operation to operation—
+hence the name TensorFlow. A tensor is very similar to a NumPy ndarray: it is usu‐
+ally a multidimensional array, but it can also hold a scalar (a simple value, such as 42).
+These tensors will be important when we create custom cost functions, custom met‐
+rics, custom layers, and more, so let’s see how to create and manipulate them.
+
+Tensors and Operations
+You can create a tensor with tf.constant(). For example, here is a tensor represent‐
+ing a matrix with two rows and three columns of floats:
+
+>>> tf.constant([[1., 2., 3.], [4., 5., 6.]]) # matrix
+<tf.Tensor: id=0, shape=(2, 3), dtype=float32, numpy=
+array([[1., 2., 3.],
+       [4., 5., 6.]], dtype=float32)>
+>>> tf.constant(42) # scalar
+<tf.Tensor: id=1, shape=(), dtype=int32, numpy=42>
+
+Just like an ndarray, a tf.Tensor has a shape and a data type (dtype):
+
+>>> t = tf.constant([[1., 2., 3.], [4., 5., 6.]])
+>>> t.shape
+TensorShape([2, 3])
+>>> t.dtype
+tf.float32
+
+Indexing works much like in NumPy:
+
+>>> t[:, 1:]
+<tf.Tensor: id=5, shape=(2, 2), dtype=float32, numpy=
+array([[2., 3.],
+       [5., 6.]], dtype=float32)>
+>>> t[..., 1, tf.newaxis]
+<tf.Tensor: id=15, shape=(2, 1), dtype=float32, numpy=
+array([[2.],
+       [5.]], dtype=float32)>
+
+Most importantly, all sorts of tensor operations are available:
+
+>>> t + 10
+<tf.Tensor: id=18, shape=(2, 3), dtype=float32, numpy=
+
+Using TensorFlow like NumPy 
+
+| 
+
+379
+
+array([[11., 12., 13.],
+       [14., 15., 16.]], dtype=float32)>
+>>> tf.square(t)
+<tf.Tensor: id=20, shape=(2, 3), dtype=float32, numpy=
+array([[ 1.,  4.,  9.],
+       [16., 25., 36.]], dtype=float32)>
+>>> t @ tf.transpose(t)
+<tf.Tensor: id=24, shape=(2, 2), dtype=float32, numpy=
+array([[14., 32.],
+       [32., 77.]], dtype=float32)>
+
+Note that writing t + 10 is equivalent to calling tf.add(t, 10) (indeed, Python calls
+the magic method t.__add__(10), which just calls tf.add(t, 10)). Other operators
+like - and * are also supported. The @ operator was added in Python 3.5, for matrix
+multiplication: it is equivalent to calling the tf.matmul() function.
+
+You  will  find  all  the  basic  math  operations  you  need  (tf.add(),  tf.multiply(),
+tf.square(),  tf.exp(),  tf.sqrt(),  etc.)  and  most  operations  that  you  can  find  in
+NumPy (e.g., tf.reshape(), tf.squeeze(), tf.tile()). Some functions have a dif‐
+ferent  name  than  in  NumPy;  for  instance,  tf.reduce_mean(),  tf.reduce_sum(),
+tf.reduce_max(),  and  tf.math.log()  are  the  equivalent  of  np.mean(),  np.sum(),
+np.max() and np.log(). When the name differs, there is often a good reason for it.
+For example, in TensorFlow you must write tf.transpose(t); you cannot just write
+t.T  like  in  NumPy.  The  reason  is  that  the  tf.transpose()  function  does  not  do
+exactly the same thing as NumPy’s T attribute: in TensorFlow, a new tensor is created
+with  its  own  copy  of  the  transposed  data,  while  in  NumPy,  t.T  is  just  a  transposed
+view on the same data. Similarly, the tf.reduce_sum() operation is named this way
+because its GPU kernel (i.e., GPU implementation) uses a reduce algorithm that does
+not guarantee the order in which the elements are added: because 32-bit floats have
+limited precision, the result may change ever so slightly every time you call this oper‐
+ation.  The  same  is  true  of  tf.reduce_mean()  (but  of  course  tf.reduce_max()  is
+deterministic).
+
+Many  functions  and  classes  have  aliases.  For  example,  tf.add()
+and tf.math.add() are the same function. This allows TensorFlow
+to have concise names for the most common operations4 while pre‐
+serving well-organized packages.
+
+4 A notable exception is tf.math.log(), which is commonly used but doesn’t have a tf.log() alias (as it might
+
+be confused with logging).
+
+380 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+Keras’ Low-Level API
+The Keras API has its own low-level API, located in keras.backend. It includes func‐
+tions like square(), exp(), and sqrt(). In tf.keras, these functions generally just call
+the  corresponding  TensorFlow  operations.  If  you  want  to  write  code  that  will  be
+portable to other Keras implementations, you should use these Keras functions. How‐
+ever, they only cover a subset of all functions available in TensorFlow, so in this book
+we  will  use  the  TensorFlow  operations  directly.  Here  is  as  simple  example  using
+keras.backend, which is commonly named K for short:
+
+>>> from tensorflow import keras
+>>> K = keras.backend
+>>> K.square(K.transpose(t)) + 10
+<tf.Tensor: id=39, shape=(3, 2), dtype=float32, numpy=
+array([[11., 26.],
+       [14., 35.],
+       [19., 46.]], dtype=float32)>
+
+Tensors and NumPy
+Tensors play nice with NumPy: you can create a tensor from a NumPy array, and vice
+versa. You can even apply T

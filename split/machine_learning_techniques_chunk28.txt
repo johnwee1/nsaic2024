@@ -1,0 +1,329 @@
+ked  instances:  these  clusters  can  take  on  any
+shape. Some algorithms are hierarchical, looking for clusters of clusters. And the list
+goes on.
+
+In  this  section,  we  will  look  at  two  popular  clustering  algorithms,  K-Means  and
+DBSCAN, and explore some of their applications, such as nonlinear dimensionality
+reduction, semi-supervised learning, and anomaly detection.
+
+K-Means
+Consider  the  unlabeled  dataset  represented  in  Figure  9-2:  you  can  clearly  see  five
+blobs of instances. The K-Means algorithm is a simple algorithm capable of clustering
+this kind of dataset very quickly and efficiently, often in just a few iterations. It was
+proposed by Stuart Lloyd at Bell Labs in 1957 as a technique for pulse-code modula‐
+tion, but it was only published outside of the company in 1982.1 In 1965, Edward W.
+Forgy had published virtually the same algorithm, so K-Means is sometimes referred
+to as Lloyd–Forgy.
+
+1 Stuart P. Lloyd, “Least Squares Quantization in PCM,” IEEE Transactions on Information Theory 28, no. 2
+
+(1982): 129–137.
+
+238 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+Figure 9-2. An unlabeled dataset composed of five blobs of instances
+
+Let’s train a K-Means clusterer on this dataset. It will try to find each blob’s center and
+assign each instance to the closest blob:
+
+from sklearn.cluster import KMeans
+k = 5
+kmeans = KMeans(n_clusters=k)
+y_pred = kmeans.fit_predict(X)
+
+Note that you have to specify the number of clusters k that the algorithm must find.
+In this example, it is pretty obvious from looking at the data that k should be set to 5,
+but in general it is not that easy. We will discuss this shortly.
+
+Each instance was assigned to one of the five clusters. In the context of clustering, an
+instance’s  label  is  the  index  of  the  cluster  that  this  instance  gets  assigned  to  by  the
+algorithm: this is not to be confused with the class labels in classification (remember
+that  clustering  is  an  unsupervised  learning  task).  The  KMeans  instance  preserves  a
+copy of the labels of the instances it was trained on, available via the labels_ instance
+variable:
+
+>>> y_pred
+array([4, 0, 1, ..., 2, 1, 0], dtype=int32)
+>>> y_pred is kmeans.labels_
+True
+
+We can also take a look at the five centroids that the algorithm found:
+
+>>> kmeans.cluster_centers_
+array([[-2.80389616,  1.80117999],
+       [ 0.20876306,  2.25551336],
+       [-2.79290307,  2.79641063],
+       [-1.46679593,  2.28585348],
+       [-2.80037642,  1.30082566]])
+
+Clustering 
+
+| 
+
+239
+
+You can easily assign new instances to the cluster whose centroid is closest:
+
+>>> X_new = np.array([[0, 2], [3, 2], [-3, 3], [-3, 2.5]])
+>>> kmeans.predict(X_new)
+array([1, 1, 2, 2], dtype=int32)
+
+If  you  plot  the  cluster’s  decision  boundaries,  you  get  a  Voronoi  tessellation  (see
+Figure 9-3, where each centroid is represented with an X).
+
+Figure 9-3. K-Means decision boundaries (Voronoi tessellation)
+
+The vast majority of the instances were clearly assigned to the appropriate cluster, but
+a few instances were probably mislabeled (especially near the boundary between the
+top-left  cluster  and  the  central  cluster).  Indeed,  the  K-Means  algorithm  does  not
+behave  very  well  when  the  blobs  have  very  different  diameters  because  all  it  cares
+about when assigning an instance to a cluster is the distance to the centroid.
+
+Instead of assigning each instance to a single cluster, which is called hard clustering, it
+can be useful to give each instance a score per cluster, which is called soft clustering.
+The  score  can  be  the  distance  between  the  instance  and  the  centroid;  conversely,  it
+can  be  a  similarity  score  (or  affinity),  such  as  the  Gaussian  Radial  Basis  Function
+(introduced  in  Chapter  5).  In  the  KMeans  class,  the  transform()  method  measures
+the distance from each instance to every centroid:
+
+>>> kmeans.transform(X_new)
+array([[2.81093633, 0.32995317, 2.9042344 , 1.49439034, 2.88633901],
+       [5.80730058, 2.80290755, 5.84739223, 4.4759332 , 5.84236351],
+       [1.21475352, 3.29399768, 0.29040966, 1.69136631, 1.71086031],
+       [0.72581411, 3.21806371, 0.36159148, 1.54808703, 1.21567622]])
+
+In  this  example,  the  first  instance  in  X_new  is  located  at  a  distance  of  2.81  from  the
+first centroid, 0.33 from the second centroid, 2.90 from the third centroid, 1.49 from
+the fourth centroid, and 2.89 from the fifth centroid. If you have a high-dimensional
+dataset and you transform it this way, you end up with a k-dimensional dataset: this
+transformation can be a very efficient nonlinear dimensionality reduction technique.
+
+240 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+The K-Means algorithm
+
+So, how does the algorithm work? Well, suppose you were given the centroids. You
+could easily label all the instances in the dataset by assigning each of them to the clus‐
+ter whose centroid is closest. Conversely, if you were given all the instance labels, you
+could easily locate all the centroids by computing the mean of the instances for each
+cluster. But you are given neither the labels nor the centroids, so how can you pro‐
+ceed? Well, just start by placing the centroids randomly (e.g., by picking k instances at
+random and using their locations as centroids). Then label the instances, update the
+centroids, label the instances, update the centroids, and so on until the centroids stop
+moving. The algorithm is guaranteed to converge in a finite number of steps (usually
+quite small); it will not oscillate forever.2
+
+You  can  see  the  algorithm  in  action  in  Figure  9-4:  the  centroids  are  initialized  ran‐
+domly  (top  left),  then  the  instances  are  labeled  (top  right),  then  the  centroids  are
+updated (center left), the instances are relabeled (center right), and so on. As you can
+see, in just three iterations, the algorithm has reached a clustering that seems close to
+optimal.
+
+The computational complexity of the algorithm is generally linear
+with regard to the number of instances m, the number of clusters k,
+and the number of dimensions n. However, this is only true when
+the data has a clustering structure. If it does not, then in the worst-
+case  scenario  the  complexity  can  increase  exponentially  with  the
+number of instances. In practice, this rarely happens, and K-Means
+is generally one of the fastest clustering algorithms.
+
+2 That’s because the mean squared distance between the instances and their closest centroid can only go down
+
+at each step.
+
+Clustering 
+
+| 
+
+241
+
+Figure 9-4. The K-Means algorithm
+
+Although the algorithm is guaranteed to converge, it may not converge to the right
+solution (i.e., it may converge to a local optimum): whether it does or not depends on
+the centroid initialization. Figure 9-5 shows two suboptimal solutions that the algo‐
+rithm can converge to if you are not lucky with the random initialization step.
+
+Figure 9-5. Suboptimal solutions due to unlucky centroid initializations
+
+Let’s  look  at  a  few  ways  you  can  mitigate  this  risk  by  improving  the  centroid
+initialization.
+
+242 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+Centroid initialization methods
+
+If you happen to know approximately where the centroids should be (e.g., if you ran
+another clustering algorithm earlier), then you can set the init hyperparameter to a
+NumPy array containing the list of centroids, and set n_init to 1:
+
+good_init = np.array([[-3, 3], [-3, 2], [-3, 1], [-1, 2], [0, 2]])
+kmeans = KMeans(n_clusters=5, init=good_init, n_init=1)
+
+Another solution is to run the algorithm multiple times with different random initial‐
+izations  and  keep  the  best  solution.  The  number  of  random  initializations  is  con‐
+trolled by the n_init hyperparameter: by default, it is equal to 10, which means that
+the whole algorithm described earlier runs 10 times when you call fit(), and Scikit-
+Learn  keeps  the  best  solution.  But  how  exactly  does  it  know  which  solution  is  the
+best? It uses a performance metric! That metric is called the model’s inertia, which is
+the  mean  squared  distance  between  each  instance  and  its  closest  centroid.  It  is
+roughly equal to 223.3 for the model on the left in Figure 9-5, 237.5 for the model on
+the right in Figure 9-5, and 211.6 for the model in Figure 9-3. The KMeans class runs
+the  algorithm  n_init  times  and  keeps  the  model  with  the  lowest  inertia.  In  this
+example,  the  model  in  Figure  9-3  will  be  selected  (unless  we  are  very  unlucky  with
+n_init  consecutive  random  initializations).  If  you  are  curious,  a  model’s  inertia  is
+accessible via the inertia_ instance variable:
+
+>>> kmeans.inertia_
+211.59853725816856
+
+The  score()  method  returns  the  negative  inertia.  Why  negative?  Because  a  predic‐
+tor’s  score()  method  must  always  respect  Scikit-Learn’s  “greater  is  better”  rule:  if  a
+predictor is better than another, its score() method should return a greater score.
+
+>>> kmeans.score(X)
+-211.59853725816856
+
+An important improvement to the K-Means algorithm, K-Means++, was proposed in
+a  2006  paper  by  David  Arthur  and  Sergei  Vassilvitskii.3  They  introduced  a  smarter
+initialization step that tends to select centroids that are distant from one another, and
+this  improvement  makes  the  K-Means  algorithm  much  less  likely  to  converge  to  a
+suboptimal solution. They showed that the additional computation required for the
+smarter  initialization  step  is  well  worth  it  because  it  makes  it  possible  to  drastically
+reduce the number of times the algorithm needs to be run to find the optimal solu‐
+tion. Here is the K-Means++ initialization algorithm:
+
+1. Take one centroid c(1), chosen uniformly at random from the dataset.
+
+3 David Arthur and Sergei Vassilvitskii, “k-Means++: The Advantages of Careful Seeding,” Proceedings of the
+
+18th Annual ACM-SIAM Symposium on Discrete Algorithms (2007): 1027–1035.
+
+Clustering 
+
+| 
+
+243
+
+2. Take  a  new  centroid  c(i),  choosing  an  instance  x(i)  with  probability  D  i 2
+
+  /
+
+m D  j 2
+, where D(x(i)) is the distance between the instance x(i) and the clos‐
+∑ j = 1
+est  centroid  that  was  already  chosen.  This  probability  distribution  ensures  that
+instances  farther  away  from  already  chosen  centroids  are  much  more  likely  be
+selected as centroids.
+
+3. Repeat the previous step until all k centroids have been chosen.
+
+The KMeans class uses this initialization method by default. If you want to force it to
+use the original method (i.e., picking k instances randomly to define the initial cent‐
+roids), then you can set the init hyperparameter to "random". You will rarely need to
+do this.
+
+Accelerated K-Means and mini-batch K-Means
+
+Another important improvement to the K-Means algorithm was proposed in a 2003
+paper by Charles Elkan.4 It considerably accelerates the algorithm by avoiding many
+unnecessary  distance  calculations.  Elkan  achieved  this  by  exploiting  the  triangle
+inequality (i.e., that a straight line is always the shortest distance between two points5)
+and by keeping track of lower and upper bounds for distances between instances and
+centroids. This is the algorithm the KMeans class uses by default (you can force it to
+use  the  original  algorithm  by  setting  the  algorithm  hyperparameter  to  "full",
+although you probably will never need to).
+
+Yet  another  important  variant  of  the  K-Means  algorithm  was  proposed  in  a  2010
+paper  by  David  Sculley.6  Instead  of  using  the  full  dataset  at  each  iteration,  the  algo‐
+rithm is capable of using mini-batches, moving the centroids just slightly at each iter‐
+ation. This speeds up the algorithm typically by a factor of three or four and makes it
+possible to cluster huge datasets that do not fit in memory. Scikit-Learn implements
+this  algorithm  in  the  MiniBatchKMeans  class.  You  can  just  use  this  class  like  the
+KMeans class:
+
+from sklearn.cluster import MiniBatchKMeans
+
+minibatch_kmeans = MiniBatchKMeans(n_clusters=5)
+minibatch_kmeans.fit(X)
+
+4 Charles Elkan, “Using the Triangle Inequality to Accelerate k-Means,” Proceedings of the 20th International
+
+Conference on Machine Learning (2003): 147–153.
+
+5 The triangle inequality is AC ≤ AB + BC where A, B and C are three points and AB, AC, and BC are the
+
+distances between these points.
+
+6 David Sculley, “Web-Scale K-Means Clustering,” Proceedings of the 19th International Conference on World
+
+Wide Web (2010): 1177–1178.
+
+244 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+If the dataset does not fit in memory, the simplest option is to use the memmap class, as
+we did for incremental PCA in Chapter 8. Alternatively, you can pass one mini-batch
+at a time to the partial_fit() method, but this will require much more work, since
+you will need to perform multiple initializations and select the best one yourself (see
+the mini-batch K-Means section of the notebook for an example).
+
+Although  the  Mini-batch  K-Means  algorithm  is  much  faster  than  the  regular  K-
+Means  algorithm,  its  inertia  is  generally  slightly  worse,  especially  as  the  number  of
+clusters  increases.  You  can  see  this  in  Figure  9-6:  the  plot  on  the  left  compares  the
+inertias of Mini-batch K-Means and regular K-Means models trained on the previous
+dataset  using  various  numbers  of  clusters  k.  The  difference  between  the  two  curves
+remains fairly constant, but this difference becomes more and more significant as k
+increases, since the inertia becomes smaller and smaller. In the plot on the right, you
+can see that Mini-batch K-Means is much faster than regular K-Means, and this dif‐
+ference increases with k.
+
+Figure 9-6. Mini-batch K-Means has a higher inertia than K-Means (left) but it is much
+faster (right), especially as k increases
+
+Finding the optimal number of clusters
+
+So far, we have set the number of clusters k to 5 because it was obvious by looking at
+the data that this was the correct number of clusters. But in general, it will not be so
+easy to know how to set k, and the result might be quite bad if you set it to the wrong
+value. As you can see in Figure 9-7, setting k to 3 or 8 results in fairly bad models.
+
+Clustering 
+
+| 
+
+245
+
+Figure 9-7. Bad choices for the number of clusters: when k is too small, separate clusters
+get merged (left), and when k is too large, some clusters get chopped into multiple pieces
+(right)
+
+You  might  be  thinking  that  we  could  just  pick  the  model  with  the  lowest  inertia,
+right? Unfortunately, it is not that simple. The inertia for k=3 is 653.2, which is much
+higher  than  for  k=5  (which  was  211.6).  But  with  k=8,  the  inertia  is  just  119.1.  The
+inertia  is  not  a  good  performance  metric  when  trying  to  choose  k  because  it  keeps
+getting  lower  as  we  increase  k.  Indeed,  the  more  clusters  there  are,  the  closer  each
+instance will be to its closest centroid, and therefore the lower the inertia will be. Let’s
+plot the inertia as a function of k (see Figure 9-8).
+
+Figure 9-8. When plotting the inertia as a function of the number of clusters k, the curve
+often contains an inflexion point called the “elbow”
+
+As  you  can  see,  the  inertia  drops  very  quickly  as  we  increase  k  up  to  4,  but  then  it
+decreases  much  more  slowly  as  we  keep  increasing  k.  This  curve  has  roughly  the
+shape  of  an  arm,  and  there  is

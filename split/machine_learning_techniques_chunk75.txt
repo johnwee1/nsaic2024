@@ -1,0 +1,344 @@
+re  different
+from the inputs.
+
+Because the internal representation has a lower dimensionality than the input data (it
+is 2D instead of 3D), the autoencoder is said to be undercomplete. An undercomplete
+autoencoder cannot trivially copy its inputs to the codings, yet it must find a way to
+output  a  copy  of  its  inputs.  It  is  forced  to  learn  the  most  important  features  in  the
+input data (and drop the unimportant ones).
+
+Let’s see how to implement a very simple undercomplete autoencoder for dimension‐
+ality reduction.
+
+Performing PCA with an Undercomplete Linear
+Autoencoder
+If  the  autoencoder  uses  only  linear  activations  and  the  cost  function  is  the  mean
+squared  error  (MSE),  then  it  ends  up  performing  Principal  Component  Analysis
+(PCA; see Chapter 8).
+
+The following code builds a simple linear autoencoder to perform PCA on a 3D data‐
+set, projecting it to 2D:
+
+570 
+
+| 
+
+Chapter 17: Representation Learning and Generative Learning Using Autoencoders and GANs
+
+from tensorflow import keras
+
+encoder = keras.models.Sequential([keras.layers.Dense(2, input_shape=[3])])
+decoder = keras.models.Sequential([keras.layers.Dense(3, input_shape=[2])])
+autoencoder = keras.models.Sequential([encoder, decoder])
+
+autoencoder.compile(loss="mse", optimizer=keras.optimizers.SGD(lr=0.1))
+
+This code is really not very different from all the MLPs we built in past chapters, but
+there are a few things to note:
+
+• We  organized  the  autoencoder  into  two  subcomponents:  the  encoder  and  the
+decoder. Both are regular Sequential models with a single Dense layer each, and
+the autoencoder is a Sequential model containing the encoder followed by the
+decoder (remember that a model can be used as a layer in another model).
+
+• The autoencoder’s number of outputs is equal to the number of inputs (i.e., 3).
+
+• To perform simple PCA, we do not use any activation function (i.e., all neurons
+are linear), and the cost function is the MSE. We will see more complex autoen‐
+coders shortly.
+
+Now let’s train the model on a simple generated 3D dataset and use it to encode that
+same dataset (i.e., project it to 2D):
+
+history = autoencoder.fit(X_train, X_train, epochs=20)
+codings = encoder.predict(X_train)
+
+Note  that  the  same  dataset,  X_train,  is  used  as  both  the  inputs  and  the  targets.
+Figure 17-2 shows the original 3D dataset (on the left) and the output of the autoen‐
+coder’s hidden layer (i.e., the coding layer, on the right). As you can see, the autoen‐
+coder found the best 2D plane to project the data onto, preserving as much variance
+in the data as it could (just like PCA).
+
+Figure 17-2. PCA performed by an undercomplete linear autoencoder
+
+Performing PCA with an Undercomplete Linear Autoencoder 
+
+| 
+
+571
+
+You can think of autoencoders as a form of self-supervised learning
+(i.e., using a supervised learning technique with automatically gen‐
+erated labels, in this case simply equal to the inputs).
+
+Stacked Autoencoders
+Just  like  other  neural  networks  we  have  discussed,  autoencoders  can  have  multiple
+hidden layers. In this case they are called stacked autoencoders (or deep autoencoders).
+Adding  more  layers  helps  the  autoencoder  learn  more  complex  codings.  That  said,
+one must be careful not to make the autoencoder too powerful. Imagine an encoder
+so powerful that it just learns to map each input to a single arbitrary number (and the
+decoder learns the reverse mapping). Obviously such an autoencoder will reconstruct
+the training data perfectly, but it will not have learned any useful data representation
+in the process (and it is unlikely to generalize well to new instances).
+
+The architecture of a stacked autoencoder is typically symmetrical with regard to the
+central hidden layer (the coding layer). To put it simply, it looks like a sandwich. For
+example, an autoencoder for MNIST (introduced in Chapter 3) may have 784 inputs,
+followed by a hidden layer with 100 neurons, then a central hidden layer of 30 neu‐
+rons, then another hidden layer with 100 neurons, and an output layer with 784 neu‐
+rons. This stacked autoencoder is represented in Figure 17-3.
+
+Figure 17-3. Stacked autoencoder
+
+Implementing a Stacked Autoencoder Using Keras
+You can implement a stacked autoencoder very much like a regular deep MLP. In par‐
+ticular,  the  same  techniques  we  used  in  Chapter  11  for  training  deep  nets  can  be
+applied.  For  example,  the  following  code  builds  a  stacked  autoencoder  for  Fashion
+
+572 
+
+| 
+
+Chapter 17: Representation Learning and Generative Learning Using Autoencoders and GANs
+
+MNIST  (loaded  and  normalized  as  in  Chapter  10),  using  the  SELU  activation
+function:
+
+stacked_encoder = keras.models.Sequential([
+    keras.layers.Flatten(input_shape=[28, 28]),
+    keras.layers.Dense(100, activation="selu"),
+    keras.layers.Dense(30, activation="selu"),
+])
+stacked_decoder = keras.models.Sequential([
+    keras.layers.Dense(100, activation="selu", input_shape=[30]),
+    keras.layers.Dense(28 * 28, activation="sigmoid"),
+    keras.layers.Reshape([28, 28])
+])
+stacked_ae = keras.models.Sequential([stacked_encoder, stacked_decoder])
+stacked_ae.compile(loss="binary_crossentropy",
+                   optimizer=keras.optimizers.SGD(lr=1.5))
+history = stacked_ae.fit(X_train, X_train, epochs=10,
+                         validation_data=[X_valid, X_valid])
+
+Let’s go through this code:
+
+• Just like earlier, we split the autoencoder model into two submodels: the encoder
+
+and the decoder.
+
+• The  encoder  takes  28  ×  28–pixel  grayscale  images,  flattens  them  so  that  each
+image is represented as a vector of size 784, then processes these vectors through
+two  Dense  layers  of  diminishing  sizes  (100  units  then  30  units),  both  using  the
+SELU activation function (you may want to add LeCun normal initialization as
+well, but the network is not very deep so it won’t make a big difference). For each
+input image, the encoder outputs a vector of size 30.
+
+• The decoder takes codings of size 30 (output by the encoder) and processes them
+through  two  Dense  layers  of  increasing  sizes  (100  units  then  784  units),  and  it
+reshapes  the  final  vectors  into  28  ×  28  arrays  so  the  decoder’s  outputs  have  the
+same shape as the encoder’s inputs.
+
+• When  compiling  the  stacked  autoencoder,  we  use  the  binary  cross-entropy  loss
+instead  of  the  mean  squared  error.  We  are  treating  the  reconstruction  task  as  a
+multilabel binary classification problem: each pixel intensity represents the prob‐
+ability that the pixel should be black. Framing it this way (rather than as a regres‐
+sion problem) tends to make the model converge faster.2
+
+• Finally, we train the model using X_train as both the inputs and the targets (and
+
+similarly, we use X_valid as both the validation inputs and targets).
+
+2 You might be tempted to use the accuracy metric, but it would not work properly, since this metric expects the
+labels to be either 0 or 1 for each pixel. You can easily work around this problem by creating a custom metric
+that computes the accuracy after rounding the targets and predictions to 0 or 1.
+
+Stacked Autoencoders 
+
+| 
+
+573
+
+Visualizing the Reconstructions
+One way to ensure that an autoencoder is properly trained is to compare the inputs
+and the outputs: the differences should not be too significant. Let’s plot a few images
+from the validation set, as well as their reconstructions:
+
+def plot_image(image):
+    plt.imshow(image, cmap="binary")
+    plt.axis("off")
+
+def show_reconstructions(model, n_images=5):
+    reconstructions = model.predict(X_valid[:n_images])
+    fig = plt.figure(figsize=(n_images * 1.5, 3))
+    for image_index in range(n_images):
+        plt.subplot(2, n_images, 1 + image_index)
+        plot_image(X_valid[image_index])
+        plt.subplot(2, n_images, 1 + n_images + image_index)
+        plot_image(reconstructions[image_index])
+
+show_reconstructions(stacked_ae)
+
+Figure 17-4 shows the resulting images.
+
+Figure 17-4. Original images (top) and their reconstructions (bottom)
+
+The  reconstructions  are  recognizable,  but  a  bit  too  lossy.  We  may  need  to  train  the
+model  for  longer,  or  make  the  encoder  and  decoder  deeper,  or  make  the  codings
+larger.  But  if  we  make  the  network  too  powerful,  it  will  manage  to  make  perfect
+reconstructions without having learned any useful patterns in the data. For now, let’s
+go with this model.
+
+Visualizing the Fashion MNIST Dataset
+Now that we have trained a stacked autoencoder, we can use it to reduce the dataset’s
+dimensionality. For visualization, this does not give great results compared to other
+dimensionality reduction algorithms (such as those we discussed in Chapter 8), but
+one big advantage of autoencoders is that they can handle large datasets, with many
+instances and many features. So one strategy is to use an autoencoder to reduce the
+dimensionality  down  to  a  reasonable  level,  then  use  another  dimensionality
+
+574 
+
+| 
+
+Chapter 17: Representation Learning and Generative Learning Using Autoencoders and GANs
+
+reduction  algorithm  for  visualization.  Let’s  use  this  strategy  to  visualize  Fashion
+MNIST. First, we use the encoder from our stacked autoencoder to reduce the dimen‐
+sionality  down  to  30,  then  we  use  Scikit-Learn’s  implementation  of  the  t-SNE  algo‐
+rithm to reduce the dimensionality down to 2 for visualization:
+
+from sklearn.manifold import TSNE
+
+X_valid_compressed = stacked_encoder.predict(X_valid)
+tsne = TSNE()
+X_valid_2D = tsne.fit_transform(X_valid_compressed)
+
+Now we can plot the dataset:
+
+plt.scatter(X_valid_2D[:, 0], X_valid_2D[:, 1], c=y_valid, s=10, cmap="tab10")
+
+Figure 17-5 shows the resulting scatterplot (beautified a bit by displaying some of the
+images). The t-SNE algorithm identified several clusters which match the classes rea‐
+sonably well (each class is represented with a different color).
+
+Figure 17-5. Fashion MNIST visualization using an autoencoder followed by t-SNE
+
+So, autoencoders can be used for dimensionality reduction. Another application is for
+unsupervised pretraining.
+
+Stacked Autoencoders 
+
+| 
+
+575
+
+Unsupervised Pretraining Using Stacked Autoencoders
+As we discussed in Chapter 11, if you are tackling a complex supervised task but you
+do not have a lot of labeled training data, one solution is to find a neural network that
+performs  a  similar  task  and  reuse  its  lower  layers.  This  makes  it  possible  to  train  a
+high-performance model using little training data because your neural network won’t
+have to learn all the low-level features; it will just reuse the feature detectors learned
+by the existing network.
+
+Similarly, if you have a large dataset but most of it is unlabeled, you can first train a
+stacked autoencoder using all the data, then reuse the lower layers to create a neural
+network  for  your  actual  task  and  train  it  using  the  labeled  data.  For  example,
+Figure  17-6  shows  how  to  use  a  stacked  autoencoder  to  perform  unsupervised  pre‐
+training for a classification neural network. When training the classifier, if you really
+don’t have much labeled training data, you may want to freeze the pretrained layers
+(at least the lower ones).
+
+Figure 17-6. Unsupervised pretraining using autoencoders
+
+Having plenty of unlabeled data and little labeled data is common.
+Building  a  large  unlabeled  dataset  is  often  cheap  (e.g.,  a  simple
+script can download millions of images off the internet), but label‐
+ing those images (e.g., classifying them as cute or not) can usually
+be  done  reliably  only  by  humans.  Labeling  instances  is  time-
+consuming  and  costly,  so  it’s  normal  to  have  only  a  few  thousand
+human-labeled instances.
+
+576 
+
+| 
+
+Chapter 17: Representation Learning and Generative Learning Using Autoencoders and GANs
+
+There  is  nothing  special  about  the  implementation:  just  train  an  autoencoder  using
+all the training data (labeled plus unlabeled), then reuse its encoder layers to create a
+new neural network (see the exercises at the end of this chapter for an example).
+
+Next, let’s look at a few techniques for training stacked autoencoders.
+
+Tying Weights
+When  an  autoencoder  is  neatly  symmetrical,  like  the  one  we  just  built,  a  common
+technique is to tie the weights of the decoder layers to the weights of the encoder lay‐
+ers. This halves the number of weights in the model, speeding up training and limit‐
+ing the risk of overfitting. Specifically, if the autoencoder has a total of N layers (not
+counting the input layer), and WL represents the connection weights of the Lth layer
+(e.g., layer 1 is the first hidden layer, layer N/2 is the coding layer, and layer N is the
+⊺
+output layer), then the decoder layer weights can be defined simply as: WN–L+1 = WL
+(with L = 1, 2, …, N/2).
+
+To tie weights between layers using Keras, let’s define a custom layer:
+
+class DenseTranspose(keras.layers.Layer):
+    def __init__(self, dense, activation=None, **kwargs):
+        self.dense = dense
+        self.activation = keras.activations.get(activation)
+        super().__init__(**kwargs)
+    def build(self, batch_input_shape):
+        self.biases = self.add_weight(name="bias", initializer="zeros",
+                                      shape=[self.dense.input_shape[-1]])
+        super().build(batch_input_shape)
+    def call(self, inputs):
+        z = tf.matmul(inputs, self.dense.weights[0], transpose_b=True)
+        return self.activation(z + self.biases)
+
+This  custom  layer  acts  like  a  regular  Dense  layer,  but  it  uses  another  Dense  layer’s
+weights, transposed (setting transpose_b=True is equivalent to transposing the sec‐
+ond argument, but it’s more efficient as it performs the transposition on the fly within
+the  matmul()  operation).  However,  it  uses  its  own  bias  vector.  Next,  we  can  build  a
+new stacked autoencoder, much like the previous one, but with the decoder’s Dense
+layers tied to the encoder’s Dense layers:
+
+dense_1 = keras.layers.Dense(100, activation="selu")
+dense_2 = keras.layers.Dense(30, activation="selu")
+
+tied_encoder = keras.models.Sequential([
+    keras.layers.Flatten(input_shape=[28, 28]),
+    dense_1,
+    dense_2
+])
+
+Stacked Autoencoders 
+
+| 
+
+577
+
+tied_decoder = keras.models.Sequential([
+    DenseTranspose(dense_2, activation="selu"),
+    DenseTranspose(dense_1, activation="sigmoid"),
+    keras.layers.Reshape([28, 28])
+])
+
+tied_ae = keras.models.Sequential([tied_encoder, tied_decoder])
+
+This  model  achieves  a  very  slightly  lower  reconstruction  error  than  the  previous
+model, with almost half the number of parameters.
+
+Training One Autoencoder at a Time
+Rather than training the whole stacked autoencoder in one go like we just did, it is
+possible to train one shallow autoencoder at a time, then stack all of them into a sin‐
+gle stacked autoencoder (hence the name), as shown in Figure 17-7. This technique is
+not used as much these days, but you may still run into papers that talk about “greedy
+layerwise training,” so it’s good to know what it means.
+
+Figure 17-7. Training one autoencoder at a time
+
+During  the  first  phase  of  training,  the  first  autoencoder  learns  to  reconstruct  the
+inputs. Then we encode the whole training set using this first autoencoder, and this
+gives us a new (compressed) training set. We then train a second autoencoder on this
+new  dataset.  This  is  the

@@ -1,0 +1,366 @@
+n 6-4. CART cost function for regression
+
+J k, tk =
+
+mleft
+m
+
+MSEleft +
+
+mright
+m
+
+MSEright where
+
+MSEnode = ∑
+
+ynode − y i 2
+
+i ∈ node
+1
+mnode
+
+∑
+i ∈ node
+
+y i
+
+ynode =
+
+Just like for classification tasks, Decision Trees are prone to overfitting when dealing
+with  regression  tasks.  Without  any  regularization  (i.e.,  using  the  default  hyperpara‐
+meters), you get the predictions on the left in Figure 6-6. These predictions are obvi‐
+ously overfitting the training set very badly. Just setting min_samples_leaf=10 results
+in a much more reasonable model, represented on the right in Figure 6-6.
+
+Figure 6-6. Regularizing a Decision Tree regressor
+
+184 
+
+| 
+
+Chapter 6: Decision Trees
+
+Instability
+Hopefully by now you are convinced that Decision Trees have a lot going for them:
+they  are  simple  to  understand  and  interpret,  easy  to  use,  versatile,  and  powerful.
+However,  they  do  have  a  few  limitations.  First,  as  you  may  have  noticed,  Decision
+Trees  love  orthogonal  decision  boundaries  (all  splits  are  perpendicular  to  an  axis),
+which makes them sensitive to training set rotation. For example, Figure 6-7 shows a
+simple linearly separable dataset: on the left, a Decision Tree can split it easily, while
+on the right, after the dataset is rotated by 45°, the decision boundary looks unneces‐
+sarily convoluted. Although both Decision Trees fit the training set perfectly, it is very
+likely that the model on the right will not generalize well. One way to limit this prob‐
+lem is to use Principal Component Analysis (see Chapter 8), which often results in a
+better orientation of the training data.
+
+Figure 6-7. Sensitivity to training set rotation
+
+More generally, the main issue with Decision Trees is that they are very sensitive to
+small variations in the training data. For example, if you just remove the widest Iris
+versicolor from the iris training set (the one with petals 4.8 cm long and 1.8 cm wide)
+and train a new Decision Tree, you may get the model represented in Figure 6-8. As
+you  can  see,  it  looks  very  different  from  the  previous  Decision  Tree  (Figure  6-2).
+Actually,  since  the  training  algorithm  used  by  Scikit-Learn  is  stochastic,6  you  may
+get  very  different  models  even  on  the  same  training  data  (unless  you  set  the
+random_state hyperparameter).
+
+6 It randomly selects the set of features to evaluate at each node.
+
+Instability 
+
+| 
+
+185
+
+Figure 6-8. Sensitivity to training set details
+
+Random Forests can limit this instability by averaging predictions over many trees, as
+we will see in the next chapter.
+
+Exercises
+
+1. What is the approximate depth of a Decision Tree trained (without restrictions)
+
+on a training set with one million instances?
+
+2. Is a node’s Gini impurity generally lower or greater than its parent’s? Is it gener‐
+
+ally lower/greater, or always lower/greater?
+
+3. If a Decision Tree is overfitting the training set, is it a good idea to try decreasing
+
+max_depth?
+
+4. If a Decision Tree is underfitting the training set, is it a good idea to try scaling
+
+the input features?
+
+5. If it takes one hour to train a Decision Tree on a training set containing 1 million
+instances, roughly how much time will it take to train another Decision Tree on a
+training set containing 10 million instances?
+
+6. If your training set contains 100,000 instances, will setting  presort=True speed
+
+up training?
+
+7. Train  and  fine-tune  a  Decision  Tree  for  the  moons  dataset  by  following  these
+
+steps:
+a. Use make_moons(n_samples=10000, noise=0.4) to generate a moons dataset.
+b. Use train_test_split() to split the dataset into a training set and a test set.
+
+186 
+
+| 
+
+Chapter 6: Decision Trees
+
+c. Use  grid  search  with  cross-validation  (with  the  help  of  the  GridSearchCV
+class)  to  find  good  hyperparameter  values  for  a  DecisionTreeClassifier.
+Hint: try various values for max_leaf_nodes.
+
+d. Train  it  on  the  full  training  set  using  these  hyperparameters,  and  measure
+your model’s performance on the test set. You should get roughly 85% to 87%
+accuracy.
+
+8. Grow a forest by following these steps:
+
+a. Continuing  the  previous  exercise,  generate  1,000  subsets  of  the  training  set,
+each  containing  100  instances  selected  randomly.  Hint:  you  can  use  Scikit-
+Learn’s ShuffleSplit class for this.
+
+b. Train one Decision Tree on each subset, using the best hyperparameter values
+found in the previous exercise. Evaluate these 1,000 Decision Trees on the test
+set.  Since  they  were  trained  on  smaller  sets,  these  Decision  Trees  will  likely
+perform  worse  than  the  first  Decision  Tree,  achieving  only  about  80%
+accuracy.
+
+c. Now comes the magic. For each test set instance, generate the predictions of
+the 1,000 Decision Trees, and keep only the most frequent prediction (you can
+use  SciPy’s  mode()  function  for  this).  This  approach  gives  you  majority-vote
+predictions over the test set.
+
+d. Evaluate these predictions on the test set: you should obtain a slightly higher
+accuracy  than  your  first  model  (about  0.5  to  1.5%  higher).  Congratulations,
+you have trained a Random Forest classifier!
+
+Solutions to these exercises are available in Appendix A.
+
+Exercises 
+
+| 
+
+187
+
+CHAPTER 7
+Ensemble Learning and Random Forests
+
+Suppose you pose a complex question to thousands of random people, then aggregate
+their answers. In many cases you will find that this aggregated answer is better than
+an expert’s answer. This is called the wisdom of the crowd. Similarly, if you aggregate
+the  predictions  of  a  group  of  predictors  (such  as  classifiers  or  regressors),  you  will
+often get better predictions than with the best individual predictor. A group of pre‐
+dictors is called an ensemble; thus, this technique is called Ensemble Learning, and an
+Ensemble Learning algorithm is called an Ensemble method.
+
+As an example of an Ensemble method, you can train a group of Decision Tree classi‐
+fiers, each on a different random subset of the training set. To make predictions, you
+obtain the predictions of all the individual trees, then predict the class that gets the
+most votes (see the last exercise in Chapter 6). Such an ensemble of Decision Trees is
+called  a  Random  Forest,  and  despite  its  simplicity,  this  is  one  of  the  most  powerful
+Machine Learning algorithms available today.
+
+As  discussed  in  Chapter  2,  you  will  often  use  Ensemble  methods  near  the  end  of  a
+project, once you have already built a few good predictors, to combine them into an
+even  better  predictor.  In  fact,  the  winning  solutions  in  Machine  Learning  competi‐
+tions  often  involve  several  Ensemble  methods  (most  famously  in  the  Netflix  Prize
+competition).
+
+In this chapter we will discuss the most popular Ensemble methods, including bag‐
+ging, boosting, and stacking. We will also explore Random Forests.
+
+Voting Classifiers
+Suppose  you  have  trained  a  few  classifiers,  each  one  achieving  about  80%  accuracy.
+You  may  have  a  Logistic  Regression  classifier,  an  SVM  classifier,  a  Random  Forest
+classifier, a K-Nearest Neighbors classifier, and perhaps a few more (see Figure 7-1).
+
+189
+
+Figure 7-1. Training diverse classifiers
+
+A very simple way to create an even better classifier is to aggregate the predictions of
+each classifier and predict the class that gets the most votes. This majority-vote classi‐
+fier is called a hard voting classifier (see Figure 7-2).
+
+Figure 7-2. Hard voting classifier predictions
+
+Somewhat surprisingly, this voting classifier often achieves a higher accuracy than the
+best classifier in the ensemble. In fact, even if each classifier is a weak learner (mean‐
+ing  it  does  only  slightly  better  than  random  guessing),  the  ensemble  can  still  be  a
+strong  learner  (achieving  high  accuracy),  provided  there  are  a  sufficient  number  of
+weak learners and they are sufficiently diverse.
+
+190 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+How is this possible? The following analogy can help shed some light on this mystery.
+Suppose  you  have  a  slightly  biased  coin  that  has  a  51%  chance  of  coming  up  heads
+and 49% chance of coming up tails. If you toss it 1,000 times, you will generally get
+more  or  less  510  heads  and  490  tails,  and  hence  a  majority  of  heads.  If  you  do  the
+math, you will find that the probability of obtaining a majority of heads after 1,000
+tosses  is  close  to  75%.  The  more  you  toss  the  coin,  the  higher  the  probability  (e.g.,
+with  10,000  tosses,  the  probability  climbs  over  97%).  This  is  due  to  the  law  of  large
+numbers: as you keep tossing the coin, the ratio of heads gets closer and closer to the
+probability of heads (51%). Figure 7-3 shows 10 series of biased coin tosses. You can
+see that as the number of tosses increases, the ratio of heads approaches 51%. Eventu‐
+ally all 10 series end up so close to 51% that they are consistently above 50%.
+
+Figure 7-3. The law of large numbers
+
+Similarly, suppose you build an ensemble containing 1,000 classifiers that are individ‐
+ually correct only 51% of the time (barely better than random guessing). If you pre‐
+dict the majority voted class, you can hope for up to 75% accuracy! However, this is
+only  true  if  all  classifiers  are  perfectly  independent,  making  uncorrelated  errors,
+which is clearly not the case because they are trained on the same data. They are likely
+to make the same types of errors, so there will be many majority votes for the wrong
+class, reducing the ensemble’s accuracy.
+
+Ensemble methods work best when the predictors are as independ‐
+ent from one another as possible. One way to get diverse classifiers
+is to train them using very different algorithms. This increases the
+chance that they will make very different types of errors, improving
+the ensemble’s accuracy.
+
+The following code creates and trains a voting classifier in Scikit-Learn, composed of
+three  diverse  classifiers  (the  training  set  is  the  moons  dataset,  introduced  in  Chap‐
+ter 5):
+
+Voting Classifiers 
+
+| 
+
+191
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import VotingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+
+log_clf = LogisticRegression()
+rnd_clf = RandomForestClassifier()
+svm_clf = SVC()
+
+voting_clf = VotingClassifier(
+    estimators=[('lr', log_clf), ('rf', rnd_clf), ('svc', svm_clf)],
+    voting='hard')
+voting_clf.fit(X_train, y_train)
+
+Let’s look at each classifier’s accuracy on the test set:
+
+>>> from sklearn.metrics import accuracy_score
+>>> for clf in (log_clf, rnd_clf, svm_clf, voting_clf):
+...     clf.fit(X_train, y_train)
+...     y_pred = clf.predict(X_test)
+...     print(clf.__class__.__name__, accuracy_score(y_test, y_pred))
+...
+LogisticRegression 0.864
+RandomForestClassifier 0.896
+SVC 0.888
+VotingClassifier 0.904
+
+There  you  have  it!  The  voting  classifier  slightly  outperforms  all  the  individual
+classifiers.
+
+If  all  classifiers  are  able  to  estimate  class  probabilities  (i.e.,  they  all  have  a  pre
+dict_proba()  method),  then  you  can  tell  Scikit-Learn  to  predict  the  class  with  the
+highest class probability, averaged over all the individual classifiers. This is called soft
+voting. It often achieves higher performance than hard voting because it gives more
+weight to highly confident votes. All you need to do is replace  voting="hard" with
+voting="soft" and ensure that all classifiers can estimate class probabilities. This is
+not  the  case  for  the  SVC  class  by  default,  so  you  need  to  set  its  probability  hyper‐
+parameter to True (this will make the SVC class use cross-validation to estimate class
+probabilities, slowing down training, and it will add a predict_proba() method). If
+you modify the preceding code to use soft voting, you will find that the voting classi‐
+fier achieves over 91.2% accuracy!
+
+Bagging and Pasting
+One way to get a diverse set of classifiers is to use very different training algorithms,
+as just discussed. Another approach is to use the same training algorithm for every
+predictor and train them on different random subsets of the training set. When sam‐
+
+192 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+pling is performed with replacement, this method is called bagging1 (short for boot‐
+strap  aggregating2).  When  sampling  is  performed  without  replacement,  it  is  called
+pasting.3
+
+In other words, both bagging and pasting allow training instances to be sampled sev‐
+eral times across multiple predictors, but only bagging allows training instances to be
+sampled several times for the same predictor. This sampling and training process is
+represented in Figure 7-4.
+
+Figure 7-4. Bagging and pasting involves training several predictors on different random
+samples of the training set
+
+Once  all  predictors  are  trained,  the  ensemble  can  make  a  prediction  for  a  new
+instance  by  simply  aggregating  the  predictions  of  all  predictors.  The  aggregation
+function is typically the statistical mode (i.e., the most frequent prediction, just like a
+hard voting classifier) for classification, or the average for regression. Each individual
+predictor  has  a  higher  bias  than  if  it  were  trained  on  the  original  training  set,  but
+aggregation  reduces  both  bias  and  variance.4  Generally,  the  net  result  is  that  the
+ensemble has a similar bias but a lower variance than a single predictor trained on the
+original training set.
+
+1 Leo Breiman, “Bagging Predictors,” Machine Learning 24, no. 2 (1996): 123–140.
+
+2 In statistics, resampling with replacement is called bootstrapping.
+
+3 Leo Breiman, “Pasting Small Votes for Classification in Large Databases and On-Line,” Machine Learning 36,
+
+no. 1–2 (1999): 85–103.
+
+4 Bias and variance were introduced in Chapter 4.
+
+Bagging and Pasting 
+
+| 
+
+193
+
+As  you  can  see  in  Figure  7-4,  predictors  can  all  be  trained  in  parallel,  via  different
+CPU  cores  or  even  different  servers.  Similarly,  predictions  can  be  made  in  parallel.
+This is one of the reasons bagging and pasting are such popular methods: they scale
+very well.
+
+Bagging and Pasting in Scikit-Learn
+Scikit-Learn offers a simple API for both bagging and pasting with the BaggingClas
+sifier  class  (or  BaggingRegressor  for  regression).  The  following  code  trains  an
+ensemble of 500 Decision Tree classifiers:5 each is trained on 100 training instances
+randomly sampled from the training set with replacement (this is an example of bag‐
+ging, but if you want to use pasting instead, just set bootstrap=False). The n_jobs
+parameter tells Scikit-Learn the number of CPU cores to use for training and predic‐
+tions (–1 tells Scikit-Learn to use all available cores):
+
+from sklearn.ensemble import BaggingClassifier
+from sklearn.tree import DecisionTreeClassifier
+
+bag_clf = BaggingClassifier(
+    DecisionTreeClassifier(), n_estimators=500,
+    max_samples=100, bootstrap=True, n_jobs=-1)
+bag_clf.fit(X_train, y_train)
+y_pred = bag_clf.predict(X_test)
+
+The  BaggingClassifier  automatically  performs  soft  voting
+instead of hard voting if the base classifier can estimate class proba‐
+bilities (i.e., if it has a predict_proba() method), which is the case
+with Decision Tree classifiers.
+
+Figure 7-5 compares the decision boundary of a single Decision Tree w

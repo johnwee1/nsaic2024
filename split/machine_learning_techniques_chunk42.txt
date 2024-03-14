@@ -1,0 +1,298 @@
+ng  average.  Note  that  μ  and  σ  are  estimated  during
+training, but they are used only after training (to replace the batch input means and
+standard deviations in Equation 11-3).
+
+Ioffe and Szegedy demonstrated that Batch Normalization considerably improved all
+the deep neural networks they experimented with, leading to a huge improvement in
+the ImageNet classification task (ImageNet is a large database of images classified into
+many  classes,  commonly  used  to  evaluate  computer  vision  systems).  The  vanishing
+gradients problem was strongly reduced, to the point that they could use saturating
+activation  functions  such  as  the  tanh  and  even  the  logistic  activation  function.  The
+networks were also much less sensitive to the weight initialization. The authors were
+able to use much larger learning rates, significantly speeding up the learning process.
+Specifically, they note that:
+
+340 
+
+| 
+
+Chapter 11: Training Deep Neural Networks
+
+Applied to a state-of-the-art image classification model, Batch Normalization achieves
+the same accuracy with 14 times fewer training steps, and beats the original model by a
+significant margin. […] Using an ensemble of batch-normalized networks, we improve
+upon the best published result on ImageNet classification: reaching 4.9% top-5 valida‐
+tion error (and 4.8% test error), exceeding the accuracy of human raters.
+
+Finally,  like  a  gift  that  keeps  on  giving,  Batch  Normalization  acts  like  a  regularizer,
+reducing  the  need  for  other  regularization  techniques  (such  as  dropout,  described
+later in this chapter).
+
+Batch Normalization does, however, add some complexity to the model (although it
+can remove the need for normalizing the input data, as we discussed earlier). More‐
+over, there is a runtime penalty: the neural network makes slower predictions due to
+the extra computations required at each layer. Fortunately, it’s often possible to fuse
+the BN layer with the previous layer, after training, thereby avoiding the runtime pen‐
+alty. This is done by updating the previous layer’s weights and biases so that it directly
+produces  outputs  of  the  appropriate  scale  and  offset.  For  example,  if  the  previous
+layer  computes  XW  +  b,  then  the  BN  layer  will  compute  γ⊗(XW  +  b  –  μ)/σ  +  β
+(ignoring the smoothing term ε in the denominator). If we define W′ = γ⊗W/σ and b
+′ = γ⊗(b – μ)/σ + β, the equation simplifies to XW′ + b′. So if we replace the previous
+layer’s weights and biases (W and b) with the updated weights and biases (W′ and b′),
+we can get rid of the BN layer (TFLite’s optimizer does this automatically; see Chap‐
+ter 19).
+
+You may find that training is rather slow, because each epoch takes
+much more time when you use Batch Normalization. This is usu‐
+ally  counterbalanced  by  the  fact  that  convergence  is  much  faster
+with  BN,  so  it  will  take  fewer  epochs  to  reach  the  same  perfor‐
+mance. All in all, wall time will usually be shorter (this is the time
+measured by the clock on your wall).
+
+Implementing Batch Normalization with Keras
+
+As  with  most  things  with  Keras,  implementing  Batch  Normalization  is  simple  and
+intuitive.  Just  add  a  BatchNormalization  layer  before  or  after  each  hidden  layer’s
+activation  function,  and  optionally  add  a  BN  layer  as  well  as  the  first  layer  in  your
+model. For example, this model applies BN after every hidden layer and as the first
+layer in the model (after flattening the input images):
+
+The Vanishing/Exploding Gradients Problems 
+
+| 
+
+341
+
+model = keras.models.Sequential([
+    keras.layers.Flatten(input_shape=[28, 28]),
+    keras.layers.BatchNormalization(),
+    keras.layers.Dense(300, activation="elu", kernel_initializer="he_normal"),
+    keras.layers.BatchNormalization(),
+    keras.layers.Dense(100, activation="elu", kernel_initializer="he_normal"),
+    keras.layers.BatchNormalization(),
+    keras.layers.Dense(10, activation="softmax")
+])
+
+That’s  all!  In  this  tiny  example  with  just  two  hidden  layers,  it’s  unlikely  that  Batch
+Normalization will have a very positive impact; but for deeper networks it can make a
+tremendous difference.
+
+Let’s display the model summary:
+
+>>> model.summary()
+Model: "sequential_3"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+flatten_3 (Flatten)          (None, 784)               0
+_________________________________________________________________
+batch_normalization_v2 (Batc (None, 784)               3136
+_________________________________________________________________
+dense_50 (Dense)             (None, 300)               235500
+_________________________________________________________________
+batch_normalization_v2_1 (Ba (None, 300)               1200
+_________________________________________________________________
+dense_51 (Dense)             (None, 100)               30100
+_________________________________________________________________
+batch_normalization_v2_2 (Ba (None, 100)               400
+_________________________________________________________________
+dense_52 (Dense)             (None, 10)                1010
+=================================================================
+Total params: 271,346
+Trainable params: 268,978
+Non-trainable params: 2,368
+
+As  you  can  see,  each  BN  layer  adds  four  parameters  per  input:  γ,  β,  μ,  and  σ  (for
+example,  the  first  BN  layer  adds  3,136  parameters,  which  is  4  ×  784).  The  last  two
+parameters, μ and σ, are the moving averages; they are not affected by backpropaga‐
+tion,  so  Keras  calls  them  “non-trainable”9  (if  you  count  the  total  number  of  BN
+parameters,  3,136  +  1,200  +  400,  and  divide  by  2,  you  get  2,368,  which  is  the  total
+number of non-trainable parameters in this model).
+
+9 However, they are estimated during training, based on the training data, so arguably they are trainable. In
+
+Keras, “non-trainable” really means “untouched by backpropagation.”
+
+342 
+
+| 
+
+Chapter 11: Training Deep Neural Networks
+
+Let’s look at the parameters of the first BN layer. Two are trainable (by backpropaga‐
+tion), and two are not:
+
+>>> [(var.name, var.trainable) for var in model.layers[1].variables]
+[('batch_normalization_v2/gamma:0', True),
+ ('batch_normalization_v2/beta:0', True),
+ ('batch_normalization_v2/moving_mean:0', False),
+ ('batch_normalization_v2/moving_variance:0', False)]
+
+Now when you create a BN layer in Keras, it also creates two operations that will be
+called  by  Keras  at  each  iteration  during  training.  These  operations  will  update  the
+moving  averages.  Since  we  are  using  the  TensorFlow  backend,  these  operations  are
+TensorFlow operations (we will discuss TF operations in Chapter 12):
+
+>>> model.layers[1].updates
+[<tf.Operation 'cond_2/Identity' type=Identity>,
+ <tf.Operation 'cond_3/Identity' type=Identity>]
+
+The authors of the BN paper argued in favor of adding the BN layers before the acti‐
+vation functions, rather than after (as we just did). There is some debate about this, as
+which is preferable seems to depend on the task—you can experiment with this too to
+see which option works best on your dataset. To add the BN layers before the activa‐
+tion functions, you must remove the activation function from the hidden layers and
+add them as separate layers after the BN layers. Moreover, since a Batch Normaliza‐
+tion layer includes one offset parameter per input, you can remove the bias term from
+the previous layer (just pass use_bias=False when creating it):
+
+model = keras.models.Sequential([
+    keras.layers.Flatten(input_shape=[28, 28]),
+    keras.layers.BatchNormalization(),
+    keras.layers.Dense(300, kernel_initializer="he_normal", use_bias=False),
+    keras.layers.BatchNormalization(),
+    keras.layers.Activation("elu"),
+    keras.layers.Dense(100, kernel_initializer="he_normal", use_bias=False),
+    keras.layers.BatchNormalization(),
+    keras.layers.Activation("elu"),
+    keras.layers.Dense(10, activation="softmax")
+])
+
+The BatchNormalization class has quite a few hyperparameters you can tweak. The
+defaults  will  usually  be  fine,  but  you  may  occasionally  need  to  tweak  the  momentum.
+This  hyperparameter  is  used  by  the  BatchNormalization  layer  when  it  updates  the
+exponential moving averages; given a new value v (i.e., a new vector of input means
+or standard deviations computed over the current batch), the layer updates the run‐
+ning average  using the following equation:
+
+v
+
+v × momentum + v × 1 − momentum
+
+The Vanishing/Exploding Gradients Problems 
+
+| 
+
+343
+
+A good momentum value is typically close to 1; for example, 0.9, 0.99, or 0.999 (you
+want more 9s for larger datasets and smaller mini-batches).
+
+Another important hyperparameter is axis: it determines which axis should be nor‐
+malized. It defaults to –1, meaning that by default it will normalize the last axis (using
+the means and standard deviations computed across the other axes). When the input
+batch is 2D (i.e., the batch shape is [batch size, features]), this means that each input
+feature  will  be  normalized  based  on  the  mean  and  standard  deviation  computed
+across all the instances in the batch. For example, the first BN layer in the previous
+code  example  will  independently  normalize  (and  rescale  and  shift)  each  of  the  784
+input features. If we move the first BN layer before the Flatten layer, then the input
+batches will be 3D, with shape [batch size, height, width]; therefore, the BN layer will
+compute  28  means  and  28  standard  deviations  (1  per  column  of  pixels,  computed
+across all instances in the batch and across all rows in the column), and it will nor‐
+malize  all  pixels  in  a  given  column  using  the  same  mean  and  standard  deviation.
+There will also be just 28 scale parameters and 28 shift parameters. If instead you still
+want to treat each of the 784 pixels independently, then you should set axis=[1, 2].
+
+Notice that the BN layer does not perform the same computation during training and
+after  training:  it  uses  batch  statistics  during  training  and  the  “final”  statistics  after
+training (i.e., the final values of the moving averages). Let’s take a peek at the source
+code of this class to see how this is handled:
+
+class BatchNormalization(keras.layers.Layer):
+    [...]
+    def call(self, inputs, training=None):
+        [...]
+
+The call() method is the one that performs the computations; as you can see, it has
+an extra training argument, which is set to None by default, but the fit() method
+sets to it to  1 during training. If you ever need to write a custom layer, and it must
+behave  differently  during  training  and  testing,  add  a  training  argument  to  the
+call() method and use this argument in the method to decide what to compute10 (we
+will discuss custom layers in Chapter 12).
+
+BatchNormalization  has  become  one  of  the  most-used  layers  in  deep  neural  net‐
+works, to the point that it is often omitted in the diagrams, as it is assumed that BN is
+added after every layer. But a recent paper11 by Hongyi Zhang et al. may change this
+assumption: by using a novel fixed-update (fixup) weight initialization technique, the
+authors  managed  to  train  a  very  deep  neural  network  (10,000  layers!)  without  BN,
+
+10 The Keras API also specifies a keras.backend.learning_phase() function that should return 1 during train‐
+
+ing and 0 otherwise.
+
+11 Hongyi Zhang et al., “Fixup Initialization: Residual Learning Without Normalization,” arXiv preprint arXiv:
+
+1901.09321 (2019).
+
+344 
+
+| 
+
+Chapter 11: Training Deep Neural Networks
+
+achieving state-of-the-art performance on complex image classification tasks. As this
+is bleeding-edge research, however, you may want to wait for additional research to
+confirm this finding before you drop Batch Normalization.
+
+Gradient Clipping
+Another popular technique to mitigate the exploding gradients problem is to clip the
+gradients during backpropagation so that they never exceed some threshold. This is
+called Gradient Clipping.12 This technique is most often used in recurrent neural net‐
+works, as Batch Normalization is tricky to use in RNNs, as we will see in Chapter 15.
+For other types of networks, BN is usually sufficient.
+
+In Keras, implementing Gradient Clipping is just a matter of setting the clipvalue or
+clipnorm argument when creating an optimizer, like this:
+
+optimizer = keras.optimizers.SGD(clipvalue=1.0)
+model.compile(loss="mse", optimizer=optimizer)
+
+This  optimizer  will  clip  every  component  of  the  gradient  vector  to  a  value  between
+–1.0 and 1.0. This means that all the partial derivatives of the loss (with regard to each
+and every trainable parameter) will be clipped between –1.0 and 1.0. The threshold is
+a hyperparameter you can tune. Note that it may change the orientation of the gradi‐
+ent vector. For instance, if the original gradient vector is [0.9, 100.0], it points mostly
+in  the  direction  of  the  second  axis;  but  once  you  clip  it  by  value,  you  get  [0.9,  1.0],
+which points roughly in the diagonal between the two axes. In practice, this approach
+works well. If you want to ensure that Gradient Clipping does not change the direc‐
+tion of the gradient vector, you should clip by norm by setting  clipnorm instead of
+clipvalue. This will clip the whole gradient if its ℓ2 norm is greater than the thres‐
+hold you picked. For example, if you set  clipnorm=1.0, then the vector [0.9, 100.0]
+will be clipped to [0.00899964, 0.9999595], preserving its orientation but almost elim‐
+inating the first component. If you observe that the gradients explode during training
+(you can track the size of the gradients using TensorBoard), you may want to try both
+clipping  by  value  and  clipping  by  norm,  with  different  thresholds,  and  see  which
+option performs best on the validation set.
+
+Reusing Pretrained Layers
+It is generally not a good idea to train a very large DNN from scratch: instead, you
+should always try to find an existing neural network that accomplishes a similar task
+to the one you are trying to tackle (we will discuss how to find them in Chapter 14),
+then reuse the lower layers of this network. This technique is called transfer learning.
+
+12 Razvan Pascanu et al., “On the Difficulty of Training Recurrent Neural Networks,” Proceedings of the 30th
+
+International Conference on Machine Learning (2013): 1310–1318.
+
+Reusing Pretrained Layers 
+
+| 
+
+345
+
+It  will  not  only  speed  up  training  considerably,  but  also  require  significantly  less
+training data.
+
+Suppose you have access to a DNN that was trained to classify pictures into 100 dif‐
+ferent categories, including animals, plants, vehicles, and everyday objects. You now
+want to train a DNN to classify specific types of vehicles. These tasks are very similar,
+even  partly  overlapping,  so  you  should  try  to  reuse  parts  of  the  first  network  (see
+Figure 11-4).
+
+Figure 11-4. Reusing pretrained layers
+
+If  the  input  pictures  of  your  new  task  don’t  have  the  same  size  as
+the  ones  used  in  the  original  task,  you  will  usually  have  to  add  a
+preprocessing step to resize them to the size expected by the origi‐
+nal  model.  More  generally,  transfer  learning  will  work  best  when
+the inputs have similar low-level 

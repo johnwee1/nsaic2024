@@ -1,0 +1,304 @@
+,  to
+shuffle  them  or  batch  them).  However,  we  cannot  use  a  nested  dataset  directly  for
+training, as our model will expect tensors as input, not datasets. So, we must call the
+flat_map() method: it converts a nested dataset into a flat dataset (one that does not
+contain datasets). For example, suppose {1, 2, 3} represents a dataset containing the
+sequence of tensors 1, 2, and 3. If you flatten the nested dataset {{1, 2}, {3, 4, 5, 6}},
+you get back the flat dataset {1, 2, 3, 4, 5, 6}. Moreover, the flat_map() method takes
+a function as an argument, which allows you to transform each dataset in the nested
+dataset  before  flattening.  For  example,  if  you  pass  the  function  lambda  ds:
+ds.batch(2) to flat_map(), then it will transform the nested dataset {{1, 2}, {3, 4, 5,
+6}} into the flat dataset {[1, 2], [3, 4], [5, 6]}: it’s a dataset of tensors of size 2. With that
+in mind, we are ready to flatten our dataset:
+
+dataset = dataset.flat_map(lambda window: window.batch(window_length))
+
+Notice that we call batch(window_length) on each window: since all windows have
+exactly that length, we will get a single tensor for each of them. Now the dataset con‐
+tains consecutive windows of 101 characters each. Since Gradient Descent works best
+
+Generating Shakespearean Text Using a Character RNN 
+
+| 
+
+529
+
+when the instances in the training set are independent and identically distributed (see
+Chapter 4), we need to shuffle these windows. Then we can batch the windows and
+separate the inputs (the first 100 characters) from the target (the last character):
+
+batch_size = 32
+dataset = dataset.shuffle(10000).batch(batch_size)
+dataset = dataset.map(lambda windows: (windows[:, :-1], windows[:, 1:]))
+
+Figure 16-1 summarizes the dataset preparation steps discussed so far (showing win‐
+dows of length 11 rather than 101, and a batch size of 3 instead of 32).
+
+Figure 16-1. Preparing a dataset of shuffled windows
+
+As  discussed  in  Chapter  13,  categorical  input  features  should  generally  be  encoded,
+usually  as  one-hot  vectors  or  as  embeddings.  Here,  we  will  encode  each  character
+using a one-hot vector because there are fairly few distinct characters (only 39):
+
+dataset = dataset.map(
+    lambda X_batch, Y_batch: (tf.one_hot(X_batch, depth=max_id), Y_batch))
+
+Finally, we just need to add prefetching:
+
+dataset = dataset.prefetch(1)
+
+That’s it! Preparing the dataset was the hardest part. Now let’s create the model.
+
+Building and Training the Char-RNN Model
+To  predict  the  next  character  based  on  the  previous  100  characters,  we  can  use  an
+RNN with 2 GRU layers of 128 units each and 20% dropout on both the inputs (drop
+out) and the hidden states (recurrent_dropout). We can tweak these hyperparame‐
+ters later, if needed. The output layer is a time-distributed Dense layer like we saw in
+Chapter 15. This time this layer must have 39 units (max_id) because there are 39 dis‐
+tinct  characters  in  the  text,  and  we  want  to  output  a  probability  for  each  possible
+character  (at  each  time  step).  The  output  probabilities  should  sum  up  to  1  at  each
+time  step,  so  we  apply  the  softmax  activation  function  to  the  outputs  of  the  Dense
+
+530 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+layer.  We  can  then  compile  this  model,  using  the  "sparse_categorical_crossen
+tropy" loss and an Adam optimizer. Finally, we are ready to train the model for sev‐
+eral epochs (this may take many hours, depending on your hardware):
+
+model = keras.models.Sequential([
+    keras.layers.GRU(128, return_sequences=True, input_shape=[None, max_id],
+                     dropout=0.2, recurrent_dropout=0.2),
+    keras.layers.GRU(128, return_sequences=True,
+                     dropout=0.2, recurrent_dropout=0.2),
+    keras.layers.TimeDistributed(keras.layers.Dense(max_id,
+                                                    activation="softmax"))
+])
+model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
+history = model.fit(dataset, epochs=20)
+
+Using the Char-RNN Model
+Now  we  have  a  model  that  can  predict  the  next  character  in  text  written  by  Shake‐
+speare. To feed it some text, we first need to preprocess it like we did earlier, so let’s
+create a little function for this:
+
+def preprocess(texts):
+    X = np.array(tokenizer.texts_to_sequences(texts)) - 1
+    return tf.one_hot(X, max_id)
+
+Now let’s use the model to predict the next letter in some text:
+
+>>> X_new = preprocess(["How are yo"])
+>>> Y_pred = model.predict_classes(X_new)
+>>> tokenizer.sequences_to_texts(Y_pred + 1)[0][-1] # 1st sentence, last char
+'u'
+
+Success! The model guessed right. Now let’s use this model to generate new text.
+
+Generating Fake Shakespearean Text
+To generate new text using the Char-RNN model, we could feed it some text, make
+the model predict the most likely next letter, add it at the end of the text, then give the
+extended  text  to  the  model  to  guess  the  next  letter,  and  so  on.  But  in  practice  this
+often  leads  to  the  same  words  being  repeated  over  and  over  again.  Instead,  we  can
+pick the next character randomly, with a probability equal to the estimated probabil‐
+ity, using TensorFlow’s tf.random.categorical() function. This will generate more
+diverse and interesting text. The categorical() function samples random class indi‐
+ces, given the class log probabilities (logits). To have more control over the diversity
+of  the  generated  text,  we  can  divide  the  logits  by  a  number  called  the  temperature,
+which  we  can  tweak  as  we  wish:  a  temperature  close  to  0  will  favor  the  high-
+probability characters, while a very high temperature will give all characters an equal
+probability. The following next_char() function uses this approach to pick the next
+character to add to the input text:
+
+Generating Shakespearean Text Using a Character RNN 
+
+| 
+
+531
+
+def next_char(text, temperature=1):
+    X_new = preprocess([text])
+    y_proba = model.predict(X_new)[0, -1:, :]
+    rescaled_logits = tf.math.log(y_proba) / temperature
+    char_id = tf.random.categorical(rescaled_logits, num_samples=1) + 1
+    return tokenizer.sequences_to_texts(char_id.numpy())[0]
+
+Next, we can write a small function that will repeatedly call  next_char() to get the
+next character and append it to the given text:
+
+def complete_text(text, n_chars=50, temperature=1):
+    for _ in range(n_chars):
+        text += next_char(text, temperature)
+    return text
+
+We are now ready to generate some text! Let’s try with different temperatures:
+
+>>> print(complete_text("t", temperature=0.2))
+the belly the great and who shall be the belly the
+>>> print(complete_text("w", temperature=1))
+thing? or why you gremio.
+who make which the first
+>>> print(complete_text("w", temperature=2))
+th no cce:
+yeolg-hormer firi. a play asks.
+fol rusb
+
+Apparently our Shakespeare model works best at a temperature close to 1. To gener‐
+ate more convincing text, you could try using more GRU layers and more neurons per
+layer, train for longer, and add some regularization (for example, you could set recur
+rent_dropout=0.3 in the GRU layers). Moreover, the model is currently incapable of
+learning  patterns  longer  than  n_steps,  which  is  just  100  characters.  You  could  try
+making this window larger, but it will also make training harder, and even LSTM and
+GRU cells cannot handle very long sequences. Alternatively, you could use a stateful
+RNN.
+
+Stateful RNN
+Until  now,  we  have  used  only  stateless  RNNs:  at  each  training  iteration  the  model
+starts with a hidden state full of zeros, then it updates this state at each time step, and
+after the last time step, it throws it away, as it is not needed anymore. What if we told
+the RNN to preserve this final state after processing one training batch and use it as
+the initial state for the next training batch? This way the model can learn long-term
+patterns despite only backpropagating through short sequences. This is called a state‐
+ful RNN. Let’s see how to build one.
+
+First,  note  that  a  stateful  RNN  only  makes  sense  if  each  input  sequence  in  a  batch
+starts exactly where the corresponding sequence in the previous batch left off. So the
+first thing we need to do to build a stateful RNN is to use sequential and nonoverlap‐
+
+532 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+ping input sequences (rather than the shuffled and overlapping sequences we used to
+train  stateless  RNNs).  When  creating  the  Dataset,  we  must  therefore  use
+shift=n_steps  (instead  of  shift=1)  when  calling  the  window()  method.  Moreover,
+we must obviously not call the  shuffle() method. Unfortunately, batching is much
+harder  when  preparing  a  dataset  for  a  stateful  RNN  than  it  is  for  a  stateless  RNN.
+Indeed, if we were to call batch(32), then 32 consecutive windows would be put in
+the  same  batch,  and  the  following  batch  would  not  continue  each  of  these  window
+where it left off. The first batch would contain windows 1 to 32 and the second batch
+would  contain  windows  33  to  64,  so  if  you  consider,  say,  the  first  window  of  each
+batch (i.e., windows 1 and 33), you can see that they are not consecutive. The simplest
+solution to this problem is to just use “batches” containing a single window:
+
+dataset = tf.data.Dataset.from_tensor_slices(encoded[:train_size])
+dataset = dataset.window(window_length, shift=n_steps, drop_remainder=True)
+dataset = dataset.flat_map(lambda window: window.batch(window_length))
+dataset = dataset.batch(1)
+dataset = dataset.map(lambda windows: (windows[:, :-1], windows[:, 1:]))
+dataset = dataset.map(
+    lambda X_batch, Y_batch: (tf.one_hot(X_batch, depth=max_id), Y_batch))
+dataset = dataset.prefetch(1)
+
+Figure 16-2 summarizes the first steps.
+
+Figure 16-2. Preparing a dataset of consecutive sequence fragments for a stateful RNN
+
+Batching is harder, but it is not impossible. For example, we could chop Shakespeare’s
+text  into  32  texts  of  equal  length,  create  one  dataset  of  consecutive  input  sequences
+for  each  of  them,  and  finally  use  tf.train.Dataset.zip(datasets).map(lambda
+*windows: tf.stack(windows)) to create proper consecutive batches, where the nth
+input sequence in a batch starts off exactly where the nth input sequence ended in the
+previous batch (see the notebook for the full code).
+
+Generating Shakespearean Text Using a Character RNN 
+
+| 
+
+533
+
+Now let’s create the stateful RNN. First, we need to set stateful=True when creating
+every recurrent layer. Second, the stateful RNN needs to know the batch size (since it
+will  preserve  a  state  for  each  input  sequence  in  the  batch),  so  we  must  set  the
+batch_input_shape  argument  in  the  first  layer.  Note  that  we  can  leave  the  second
+dimension unspecified, since the inputs could have any length:
+
+model = keras.models.Sequential([
+    keras.layers.GRU(128, return_sequences=True, stateful=True,
+                     dropout=0.2, recurrent_dropout=0.2,
+                     batch_input_shape=[batch_size, None, max_id]),
+    keras.layers.GRU(128, return_sequences=True, stateful=True,
+                     dropout=0.2, recurrent_dropout=0.2),
+    keras.layers.TimeDistributed(keras.layers.Dense(max_id,
+                                                    activation="softmax"))
+])
+
+At the end of each epoch, we need to reset the states before we go back to the begin‐
+ning of the text. For this, we can use a small callback:
+
+class ResetStatesCallback(keras.callbacks.Callback):
+    def on_epoch_begin(self, epoch, logs):
+        self.model.reset_states()
+
+And now we can compile and fit the model (for more epochs, because each epoch is
+much shorter than earlier, and there is only one instance per batch):
+
+model.compile(loss="sparse_categorical_crossentropy", optimizer="adam")
+model.fit(dataset, epochs=50, callbacks=[ResetStatesCallback()])
+
+After this model is trained, it will only be possible to use it to make
+predictions for batches of the same size as were used during train‐
+ing.  To  avoid  this  restriction,  create  an  identical  stateless  model,
+and copy the stateful model’s weights to this model.
+
+Now that we have built a character-level model, it’s time to look at word-level models
+and tackle a common natural language processing task: sentiment analysis. In the pro‐
+cess we will learn how to handle sequences of variable lengths using masking.
+
+Sentiment Analysis
+If MNIST is the “hello world” of computer vision, then the IMDb reviews dataset is
+the “hello world” of natural language processing: it consists of 50,000 movie reviews
+in English (25,000 for training, 25,000 for testing) extracted from the famous Internet
+Movie Database, along with a simple binary target for each review indicating whether
+it is negative (0) or positive (1). Just like MNIST, the IMDb reviews dataset is popular
+for good reasons: it is simple enough to be tackled on a laptop in a reasonable amount
+
+534 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+of  time,  but  challenging  enough  to  be  fun  and  rewarding.  Keras  provides  a  simple
+function to load it:
+
+>>> (X_train, y_train), (X_test, y_test) = keras.datasets.imdb.load_data()
+>>> X_train[0][:10]
+[1, 14, 22, 16, 43, 530, 973, 1622, 1385, 65]
+
+Where  are  the  movie  reviews?  Well,  as  you  can  see,  the  dataset  is  already  prepro‐
+cessed for you: X_train consists of a list of reviews, each of which is represented as a
+NumPy array of integers, where each integer represents a word. All punctuation was
+removed,  and  then  words  were  converted  to  lowercase,  split  by  spaces,  and  finally
+indexed by frequency (so low integers correspond to frequent words). The integers 0,
+1,  and  2  are  special:  they  represent  the  padding  token,  the  start-of-sequence  (SSS)
+token,  and  unknown  words,  respectively.  If  you  want  to  visualize  a  review,  you  can
+decode it like this:
+
+>>> word_index = keras.datasets.imdb.get_word_index()
+>>> id_to_word = {id_ + 3: word for word, id_ in word_index.items()}
+>>> for id_, token in enumerate(("<pad>", "<sos>", "<unk>")):
+...     id_to_word[id_] = token
+...
+>>> " ".join([id_to_word[id_] for id_ in X_train[0][:10]])
+'<sos> this film was just brilliant casting location scenery story'
+
+In a real project, you will have to preprocess the text yourself. You can do that using
+the  same  Tokenizer  class  we  used  earlier,  but  this  time  setting  char_level=False
+(which is the default). When encoding words, it filters out a lot of characters, includ‐
+ing most punctuation, line breaks, and tabs (but you can change this by setting the
+filters  argument).  Most  importantly,  it  uses  spaces  to  identify  word  boundaries.
+This  is  OK  for  English  and  many  other  scripts  (written  languages)  that  use  spaces
+between  words,  but  not  all  scripts  use  spaces  this  way.  Chinese  does  not  use  spaces
+between  words,  Vietnamese  uses  spaces  even  within  words,  and  languages  such  as
+German often attach multiple words together, without spaces. Even in English, spaces
+are  not  always  the  best  way  to  tokenize  text:  think  of  “San  Francisco”  or
+“#ILoveDeepLearning.”
+
+Fortunately,  there  are  better  options!  The  2018  paper4  by  Taku  Kudo  introduced  an
+unsupervised learning technique to tokenize and detokenize text at 

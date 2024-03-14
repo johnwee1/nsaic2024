@@ -1,0 +1,294 @@
+ Stochastic Gradi‐
+ent  Descent  or  Mini-batch  Gradient  Descent,  and  perhaps  Batch  Gradient
+Descent if the training set fits in memory. But you cannot use the Normal Equa‐
+tion or the SVD approach because the computational complexity grows quickly
+(more than quadratically) with the number of features.
+
+2. If the features in your training set have very different scales, the cost function will
+have the shape of an elongated bowl, so the Gradient Descent algorithms will take
+a long time to converge. To solve this you should scale the data before training
+the model. Note that the Normal Equation or SVD approach will work just fine
+without scaling. Moreover, regularized models may converge to a suboptimal sol‐
+ution  if  the  features  are  not  scaled:  since  regularization  penalizes  large  weights,
+features  with  smaller  values  will  tend  to  be  ignored  compared  to  features  with
+larger values.
+
+Exercise Solutions 
+
+| 
+
+721
+
+3. Gradient Descent cannot get stuck in a local minimum when training a Logistic
+
+Regression model because the cost function is convex.1
+
+4. If  the  optimization  problem  is  convex  (such  as  Linear  Regression  or  Logistic
+Regression),  and  assuming  the  learning  rate  is  not  too  high,  then  all  Gradient
+Descent  algorithms  will  approach  the  global  optimum  and  end  up  producing
+fairly  similar  models.  However,  unless  you  gradually  reduce  the  learning  rate,
+Stochastic  GD  and  Mini-batch  GD  will  never  truly  converge;  instead,  they  will
+keep jumping back and forth around the global optimum. This means that even
+if you let them run for a very long time, these Gradient Descent algorithms will
+produce slightly different models.
+
+5. If the validation error consistently goes up after every epoch, then one possibility
+is that the learning rate is too high and the algorithm is diverging. If the training
+error  also  goes  up,  then  this  is  clearly  the  problem  and  you  should  reduce  the
+learning rate. However, if the training error is not going up, then your model is
+overfitting the training set and you should stop training.
+
+6. Due to their random nature, neither Stochastic Gradient Descent nor Mini-batch
+Gradient  Descent  is  guaranteed  to  make  progress  at  every  single  training  itera‐
+tion. So if you immediately stop training when the validation error goes up, you
+may  stop  much  too  early,  before  the  optimum  is  reached.  A  better  option  is  to
+save  the  model  at  regular  intervals;  then,  when  it  has  not  improved  for  a  long
+time (meaning it will probably never beat the record), you can revert to the best
+saved model.
+
+7. Stochastic  Gradient  Descent  has  the  fastest  training  iteration  since  it  considers
+only one training instance at a time, so it is generally the first to reach the vicinity
+of  the  global  optimum  (or  Mini-batch  GD  with  a  very  small  mini-batch  size).
+However,  only  Batch  Gradient  Descent  will  actually  converge,  given  enough
+training  time.  As  mentioned,  Stochastic  GD  and  Mini-batch  GD  will  bounce
+around the optimum, unless you gradually reduce the learning rate.
+
+8. If the validation error is much higher than the training error, this is likely because
+your model is overfitting the training set. One way to try to fix this is to reduce
+the  polynomial  degree:  a  model  with  fewer  degrees  of  freedom  is  less  likely  to
+overfit.  Another  thing  you  can  try  is  to  regularize  the  model—for  example,  by
+adding  an  ℓ2  penalty  (Ridge)  or  an  ℓ1  penalty  (Lasso)  to  the  cost  function.  This
+will  also  reduce  the  degrees  of  freedom  of  the  model.  Lastly,  you  can  try  to
+increase the size of the training set.
+
+1 If you draw a straight line between any two points on the curve, the line never crosses the curve.
+
+722 
+
+|  Appendix A: Exercise Solutions
+
+9. If  both  the  training  error  and  the  validation  error  are  almost  equal  and  fairly
+high, the model is likely underfitting the training set, which means it has a high
+bias. You should try reducing the regularization hyperparameter α.
+
+10. Let’s see:
+
+• A  model  with  some  regularization  typically  performs  better  than  a  model
+without  any  regularization,  so  you  should  generally  prefer  Ridge  Regression
+over plain Linear Regression.
+
+• Lasso Regression uses an ℓ1 penalty, which tends to push the weights down to
+exactly zero. This leads to sparse models, where all weights are zero except for
+the  most  important  weights.  This  is  a  way  to  perform  feature  selection  auto‐
+matically, which is good if you suspect that only a few features actually matter.
+When you are not sure, you should prefer Ridge Regression.
+
+• Elastic Net is generally preferred over Lasso since Lasso may behave erratically
+in some cases (when several features are strongly correlated or when there are
+more  features  than  training  instances).  However,  it  does  add  an  extra  hyper‐
+parameter to tune. If you want Lasso without the erratic behavior, you can just
+use Elastic Net with an l1_ratio close to 1.
+
+11. If you want to classify pictures as outdoor/indoor and daytime/nighttime, since
+these are not exclusive classes (i.e., all four combinations are possible) you should
+train two Logistic Regression classifiers.
+
+12. See the Jupyter notebooks available at https://github.com/ageron/handson-ml2.
+
+Chapter 5: Support Vector Machines
+
+1. The fundamental idea behind Support Vector Machines is to fit the widest possi‐
+ble “street” between the classes. In other words, the goal is to have the largest pos‐
+sible  margin  between  the  decision  boundary  that  separates  the  two  classes  and
+the  training  instances.  When  performing  soft  margin  classification,  the  SVM
+searches for a compromise between perfectly separating the two classes and hav‐
+ing  the  widest  possible  street  (i.e.,  a  few  instances  may  end  up  on  the  street).
+Another key idea is to use kernels when training on nonlinear datasets.
+
+2. After training an SVM, a support vector is any instance located on the “street” (see
+the  previous  answer),  including  its  border.  The  decision  boundary  is  entirely
+determined by the support vectors. Any instance that is not a support vector (i.e.,
+is off the street) has no influence whatsoever; you could remove them, add more
+instances, or move them around, and as long as they stay off the street they won’t
+affect the decision boundary. Computing the predictions only involves the sup‐
+port vectors, not the whole training set.
+
+Exercise Solutions 
+
+| 
+
+723
+
+3. SVMs  try  to  fit  the  largest  possible  “street”  between  the  classes  (see  the  first
+answer),  so  if  the  training  set  is  not  scaled,  the  SVM  will  tend  to  neglect  small
+features (see Figure 5-2).
+
+4. An SVM classifier can output the distance between the test instance and the deci‐
+sion  boundary,  and  you  can  use  this  as  a  confidence  score.  However,  this  score
+cannot be directly converted into an estimation of the class probability. If you set
+probability=True when creating an SVM in Scikit-Learn, then after training it
+will  calibrate  the  probabilities  using  Logistic  Regression  on  the  SVM’s  scores
+(trained  by  an  additional  five-fold  cross-validation  on  the  training  data).  This
+will add the predict_proba() and predict_log_proba() methods to the SVM.
+
+5. This  question  applies  only  to  linear  SVMs  since  kernelized  SVMs  can  only  use
+the  dual  form.  The  computational  complexity  of  the  primal  form  of  the  SVM
+problem is proportional to the number of training instances m, while the compu‐
+tational complexity of the dual form is proportional to a number between m2 and
+m3.  So  if  there  are  millions  of  instances,  you  should  definitely  use  the  primal
+form, because the dual form will be much too slow.
+
+6. If an SVM classifier trained with an RBF kernel underfits the training set, there
+might be too much regularization. To decrease it, you need to increase gamma or C
+(or both).
+
+7. Let’s call the QP parameters for the hard margin problem H′, f′, A′, and b′ (see
+“Quadratic Programming” on page 167). The QP parameters for the soft margin
+problem have m additional parameters (np = n + 1 + m) and m additional con‐
+straints (nc = 2m). They can be defined like so:
+
+• H  is  equal  to  H′,  plus  m  columns  of  0s  on  the  right  and  m  rows  of  0s  at  the
+
+bottom: H =
+
+H′ 0 ⋯
+0 0
+⋮ ⋱
+
+• f is equal to f′ with m additional elements, all equal to the value of the hyper‐
+
+parameter C.
+
+• b is equal to b′ with m additional elements, all equal to 0.
+• A is equal to A′, with an extra m × m identity matrix Im appended to the right,
+
+–*I*m just below it, and the rest filled with 0s: A =
+
+A′
+
+Im
+0 −Im
+
+For the solutions to exercises 8, 9, and 10, please see the Jupyter notebooks available
+at https://github.com/ageron/handson-ml2.
+
+724 
+
+|  Appendix A: Exercise Solutions
+
+Chapter 6: Decision Trees
+
+1. The depth of a well-balanced binary tree containing m leaves is equal to log2(m),2
+rounded up. A binary Decision Tree (one that makes only binary decisions, as is
+the case with all trees in Scikit-Learn) will end up more or less well balanced at
+the  end  of  training,  with  one  leaf  per  training  instance  if  it  is  trained  without
+restrictions. Thus, if the training set contains one million instances, the Decision
+Tree  will  have  a  depth  of  log2(106)  ≈  20  (actually  a  bit  more  since  the  tree  will
+generally not be perfectly well balanced).
+
+2. A  node’s  Gini  impurity  is  generally  lower  than  its  parent’s.  This  is  due  to  the
+CART  training  algorithm’s  cost  function,  which  splits  each  node  in  a  way  that
+minimizes the weighted sum of its children’s Gini impurities. However, it is possi‐
+ble  for  a  node  to  have  a  higher  Gini  impurity  than  its  parent,  as  long  as  this
+increase is more than compensated for by a decrease in the other child’s impurity.
+For  example,  consider  a  node  containing  four  instances  of  class  A  and  one  of
+class B. Its Gini impurity is 1 – (1/5)2 – (4/5)2 = 0.32. Now suppose the dataset is
+one-dimensional and the instances are lined up in the following order: A, B, A,
+A,  A.  You  can  verify  that  the  algorithm  will  split  this  node  after  the  second
+instance, producing one child node with instances A, B, and the other child node
+with instances A, A, A. The first child node’s Gini impurity is 1 – (1/2)2 – (1/2)2 =
+0.5, which is higher than its parent’s. This is compensated for by the fact that the
+other node is pure, so its overall weighted Gini impurity is 2/5 × 0.5 + 3/5 × 0 =
+0.2, which is lower than the parent’s Gini impurity.
+
+3. If a Decision Tree is overfitting the training set, it may be a good idea to decrease
+
+max_depth, since this will constrain the model, regularizing it.
+
+4. Decision Trees don’t care whether or not the training data is scaled or centered;
+that’s one of the nice things about them. So if a Decision Tree underfits the train‐
+ing set, scaling the input features will just be a waste of time.
+
+5. The computational complexity of training a Decision Tree is O(n × m log(m)). So
+if you multiply the training set size by 10, the training time will be multiplied by
+K = (n × 10m × log(10m)) / (n × m × log(m)) = 10 × log(10m) / log(m). If m =
+106, then K ≈ 11.7, so you can expect the training time to be roughly 11.7 hours.
+
+6. Presorting the training set speeds up training only if the dataset is smaller than a
+few  thousand  instances.  If  it  contains  100,000  instances,  setting  presort=True
+will considerably slow down training.
+
+For  the  solutions  to  exercises  7  and  8,  please  see  the  Jupyter  notebooks  available  at
+https://github.com/ageron/handson-ml2.
+
+2 log2 is the binary log; log2(m) = log(m) / log(2).
+
+Exercise Solutions 
+
+| 
+
+725
+
+Chapter 7: Ensemble Learning and Random Forests
+
+1. If you have trained five different models and they all achieve 95% precision, you
+can try combining them into a voting ensemble, which will often give you even
+better results. It works better if the models are very different (e.g., an SVM classi‐
+fier,  a  Decision  Tree  classifier,  a  Logistic  Regression  classifier,  and  so  on).  It  is
+even  better  if  they  are  trained  on  different  training  instances  (that’s  the  whole
+point  of  bagging  and  pasting  ensembles),  but  if  not  this  will  still  be  effective  as
+long as the models are very different.
+
+2. A  hard  voting  classifier  just  counts  the  votes  of  each  classifier  in  the  ensemble
+and picks the class that gets the most votes. A soft voting classifier computes the
+average  estimated  class  probability  for  each  class  and  picks  the  class  with  the
+highest probability. This gives high-confidence votes more weight and often per‐
+forms better, but it works only if every classifier is able to estimate class probabil‐
+set
+(e.g., 
+ities 
+probability=True).
+
+in  Scikit-Learn  you  must 
+
+the  SVM  classifiers 
+
+for 
+
+3. It is quite possible to speed up training of a bagging ensemble by distributing it
+across  multiple  servers,  since  each  predictor  in  the  ensemble  is  independent  of
+the  others.  The  same  goes  for  pasting  ensembles  and  Random  Forests,  for  the
+same  reason.  However,  each  predictor  in  a  boosting  ensemble  is  built  based  on
+the previous predictor, so training is necessarily sequential, and you will not gain
+anything  by  distributing  training  across  multiple  servers.  Regarding  stacking
+ensembles,  all  the  predictors  in  a  given  layer  are  independent  of  each  other,  so
+they can be trained in parallel on multiple servers. However, the predictors in one
+layer can only be trained after the predictors in the previous layer have all been
+trained.
+
+4. With  out-of-bag  evaluation,  each  predictor  in  a  bagging  ensemble  is  evaluated
+using instances that it was not trained on (they were held out). This makes it pos‐
+sible to have a fairly unbiased evaluation of the ensemble without the need for an
+additional  validation  set.  Thus,  you  have  more  instances  available  for  training,
+and your ensemble can perform slightly better.
+
+5. When you are growing a tree in a Random Forest, only a random subset of the
+features  is  considered  for  splitting  at  each  node.  This  is  true  as  well  for  Extra-
+Trees,  but  they  go  one  step  further:  rather  than  searching  for  the  best  possible
+thresholds, like regular Decision Trees do, they use random thresholds for each
+feature.  This  extra  randomness  acts  like  a  form  of  regularization:  if  a  Random
+Forest  overfits  the  training  data,  Extra-Trees  might  perform  better.  Moreover,
+since  Extra-Trees  don’t  search  for  the  best  possible  thresholds,  they  are  much
+faster to train than Random Forests. However, they are neither faster nor slower
+than Random Forests when making predictions.
+
+726 
+
+|  Appendix A: Exercise Solutions
+
+6. If your AdaBoost ensemble underfits the training data, you can try increasing the
+number of estimators or reducing the regularization hyperparameters of the base
+estimator. You may also try slightly increasing the learning rate.
+
+7. If  your  Gradient  Boosting  ensemble  overfits  the  training  set,  you  should  try
+decreasing the learning rate. You could also use early stopping to find

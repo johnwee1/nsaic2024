@@ -1,0 +1,312 @@
+e., a time step object contain‐
+ing a batch of observations, a batch of step types, a batch of rewards, and a batch of
+discounts, all four batches of the same size). The driver also passes a batch of previous
+policy  states.  The  policy  then  returns  a  batched  action  step  containing  a  batch  of
+actions and a batch of policy states. Finally, the driver creates a batched trajectory (i.e.,
+a  trajectory  containing  a  batch  of  step  types,  a  batch  of  observations,  a  batch  of
+actions, a batch of rewards, and more generally a batch for each trajectory attribute,
+with all batches of the same size).
+
+There are two main driver classes: DynamicStepDriver and DynamicEpisodeDriver.
+The first one collects experiences for a given number of steps, while the second col‐
+lects experiences for a given number of episodes. We want to collect experiences for
+four steps for each training iteration (as was done in the 2015 DQN paper), so let’s
+create a DynamicStepDriver:
+
+from tf_agents.drivers.dynamic_step_driver import DynamicStepDriver
+
+collect_driver = DynamicStepDriver(
+    tf_env,
+    agent.collect_policy,
+    observers=[replay_buffer_observer] + training_metrics,
+    num_steps=update_period) # collect 4 steps for each training iteration
+
+We give it the environment to play with, the agent’s collect policy, a list of observers
+(including the replay buffer observer and the training metrics), and finally the num‐
+ber  of  steps  to  run  (in  this  case,  four).  We  could  now  run  it  by  calling  its  run()
+method, but it’s best to warm up the replay buffer with experiences collected using a
+purely random policy. For this, we can use the RandomTFPolicy class and create a sec‐
+ond  driver  that  will  run  this  policy  for  20,000  steps  (which  is  equivalent  to  80,000
+simulator  frames,  as  was  done  in  the  2015  DQN  paper).  We  can  use  our  ShowPro
+gress observer to display the progress:
+
+The TF-Agents Library 
+
+| 
+
+657
+
+from tf_agents.policies.random_tf_policy import RandomTFPolicy
+
+initial_collect_policy = RandomTFPolicy(tf_env.time_step_spec(),
+                                        tf_env.action_spec())
+init_driver = DynamicStepDriver(
+    tf_env,
+    initial_collect_policy,
+    observers=[replay_buffer.add_batch, ShowProgress(20000)],
+    num_steps=20000) # <=> 80,000 ALE frames
+final_time_step, final_policy_state = init_driver.run()
+
+We’re  almost  ready  to  run  the  training  loop!  We  just  need  one  last  component:  the
+dataset.
+
+Creating the Dataset
+To sample a batch of trajectories from the replay buffer, call its get_next() method.
+This returns the batch of trajectories plus a BufferInfo object that contains the sam‐
+ple  identifiers  and  their  sampling  probabilities  (this  may  be  useful  for  some  algo‐
+rithms,  such  as  PER).  For  example,  the  following  code  will  sample  a  small  batch  of
+two  trajectories  (subepisodes),  each  containing  three  consecutive  steps.  These
+subepisodes  are  shown  in  Figure  18-15  (each  row  contains  three  consecutive  steps
+from an episode):
+
+>>> trajectories, buffer_info = replay_buffer.get_next(
+...     sample_batch_size=2, num_steps=3)
+...
+>>> trajectories._fields
+('step_type', 'observation', 'action', 'policy_info',
+ 'next_step_type', 'reward', 'discount')
+>>> trajectories.observation.shape
+TensorShape([2, 3, 84, 84, 4])
+>>> trajectories.step_type.numpy()
+array([[1, 1, 1],
+       [1, 1, 1]], dtype=int32)
+
+The  trajectories  object  is  a  named  tuple,  with  seven  fields.  Each  field  contains  a
+tensor whose first two dimensions are 2 and 3 (since there are two trajectories, each
+with three steps). This explains why the shape of the observation field is [2, 3, 84, 84,
+4]: that’s two trajectories, each with three steps, and each step’s observation is 84 × 84
+× 4. Similarly, the step_type tensor has a shape of [2, 3]: in this example, both trajec‐
+tories contain three consecutive steps in the middle on an episode (types 1, 1, 1). In
+the second trajectory, you can barely see the ball at the lower left of the first observa‐
+tion, and it disappears in the next two observations, so the agent is about to lose a life,
+but the episode will not end immediately because it still has several lives left.
+
+658 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+Figure 18-15. Two trajectories containing three consecutive steps each
+
+Each  trajectory  is  a  concise  representation  of  a  sequence  of  consecutive  time  steps
+and  action  steps,  designed  to  avoid  redundancy.  How  so?  Well,  as  you  can  see  in
+Figure 18-16, transition n is composed of time step n, action step n, and time step n +
+1, while transition n + 1 is composed of time step n + 1, action step n + 1, and time
+step n + 2. If we just stored these two transitions directly in the replay buffer, the time
+step  n  +  1  would  be  duplicated.  To  avoid  this  duplication,  the  nth  trajectory  step
+includes  only  the  type  and  observation  from  time  step  n  (not  its  reward  and  dis‐
+count), and it does not contain the observation from time step n + 1 (however, it does
+contain a copy of the next time step’s type; that’s the only duplication).
+
+The TF-Agents Library 
+
+| 
+
+659
+
+Figure 18-16. Trajectories, transitions, time steps, and action steps
+
+So if you have a batch of trajectories where each trajectory has t + 1 steps (from time
+step n to time step n + t), then it contains all the data from time step n to time step n
++ t, except for the reward and discount from time step n (but it contains the reward
+and discount of time step n + t + 1). This represents t transitions (n to n + 1, n + 1 to
+n + 2, …, n + t – 1 to n + t).
+
+The  to_transition()  function  in  the  tf_agents.trajectories.trajectory  mod‐
+ule converts a batched trajectory into a list containing a batched time_step, a batched
+action_step, and a batched next_time_step. Notice that the second dimension is 2
+instead  of  3,  since  there  are  t  transitions  between  t  +  1  time  steps  (don’t  worry  if
+you’re a bit confused; you’ll get the hang of it):
+
+>>> from tf_agents.trajectories.trajectory import to_transition
+>>> time_steps, action_steps, next_time_steps = to_transition(trajectories)
+>>> time_steps.observation.shape
+TensorShape([2, 2, 84, 84, 4]) # 3 time steps = 2 transitions
+
+A sampled trajectory may actually overlap two (or more) episodes!
+In  this  case,  it  will  contain  boundary  transitions,  meaning  transi‐
+tions  with  a  step_type  equal  to  2  (end)  and  a  next_step_type
+equal to 0 (start). Of course, TF-Agents properly handles such tra‐
+jectories  (e.g.,  by  resetting  the  policy  state  when  encountering  a
+boundary). The trajectory’s  is_boundary() method returns a ten‐
+sor indicating whether each step is a boundary or not.
+
+660 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+For our main training loop, instead of calling the get_next() method, we will use a
+tf.data.Dataset. This way, we can benefit from the power of the Data API (e.g., par‐
+allelism and prefetching). For this, we call the replay buffer’s as_dataset() method:
+
+dataset = replay_buffer.as_dataset(
+    sample_batch_size=64,
+    num_steps=2,
+    num_parallel_calls=3).prefetch(3)
+
+We will sample batches of 64 trajectories at each training step (as in the 2015 DQN
+paper),  each  with  2  steps  (i.e.,  2  steps  =  1  full  transition,  including  the  next  step’s
+observation). This dataset will process three elements in parallel, and prefetch three
+batches.
+
+For on-policy algorithms such as Policy Gradients, each experience
+should be sampled once, used from training, and then discarded. In
+this  case,  you  can  still  use  a  replay  buffer,  but  instead  of  using  a
+Dataset, you would call the replay buffer’s  gather_all() method
+at each training iteration to get a tensor containing all the trajecto‐
+ries recorded so far, then use them to perform a training step, and
+finally clear the replay buffer by calling its clear() method.
+
+Now that we have all the components in place, we are ready to train the model!
+
+Creating the Training Loop
+To  speed  up  training,  we  will  convert  the  main  functions  to  TensorFlow  Functions.
+For this we will use the tf_agents.utils.common.function() function, which wraps
+tf.function(), with some extra experimental options:
+
+from tf_agents.utils.common import function
+
+collect_driver.run = function(collect_driver.run)
+agent.train = function(agent.train)
+
+Let’s create a small function that will run the main training loop for n_iterations:
+
+def train_agent(n_iterations):
+    time_step = None
+    policy_state = agent.collect_policy.get_initial_state(tf_env.batch_size)
+    iterator = iter(dataset)
+    for iteration in range(n_iterations):
+        time_step, policy_state = collect_driver.run(time_step, policy_state)
+        trajectories, buffer_info = next(iterator)
+        train_loss = agent.train(trajectories)
+        print("\r{} loss:{:.5f}".format(
+            iteration, train_loss.loss.numpy()), end="")
+        if iteration % 1000 == 0:
+            log_metrics(train_metrics)
+
+The TF-Agents Library 
+
+| 
+
+661
+
+The  function  first  asks  the  collect  policy  for  its  initial  state  (given  the  environment
+batch size, which is 1 in this case). Since the policy is stateless, this returns an empty
+tuple (so we could have written policy_state = ()). Next, we create an iterator over
+the dataset, and we run the training loop. At each iteration, we call the driver’s run()
+method, passing it the current time step (initially None) and the current policy state. It
+will run the collect policy and collect experience for four steps (as we configured ear‐
+lier), broadcasting the collected trajectories to the replay buffer and the metrics. Next,
+we  sample  one  batch  of  trajectories  from  the  dataset,  and  we  pass  it  to  the  agent’s
+train()  method.  It  returns  a  train_loss  object  which  may  vary  depending  on  the
+type of agent. Next, we display the iteration number and the training loss, and every
+1,000 iterations we log all the metrics. Now you can just call train_agent() for some
+number of iterations, and see the agent gradually learn to play Breakout!
+
+train_agent(10000000)
+
+This will take a lot of computing power and a lot of patience (it may take hours, or
+even  days,  depending  on  your  hardware),  plus  you  may  need  to  run  the  algorithm
+several times with different random seeds to get good results, but once it’s done, the
+agent will be superhuman (at least at Breakout). You can also try training this DQN
+agent  on  other  Atari  games:  it  can  achieve  superhuman  skill  at  most  action  games,
+but it is not so good at games with long-running storylines.22
+
+Overview of Some Popular RL Algorithms
+Before we finish this chapter, let’s take a quick look at a few popular RL algorithms:
+
+Actor-Critic algorithms
+
+A  family  of  RL  algorithms  that  combine  Policy  Gradients  with  Deep  Q-
+Networks. An Actor-Critic agent contains two neural networks: a policy net and
+a DQN. The DQN is trained normally, by learning from the agent’s experiences.
+The policy net learns differently (and much faster) than in regular PG: instead of
+estimating  the  value  of  each  action  by  going  through  multiple  episodes,  then
+summing the future discounted rewards for each action, and finally normalizing
+them, the agent (actor) relies on the action values estimated by the DQN (critic).
+It’s a bit like an athlete (the agent) learning with the help of a coach (the DQN).
+
+Asynchronous Advantage Actor-Critic23 (A3C)
+
+An important Actor-Critic variant introduced by DeepMind researchers in 2016,
+where multiple agents learn in parallel, exploring different copies of the environ‐
+
+22 For a comparison of this algorithm’s performance on various Atari games, see figure 3 in DeepMind’s 2015
+
+paper.
+
+23 Volodymyr Mnih et al., “Asynchonous Methods for Deep Reinforcement Learning,” Proceedings of the 33rd
+
+International Conference on Machine Learning (2016): 1928–1937.
+
+662 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+ment.  At  regular  intervals,  but  asynchronously  (hence  the  name),  each  agent
+pushes some weight updates to a master network, then it pulls the latest weights
+from that network. Each agent thus contributes to improving the master network
+and benefits from what the other agents have learned. Moreover, instead of esti‐
+mating the Q-Values, the DQN estimates the advantage of each action (hence the
+second A in the name), which stabilizes training.
+
+Advantage Actor-Critic (A2C)
+
+A  variant  of  the  A3C  algorithm  that  removes  the  asynchronicity.  All  model
+updates are synchronous, so gradient updates are performed over larger batches,
+which allows the model to better utilize the power of the GPU.
+
+Soft Actor-Critic24 (SAC)
+
+An  Actor-Critic  variant  proposed  in  2018  by  Tuomas  Haarnoja  and  other  UC
+Berkeley researchers. It learns not only rewards, but also to maximize the entropy
+of its actions. In other words, it tries to be as unpredictable as possible while still
+getting  as  many  rewards  as  possible.  This  encourages  the  agent  to  explore  the
+environment, which speeds up training, and makes it less likely to repeatedly exe‐
+cute  the  same  action  when  the  DQN  produces  imperfect  estimates.  This  algo‐
+rithm  has  demonstrated  an  amazing  sample  efficiency  (contrary  to  all  the
+previous algorithms, which learn very slowly). SAC is available in TF-Agents.
+
+Proximal Policy Optimization (PPO)25
+
+An algorithm based on A2C that clips the loss function to avoid excessively large
+weight updates (which often lead to training instabilities). PPO is a simplification
+of  the  previous  Trust  Region  Policy  Optimization26  (TRPO)  algorithm,  also  by
+John Schulman and other OpenAI researchers. OpenAI made the news in April
+2019  with  their  AI  called  OpenAI  Five,  based  on  the  PPO  algorithm,  which
+defeated the world champions at the multiplayer game Dota 2. PPO is also avail‐
+able in TF-Agents.
+
+24 Tuomas Haarnoja et al., “Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with
+a Stochastic Actor,” Proceedings of the 35th International Conference on Machine Learning (2018): 1856–1865.
+
+25 John Schulman et al., “Proximal Policy Optimization Algorithms,” arXiv preprint arXiv:1707.06347 (2017).
+
+26 John Schulman et al., “Trust Region Policy Optimization,” Proceedings of the 32nd International Conference on
+
+Machine Learning (2015): 1889–1897.
+
+Overview of Some Popular RL Algorithms 
+
+| 
+
+663
+
+Curiosity-based exploration27
+
+A recurring problem in RL is the sparsity of the rewards, which makes learning
+very slow and inefficient. Deepak Pathak and other UC Berkeley researchers have
+proposed  an  exciting  way  to  tackle  this  issue:  why  not  ignore  the  rewards,  and
+just make the agent extremely curious to explore the environment? The rewards
+thus  become  intrinsic  to  the  agent,  rather  than  coming  from  the  environment.
+Similarly, stimulating curiosity in a child is more likely to give good results than
+purely  rewarding  the  child  for  getting  good  grades.  How  does  this  work?  The
+agent continuously tries to predict the outcome of its actions, and it seeks situa‐
+tions where the outcome does not match its predictions. In other words, it wants
+to  be  surprised.  If  the  outcome  is  predictable  (boring),  it  goes  elsewhere.  How‐
+ever, if the outcome is unpredictable bu

@@ -1,0 +1,353 @@
+ot the Sequential API (which only accepts layers with
+one input and one output).
+
+If  your  layer  needs  to  have  a  different  behavior  during  training  and  during  testing
+(e.g., if it uses  Dropout or  BatchNormalization layers), then you must add a  train
+ing argument to the call() method and use this argument to decide what to do. For
+example, let’s create a layer that adds Gaussian noise during training (for regulariza‐
+tion)  but  does  nothing  during  testing  (Keras  has  a  layer  that  does  the  same  thing,
+keras.layers.GaussianNoise):
+
+class MyGaussianNoise(keras.layers.Layer):
+    def __init__(self, stddev, **kwargs):
+        super().__init__(**kwargs)
+        self.stddev = stddev
+
+    def call(self, X, training=None):
+        if training:
+            noise = tf.random.normal(tf.shape(X), stddev=self.stddev)
+            return X + noise
+        else:
+            return X
+
+    def compute_output_shape(self, batch_input_shape):
+        return batch_input_shape
+
+With  that,  you  can  now  build  any  custom  layer  you  need!  Now  let’s  create  custom
+models.
+
+Custom Models
+We  already  looked  at  creating  custom  model  classes  in  Chapter  10,  when  we  dis‐
+cussed the Subclassing API.10 It’s straightforward: subclass the keras.Model class, cre‐
+ate layers and variables in the constructor, and implement the call() method to do
+whatever  you  want  the  model  to  do.  Suppose  you  want  to  build  the  model  repre‐
+sented in Figure 12-3.
+
+10 The name “Subclassing API” usually refers only to the creation of custom models by subclassing, although
+
+many other things can be created by subclassing, as we saw in this chapter.
+
+394 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+Figure 12-3. Custom model example: an arbitrary model with a custom ResidualBlock
+layer containing a skip connection
+
+The inputs go through a first dense layer, then through a residual block composed of
+two dense layers and an addition operation (as we will see in Chapter 14, a residual
+block adds its inputs to its outputs), then through this same residual block three more
+times, then through a second residual block, and the final result goes through a dense
+output layer. Note that this model does not make much sense; it’s just an example to
+illustrate the fact that you can easily build any kind of model you want, even one that
+contains loops and skip connections. To implement this model, it is best to first create
+a ResidualBlock layer, since we are going to create a couple of identical blocks (and
+we might want to reuse it in another model):
+
+class ResidualBlock(keras.layers.Layer):
+    def __init__(self, n_layers, n_neurons, **kwargs):
+        super().__init__(**kwargs)
+        self.hidden = [keras.layers.Dense(n_neurons, activation="elu",
+                                          kernel_initializer="he_normal")
+                       for _ in range(n_layers)]
+
+    def call(self, inputs):
+        Z = inputs
+        for layer in self.hidden:
+            Z = layer(Z)
+        return inputs + Z
+
+This layer is a bit special since it contains other layers. This is handled transparently
+by Keras: it automatically detects that the hidden attribute contains trackable objects
+(layers  in  this  case),  so  their  variables  are  automatically  added  to  this  layer’s  list  of
+
+Customizing Models and Training Algorithms 
+
+| 
+
+395
+
+variables. The rest of this class is self-explanatory. Next, let’s use the Subclassing API
+to define the model itself:
+
+class ResidualRegressor(keras.Model):
+    def __init__(self, output_dim, **kwargs):
+        super().__init__(**kwargs)
+        self.hidden1 = keras.layers.Dense(30, activation="elu",
+                                          kernel_initializer="he_normal")
+        self.block1 = ResidualBlock(2, 30)
+        self.block2 = ResidualBlock(2, 30)
+        self.out = keras.layers.Dense(output_dim)
+
+    def call(self, inputs):
+        Z = self.hidden1(inputs)
+        for _ in range(1 + 3):
+            Z = self.block1(Z)
+        Z = self.block2(Z)
+        return self.out(Z)
+
+We  create  the  layers  in  the  constructor  and  use  them  in  the  call()  method.  This
+model can then be used like any other model (compile it, fit it, evaluate it, and use it
+to make predictions). If you also want to be able to save the model using the save()
+method  and  load  it  using  the  keras.models.load_model()  function,  you  must
+implement the get_config() method (as we did earlier) in both the ResidualBlock
+class  and  the  ResidualRegressor  class.  Alternatively,  you  can  save  and  load  the
+weights using the save_weights() and load_weights() methods.
+
+The Model class is a subclass of the Layer class, so models can be defined and used
+exactly like layers. But a model has some extra functionalities, including of course its
+compile(), fit(), evaluate(), and predict() methods (and a few variants), plus the
+get_layers()  method  (which  can  return  any  of  the  model’s  layers  by  name  or  by
+index)  and  the  save()  method  (and  support  for  keras.models.load_model()  and
+keras.models.clone_model()).
+
+If  models  provide  more  functionality  than  layers,  why  not  just
+define every layer as a model? Well, technically you could, but it is
+usually  cleaner  to  distinguish  the  internal  components  of  your
+model (i.e., layers or reusable blocks of layers) from the model itself
+(i.e.,  the  object  you  will  train).  The  former  should  subclass  the
+Layer class, while the latter should subclass the Model class.
+
+With that, you can naturally and concisely build almost any model that you find in a
+paper, using the Sequential API, the Functional API, the Subclassing API, or even a
+mix of these. “Almost” any model? Yes, there are still a few things that we need to look
+
+396 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+at: first, how to define losses or metrics based on model internals, and second, how to
+build a custom training loop.
+
+Losses and Metrics Based on Model Internals
+The custom losses and metrics we defined earlier were all based on the labels and the
+predictions  (and  optionally  sample  weights).  There  will  be  times  when  you  want  to
+define losses based on other parts of your model, such as the weights or activations of
+its hidden layers. This may be useful for regularization purposes or to monitor some
+internal aspect of your model.
+
+To define a custom loss based on model internals, compute it based on any part of the
+model  you  want,  then  pass  the  result  to  the  add_loss()  method.For  example,  let’s
+build a custom regression MLP model composed of a stack of five hidden layers plus
+an output layer. This custom model will also have an auxiliary output on top of the
+upper  hidden  layer.  The  loss  associated  to  this  auxiliary  output  will  be  called  the
+reconstruction  loss  (see  Chapter  17):  it  is  the  mean  squared  difference  between  the
+reconstruction and the inputs. By adding this reconstruction loss to the main loss, we
+will  encourage  the  model  to  preserve  as  much  information  as  possible  through  the
+hidden  layers—even  information  that  is  not  directly  useful  for  the  regression  task
+itself. In practice, this loss sometimes improves generalization (it is a regularization
+loss). Here is the code for this custom model with a custom reconstruction loss:
+
+class ReconstructingRegressor(keras.Model):
+    def __init__(self, output_dim, **kwargs):
+        super().__init__(**kwargs)
+        self.hidden = [keras.layers.Dense(30, activation="selu",
+                                          kernel_initializer="lecun_normal")
+                       for _ in range(5)]
+        self.out = keras.layers.Dense(output_dim)
+
+    def build(self, batch_input_shape):
+        n_inputs = batch_input_shape[-1]
+        self.reconstruct = keras.layers.Dense(n_inputs)
+        super().build(batch_input_shape)
+
+    def call(self, inputs):
+        Z = inputs
+        for layer in self.hidden:
+            Z = layer(Z)
+        reconstruction = self.reconstruct(Z)
+        recon_loss = tf.reduce_mean(tf.square(reconstruction - inputs))
+        self.add_loss(0.05 * recon_loss)
+        return self.out(Z)
+
+Customizing Models and Training Algorithms 
+
+| 
+
+397
+
+Let’s go through this code:
+
+• The  constructor  creates  the  DNN  with  five  dense  hidden  layers  and  one  dense
+
+output layer.
+
+• The  build()  method  creates  an  extra  dense  layer  which  will  be  used  to  recon‐
+struct the inputs of the model. It must be created here because its number of units
+must be equal to the number of inputs, and this number is unknown before the
+build() method is called.
+
+• The  call()  method  processes  the  inputs  through  all  five  hidden  layers,  then
+passes  the  result  through  the  reconstruction  layer,  which  produces  the  recon‐
+struction.
+
+• Then  the  call()  method  computes  the  reconstruction  loss  (the  mean  squared
+difference between the reconstruction and the inputs), and adds it to the model’s
+list  of  losses  using  the  add_loss()  method.11  Notice  that  we  scale  down  the
+reconstruction  loss  by  multiplying  it  by  0.05  (this  is  a  hyperparameter  you  can
+tune). This ensures that the reconstruction loss does not dominate the main loss.
+• Finally, the call() method passes the output of the hidden layers to the output
+
+layer and returns its output.
+
+Similarly, you can add a custom metric based on model internals by computing it in
+any way you want, as long as the result is the output of a metric object. For example,
+you  can  create  a  keras.metrics.Mean  object  in  the  constructor,  then  call  it  in  the
+call() method, passing it the recon_loss, and finally add it to the model by calling
+the  model’s  add_metric()  method.  This  way,  when  you  train  the  model,  Keras  will
+display both the mean loss over each epoch (the loss is the sum of the main loss plus
+0.05  times  the  reconstruction  loss)  and  the  mean  reconstruction  error  over  each
+epoch. Both will go down during training:
+
+Epoch 1/5
+11610/11610 [=============] [...] loss: 4.3092 - reconstruction_error: 1.7360
+Epoch 2/5
+11610/11610 [=============] [...] loss: 1.1232 - reconstruction_error: 0.8964
+[...]
+
+In over 99% of cases, everything we have discussed so far will be sufficient to imple‐
+ment whatever model you want to build, even with complex architectures, losses, and
+metrics.  However,  in  some  rare  cases  you  may  need  to  customize  the  training  loop
+
+11 You can also call add_loss() on any layer inside the model, as the model recursively gathers losses from all of
+
+its layers.
+
+398 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+itself. Before we get there, we need to look at how to compute gradients automatically
+in TensorFlow.
+
+Computing Gradients Using Autodiff
+To understand how to use autodiff (see Chapter 10 and Appendix D) to compute gra‐
+dients automatically, let’s consider a simple toy function:
+
+def f(w1, w2):
+    return 3 * w1 ** 2 + 2 * w1 * w2
+
+If you know calculus, you can analytically find that the partial derivative of this func‐
+tion with regard to w1 is 6 * w1 + 2 * w2. You can also find that its partial derivative
+with regard to w2 is 2 * w1. For example, at the point (w1, w2) = (5, 3), these par‐
+tial derivatives are equal to 36 and 10, respectively, so the gradient vector at this point
+is (36, 10). But if this were a neural network, the function would be much more com‐
+plex,  typically  with  tens  of  thousands  of  parameters,  and  finding  the  partial  deriva‐
+tives analytically by hand would be an almost impossible task. One solution could be
+to compute an approximation of each partial derivative by measuring how much the
+function’s output changes when you tweak the corresponding parameter:
+
+>>> w1, w2 = 5, 3
+>>> eps = 1e-6
+>>> (f(w1 + eps, w2) - f(w1, w2)) / eps
+36.000003007075065
+>>> (f(w1, w2 + eps) - f(w1, w2)) / eps
+10.000000003174137
+
+Looks about right! This works rather well and is easy to implement, but it is just an
+approximation, and importantly you need to call f() at least once per parameter (not
+twice, since we could compute f(w1, w2) just once). Needing to call f() at least once
+per parameter makes this approach intractable for large neural networks. So instead,
+we should use autodiff. TensorFlow makes this pretty simple:
+
+w1, w2 = tf.Variable(5.), tf.Variable(3.)
+with tf.GradientTape() as tape:
+    z = f(w1, w2)
+
+gradients = tape.gradient(z, [w1, w2])
+
+We  first  define  two  variables  w1  and  w2,  then  we  create  a  tf.GradientTape  context
+that will automatically record every operation that involves a variable, and finally we
+ask  this  tape  to  compute  the  gradients  of  the  result  z  with  regard  to  both  variables
+[w1, w2]. Let’s take a look at the gradients that TensorFlow computed:
+
+>>> gradients
+[<tf.Tensor: id=828234, shape=(), dtype=float32, numpy=36.0>,
+ <tf.Tensor: id=828229, shape=(), dtype=float32, numpy=10.0>]
+
+Customizing Models and Training Algorithms 
+
+| 
+
+399
+
+Perfect! Not only is the result accurate (the precision is only limited by the floating-
+point errors), but the gradient() method only goes through the recorded computa‐
+tions  once  (in  reverse  order),  no  matter  how  many  variables  there  are,  so  it  is
+incredibly efficient. It’s like magic!
+
+To  save  memory,  only  put  the  strict  minimum  inside  the  tf.Gra
+dientTape()  block.  Alternatively,  pause  recording  by  creating  a
+with  tape.stop_recording()  block  inside  the  tf.Gradient
+Tape() block.
+
+The tape is automatically erased immediately after you call its gradient() method, so
+you will get an exception if you try to call gradient() twice:
+
+with tf.GradientTape() as tape:
+    z = f(w1, w2)
+
+dz_dw1 = tape.gradient(z, w1) # => tensor 36.0
+dz_dw2 = tape.gradient(z, w2) # RuntimeError!
+
+If  you  need  to  call  gradient()  more  than  once,  you  must  make  the  tape  persistent
+and delete it each time you are done with it to free resources:12
+
+with tf.GradientTape(persistent=True) as tape:
+    z = f(w1, w2)
+
+dz_dw1 = tape.gradient(z, w1) # => tensor 36.0
+dz_dw2 = tape.gradient(z, w2) # => tensor 10.0, works fine now!
+del tape
+
+By  default,  the  tape  will  only  track  operations  involving  variables,  so  if  you  try  to
+compute  the  gradient  of  z  with  regard  to  anything  other  than  a  variable,  the  result
+will be None:
+
+c1, c2 = tf.constant(5.), tf.constant(3.)
+with tf.GradientTape() as tape:
+    z = f(c1, c2)
+
+gradients = tape.gradient(z, [c1, c2]) # returns [None, None]
+
+However, you can force the tape to watch any tensors you like, to record every opera‐
+tion that involves them. You can then compute gradients with regard to these tensors,
+as if they were variables:
+
+12 If the tape goes out of scope, for example when the function that used it returns, Python’s garbage collector
+
+will delete it for you.
+
+400 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+with tf.GradientTape() as tape:
+    tape.watch(c1)
+    tape.watch(c2)
+    z = f(c1, c2)
+
+gradients = tape.gradient(z, [c1, c2]) # returns [tensor 36., tensor 10.]
+
+This can be useful in some cases, like if you want to implement a regularization loss
+that  penalizes  activations  that  vary  a  lot  when  the  inputs  vary  little:  the  loss  will  be
+based on the gradient of the activations with regard to the inputs. Since the inputs are
+not variables

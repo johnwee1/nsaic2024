@@ -1,0 +1,305 @@
+nfo.features["label"].num_classes # 5
+
+Note that you can get information about the dataset by setting with_info=True. Here,
+we  get  the  dataset  size  and  the  names  of  the  classes.  Unfortunately,  there  is  only  a
+"train" dataset, no test set or validation set, so we need to split the training set. The
+TF Datasets project provides an API for this. For example, let’s take the first 10% of
+the  dataset  for  testing,  the  next  15%  for  validation,  and  the  remaining  75%  for
+training:
+
+test_split, valid_split, train_split = tfds.Split.TRAIN.subsplit([10, 15, 75])
+
+test_set = tfds.load("tf_flowers", split=test_split, as_supervised=True)
+valid_set = tfds.load("tf_flowers", split=valid_split, as_supervised=True)
+train_set = tfds.load("tf_flowers", split=train_split, as_supervised=True)
+
+Pretrained Models for Transfer Learning 
+
+| 
+
+481
+
+Next we must preprocess the images. The CNN expects 224 × 224 images, so we need
+to  resize  them.  We  also  need  to  run  the  images  through  Xception’s  prepro
+cess_input() function:
+
+def preprocess(image, label):
+    resized_image = tf.image.resize(image, [224, 224])
+    final_image = keras.applications.xception.preprocess_input(resized_image)
+    return final_image, label
+
+Let’s  apply  this  preprocessing  function  to  all  three  datasets,  shuffle  the  training  set,
+and add batching and prefetching to all the datasets:
+
+batch_size = 32
+train_set = train_set.shuffle(1000)
+train_set = train_set.map(preprocess).batch(batch_size).prefetch(1)
+valid_set = valid_set.map(preprocess).batch(batch_size).prefetch(1)
+test_set = test_set.map(preprocess).batch(batch_size).prefetch(1)
+
+If you want to perform some data augmentation, change the preprocessing function
+for the training set, adding some random transformations to the training images. For
+example,  use  tf.image.random_crop() 
+images,  use
+tf.image.random_flip_left_right() to randomly flip the images horizontally, and
+so on (see the “Pretrained Models for Transfer Learning” section of the notebook for
+an example).
+
+to  randomly  crop 
+
+the 
+
+keras.preprocessing.image.ImageDataGenerator 
+The 
+class
+makes it easy to load images from disk and augment them in vari‐
+ous ways: you can shift each image, rotate it, rescale it, flip it hori‐
+zontally or vertically, shear it, or apply any transformation function
+you  want  to  it.  This  is  very  convenient  for  simple  projects.  How‐
+ever,  building  a  tf.data  pipeline  has  many  advantages:  it  can  read
+the images efficiently (e.g., in parallel) from any source, not just the
+local disk; you can manipulate the Dataset as you wish; and if you
+write a preprocessing function based on tf.image operations, this
+function can be used both in the tf.data pipeline and in the model
+you will deploy to production (see Chapter 19).
+
+Next let’s load an Xception model, pretrained on ImageNet. We exclude the top of the
+network by setting include_top=False: this excludes the global average pooling layer
+and the dense output layer. We then add our own global average pooling layer, based
+on the output of the base model, followed by a dense output layer with one unit per
+class, using the softmax activation function. Finally, we create the Keras Model:
+
+base_model = keras.applications.xception.Xception(weights="imagenet",
+                                                  include_top=False)
+avg = keras.layers.GlobalAveragePooling2D()(base_model.output)
+output = keras.layers.Dense(n_classes, activation="softmax")(avg)
+model = keras.Model(inputs=base_model.input, outputs=output)
+
+482 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+As explained in Chapter 11, it’s usually a good idea to freeze the weights of the pre‐
+trained layers, at least at the beginning of training:
+
+for layer in base_model.layers:
+    layer.trainable = False
+
+Since  our  model  uses  the  base  model’s  layers  directly,  rather  than
+the base_model object itself, setting base_model.trainable=False
+would have no effect.
+
+Finally, we can compile the model and start training:
+
+optimizer = keras.optimizers.SGD(lr=0.2, momentum=0.9, decay=0.01)
+model.compile(loss="sparse_categorical_crossentropy", optimizer=optimizer,
+              metrics=["accuracy"])
+history = model.fit(train_set, epochs=5, validation_data=valid_set)
+
+This will be very slow, unless you have a GPU. If you do not, then
+you should run this chapter’s notebook in Colab, using a GPU run‐
+time  (it’s  free!).  See  the  instructions  at  https://github.com/ageron/
+handson-ml2.
+
+After training the model for a few epochs, its validation accuracy should reach about
+75–80%  and  stop  making  much  progress.  This  means  that  the  top  layers  are  now
+pretty  well  trained,  so  we  are  ready  to  unfreeze  all  the  layers  (or  you  could  try
+unfreezing  just  the  top  ones)  and  continue  training  (don’t  forget  to  compile  the
+model when you freeze or unfreeze layers). This time we use a much lower learning
+rate to avoid damaging the pretrained weights:
+
+for layer in base_model.layers:
+    layer.trainable = True
+
+optimizer = keras.optimizers.SGD(lr=0.01, momentum=0.9, decay=0.001)
+model.compile(...)
+history = model.fit(...)
+
+It will take a while, but this model should reach around 95% accuracy on the test set.
+With that, you can start training amazing image classifiers! But there’s more to com‐
+puter vision than just classification. For example, what if you also want to know where
+the flower is in the picture? Let’s look at this now.
+
+Classification and Localization
+Localizing an object in a picture can be expressed as a regression task, as discussed in
+Chapter 10: to predict a bounding box around the object, a common approach is to
+
+Classification and Localization 
+
+| 
+
+483
+
+predict  the  horizontal  and  vertical  coordinates  of  the  object’s  center,  as  well  as  its
+height and width. This means we have four numbers to predict. It does not require
+much change to the model; we just need to add a second dense output layer with four
+units (typically on top of the global average pooling layer), and it can be trained using
+the MSE loss:
+
+base_model = keras.applications.xception.Xception(weights="imagenet",
+                                                  include_top=False)
+avg = keras.layers.GlobalAveragePooling2D()(base_model.output)
+class_output = keras.layers.Dense(n_classes, activation="softmax")(avg)
+loc_output = keras.layers.Dense(4)(avg)
+model = keras.Model(inputs=base_model.input,
+                    outputs=[class_output, loc_output])
+model.compile(loss=["sparse_categorical_crossentropy", "mse"],
+              loss_weights=[0.8, 0.2], # depends on what you care most about
+              optimizer=optimizer, metrics=["accuracy"])
+
+But  now  we  have  a  problem:  the  flowers  dataset  does  not  have  bounding  boxes
+around the flowers. So, we need to add them ourselves. This is often one of the hard‐
+est and most costly parts of a Machine Learning project: getting the labels. It’s a good
+idea  to  spend  time  looking  for  the  right  tools.  To  annotate  images  with  bounding
+boxes,  you  may  want  to  use  an  open  source  image  labeling  tool  like  VGG  Image
+Annotator,  LabelImg,  OpenLabeler,  or  ImgLab,  or  perhaps  a  commercial  tool  like
+LabelBox  or  Supervisely.  You  may  also  want  to  consider  crowdsourcing  platforms
+such as Amazon Mechanical Turk if you have a very large number of images to anno‐
+tate. However, it is quite a lot of work to set up a crowdsourcing platform, prepare the
+form  to  be  sent  to  the  workers,  supervise  them,  and  ensure  that  the  quality  of  the
+bounding boxes they produce is good, so make sure it is worth the effort. If there are
+just a few thousand images to label, and you don’t plan to do this frequently, it may be
+preferable  to  do  it  yourself.  Adriana  Kovashka  et  al.  wrote  a  very  practical  paper24
+about crowdsourcing in computer vision. I recommend you check it out, even if you
+do not plan to use crowdsourcing.
+
+Let’s suppose you’ve obtained the bounding boxes for every image in the flowers data‐
+set (for now we will assume there is a single bounding box per image). You then need
+to  create  a  dataset  whose  items  will  be  batches  of  preprocessed  images  along  with
+their class labels and their bounding boxes. Each item should be a tuple of the form
+(images,  (class_labels,  bounding_boxes)).  Then  you  are  ready  to  train  your
+model!
+
+24 Adriana Kovashka et al., “Crowdsourcing in Computer Vision,” Foundations and Trends in Computer Graphics
+
+and Vision 10, no. 3 (2014): 177–243.
+
+484 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+The  bounding  boxes  should  be  normalized  so  that  the  horizontal
+and vertical coordinates, as well as the height and width, all range
+from  0  to  1.  Also,  it  is  common  to  predict  the  square  root  of  the
+height  and  width  rather  than  the  height  and  width  directly:  this
+way, a 10-pixel error for a large bounding box will not be penalized
+as much as a 10-pixel error for a small bounding box.
+
+The MSE often works fairly well as a cost function to train the model, but it is not a
+great metric to evaluate how well the model can predict bounding boxes. The most
+common  metric  for  this  is  the  Intersection  over  Union  (IoU):  the  area  of  overlap
+between  the  predicted  bounding  box  and  the  target  bounding  box,  divided  by  the
+area  of  their  union  (see  Figure  14-23).  In  tf.keras,  it  is  implemented  by  the
+tf.keras.metrics.MeanIoU class.
+
+Figure 14-23. Intersection over Union (IoU) metric for bounding boxes
+
+Classifying and localizing a single object is nice, but what if the images contain multi‐
+ple objects (as is often the case in the flowers dataset)?
+
+Object Detection
+The  task  of  classifying  and  localizing  multiple  objects  in  an  image  is  called  object
+detection.  Until  a  few  years  ago,  a  common  approach  was  to  take  a  CNN  that  was
+trained to classify and locate a single object, then slide it across the image, as shown
+in  Figure  14-24.  In  this  example,  the  image  was  chopped  into  a  6  ×  8  grid,  and  we
+show  a  CNN  (the  thick  black  rectangle)  sliding  across  all  3  ×  3  regions.  When  the
+CNN was looking at the top left of the image, it detected part of the leftmost rose, and
+then it detected that same rose again when it was first shifted one step to the right. At
+
+Object Detection 
+
+| 
+
+485
+
+the  next  step,  it  started  detecting  part  of  the  topmost  rose,  and  then  it  detected  it
+again once it was shifted one more step to the right. You would then continue to slide
+the  CNN  through  the  whole  image,  looking  at  all  3  ×  3  regions.  Moreover,  since
+objects can have varying sizes, you would also slide the CNN across regions of differ‐
+ent sizes. For example, once you are done with the 3 × 3 regions, you might want to
+slide the CNN across all 4 × 4 regions as well.
+
+Figure 14-24. Detecting multiple objects by sliding a CNN across the image
+
+This  technique  is  fairly  straightforward,  but  as  you  can  see  it  will  detect  the  same
+object  multiple  times,  at  slightly  different  positions.  Some  post-processing  will  then
+be needed to get rid of all the unnecessary bounding boxes. A common approach for
+this is called non-max suppression. Here’s how you do it:
+
+1. First,  you  need  to  add  an  extra  objectness  output  to  your  CNN,  to  estimate  the
+probability that a flower is indeed present in the image (alternatively, you could
+add a “no-flower” class, but this usually does not work as well). It must use the
+sigmoid activation function, and you can train it using binary cross-entropy loss.
+Then  get  rid  of  all  the  bounding  boxes  for  which  the  objectness  score  is  below
+some threshold: this will drop all the bounding boxes that don’t actually contain a
+flower.
+
+2. Find  the  bounding  box  with  the  highest  objectness  score,  and  get  rid  of  all  the
+other  bounding  boxes  that  overlap  a  lot  with  it  (e.g.,  with  an  IoU  greater  than
+60%). For example, in Figure 14-24, the bounding box with the max objectness
+score  is  the  thick  bounding  box  over  the  topmost  rose  (the  objectness  score  is
+represented  by  the  thickness  of  the  bounding  boxes).  The  other  bounding  box
+
+486 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+over that same rose overlaps a lot with the max bounding box, so we will get rid
+of it.
+
+3. Repeat step two until there are no more bounding boxes to get rid of.
+
+This  simple  approach  to  object  detection  works  pretty  well,  but  it  requires  running
+the  CNN  many  times,  so  it  is  quite  slow.  Fortunately,  there  is  a  much  faster  way  to
+slide a CNN across an image: using a fully convolutional network (FCN).
+
+Fully Convolutional Networks
+The idea of FCNs was first introduced in a 2015 paper25 by Jonathan Long et al., for
+semantic  segmentation  (the  task  of  classifying  every  pixel  in  an  image  according  to
+the class of the object it belongs to). The authors pointed out that you could replace
+the dense layers at the top of a CNN by convolutional layers. To understand this, let’s
+look at an example: suppose a dense layer with 200 neurons sits on top of a convolu‐
+tional layer that outputs 100 feature maps, each of size 7 × 7 (this is the feature map
+size, not the kernel size). Each neuron will compute a weighted sum of all 100 × 7 × 7
+activations  from  the  convolutional  layer  (plus  a  bias  term).  Now  let’s  see  what  hap‐
+pens if we replace the dense layer with a convolutional layer using 200 filters, each of
+size 7 × 7, and with "valid" padding. This layer will output 200 feature maps, each 1
+×  1  (since  the  kernel  is  exactly  the  size  of  the  input  feature  maps  and  we  are  using
+"valid"  padding).  In  other  words,  it  will  output  200  numbers,  just  like  the  dense
+layer did; and if you look closely at the computations performed by a convolutional
+layer, you will notice that these numbers will be precisely the same as those the dense
+layer  produced.  The  only  difference  is  that  the  dense  layer’s  output  was  a  tensor  of
+shape  [batch  size,  200],  while  the  convolutional  layer  will  output  a  tensor  of  shape
+[batch size, 1, 1, 200].
+
+To convert a dense layer to a convolutional layer, the number of fil‐
+ters in the convolutional layer must be equal to the number of units
+in  the  dense  layer,  the  filter  size  must  be  equal  to  the  size  of  the
+input feature maps, and you must use "valid" padding. The stride
+may be set to 1 or more, as we will see shortly.
+
+Why is this important? Well, while a dense layer expects a specific input size (since it
+has one weight per input feature), a convolutional layer will happily process images of
+any  size26  (however,  it  does  expect  its  inputs  to  have  a  specific  number  of  channels,
+
+25 Jonathan Long et al., “Fully Convolutional Networks for Semantic Segmentation,” Proceedings of the IEEE
+
+Conference on Computer Vision and Pattern Recognition (2015): 3431–3440.
+
+26 There is one small exception: a convolutional layer using "valid" padding will complain if the input size is
+
+smaller than the kernel size.
+
+Object Detection 
+
+| 
+
+487
+
+since each kernel contains a different set of weights for each input channel)

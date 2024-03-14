@@ -1,0 +1,349 @@
+Agents. This can be done using pip (as always, if you are
+using a virtual environment, make sure to activate it first; if not, you will need to use
+the --user option, or have administrator rights):
+
+$ python3 -m pip install -U tf-agents
+
+At  the  time  of  this  writing,  TF-Agents  is  still  quite  new  and
+improving every day, so the API may change a bit by the time you
+read  this—but  the  big  picture  should  remain  the  same,  as  well  as
+most of the code. If anything breaks, I will update the Jupyter note‐
+book accordingly, so make sure to check it out.
+
+Next, let’s create a TF-Agents environment that will just wrap OpenAI GGym’s Break‐
+out environment. For this, you must first install OpenAI Gym’s Atari dependencies:
+
+$ python3 -m pip install -U 'gym[atari]'
+
+Among other libraries, this command will install atari-py, which is a Python inter‐
+face  for  the  Arcade  Learning  Environment  (ALE),  a  framework  built  on  top  of  the
+Atari 2600 emulator Stella.
+
+TF-Agents Environments
+If everything went well, you should be able to import TF-Agents and create a Break‐
+out environment:
+
+>>> from tf_agents.environments import suite_gym
+>>> env = suite_gym.load("Breakout-v4")
+>>> env
+<tf_agents.environments.wrappers.TimeLimit at 0x10c523c18>
+
+The TF-Agents Library 
+
+| 
+
+643
+
+This  is  just  a  wrapper  around  an  OpenAI  Gym  environment,  which  you  can  access
+through the gym attribute:
+
+>>> env.gym
+<gym.envs.atari.atari_env.AtariEnv at 0x24dcab940>
+
+TF-Agents  environments  are  very  similar  to  OpenAI  Gym  environments,  but  there
+are  a  few  differences.  First,  the  reset()  method  does  not  return  an  observation;
+instead it returns a TimeStep object that wraps the observation, as well as some extra
+information:
+
+>>> env.reset()
+TimeStep(step_type=array(0, dtype=int32),
+         reward=array(0., dtype=float32),
+         discount=array(1., dtype=float32),
+         observation=array([[[0., 0., 0.], [0., 0., 0.],...]]], dtype=float32))
+
+The step() method returns a TimeStep object as well:
+
+>>> env.step(1) # Fire
+TimeStep(step_type=array(1, dtype=int32),
+         reward=array(0., dtype=float32),
+         discount=array(1., dtype=float32),
+         observation=array([[[0., 0., 0.], [0., 0., 0.],...]]], dtype=float32))
+
+The reward and observation attributes are self-explanatory, and they are the same as
+for  OpenAI  Gym  (except  the  reward  is  represented  as  a  NumPy  array).  The
+step_type attribute is equal to 0 for the first time step in the episode, 1 for intermedi‐
+ate  time  steps,  and  2  for  the  final  time  step.  You  can  call  the  time  step’s  is_last()
+method to check whether it is the final one or not. Lastly, the discount attribute indi‐
+cates the discount factor to use at this time step. In this example it is equal to 1, so
+there will be no discount at all. You can define the discount factor by setting the dis
+count parameter when loading the environment.
+
+At any time, you can access the environment’s current time step by
+calling its current_time_step() method.
+
+Environment Specifications
+Conveniently,  a  TF-Agents  environment  provides  the  specifications  of  the  observa‐
+tions, actions, and time steps, including their shapes, data types, and names, as well as
+their minimum and maximum values:
+
+644 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+>>> env.observation_spec()
+BoundedArraySpec(shape=(210, 160, 3), dtype=dtype('float32'), name=None,
+                 minimum=[[[0. 0. 0.], [0. 0. 0.],...]],
+                 maximum=[[[255., 255., 255.], [255., 255., 255.], ...]])
+>>> env.action_spec()
+BoundedArraySpec(shape=(), dtype=dtype('int64'), name=None,
+                 minimum=0, maximum=3)
+>>> env.time_step_spec()
+TimeStep(step_type=ArraySpec(shape=(), dtype=dtype('int32'), name='step_type'),
+         reward=ArraySpec(shape=(), dtype=dtype('float32'), name='reward'),
+         discount=BoundedArraySpec(shape=(), ..., minimum=0.0, maximum=1.0),
+         observation=BoundedArraySpec(shape=(210, 160, 3), ...))
+
+As  you  can  see,  the  observations  are  simply  screenshots  of  the  Atari  screen,  repre‐
+sented  as  NumPy  arrays  of  shape  [210,  160,  3].  To  render  an  environment,  you  can
+call env.render(mode="human"), and if you want to get back the image in the form of
+a  NumPy  array,  just  call  env.render(mode="rgb_array")  (unlike  in  OpenAI  Gym,
+this is the default mode).
+
+There are four actions available. Gym’s Atari environments have an extra method that
+you can call to know what each action corresponds to:
+
+>>> env.gym.get_action_meanings()
+['NOOP', 'FIRE', 'RIGHT', 'LEFT']
+
+Specs can be instances of a specification class, nested lists, or dic‐
+tionaries  of  specs.  If  the  specification  is  nested,  then  the  specified
+object must match the specification’s nested structure. For example,
+if  the  observation  spec  is  {"sensors":  ArraySpec(shape=[2]),
+"camera": ArraySpec(shape=[100, 100])}, then a valid observa‐
+tion  would  be  {"sensors":  np.array([1.5,  3.5]),  "camera":
+np.array(...)}.  The  tf.nest  package  provides  tools  to  handle
+such nested structures (a.k.a. nests).
+
+The observations are quite large, so we will downsample them and also convert them
+to  grayscale.  This  will  speed  up  training  and  use  less  RAM.  For  this,  we  can  use  an
+environment wrapper.
+
+Environment Wrappers and Atari Preprocessing
+TF-Agents  provides  several  environment  wrappers  in  the  tf_agents.environ
+ments.wrappers  package.  As  their  name  suggests,  they  wrap  an  environment,  for‐
+warding every call to it, but also adding some extra functionality. Here are some of
+the available wrappers:
+
+ActionClipWrapper
+
+Clips the actions to the action spec.
+
+The TF-Agents Library 
+
+| 
+
+645
+
+ActionDiscretizeWrapper
+
+Quantizes  a  continuous  action  space  to  a  discrete  action  space.  For  example,  if
+the  original  environment’s  action  space  is  the  continuous  range  from  –1.0  to
++1.0, but you want to use an algorithm that only supports discrete action spaces,
+such  as  a  DQN,  then  you  can  wrap  the  environment  using  discrete_env  =
+ActionDiscretizeWrapper(env,  num_actions=5),  and  the  new  discrete_env
+will  have  a  discrete  action  space  with  five  possible  actions:  0,  1,  2,  3,  4.  These
+actions correspond to the actions –1.0, –0.5, 0.0, 0.5, and 1.0 in the original envi‐
+ronment.
+
+ActionRepeat
+
+Repeats each action over n steps, while accumulating the rewards. In many envi‐
+ronments, this can speed up training significantly.
+
+RunStats
+
+Records  environment  statistics  such  as  the  number  of  steps  and  the  number  of
+episodes.
+
+TimeLimit
+
+Interrupts  the  environment  if  it  runs  for  longer  than  a  maximum  number  of
+steps.
+
+VideoWrapper
+
+Records a video of the environment.
+
+To  create  a  wrapped  environment,  you  must  create  a  wrapper,  passing  the  wrapped
+environment to the constructor. That’s all! For example, the following code will wrap
+our  environment  in  an  ActionRepeat  wrapper  so  that  every  action  is  repeated  four
+times:
+
+from tf_agents.environments.wrappers import ActionRepeat
+
+repeating_env = ActionRepeat(env, times=4)
+
+OpenAI Gym has some environment wrappers of its own in the gym.wrappers pack‐
+age.  They  are  meant  to  wrap  Gym  environments,  though,  not  TF-Agents  environ‐
+ments,  so  to  use  them  you  must  first  wrap  the  Gym  environment  with  a  Gym
+wrapper,  then  wrap  the  resulting  environment  with  a  TF-Agents  wrapper.  The
+suite_gym.wrap_env()  function  will  do  this  for  you,  provided  you  give  it  a  Gym
+environment and a list of Gym wrappers and/or a list of TF-Agents wrappers. Alter‐
+natively, the suite_gym.load() function will both create the Gym environment and
+wrap it for you, if you give it some wrappers. Each wrapper will be created without
+any arguments, so if you want to set some arguments, you must pass a  lambda. For
+example, the following code creates a Breakout environment that will run for a maxi‐
+mum  of  10,000  steps  during  each  episode,  and  each  action  will  be  repeated  four
+times:
+
+646 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+from gym.wrappers import TimeLimit
+
+limited_repeating_env = suite_gym.load(
+    "Breakout-v4",
+    gym_env_wrappers=[lambda env: TimeLimit(env, max_episode_steps=10000)],
+    env_wrappers=[lambda env: ActionRepeat(env, times=4)])
+
+For  Atari  environments,  some  standard  preprocessing  steps  are  applied  in  most
+papers that use them, so TF-Agents provides a handy AtariPreprocessing wrapper
+that implements them. Here is the list of preprocessing steps it supports:
+
+Grayscale and downsampling
+
+Observations are converted to grayscale and downsampled (by default to 84 × 84
+pixels).
+
+Max pooling
+
+The  last  two  frames  of  the  game  are  max-pooled  using  a  1  ×  1  filter.  This  is  to
+remove the flickering that occurs in some Atari games due to the limited number
+of sprites that the Atari 2600 could display in each frame.
+
+Frame skipping
+
+The agent only gets to see every n frames of the game (by default n = 4), and its
+actions  are  repeated  for  each  frame,  collecting  all  the  rewards.  This  effectively
+speeds up the game from the perspective of the agent, and it also speeds up train‐
+ing because rewards are less delayed.
+
+End on life lost
+
+In  some  games,  the  rewards  are  just  based  on  the  score,  so  the  agent  gets  no
+immediate penalty for losing a life. One solution is to end the game immediately
+whenever a life is lost. There is some debate over the actual benefits of this strat‐
+egy, so it is off by default.
+
+Since  the  default  Atari  environment  already  applies  random  frame  skipping  and
+max  pooling,  we  will  need  to 
+load  the  raw,  nonskipping  variant  called
+"BreakoutNoFrameskip-v4".  Moreover,  a  single  frame  from  the  Breakout  game  is
+insufficient to know the direction and speed of the ball, which will make it very diffi‐
+cult for the agent to play the game properly (unless it is an RNN agent, which pre‐
+serves  some  internal  state  between  steps).  One  way  to  handle  this  is  to  use  an
+environment  wrapper  that  will  output  observations  composed  of  multiple  frames
+stacked  on  top  of  each  other  along  the  channels  dimension.  This  strategy  is  imple‐
+mented by the FrameStack4 wrapper, which returns stacks of four frames. Let’s create
+the wrapped Atari environment!
+
+The TF-Agents Library 
+
+| 
+
+647
+
+from tf_agents.environments import suite_atari
+from tf_agents.environments.atari_preprocessing import AtariPreprocessing
+from tf_agents.environments.atari_wrappers import FrameStack4
+
+max_episode_steps = 27000 # <=> 108k ALE frames since 1 step = 4 frames
+environment_name = "BreakoutNoFrameskip-v4"
+
+env = suite_atari.load(
+    environment_name,
+    max_episode_steps=max_episode_steps,
+    gym_env_wrappers=[AtariPreprocessing, FrameStack4])
+
+The result of all this preprocessing is shown in Figure 18-12. You can see that the res‐
+olution is much lower, but sufficient to play the game. Moreover, frames are stacked
+along  the  channels  dimension,  so  red  represents  the  frame  from  three  steps  ago,
+green  is  two  steps  ago,  blue  is  the  previous  frame,  and  pink  is  the  current  frame.20
+From  this  single  observation,  the  agent  can  see  that  the  ball  is  going  toward  the
+lower-left corner, and that it should continue to move the paddle to the left (as it did
+in the previous steps).
+
+Figure 18-12. Preprocessed Breakout observation
+
+Lastly, we can wrap the environment inside a TFPyEnvironment:
+
+from tf_agents.environments.tf_py_environment import TFPyEnvironment
+
+tf_env = TFPyEnvironment(env)
+
+This will make the environment usable from within a TensorFlow graph (under the
+hood,  this  class  relies  on  tf.py_function(),  which  allows  a  graph  to  call  arbitrary
+
+20 Since there are only three primary colors, you cannot just display an image with four color channels. For this
+
+reason, I combined the last channel with the first three to get the RGB image represented here. Pink is actually
+a mix of blue and red, but the agent sees four independent channels.
+
+648 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+Python code). Thanks to the TFPyEnvironment class, TF-Agents supports both pure
+Python  environments  and  TensorFlow-based  environments.  More  generally,  TF-
+Agents supports and provides both pure Python and TensorFlow-based components
+(agents, replay buffers, metrics, and so on).
+
+Now that we have a nice Breakout environment, with all the appropriate preprocess‐
+ing and TensorFlow support, we must create the DQN agent and the other compo‐
+nents we will need to train it. Let’s look at the architecture of the system we will build.
+
+Training Architecture
+A TF-Agents training program is usually split into two parts that run in parallel, as
+you  can  see  in  Figure  18-13:  on  the  left,  a  driver  explores  the  environment  using  a
+collect policy to choose actions, and it collects trajectories (i.e., experiences), sending
+them to an observer, which saves them to a replay buffer; on the right, an agent pulls
+batches of trajectories from the replay buffer and trains some networks, which the col‐
+lect policy uses. In short, the left part explores the environment and collects trajecto‐
+ries, while the right part learns and updates the collect policy.
+
+Figure 18-13. A typical TF-Agents training architecture
+
+This figure begs a few questions, which I’ll attempt to answer here:
+
+• Why  are  there  multiple  environments?  Instead  of  exploring  a  single  environ‐
+ment,  you  generally  want  the  driver  to  explore  multiple  copies  of  the  environ‐
+ment  in  parallel,  taking  advantage  of  the  power  of  all  your  CPU  cores,  keeping
+
+The TF-Agents Library 
+
+| 
+
+649
+
+the training GPUs busy, and providing less-correlated trajectories to the training
+algorithm.
+
+• What is a trajectory? It is a concise representation of a transition from one time
+step to the next, or a sequence of consecutive transitions from time step n to time
+step  n  +  t.  The  trajectories  collected  by  the  driver  are  passed  to  the  observer,
+which  saves  them  in  the  replay  buffer,  and  they  are  later  sampled  by  the  agent
+and used for training.
+
+• Why  do  we  need  an  observer?  Can’t  the  driver  save  the  trajectories  directly?
+Indeed, it could, but this would make the architecture less flexible. For example,
+what if you don’t want to use a replay buffer? What if you want to use the trajec‐
+tories for something else, like computing metrics? In fact, an observer is just any
+function that takes a trajectory as an argument. You can use an observer to save
+the trajectories to a replay buffer, or to save them to a TFRecord file (see Chap‐
+ter 13), or to compute metrics, or for anything else. Moreover, you can pass mul‐
+tiple observers to the driver, and it will broadcast the trajectories to all of them.
+
+Although this architecture is the most common, you can customize
+it as you please, and even replace some components with your own.
+In  fact,  unless  you  are  researching  new  RL  algorithms,  you  will
+most  likely  want  to  use  a  custom  environment  for  your  task.  For
+this,  you  just  need  to  create  a  custom  class  that  inherits  from  the
+PyEnvironment class in the tf_agents.environments.py_environ
+ment  package  and  overrides  the  appropriate  methods,  such  

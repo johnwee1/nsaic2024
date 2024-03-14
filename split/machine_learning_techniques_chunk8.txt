@@ -1,0 +1,328 @@
+on  of  the  nonzero
+elements. You can use it mostly like a normal 2D array,21 but if you really want to con‐
+vert it to a (dense) NumPy array, just call the toarray() method:
+
+>>> housing_cat_1hot.toarray()
+array([[1., 0., 0., 0., 0.],
+       [1., 0., 0., 0., 0.],
+       [0., 0., 0., 0., 1.],
+       ...,
+       [0., 1., 0., 0., 0.],
+       [1., 0., 0., 0., 0.],
+       [0., 0., 0., 1., 0.]])
+
+Once  again,  you  can  get  the  list  of  categories  using  the  encoder’s  categories_
+instance variable:
+
+>>> cat_encoder.categories_
+[array(['<1H OCEAN', 'INLAND', 'ISLAND', 'NEAR BAY', 'NEAR OCEAN'],
+       dtype=object)]
+
+20 Before Scikit-Learn 0.20, the method could only encode integer categorical values, but since 0.20 it can also
+
+handle other types of inputs, including text categorical inputs.
+
+21 See SciPy’s documentation for more details.
+
+Prepare the Data for Machine Learning Algorithms 
+
+| 
+
+67
+
+If a categorical attribute has a large number of possible categories
+(e.g., country code, profession, species), then one-hot encoding will
+result  in  a  large  number  of  input  features.  This  may  slow  down
+training and degrade performance. If this happens, you may want
+to  replace  the  categorical  input  with  useful  numerical  features
+related  to  the  categories:  for  example,  you  could  replace  the
+ocean_proximity feature with the distance to the ocean (similarly,
+a country code could be replaced with the country’s population and
+GDP  per  capita).  Alternatively,  you  could  replace  each  category
+with a learnable, low-dimensional vector called an embedding. Each
+category’s representation would be learned during training. This is
+an  example  of  representation  learning  (see  Chapters  13  and  17  for
+more details).
+
+Custom Transformers
+Although  Scikit-Learn  provides  many  useful  transformers,  you  will  need  to  write
+your  own  for  tasks  such  as  custom  cleanup  operations  or  combining  specific
+attributes. You will want your transformer to work seamlessly with Scikit-Learn func‐
+tionalities (such as pipelines), and since Scikit-Learn relies on duck typing (not inher‐
+itance),  all  you  need  to  do  is  create  a  class  and  implement  three  methods:  fit()
+(returning self), transform(), and fit_transform().
+
+You can get the last one for free by simply adding TransformerMixin as a base class.
+If you add BaseEstimator as a base class (and avoid *args and **kargs in your con‐
+structor), you will also get two extra methods (get_params() and set_params()) that
+will be useful for automatic hyperparameter tuning.
+
+For example, here is a small transformer class that adds the combined attributes we
+discussed earlier:
+
+from sklearn.base import BaseEstimator, TransformerMixin
+
+rooms_ix, bedrooms_ix, population_ix, households_ix = 3, 4, 5, 6
+
+class CombinedAttributesAdder(BaseEstimator, TransformerMixin):
+    def __init__(self, add_bedrooms_per_room = True): # no *args or **kargs
+        self.add_bedrooms_per_room = add_bedrooms_per_room
+    def fit(self, X, y=None):
+        return self  # nothing else to do
+    def transform(self, X):
+        rooms_per_household = X[:, rooms_ix] / X[:, households_ix]
+        population_per_household = X[:, population_ix] / X[:, households_ix]
+        if self.add_bedrooms_per_room:
+            bedrooms_per_room = X[:, bedrooms_ix] / X[:, rooms_ix]
+            return np.c_[X, rooms_per_household, population_per_household,
+                         bedrooms_per_room]
+
+68 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+        else:
+            return np.c_[X, rooms_per_household, population_per_household]
+
+attr_adder = CombinedAttributesAdder(add_bedrooms_per_room=False)
+housing_extra_attribs = attr_adder.transform(housing.values)
+
+In  this  example  the  transformer  has  one  hyperparameter,  add_bedrooms_per_room,
+set to True by default (it is often helpful to provide sensible defaults). This hyperpara‐
+meter  will  allow  you  to  easily  find  out  whether  adding  this  attribute  helps  the
+Machine Learning algorithms or not. More generally, you can add a hyperparameter
+to  gate  any  data  preparation  step  that  you  are  not  100%  sure  about.  The  more  you
+automate these data preparation steps, the more combinations you can automatically
+try out, making it much more likely that you will find a great combination (and sav‐
+ing you a lot of time).
+
+Feature Scaling
+One of the most important transformations you need to apply to your data is feature
+scaling. With few exceptions, Machine Learning algorithms don’t perform well when
+the input numerical attributes have very different scales. This is the case for the hous‐
+ing data: the total number of rooms ranges from about 6 to 39,320, while the median
+incomes only range from 0 to 15. Note that scaling the target values is generally not
+required.
+
+There  are  two  common  ways  to  get  all  attributes  to  have  the  same  scale:  min-max
+scaling and standardization.
+
+Min-max scaling (many people call this normalization) is the simplest: values are shif‐
+ted and rescaled so that they end up ranging from 0 to 1. We do this by subtracting
+the min value and dividing by the max minus the min. Scikit-Learn provides a trans‐
+former called MinMaxScaler for this. It has a feature_range hyperparameter that lets
+you change the range if, for some reason, you don’t want 0–1.
+
+Standardization is different: first it subtracts the mean value (so standardized values
+always  have  a  zero  mean),  and  then  it  divides  by  the  standard  deviation  so  that  the
+resulting  distribution  has  unit  variance.  Unlike  min-max  scaling,  standardization
+does  not  bound  values  to  a  specific  range,  which  may  be  a  problem  for  some  algo‐
+rithms (e.g., neural networks often expect an input value ranging from 0 to 1). How‐
+ever, standardization is much less affected by outliers. For example, suppose a district
+had a median income equal to 100 (by mistake). Min-max scaling would then crush
+all the other values from 0–15 down to 0–0.15, whereas standardization would not be
+much  affected.  Scikit-Learn  provides  a  transformer  called  StandardScaler  for
+standardization.
+
+Prepare the Data for Machine Learning Algorithms 
+
+| 
+
+69
+
+As with all the transformations, it is important to fit the scalers to
+the training data only, not to the full dataset (including the test set).
+Only then can you use them to transform the training set and the
+test set (and new data).
+
+Transformation Pipelines
+As you can see, there are many data transformation steps that need to be executed in
+the  right  order.  Fortunately,  Scikit-Learn  provides  the  Pipeline  class  to  help  with
+such  sequences  of  transformations.  Here  is  a  small  pipeline  for  the  numerical
+attributes:
+
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+num_pipeline = Pipeline([
+        ('imputer', SimpleImputer(strategy="median")),
+        ('attribs_adder', CombinedAttributesAdder()),
+        ('std_scaler', StandardScaler()),
+    ])
+
+housing_num_tr = num_pipeline.fit_transform(housing_num)
+
+The Pipeline constructor takes a list of name/estimator pairs defining a sequence of
+steps.  All  but  the  last  estimator  must  be  transformers  (i.e.,  they  must  have  a
+fit_transform() method). The names can be anything you like (as long as they are
+unique and don’t contain double underscores, __); they will come in handy later for
+hyperparameter tuning.
+
+When you call the pipeline’s fit() method, it calls fit_transform() sequentially on
+all transformers, passing the output of each call as the parameter to the next call until
+it reaches the final estimator, for which it calls the fit() method.
+
+The pipeline exposes the same methods as the final estimator. In this example, the last
+estimator  is  a  StandardScaler,  which  is  a  transformer,  so  the  pipeline  has  a  trans
+form() method that applies all the transforms to the data in sequence (and of course
+also a fit_transform() method, which is the one we used).
+
+So  far,  we  have  handled  the  categorical  columns  and  the  numerical  columns  sepa‐
+rately. It would be more convenient to have a single transformer able to handle all col‐
+umns,  applying  the  appropriate  transformations  to  each  column.  In  version  0.20,
+Scikit-Learn introduced the ColumnTransformer for this purpose, and the good news
+is that it works great with pandas DataFrames. Let’s use it to apply all the transforma‐
+tions to the housing data:
+
+70 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+from sklearn.compose import ColumnTransformer
+
+num_attribs = list(housing_num)
+cat_attribs = ["ocean_proximity"]
+
+full_pipeline = ColumnTransformer([
+        ("num", num_pipeline, num_attribs),
+        ("cat", OneHotEncoder(), cat_attribs),
+    ])
+
+housing_prepared = full_pipeline.fit_transform(housing)
+
+First we import the  ColumnTransformer class, next we get the list of numerical col‐
+umn names and the list of categorical column names, and then we construct a Colum
+nTransformer. The constructor requires a list of tuples, where each tuple contains a
+name,22  a  transformer,  and  a  list  of  names  (or  indices)  of  columns  that  the  trans‐
+former should be applied to. In this example, we specify that the numerical columns
+should be transformed using the num_pipeline that we defined earlier, and the cate‐
+gorical columns should be transformed using a OneHotEncoder. Finally, we apply this
+ColumnTransformer to the housing data: it applies each transformer to the appropri‐
+ate  columns  and  concatenates  the  outputs  along  the  second  axis  (the  transformers
+must return the same number of rows).
+
+Note that the OneHotEncoder returns a sparse matrix, while the num_pipeline returns
+a  dense  matrix.  When  there  is  such  a  mix  of  sparse  and  dense  matrices,  the  Colum
+nTransformer  estimates  the  density  of  the  final  matrix  (i.e.,  the  ratio  of  nonzero
+cells), and it returns a sparse matrix if the density is lower than a given threshold (by
+default,  sparse_threshold=0.3).  In  this  example,  it  returns  a  dense  matrix.  And
+that’s it! We have a preprocessing pipeline that takes the full housing data and applies
+the appropriate transformations to each column.
+
+Instead of using a transformer, you can specify the string "drop" if
+you  want  the  columns  to  be  dropped,  or  you  can  specify  "pass
+through" if you want the columns to be left untouched. By default,
+the remaining columns (i.e., the ones that were not listed) will be
+dropped,  but  you  can  set  the  remainder  hyperparameter  to  any
+transformer (or to "passthrough") if you want these columns to be
+handled differently.
+
+If you are using Scikit-Learn 0.19 or earlier, you can use a third-party library such as
+sklearn-pandas, or you can roll out your own custom transformer to get the same
+functionality as the ColumnTransformer. Alternatively, you can use the FeatureUnion
+
+22 Just like for pipelines, the name can be anything as long as it does not contain double underscores.
+
+Prepare the Data for Machine Learning Algorithms 
+
+| 
+
+71
+
+class, which can apply different transformers and concatenate their outputs. But you
+cannot  specify  different  columns  for  each  transformer;  they  all  apply  to  the  whole
+data. It is possible to work around this limitation using a custom transformer for col‐
+umn selection (see the Jupyter notebook for an example).
+
+Select and Train a Model
+At  last!  You  framed  the  problem,  you  got  the  data  and  explored  it,  you  sampled  a
+training  set  and  a  test  set,  and  you  wrote  transformation  pipelines  to  clean  up  and
+prepare your data for Machine Learning algorithms automatically. You are now ready
+to select and train a Machine Learning model.
+
+Training and Evaluating on the Training Set
+The good news is that thanks to all these previous steps, things are now going to be
+much simpler than you might think. Let’s first train a Linear Regression model, like
+we did in the previous chapter:
+
+from sklearn.linear_model import LinearRegression
+
+lin_reg = LinearRegression()
+lin_reg.fit(housing_prepared, housing_labels)
+
+Done!  You  now  have  a  working  Linear  Regression  model.  Let’s  try  it  out  on  a  few
+instances from the training set:
+
+>>> some_data = housing.iloc[:5]
+>>> some_labels = housing_labels.iloc[:5]
+>>> some_data_prepared = full_pipeline.transform(some_data)
+>>> print("Predictions:", lin_reg.predict(some_data_prepared))
+Predictions: [ 210644.6045  317768.8069  210956.4333  59218.9888  189747.5584]
+>>> print("Labels:", list(some_labels))
+Labels: [286600.0, 340600.0, 196900.0, 46300.0, 254500.0]
+
+It works, although the predictions are not exactly accurate (e.g., the first prediction is
+off by close to 40%!). Let’s measure this regression model’s RMSE on the whole train‐
+ing set using Scikit-Learn’s mean_squared_error() function:
+
+>>> from sklearn.metrics import mean_squared_error
+>>> housing_predictions = lin_reg.predict(housing_prepared)
+>>> lin_mse = mean_squared_error(housing_labels, housing_predictions)
+>>> lin_rmse = np.sqrt(lin_mse)
+>>> lin_rmse
+68628.19819848922
+
+This is better than nothing, but clearly not a great score: most districts’ median_hous
+ing_values  range  between  $120,000  and  $265,000,  so  a  typical  prediction  error  of
+$68,628 is not very satisfying. This is an example of a model underfitting the training
+data.  When  this  happens  it  can  mean  that  the  features  do  not  provide  enough
+
+72 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+information to make good predictions, or that the model is not powerful enough. As
+we saw in the previous chapter, the main ways to fix underfitting are to select a more
+powerful model, to feed the training algorithm with better features, or to reduce the
+constraints  on  the  model.  This  model  is  not  regularized,  which  rules  out  the  last
+option. You could try to add more features (e.g., the log of the population), but first
+let’s try a more complex model to see how it does.
+
+Let’s  train  a  DecisionTreeRegressor.  This  is  a  powerful  model,  capable  of  finding
+complex  nonlinear  relationships  in  the  data  (Decision  Trees  are  presented  in  more
+detail in Chapter 6). The code should look familiar by now:
+
+from sklearn.tree import DecisionTreeRegressor
+
+tree_reg = DecisionTreeRegressor()
+tree_reg.fit(housing_prepared, housing_labels)
+
+Now that the model is trained, let’s evaluate it on the training set:
+
+>>> housing_predictions = tree_reg.predict(housing_prepared)
+>>> tree_mse = mean_squared_error(housing_labels, housing_predictions)
+>>> tree_rmse = np.sqrt(tree_mse)
+>>> tree_rmse
+0.0
+
+Wait, what!? No error at all? Could this model really be absolutely perfect? Of course,
+it is much more likely that the model has badly overfit the data. How can you be sure?
+As we saw earlier, you don’t want to touch the test set until you are ready to launch a
+model you are confident about, so you need to use part of the training set for training
+and part of it for model validation.
+
+to  evaluate 
+
+Better Evaluation Using Cross-Validation
+the
+One  way 
+train_test_split() function to split the training set into a smaller training set and a
+validation  set,  then  train  your  models  against  the  smaller  training  set  and  evaluate
+them  against  the  validation  set.  It’s  a  bit  of  work,  but  nothing  too  difficult,  and  it
+would work fair

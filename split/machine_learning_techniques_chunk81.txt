@@ -1,0 +1,323 @@
+over. This will happen when the pole
+tilts too much, or goes off the screen, or after 200 steps (in this last case, you have
+won). After that, the environment must be reset before it can be used again.
+
+info
+
+This  environment-specific  dictionary  can  provide  some  extra  information  that
+you may find useful for debugging or for training. For example, in some games it
+may indicate how many lives the agent has.
+
+Once you have finished using an environment, you should call its
+close() method to free resources.
+
+616 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+Let’s hardcode a simple policy that accelerates left when the pole is leaning toward the
+left and accelerates right when the pole is leaning toward the right. We will run this
+policy to see the average rewards it gets over 500 episodes:
+
+def basic_policy(obs):
+    angle = obs[2]
+    return 0 if angle < 0 else 1
+
+totals = []
+for episode in range(500):
+    episode_rewards = 0
+    obs = env.reset()
+    for step in range(200):
+        action = basic_policy(obs)
+        obs, reward, done, info = env.step(action)
+        episode_rewards += reward
+        if done:
+            break
+    totals.append(episode_rewards)
+
+This code is hopefully self-explanatory. Let’s look at the result:
+
+>>> import numpy as np
+>>> np.mean(totals), np.std(totals), np.min(totals), np.max(totals)
+(41.718, 8.858356280936096, 24.0, 68.0)
+
+Even with 500 tries, this policy never managed to keep the pole upright for more than
+68  consecutive  steps.  Not  great.  If  you  look  at  the  simulation  in  the  Jupyter  note‐
+books, you will see that the cart oscillates left and right more and more strongly until
+the pole tilts too much. Let’s see if a neural network can come up with a better policy.
+
+Neural Network Policies
+Let’s create a neural network policy. Just like with the policy we hardcoded earlier, this
+neural network will take an observation as input, and it will output the action to be
+executed.  More  precisely,  it  will  estimate  a  probability  for  each  action,  and  then  we
+will  select  an  action  randomly,  according  to  the  estimated  probabilities  (see
+Figure  18-5).  In  the  case  of  the  CartPole  environment,  there  are  just  two  possible
+actions (left or right), so we only need one output neuron. It will output the probabil‐
+ity p of action 0 (left), and of course the probability of action 1 (right) will be 1 – p.
+For  example,  if  it  outputs  0.7,  then  we  will  pick  action  0  with  70%  probability,  or
+action 1 with 30% probability.
+
+Neural Network Policies 
+
+| 
+
+617
+
+Figure 18-5. Neural network policy
+
+You  may  wonder  why  we  are  picking  a  random  action  based  on  the  probabilities
+given  by  the  neural  network,  rather  than  just  picking  the  action  with  the  highest
+score.  This  approach  lets  the  agent  find  the  right  balance  between  exploring  new
+actions  and  exploiting  the  actions  that  are  known  to  work  well.  Here’s  an  analogy:
+suppose  you  go  to  a  restaurant  for  the  first  time,  and  all  the  dishes  look  equally
+appealing, so you randomly pick one. If it turns out to be good, you can increase the
+probability that you’ll order it next time, but you shouldn’t increase that probability
+up  to  100%,  or  else  you  will  never  try  out  the  other  dishes,  some  of  which  may  be
+even better than the one you tried.
+
+Also note that in this particular environment, the past actions and observations can
+safely be ignored, since each observation contains the environment’s full state. If there
+were some hidden state, then you might need to consider past actions and observa‐
+tions as well. For example, if the environment only revealed the position of the cart
+but not its velocity, you would have to consider not only the current observation but
+also the previous observation in order to estimate the current velocity. Another exam‐
+ple is when the observations are noisy; in that case, you generally want to use the past
+few  observations  to  estimate  the  most  likely  current  state.  The  CartPole  problem  is
+thus as simple as can be; the observations are noise-free, and they contain the envi‐
+ronment’s full state.
+
+618 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+Here is the code to build this neural network policy using tf.keras:
+
+import tensorflow as tf
+from tensorflow import keras
+
+n_inputs = 4 # == env.observation_space.shape[0]
+
+model = keras.models.Sequential([
+    keras.layers.Dense(5, activation="elu", input_shape=[n_inputs]),
+    keras.layers.Dense(1, activation="sigmoid"),
+])
+
+After the imports, we use a simple  Sequential model to define the policy network.
+The number of inputs is the size of the observation space (which in the case of Cart‐
+Pole is 4), and we have just five hidden units because it’s a simple problem. Finally, we
+want to output a single probability (the probability of going left), so we have a single
+output  neuron  using  the  sigmoid  activation  function.  If  there  were  more  than  two
+possible actions, there would be one output neuron per action, and we would use the
+softmax activation function instead.
+
+OK,  we  now  have  a  neural  network  policy  that  will  take  observations  and  output
+action probabilities. But how do we train it?
+
+Evaluating Actions: The Credit Assignment Problem
+If we knew what the best action was at each step, we could train the neural network as
+usual,  by  minimizing  the  cross  entropy  between  the  estimated  probability  distribu‐
+tion and the target probability distribution. It would just be regular supervised learn‐
+ing. However, in Reinforcement Learning the only guidance the agent gets is through
+rewards, and rewards are typically sparse and delayed. For example, if the agent man‐
+ages  to  balance  the  pole  for  100  steps,  how  can  it  know  which  of  the  100  actions  it
+took were good, and which of them were bad? All it knows is that the pole fell after
+the last action, but surely this last action is not entirely responsible. This is called the
+credit  assignment  problem:  when  the  agent  gets  a  reward,  it  is  hard  for  it  to  know
+which actions should get credited (or blamed) for it. Think of a dog that gets rewar‐
+ded hours after it behaved well; will it understand what it is being rewarded for?
+
+To tackle this problem, a common strategy is to evaluate an action based on the sum
+of all the rewards that come after it, usually applying a discount factor γ (gamma) at
+each step. This sum of discounted rewards is called the action’s return. Consider the
+example in Figure 18-6). If an agent decides to go right three times in a row and gets
++10 reward after the first step, 0 after the second step, and finally –50 after the third
+step, then assuming we use a discount factor γ = 0.8, the first action will have a return
+of  10  +  γ  ×  0  +  γ2  ×  (–50)  =  –22.  If  the  discount  factor  is  close  to  0,  then  future
+rewards  won’t  count  for  much  compared  to  immediate  rewards.  Conversely,  if  the
+discount  factor  is  close  to  1,  then  rewards  far  into  the  future  will  count  almost  as
+
+Evaluating Actions: The Credit Assignment Problem 
+
+| 
+
+619
+
+much  as  immediate  rewards.  Typical  discount  factors  vary  from  0.9  to  0.99.  With  a
+discount  factor  of  0.95,  rewards  13  steps  into  the  future  count  roughly  for  half  as
+much as immediate rewards (since 0.9513 ≈ 0.5), while with a discount factor of 0.99,
+rewards 69 steps into the future count for half as much as immediate rewards. In the
+CartPole environment, actions have fairly short-term effects, so choosing a discount
+factor of 0.95 seems reasonable.
+
+Figure 18-6. Computing an action’s return: the sum of discounted future rewards
+
+Of course, a good action may be followed by several bad actions that cause the pole to
+fall quickly, resulting in the good action getting a low return (similarly, a good actor
+may sometimes star in a terrible movie). However, if we play the game enough times,
+on average good actions will get a higher return than bad ones. We want to estimate
+how  much  better  or  worse  an  action  is,  compared  to  the  other  possible  actions,  on
+average. This is called the action advantage. For this, we must run many episodes and
+normalize all the action returns (by subtracting the mean and dividing by the stan‐
+dard  deviation).  After  that,  we  can  reasonably  assume  that  actions  with  a  negative
+advantage were bad while actions with a positive advantage were good. Perfect—now
+that we have a way to evaluate each action, we are ready to train our first agent using
+policy gradients. Let’s see how.
+
+Policy Gradients
+As discussed earlier, PG algorithms optimize the parameters of a policy by following
+the  gradients  toward  higher  rewards.  One  popular  class  of  PG  algorithms,  called
+
+620 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+REINFORCE algorithms, was introduced back in 199211 by Ronald Williams. Here is
+one common variant:
+
+1. First, let the neural network policy play the game several times, and at each step,
+compute the gradients that would make the chosen action even more likely—but
+don’t apply these gradients yet.
+
+2. Once you have run several episodes, compute each action’s advantage (using the
+
+method described in the previous section).
+
+3. If an action’s advantage is positive, it means that the action was probably good,
+and  you  want  to  apply  the  gradients  computed  earlier  to  make  the  action  even
+more likely to be chosen in the future. However, if the action’s advantage is nega‐
+tive, it means the action was probably bad, and you want to apply the opposite
+gradients to make this action slightly less likely in the future. The solution is sim‐
+ply to multiply each gradient vector by the corresponding action’s advantage.
+
+4. Finally, compute the mean of all the resulting gradient vectors, and use it to per‐
+
+form a Gradient Descent step.
+
+Let’s use tf.keras to implement this algorithm. We will train the neural network policy
+we built earlier so that it learns to balance the pole on the cart. First, we need a func‐
+tion that will play one step. We will pretend for now that whatever action it takes is
+the right one so that we can compute the loss and its gradients (these gradients will
+just be saved for a while, and we will modify them later depending on how good or
+bad the action turned out to be):
+
+def play_one_step(env, obs, model, loss_fn):
+    with tf.GradientTape() as tape:
+        left_proba = model(obs[np.newaxis])
+        action = (tf.random.uniform([1, 1]) > left_proba)
+        y_target = tf.constant([[1.]]) - tf.cast(action, tf.float32)
+        loss = tf.reduce_mean(loss_fn(y_target, left_proba))
+    grads = tape.gradient(loss, model.trainable_variables)
+    obs, reward, done, info = env.step(int(action[0, 0].numpy()))
+    return obs, reward, done, grads
+
+Let’s walk though this function:
+
+• Within the GradientTape block (see Chapter 12), we start by calling the model,
+giving it a single observation (we reshape the observation so it becomes a batch
+containing  a  single  instance,  as  the  model  expects  a  batch).  This  outputs  the
+probability of going left.
+
+11 Ronald J. Williams, “Simple Statistical Gradient-Following Algorithms for Connectionist Reinforcement
+
+Leaning,” Machine Learning 8 (1992) : 229–256.
+
+Policy Gradients 
+
+| 
+
+621
+
+• Next,  we  sample  a  random  float  between  0  and  1,  and  we  check  whether  it  is
+greater than left_proba. The action will be False with probability left_proba,
+or True with probability 1 - left_proba. Once we cast this Boolean to a num‐
+ber, the action will be 0 (left) or 1 (right) with the appropriate probabilities.
+
+• Next, we define the target probability of going left: it is 1 minus the action (cast
+to a float). If the action is 0 (left), then the target probability of going left will be
+1. If the action is 1 (right), then the target probability will be 0.
+
+• Then we compute the loss using the given loss function, and we use the tape to
+compute  the  gradient  of  the  loss  with  regard  to  the  model’s  trainable  variables.
+Again, these gradients will be tweaked later, before we apply them, depending on
+how good or bad the action turned out to be.
+
+• Finally,  we  play  the  selected  action,  and  we  return  the  new  observation,  the
+reward, whether the episode is ended or not, and of course the gradients that we
+just computed.
+
+Now let’s create another function that will rely on the play_one_step() function to
+play multiple episodes, returning all the rewards and gradients for each episode and
+each step:
+
+def play_multiple_episodes(env, n_episodes, n_max_steps, model, loss_fn):
+    all_rewards = []
+    all_grads = []
+    for episode in range(n_episodes):
+        current_rewards = []
+        current_grads = []
+        obs = env.reset()
+        for step in range(n_max_steps):
+            obs, reward, done, grads = play_one_step(env, obs, model, loss_fn)
+            current_rewards.append(reward)
+            current_grads.append(grads)
+            if done:
+                break
+        all_rewards.append(current_rewards)
+        all_grads.append(current_grads)
+    return all_rewards, all_grads
+
+This  code  returns  a  list  of  reward  lists  (one  reward  list  per  episode,  containing  one
+reward per step), as well as a list of gradient lists (one gradient list per episode, each
+containing  one  tuple  of  gradients  per  step  and  each  tuple  containing  one  gradient
+tensor per trainable variable).
+
+The  algorithm  will  use  the  play_multiple_episodes()  function  to  play  the  game
+several times (e.g., 10 times), then it will go back and look at all the rewards, discount
+them, and normalize them. To do that, we need a couple more functions: the first will
+compute  the  sum  of  future  discounted  rewards  at  each  step,  and  the  second  will
+
+622 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+normalize all these discounted rewards (returns) across many episodes by subtracting
+the mean and dividing by the standard deviation:
+
+def discount_rewards(rewards, discount_factor):
+    discounted = np.array(rewards)
+    for step in range(len(rewards) - 2, -1, -1):
+        discounted[step] += discounted[step + 1] * discount_factor
+    return discounted
+
+def discount_and_normalize_rewards(all_rewards, discount_factor):
+    all_discounted_rewards = [discount_rewards(rewards, discount_factor)
+                              for rewards in all_rewards]
+    flat_rewards = np.concatenate(all_discounted_rewards)
+    reward_mean = flat_rewards.mean()
+    reward_std = flat_rewards.std()
+    return [(discounted_rewards - reward_mean) / reward_std
+            for discounted_rewards in all_discounted_rewards]
+
+Let’s check that this works:
+
+>>> discount_rewards([10, 0, -50], discount_factor=0.8)
+array([-22, -40, -50])
+>>> discount_and_normalize_rewards([[10, 0, -50], [10, 20]],
+...                                discount_factor=0.8)
+...
+[array([-0.28435071, -0.86597718, -1.18910299]),
+ array([1.26665318, 1.0727777 ])]
+
+The  call  to  discount_rewards()  returns  exactly  what  we  expect  (see  Figure  18-6).
+You  can  verify  that  the  function  discount_and_normalize_rewards()  does  indeed
+return the normalized action advantages for each action in both episodes. Notice that
+the first episode was much worse than the second, so its normalized advantages are
+all  negative;  all  actions  from  the  first  episode  woul

@@ -1,0 +1,297 @@
+how we could implement embeddings manually, to understand how they
+work  (then  we  will  use  a  simple  Keras  layer  instead).  First,  we  need  to  create  an
+embedding matrix containing each category’s embedding, initialized randomly; it will
+have  one  row  per  category  and  per  oov  bucket,  and  one  column  per  embedding
+dimension:
+
+embedding_dim = 2
+embed_init = tf.random.uniform([len(vocab) + num_oov_buckets, embedding_dim])
+embedding_matrix = tf.Variable(embed_init)
+
+10 Malvina Nissim et al., “Fair Is Better Than Sensational: Man Is to Doctor as Woman Is to Doctor,” arXiv pre‐
+
+print arXiv:1905.09866 (2019).
+
+Preprocessing the Input Features 
+
+| 
+
+435
+
+In this example we are using 2D embeddings, but as a rule of thumb embeddings typ‐
+ically have 10 to 300 dimensions, depending on the task and the vocabulary size (you
+will have to tune this hyperparameter).
+
+This embedding matrix is a random 6 × 2 matrix, stored in a variable (so it can be
+tweaked by Gradient Descent during training):
+
+>>> embedding_matrix
+<tf.Variable 'Variable:0' shape=(6, 2) dtype=float32, numpy=
+array([[0.6645621 , 0.44100678],
+       [0.3528825 , 0.46448255],
+       [0.03366041, 0.68467236],
+       [0.74011743, 0.8724445 ],
+       [0.22632635, 0.22319686],
+       [0.3103881 , 0.7223358 ]], dtype=float32)>
+
+Now let’s encode the same batch of categorical features as earlier, but this time using
+these embeddings:
+
+>>> categories = tf.constant(["NEAR BAY", "DESERT", "INLAND", "INLAND"])
+>>> cat_indices = table.lookup(categories)
+>>> cat_indices
+<tf.Tensor: id=741, shape=(4,), dtype=int64, numpy=array([3, 5, 1, 1])>
+>>> tf.nn.embedding_lookup(embedding_matrix, cat_indices)
+<tf.Tensor: id=864, shape=(4, 2), dtype=float32, numpy=
+array([[0.74011743, 0.8724445 ],
+       [0.3103881 , 0.7223358 ],
+       [0.3528825 , 0.46448255],
+       [0.3528825 , 0.46448255]], dtype=float32)>
+
+The  tf.nn.embedding_lookup()  function  looks  up  the  rows  in  the  embedding
+matrix, at the given indices—that’s all it does. For example, the lookup table says that
+the  "INLAND"  category  is  at  index  1,  so  the  tf.nn.embedding_lookup()  function
+returns  the  embedding  at  row  1  in  the  embedding  matrix  (twice):  [0.3528825,
+0.46448255].
+
+Keras provides a keras.layers.Embedding layer that handles the embedding matrix
+(trainable,  by  default);  when  the  layer  is  created  it  initializes  the  embedding  matrix
+randomly, and then when it is called with some category indices it returns the rows at
+those indices in the embedding matrix:
+
+>>> embedding = keras.layers.Embedding(input_dim=len(vocab) + num_oov_buckets,
+...                                    output_dim=embedding_dim)
+...
+>>> embedding(cat_indices)
+<tf.Tensor: id=814, shape=(4, 2), dtype=float32, numpy=
+array([[ 0.02401174,  0.03724445],
+       [-0.01896119,  0.02223358],
+       [-0.01471175, -0.00355174],
+       [-0.01471175, -0.00355174]], dtype=float32)>
+
+436 
+
+| 
+
+Chapter 13: Loading and Preprocessing Data with TensorFlow
+
+Putting everything together, we can now create a Keras model that can process cate‐
+gorical features (along with regular numerical features) and learn an embedding for
+each category (as well as for each oov bucket):
+
+regular_inputs = keras.layers.Input(shape=[8])
+categories = keras.layers.Input(shape=[], dtype=tf.string)
+cat_indices = keras.layers.Lambda(lambda cats: table.lookup(cats))(categories)
+cat_embed = keras.layers.Embedding(input_dim=6, output_dim=2)(cat_indices)
+encoded_inputs = keras.layers.concatenate([regular_inputs, cat_embed])
+outputs = keras.layers.Dense(1)(encoded_inputs)
+model = keras.models.Model(inputs=[regular_inputs, categories],
+                           outputs=[outputs])
+
+This model takes two inputs: a regular input containing eight numerical features per
+instance, plus a categorical input (containing one categorical feature per instance). It
+uses a Lambda layer to look up each category’s index, then it looks up the embeddings
+for  these  indices.  Next,  it  concatenates  the  embeddings  and  the  regular  inputs  in
+order to give the encoded inputs, which are ready to be fed to a neural network. We
+could add any kind of neural network at this point, but we just add a dense output
+layer, and we create the Keras model.
+
+When  the  keras.layers.TextVectorization  layer  is  available,  you  can  call  its
+adapt()  method  to  make  it  extract  the  vocabulary  from  a  data  sample  (it  will  take
+care of creating the lookup table for you). Then you can add it to your model, and it
+will  perform  the  index  lookup  (replacing  the  Lambda  layer  in  the  previous  code
+example).
+
+One-hot  encoding  followed  by  a  Dense  layer  (with  no  activation
+function and no biases) is equivalent to an Embedding layer. How‐
+ever, the Embedding layer uses way fewer computations (the perfor‐
+mance  difference  becomes  clear  when  the  size  of  the  embedding
+matrix grows). The Dense layer’s weight matrix plays the role of the
+embedding  matrix.  For  example,  using  one-hot  vectors  of  size  20
+and a Dense layer with 10 units is equivalent to using an Embedding
+layer with input_dim=20 and output_dim=10. As a result, it would
+be  wasteful  to  use  more  embedding  dimensions  than  the  number
+of units in the layer that follows the Embedding layer.
+
+Now let’s look a bit more closely at the Keras preprocessing layers.
+
+Keras Preprocessing Layers
+The TensorFlow team is working on providing a set of standard Keras preprocessing
+layers.  They  will  probably  be  available  by  the  time  you  read  this;  however,  the  API
+may change slightly by then, so please refer to the notebook for this chapter if any‐
+thing behaves unexpectedly. This new API will likely supersede the existing Feature
+
+Preprocessing the Input Features 
+
+| 
+
+437
+
+Columns  API,  which  is  harder  to  use  and  less  intuitive  (if  you  want  to  learn  more
+about the Feature Columns API anyway, please check out the notebook for this chap‐
+ter).
+
+We already discussed two of these layers: the keras.layers.Normalization layer that
+will  perform  feature  standardization  (it  will  be  equivalent  to  the  Standardization
+layer  we  defined  earlier),  and  the  TextVectorization  layer  that  will  be  capable  of
+encoding each word in the inputs into its index in the vocabulary. In both cases, you
+create the layer, you call its adapt() method with a data sample, and then you use the
+layer  normally  in  your  model.  The  other  preprocessing  layers  will  follow  the  same
+pattern.
+
+The API will also include a keras.layers.Discretization layer that will chop con‐
+tinuous data into different bins and encode each bin as a one-hot vector. For example,
+you could use it to discretize prices into three categories, (low, medium, high), which
+would be encoded as [1, 0, 0], [0, 1, 0], and [0, 0, 1], respectively. Of course this loses a
+lot of information, but in some cases it can help the model detect patterns that would
+otherwise not be obvious when just looking at the continuous values.
+
+The Discretization layer will not be differentiable, and it should
+only be used at the start of your model. Indeed, the model’s prepro‐
+cessing  layers  will  be  frozen  during  training,  so  their  parameters
+will not be affected by Gradient Descent, and thus they do not need
+to  be  differentiable.  This  also  means  that  you  should  not  use  an
+Embedding  layer  directly  in  a  custom  preprocessing  layer,  if  you
+want  it  to  be  trainable:  instead,  it  should  be  added  separately  to
+your model, as in the previous code example.
+
+It  will  also  be  possible  to  chain  multiple  preprocessing  layers  using  the  Preproces
+singStage class. For example, the following code will create a preprocessing pipeline
+that  will  first  normalize  the  inputs,  then  discretize  them  (this  may  remind  you  of
+Scikit-Learn pipelines). After you adapt this pipeline to a data sample, you can use it
+like a regular layer in your models (but again, only at the start of the model, since it
+contains a nondifferentiable preprocessing layer):
+
+normalization = keras.layers.Normalization()
+discretization = keras.layers.Discretization([...])
+pipeline = keras.layers.PreprocessingStage([normalization, discretization])
+pipeline.adapt(data_sample)
+
+The TextVectorization layer will also have an option to output word-count vectors
+instead  of  word  indices.  For  example,  if  the  vocabulary  contains  three  words,  say
+["and", "basketball", "more"], then the text "more and more" will be mapped to
+the vector [1, 0, 2]: the word "and" appears once, the word "basketball" does not
+appear at all, and the word "more" appears twice. This text representation is called a
+
+438 
+
+| 
+
+Chapter 13: Loading and Preprocessing Data with TensorFlow
+
+bag  of  words,  since  it  completely  loses  the  order  of  the  words.  Common  words  like
+"and"  will  have  a  large  value  in  most  texts,  even  though  they  are  usually  the  least
+interesting (e.g., in the text "more and more basketball" the word "basketball" is
+clearly the most important, precisely because it is not a very frequent word). So, the
+word counts should be normalized in a way that reduces the importance of frequent
+words. A common way to do this is to divide each word count by the log of the total
+number  of  training  instances  in  which  the  word  appears.  This  technique  is  called
+Term-Frequency × Inverse-Document-Frequency (TF-IDF). For example, let’s imagine
+that the words "and", "basketball", and "more" appear respectively in 200, 10, and
+100  text  instances  in  the  training  set:  in  this  case,  the  final  vector  will  be  [1/
+log(200),  0/log(10),  2/log(100)],  which  is  approximately  equal  to  [0.19,  0.,
+0.43]. The TextVectorization layer will (likely) have an option to perform TF-IDF.
+
+If  the  standard  preprocessing  layers  are  insufficient  for  your  task,
+you  will  still  have  the  option  to  create  your  own  custom  prepro‐
+cessing  layer,  much  like  we  did  earlier  with  the  Standardization
+class. Create a subclass of the keras.layers.PreprocessingLayer
+class  with  an  adapt()  method,  which  should  take  a  data_sample
+argument and optionally an extra reset_state argument: if True,
+then  the  adapt()  method  should  reset  any  existing  state  before
+computing the new state; if False, it should try to update the exist‐
+ing state.
+
+As you can see, these Keras preprocessing layers will make preprocessing much eas‐
+ier! Now, whether you choose to write your own preprocessing layers or use Keras’s
+(or even use the Feature Columns API), all the preprocessing will be done on the fly.
+During  training,  however,  it  may  be  preferable  to  perform  preprocessing  ahead  of
+time. Let’s see why we’d want to do that and how we’d go about it.
+
+TF Transform
+If preprocessing is computationally expensive, then handling it before training rather
+than on the fly may give you a significant speedup: the data will be preprocessed just
+once per instance before training, rather than once per instance and per epoch during
+training. As mentioned earlier, if the dataset is small enough to fit in RAM, you can
+use its cache() method. But if it is too large, then tools like Apache Beam or Spark
+will help. They let you run efficient data processing pipelines over large amounts of
+data, even distributed across multiple servers, so you can use them to preprocess all
+the training data before training.
+
+This  works  great  and  indeed  can  speed  up  training,  but  there  is  one  problem:  once
+your model is trained, suppose you want to deploy it to a mobile app. In that case you
+will need to write some code in your app to take care of preprocessing the data before
+
+TF Transform 
+
+| 
+
+439
+
+it  is  fed  to  the  model.  And  suppose  you  also  want  to  deploy  the  model  to  Tensor‐
+Flow.js so that it runs in a web browser? Once again, you will need to write some pre‐
+processing code. This can become a maintenance nightmare: whenever you want to
+change  the  preprocessing  logic,  you  will  need  to  update  your  Apache  Beam  code,
+your  mobile  app  code,  and  your  JavaScript  code.  This  is  not  only  time-consuming,
+but also error-prone: you may end up with subtle differences between the preprocess‐
+ing operations performed before training and the ones performed in your app or in
+the browser. This training/serving skew will lead to bugs or degraded performance.
+
+One improvement would be to take the trained model (trained on data that was pre‐
+processed by your Apache Beam or Spark code) and, before deploying it to your app
+or the browser, add extra preprocessing layers to take care of preprocessing on the fly.
+That’s  definitely  better,  since  now  you  just  have  two  versions  of  your  preprocessing
+code: the Apache Beam or Spark code, and the preprocessing layers’ code.
+
+But  what  if  you  could  define  your  preprocessing  operations  just  once?  This  is  what
+TF Transform was designed for. It is part of TensorFlow Extended (TFX), an end-to-
+end platform for productionizing TensorFlow models. First, to use a TFX component
+such as TF Transform, you must install it; it does not come bundled with TensorFlow.
+You  then  define  your  preprocessing  function  just  once  (in  Python),  by  using  TF
+Transform functions for scaling, bucketizing, and more. You can also use any Tensor‐
+Flow operation you need. Here is what this preprocessing function might look like if
+we just had two features:
+
+import tensorflow_transform as tft
+
+def preprocess(inputs):  # inputs = a batch of input features
+    median_age = inputs["housing_median_age"]
+    ocean_proximity = inputs["ocean_proximity"]
+    standardized_age = tft.scale_to_z_score(median_age)
+    ocean_proximity_id = tft.compute_and_apply_vocabulary(ocean_proximity)
+    return {
+        "standardized_median_age": standardized_age,
+        "ocean_proximity_id": ocean_proximity_id
+    }
+
+Next, TF Transform lets you apply this preprocess() function to the whole training
+set using Apache Beam (it provides an AnalyzeAndTransformDataset class that you
+can use for this purpose in your Apache Beam pipeline). In the process, it will also
+compute all the necessary statistics over the whole training set: in this example, the
+mean and standard deviation of the housing_median_age feature, and the vocabulary
+for  the  ocean_proximity  feature.  The  components  that  compute  these  statistics  are
+called analyzers.
+
+Importantly, TF Transform will also generate an equivalent TensorFlow Function that
+you can plug into the model you deploy. This TF Function includes some constants
+
+440 
+
+| 
+
+Chapter 13: Loading and Preprocessing Data with TensorFlow
+
+that correspond to all the all the necessary statistics computed by Apache Beam (the
+mean, standard deviation, and vocabulary).
+
+With  the  Data  API,  TFRecords,  the  Keras  preprocessing  layers,  and  TF  Transform,
+you  can  build  highly  scalable  input  pipelines  for  training  and  benefit  from  fast  and
+portable data preprocessing in production.
+
+But  what  if  you  just  wanted  to  use  a  standard  dataset?  Well  in  that  case,  things  are
+much simpler: just use TFDS!
+
+The TensorFlow Datasets (TFDS) Project
+The TensorFlow Datasets project makes it very easy to download common datasets,
+from small ones like MNIST or Fashion MNIST to huge datasets like ImageNet (you
+will  need  quite  a  bit

@@ -1,0 +1,411 @@
+x function
+
+pk = σ s x k =
+
+exp sk x
+
+K
+∑ j = 1
+
+exp s j x
+
+In this equation:
+
+• K is the number of classes.
+
+• s(x) is a vector containing the scores of each class for the instance x.
+
+• σ(s(x))k is the estimated probability that the instance x belongs to class k, given
+
+the scores of each class for that instance.
+
+148 
+
+| 
+
+Chapter 4: Training Models
+
+Just  like  the  Logistic  Regression  classifier,  the  Softmax  Regression  classifier  predicts
+the  class  with  the  highest  estimated  probability  (which  is  simply  the  class  with  the
+highest score), as shown in Equation 4-21.
+
+Equation 4-21. Softmax Regression classifier prediction
+θ k ⊺
+x
+
+y = argmax
+
+σ s x k = argmax
+
+sk x = argmax
+
+k
+
+k
+
+k
+
+The argmax operator returns the value of a variable that maximizes a function. In this
+equation, it returns the value of k that maximizes the estimated probability σ(s(x))k.
+
+The Softmax Regression classifier predicts only one class at a time
+(i.e.,  it  is  multiclass,  not  multioutput),  so  it  should  be  used  only
+with  mutually  exclusive  classes,  such  as  different  types  of  plants.
+You cannot use it to recognize multiple people in one picture.
+
+Now  that  you  know  how  the  model  estimates  probabilities  and  makes  predictions,
+let’s  take  a  look  at  training.  The  objective  is  to  have  a  model  that  estimates  a  high
+probability  for  the  target  class  (and  consequently  a  low  probability  for  the  other
+classes).  Minimizing  the  cost  function  shown  in  Equation  4-22,  called  the  cross
+entropy, should lead to this objective because it penalizes the model when it estimates
+a low probability for a target class. Cross entropy is frequently used to measure how
+well a set of estimated class probabilities matches the target classes.
+
+Equation 4-22. Cross entropy cost function
+
+J Θ = −
+
+1
+m ∑i = 1
+
+K
+m ∑k = 1
+
+i
+i log pk
+yk
+
+In this equation:
+
+• yk
+
+i  is the target probability that the ith instance belongs to class k. In general, it is
+either equal to 1 or 0, depending on whether the instance belongs to the class or
+not.
+
+Notice that when there are just two classes (K = 2), this cost function is equivalent to
+the Logistic Regression’s cost function (log loss; see Equation 4-17).
+
+Logistic Regression 
+
+| 
+
+149
+
+Cross Entropy
+Cross  entropy  originated  from  information  theory.  Suppose  you  want  to  efficiently
+transmit information about the weather every day. If there are eight options (sunny,
+rainy, etc.), you could encode each option using three bits because 23 = 8. However, if
+you think it will be sunny almost every day, it would be much more efficient to code
+“sunny” on just one bit (0) and the other seven options on four bits (starting with a
+1). Cross entropy measures the average number of bits you actually send per option.
+If  your  assumption  about  the  weather  is  perfect,  cross  entropy  will  be  equal  to  the
+entropy of the weather itself (i.e., its intrinsic unpredictability). But if your assump‐
+tions  are  wrong  (e.g.,  if  it  rains  often),  cross  entropy  will  be  greater  by  an  amount
+called the Kullback–Leibler (KL) divergence.
+
+The cross entropy between two probability distributions p and q is defined as H(p,q)
+=  —Σx p(x)  log  q(x)  (at  least  when  the  distributions  are  discrete).  For  more  details,
+check out my video on the subject.
+
+The gradient vector of this cost function with regard to θ(k) is given by Equation 4-23.
+
+Equation 4-23. Cross entropy gradient vector for class k
+
+∇
+
+θ
+
+k J Θ =
+
+m
+
+1
+m ∑
+
+i = 1
+
+i − yk
+pk
+
+i x i
+
+Now you can compute the gradient vector for every class, then use Gradient Descent
+(or any other optimization algorithm) to find the parameter matrix Θ that minimizes
+the cost function.
+
+Let’s  use  Softmax  Regression  to  classify  the  iris  flowers  into  all  three  classes.  Scikit-
+Learn’s LogisticRegression uses one-versus-the-rest by default when you train it on
+more than two classes, but you can set the multi_class hyperparameter to "multino
+mial" to switch it to Softmax Regression. You must also specify a solver that supports
+Softmax Regression, such as the "lbfgs" solver (see Scikit-Learn’s documentation for
+more details). It also applies ℓ2 regularization by default, which you can control using
+the hyperparameter C:
+
+X = iris["data"][:, (2, 3)]  # petal length, petal width
+y = iris["target"]
+
+softmax_reg = LogisticRegression(multi_class="multinomial",solver="lbfgs", C=10)
+softmax_reg.fit(X, y)
+
+So the next time you find an iris with petals that are 5 cm long and 2 cm wide, you
+can ask your model to tell you what type of iris it is, and it will answer Iris virginica
+(class 2) with 94.2% probability (or Iris versicolor with 5.8% probability):
+
+150 
+
+| 
+
+Chapter 4: Training Models
+
+>>> softmax_reg.predict([[5, 2]])
+array([2])
+>>> softmax_reg.predict_proba([[5, 2]])
+array([[6.38014896e-07, 5.74929995e-02, 9.42506362e-01]])
+
+Figure 4-25 shows the resulting decision boundaries, represented by the background
+colors.  Notice  that  the  decision  boundaries  between  any  two  classes  are  linear.  The
+figure  also  shows  the  probabilities  for  the  Iris  versicolor  class,  represented  by  the
+curved lines (e.g., the line labeled with 0.450 represents the 45% probability bound‐
+ary). Notice that the model can predict a class that has an estimated probability below
+50%. For example, at the point where all decision boundaries meet, all classes have an
+equal estimated probability of 33%.
+
+Figure 4-25. Softmax Regression decision boundaries
+
+Exercises
+
+1. Which Linear Regression training algorithm can you use if you have a training
+
+set with millions of features?
+
+2. Suppose the features in your training set have very different scales. Which algo‐
+
+rithms might suffer from this, and how? What can you do about it?
+
+3. Can  Gradient  Descent  get  stuck  in  a  local  minimum  when  training  a  Logistic
+
+Regression model?
+
+4. Do  all  Gradient  Descent  algorithms  lead  to  the  same  model,  provided  you  let
+
+them run long enough?
+
+5. Suppose  you  use  Batch  Gradient  Descent  and  you  plot  the  validation  error  at
+every epoch. If you notice that the validation error consistently goes up, what is
+likely going on? How can you fix this?
+
+6. Is it a good idea to stop Mini-batch Gradient Descent immediately when the vali‐
+
+dation error goes up?
+
+Exercises 
+
+| 
+
+151
+
+7. Which  Gradient  Descent  algorithm  (among  those  we  discussed)  will  reach  the
+vicinity  of  the  optimal  solution  the  fastest?  Which  will  actually  converge?  How
+can you make the others converge as well?
+
+8. Suppose you are using Polynomial Regression. You plot the learning curves and
+you notice that there is a large gap between the training error and the validation
+error. What is happening? What are three ways to solve this?
+
+9. Suppose  you  are  using  Ridge  Regression  and  you  notice  that  the  training  error
+and the validation error are almost equal and fairly high. Would you say that the
+model suffers from high bias or high variance? Should you increase the regulari‐
+zation hyperparameter α or reduce it?
+
+10. Why would you want to use:
+
+a. Ridge Regression instead of plain Linear Regression (i.e., without any regula‐
+
+rization)?
+
+b. Lasso instead of Ridge Regression?
+
+c. Elastic Net instead of Lasso?
+
+11. Suppose you want to classify pictures as outdoor/indoor and daytime/nighttime.
+Should you implement two Logistic Regression classifiers or one Softmax Regres‐
+sion classifier?
+
+12. Implement  Batch  Gradient  Descent  with  early  stopping  for  Softmax  Regression
+
+(without using Scikit-Learn).
+
+Solutions to these exercises are available in Appendix A.
+
+152 
+
+| 
+
+Chapter 4: Training Models
+
+CHAPTER 5
+Support Vector Machines
+
+A  Support  Vector  Machine  (SVM)  is  a  powerful  and  versatile  Machine  Learning
+model, capable of performing linear or nonlinear classification, regression, and even
+outlier detection. It is one of the most popular models in Machine Learning, and any‐
+one interested in Machine Learning should have it in their toolbox. SVMs are partic‐
+ularly well suited for classification of complex small- or medium-sized datasets.
+
+This chapter will explain the core concepts of SVMs, how to use them, and how they
+work.
+
+Linear SVM Classification
+The fundamental idea behind SVMs is best explained with some pictures. Figure 5-1
+shows  part  of  the  iris  dataset  that  was  introduced  at  the  end  of  Chapter  4.  The  two
+classes can clearly be separated easily with a straight line (they are linearly separable).
+The  left  plot  shows  the  decision  boundaries  of  three  possible  linear  classifiers.  The
+model  whose  decision  boundary  is  represented  by  the  dashed  line  is  so  bad  that  it
+does not even separate the classes properly. The other two models work perfectly on
+this  training  set,  but  their  decision  boundaries  come  so  close  to  the  instances  that
+these  models  will  probably  not  perform  as  well  on  new  instances.  In  contrast,  the
+solid line in the plot on the right represents the decision boundary of an SVM classi‐
+fier;  this  line  not  only  separates  the  two  classes  but  also  stays  as  far  away  from  the
+closest training instances as possible. You can think of an SVM classifier as fitting the
+widest possible street (represented by the parallel dashed lines) between the classes.
+This is called large margin classification.
+
+153
+
+Figure 5-1. Large margin classification
+
+Notice that adding more training instances “off the street” will not affect the decision
+boundary at all: it is fully determined (or “supported”) by the instances located on the
+edge  of  the  street.  These  instances  are  called  the  support  vectors  (they  are  circled  in
+Figure 5-1).
+
+Figure 5-2. Sensitivity to feature scales
+
+SVMs  are  sensitive  to  the  feature  scales,  as  you  can  see  in
+Figure 5-2: in the left plot, the vertical scale is much larger than the
+horizontal scale, so the widest possible street is close to horizontal.
+After  feature  scaling  (e.g.,  using  Scikit-Learn’s  StandardScaler),
+the decision boundary in the right plot looks much better.
+
+Soft Margin Classification
+If we strictly impose that all instances must be off the street and on the right side, this
+is called hard margin classification. There are two main issues with hard margin clas‐
+sification. First, it only works if the data is linearly separable. Second, it is sensitive to
+outliers. Figure 5-3 shows the iris dataset with just one additional outlier: on the left,
+it  is  impossible  to  find  a  hard  margin;  on  the  right,  the  decision  boundary  ends  up
+very different from the one we saw in Figure 5-1 without the outlier, and it will prob‐
+ably not generalize as well.
+
+154 
+
+| 
+
+Chapter 5: Support Vector Machines
+
+Figure 5-3. Hard margin sensitivity to outliers
+
+To avoid these issues, use a more flexible model. The objective is to find a good bal‐
+ance between keeping the street as large as possible and limiting the margin violations
+(i.e., instances that end up in the middle of the street or even on the wrong side). This
+is called soft margin classification.
+
+When creating an SVM model using Scikit-Learn, we can specify a number of hyper‐
+parameters. C is one of those hyperparameters. If we set it to a low value, then we end
+up with the model on the left of Figure 5-4. With a high value, we get the model on
+the right. Margin violations are bad. It’s usually better to have few of them. However,
+in this case the model on the left has a lot of margin violations but will probably gen‐
+eralize better.
+
+Figure 5-4. Large margin (left) versus fewer margin violations (right)
+
+If  your  SVM  model  is  overfitting,  you  can  try  regularizing  it  by
+reducing C.
+
+The  following  Scikit-Learn  code  loads  the  iris  dataset,  scales  the  features,  and  then
+trains  a  linear  SVM  model  (using  the  LinearSVC  class  with  C=1  and  the  hinge  loss
+function, described shortly) to detect Iris virginica flowers:
+
+import numpy as np
+from sklearn import datasets
+from sklearn.pipeline import Pipeline
+
+Linear SVM Classification 
+
+| 
+
+155
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import LinearSVC
+
+iris = datasets.load_iris()
+X = iris["data"][:, (2, 3)]  # petal length, petal width
+y = (iris["target"] == 2).astype(np.float64)  # Iris virginica
+
+svm_clf = Pipeline([
+        ("scaler", StandardScaler()),
+        ("linear_svc", LinearSVC(C=1, loss="hinge")),
+    ])
+
+svm_clf.fit(X, y)
+
+The resulting model is represented on the left in Figure 5-4.
+
+Then, as usual, you can use the model to make predictions:
+
+>>> svm_clf.predict([[5.5, 1.7]])
+array([1.])
+
+Unlike  Logistic  Regression  classifiers,  SVM  classifiers  do  not  out‐
+put probabilities for each class.
+
+Instead of using the LinearSVC class, we could use the SVC class with a linear kernel.
+When creating the SVC model, we would write SVC(kernel="linear", C=1). Or we
+could  use  the  SGDClassifier  class,  with  SGDClassifier(loss="hinge",  alpha=1/
+(m*C)).  This  applies  regular  Stochastic  Gradient  Descent  (see  Chapter  4)  to  train  a
+linear SVM classifier. It does not converge as fast as the LinearSVC class, but it can be
+useful to handle online classification tasks or huge datasets that do not fit in memory
+(out-of-core training).
+
+The LinearSVC class regularizes the bias term, so you should center
+the  training  set  first  by  subtracting  its  mean.  This  is  automatic  if
+you scale the data using the StandardScaler. Also make sure you
+set  the  loss  hyperparameter  to  "hinge",  as  it  is  not  the  default
+value.  Finally,  for  better  performance,  you  should  set  the  dual
+hyperparameter  to  False,  unless  there  are  more  features  than
+training instances (we will discuss duality later in the chapter).
+
+156 
+
+| 
+
+Chapter 5: Support Vector Machines
+
+Nonlinear SVM Classification
+Although  linear  SVM  classifiers  are  efficient  and  work  surprisingly  well  in  many
+cases, many datasets are not even close to being linearly separable. One approach to
+handling nonlinear datasets is to add more features, such as polynomial features (as
+you  did  in  Chapter  4);  in  some  cases  this  can  result  in  a  linearly  separable  dataset.
+Consider the left plot in Figure 5-5: it represents a simple dataset with just one fea‐
+ture, x1. This dataset is not linearly separable, as you can see. But if you add a second
+feature x2 = (x1)2, the resulting 2D dataset is perfectly linearly separable.
+
+Figure 5-5. Adding features to make a dataset linearly separable
+
+To  implement  this  idea  using  Scikit-Learn,  create  a  Pipeline  containing  a  Polyno
+mialFeatures transformer (discussed in “Polynomial Regression” on page 128), fol‐
+lowed by a StandardScaler and a LinearSVC. Let’s test this on the moons dataset: this
+is  a  toy  dataset  for  binary  classification  in  which  the  data  points  are  shaped  as  two
+interleaving  half  circles  (see  Figure  5-6).  You  can  generate  this  dataset  using  the
+make_moons() function:
+
+from sklearn.datasets import make_moons
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import PolynomialFeatures
+
+X, y = make_moons(n_samples=100, noise=0.15)
+polynomial_svm_clf = Pipeline([
+        ("poly_features", PolynomialFeatures(degree=3)),
+        ("scaler", StandardScaler()),
+        ("svm_clf", LinearSVC(C=10, loss=

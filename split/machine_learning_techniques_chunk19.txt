@@ -1,0 +1,392 @@
+"hinge"))
+    ])
+
+polynomial_svm_clf.fit(X, y)
+
+Nonlinear SVM Classification 
+
+| 
+
+157
+
+Figure 5-6. Linear SVM classifier using polynomial features
+
+Polynomial Kernel
+Adding polynomial features is simple to implement and can work great with all sorts
+of  Machine  Learning  algorithms  (not  just  SVMs).  That  said,  at  a  low  polynomial
+degree, this method cannot deal with very complex datasets, and with a high polyno‐
+mial degree it creates a huge number of features, making the model too slow.
+
+Fortunately,  when  using  SVMs  you  can  apply  an  almost  miraculous  mathematical
+technique called the kernel trick (explained in a moment). The kernel trick makes it
+possible  to  get  the  same  result  as  if  you  had  added  many  polynomial  features,  even
+with very high-degree polynomials, without actually having to add them. So there is
+no combinatorial explosion of the number of features because you don’t actually add
+any  features.  This  trick  is  implemented  by  the  SVC  class.  Let’s  test  it  on  the  moons
+dataset:
+
+from sklearn.svm import SVC
+poly_kernel_svm_clf = Pipeline([
+        ("scaler", StandardScaler()),
+        ("svm_clf", SVC(kernel="poly", degree=3, coef0=1, C=5))
+    ])
+poly_kernel_svm_clf.fit(X, y)
+
+This code trains an SVM classifier using a third-degree polynomial kernel. It is repre‐
+sented on the left in Figure 5-7. On the right is another SVM classifier using a 10th-
+degree polynomial kernel. Obviously, if your model is overfitting, you might want to
+reduce the polynomial degree. Conversely, if it is underfitting, you can try increasing
+it.  The  hyperparameter  coef0  controls  how  much  the  model  is  influenced  by  high-
+degree polynomials versus low-degree polynomials.
+
+158 
+
+| 
+
+Chapter 5: Support Vector Machines
+
+Figure 5-7. SVM classifiers with a polynomial kernel
+
+A common approach to finding the right hyperparameter values is
+to use grid search (see Chapter 2). It is often faster to first do a very
+coarse grid search, then a finer grid search around the best values
+found. Having a good sense of what each hyperparameter actually
+does can also help you search in the right part of the hyperparame‐
+ter space.
+
+Similarity Features
+Another technique to tackle nonlinear problems is to add features computed using a
+similarity  function,  which  measures  how  much  each  instance  resembles  a  particular
+landmark. For example, let’s take the 1D dataset discussed earlier and add two land‐
+marks to it at x1 = –2 and x1 = 1 (see the left plot in Figure 5-8). Next, let’s define the
+similarity function to be the Gaussian Radial Basis Function (RBF) with γ = 0.3 (see
+Equation 5-1).
+
+Equation 5-1. Gaussian RBF
+ϕγ x, ℓ = exp −γ∥ x − ℓ ∥2
+
+This is a bell-shaped function varying from 0 (very far away from the landmark) to 1
+(at the landmark). Now we are ready to compute the new features. For example, let’s
+look at the instance x1 = –1: it is located at a distance of 1 from the first landmark and
+2 from the second landmark. Therefore its new features are x2 = exp(–0.3 × 12) ≈ 0.74
+and x3 = exp(–0.3 × 22) ≈ 0.30. The plot on the right in Figure 5-8 shows the trans‐
+formed  dataset  (dropping  the  original  features).  As  you  can  see,  it  is  now  linearly
+separable.
+
+Nonlinear SVM Classification 
+
+| 
+
+159
+
+Figure 5-8. Similarity features using the Gaussian RBF
+
+You  may  wonder  how  to  select  the  landmarks.  The  simplest  approach  is  to  create  a
+landmark at the location of each and every instance in the dataset. Doing that creates
+many  dimensions  and  thus  increases  the  chances  that  the  transformed  training  set
+will be linearly separable. The downside is that a training set with m instances and n
+features gets transformed into a training set with m instances and m features (assum‐
+ing you drop the original features). If your training set is very large, you end up with
+an equally large number of features.
+
+Gaussian RBF Kernel
+Just like the polynomial features method, the similarity features method can be useful
+with  any  Machine  Learning  algorithm,  but  it  may  be  computationally  expensive  to
+compute all the additional features, especially on large training sets. Once again the
+kernel trick does its SVM magic, making it possible to obtain a similar result as if you
+had  added  many  similarity  features.  Let’s  try  the  SVC  class  with  the  Gaussian  RBF
+kernel:
+
+rbf_kernel_svm_clf = Pipeline([
+        ("scaler", StandardScaler()),
+        ("svm_clf", SVC(kernel="rbf", gamma=5, C=0.001))
+    ])
+rbf_kernel_svm_clf.fit(X, y)
+
+This model is represented at the bottom left in Figure 5-9. The other plots show mod‐
+els trained with different values of hyperparameters gamma (γ) and C. Increasing gamma
+makes  the  bell-shaped  curve  narrower  (see  the  lefthand  plots  in  Figure  5-8).  As  a
+result,  each  instance’s  range  of  influence  is  smaller:  the  decision  boundary  ends  up
+being more irregular, wiggling around individual instances. Conversely, a small gamma
+value makes the bell-shaped curve wider: instances have a larger range of influence,
+and  the  decision  boundary  ends  up  smoother.  So  γ  acts  like  a  regularization
+
+160 
+
+| 
+
+Chapter 5: Support Vector Machines
+
+hyperparameter: if your model is overfitting, you should reduce it; if it is underfitting,
+you should increase it (similar to the C hyperparameter).
+
+Figure 5-9. SVM classifiers using an RBF kernel
+
+Other kernels exist but are used much more rarely. Some kernels are specialized for
+specific data structures. String kernels are sometimes used when classifying text docu‐
+ments or DNA sequences (e.g., using the string subsequence kernel or kernels based on
+the Levenshtein distance).
+
+With so many kernels to choose from, how can you decide which
+one  to  use?  As  a  rule  of  thumb,  you  should  always  try  the  linear
+kernel first (remember that LinearSVC is much faster than SVC(ker
+nel="linear")),  especially  if  the  training  set  is  very  large  or  if  it
+has plenty of features. If the training set is not too large, you should
+also try the Gaussian RBF kernel; it works well in most cases. Then
+if you have spare time and computing power, you can experiment
+with  a  few  other  kernels,  using  cross-validation  and  grid  search.
+You’d  want  to  experiment  like  that  especially  if  there  are  kernels
+specialized for your training set’s data structure.
+
+Nonlinear SVM Classification 
+
+| 
+
+161
+
+Computational Complexity
+The  LinearSVC  class  is  based  on  the  liblinear  library,  which  implements  an  opti‐
+mized algorithm for linear SVMs.1 It does not support the kernel trick, but it scales
+almost linearly with the number of training instances and the number of features. Its
+training time complexity is roughly O(m × n).
+
+The algorithm takes longer if you require very high precision. This is controlled by
+the  tolerance  hyperparameter  ϵ  (called  tol  in  Scikit-Learn).  In  most  classification
+tasks, the default tolerance is fine.
+
+The  SVC  class  is  based  on  the  libsvm  library,  which  implements  an  algorithm  that
+supports the kernel trick.2 The training time complexity is usually between O(m2 × n)
+and O(m3 × n). Unfortunately, this means that it gets dreadfully slow when the num‐
+ber  of  training  instances  gets  large  (e.g.,  hundreds  of  thousands  of  instances).  This
+algorithm  is  perfect  for  complex  small  or  medium-sized  training  sets.  It  scales  well
+with the number of features, especially with sparse features (i.e., when each instance
+has few nonzero features). In this case, the algorithm scales roughly with the average
+number  of  nonzero  features  per  instance.  Table  5-1  compares  Scikit-Learn’s  SVM
+classification classes.
+
+Table 5-1. Comparison of Scikit-Learn classes for SVM classification
+
+Class
+
+LinearSVC
+
+Time complexity
+O(m × n)
+
+Out-of-core support
+No
+
+Scaling required Kernel trick
+Yes
+
+No
+
+SGDClassifier O(m × n)
+
+Yes
+
+SVC
+
+O(m² × n) to O(m³ × n) No
+
+Yes
+
+Yes
+
+No
+
+Yes
+
+SVM Regression
+As mentioned earlier, the SVM algorithm is versatile: not only does it support linear
+and nonlinear classification, but it also supports linear and nonlinear regression. To
+use SVMs for regression instead of classification, the trick is to reverse the objective:
+instead  of  trying  to  fit  the  largest  possible  street  between  two  classes  while  limiting
+margin  violations,  SVM  Regression  tries  to  fit  as  many  instances  as  possible  on  the
+street while limiting margin violations (i.e., instances off the street). The width of the
+street  is  controlled  by  a  hyperparameter,  ϵ.  Figure  5-10  shows  two  linear  SVM
+
+1 Chih-Jen Lin et al., “A Dual Coordinate Descent Method for Large-Scale Linear SVM,” Proceedings of the 25th
+
+International Conference on Machine Learning (2008): 408–415.
+
+2 John Platt, “Sequential Minimal Optimization: A Fast Algorithm for Training Support Vector Machines”
+
+(Microsoft Research technical report, April 21, 1998), https://www.microsoft.com/en-us/research/wp-content/
+uploads/2016/02/tr-98-14.pdf.
+
+162 
+
+| 
+
+Chapter 5: Support Vector Machines
+
+Regression models trained on some random linear data, one with a large margin (ϵ =
+1.5) and the other with a small margin (ϵ = 0.5).
+
+Figure 5-10. SVM Regression
+
+Adding more training instances within the margin does not affect the model’s predic‐
+tions; thus, the model is said to be ϵ-insensitive.
+
+You  can  use  Scikit-Learn’s  LinearSVR  class  to  perform  linear  SVM  Regression.  The
+following code produces the model represented on the left in Figure 5-10 (the train‐
+ing data should be scaled and centered first):
+
+from sklearn.svm import LinearSVR
+
+svm_reg = LinearSVR(epsilon=1.5)
+svm_reg.fit(X, y)
+
+To  tackle  nonlinear  regression  tasks,  you  can  use  a  kernelized  SVM  model.
+Figure  5-11  shows  SVM  Regression  on  a  random  quadratic  training  set,  using  a
+second-degree polynomial kernel. There is little regularization in the left plot (i.e., a
+large C value), and much more regularization in the right plot (i.e., a small C value).
+
+SVM Regression 
+
+| 
+
+163
+
+Figure 5-11. SVM Regression using a second-degree polynomial kernel
+
+The following code uses Scikit-Learn’s SVR class (which supports the kernel trick) to
+produce the model represented on the left in Figure 5-11:
+
+from sklearn.svm import SVR
+
+svm_poly_reg = SVR(kernel="poly", degree=2, C=100, epsilon=0.1)
+svm_poly_reg.fit(X, y)
+
+The SVR class is the regression equivalent of the SVC class, and the LinearSVR class is
+the regression equivalent of the LinearSVC class. The LinearSVR class scales linearly
+with the size of the training set (just like the LinearSVC class), while the SVR class gets
+much too slow when the training set grows large (just like the SVC class).
+
+SVMs can also be used for outlier detection; see Scikit-Learn’s doc‐
+umentation for more details.
+
+Under the Hood
+This section explains how SVMs make predictions and how their training algorithms
+work, starting with linear SVM classifiers. If you are just getting started with Machine
+Learning, you can safely skip it and go straight to the exercises at the end of this chap‐
+ter, and come back later when you want to get a deeper understanding of SVMs.
+
+First, a word about notations. In Chapter 4 we used the convention of putting all the
+model  parameters  in  one  vector  θ,  including  the  bias  term  θ0  and  the  input  feature
+weights θ1 to θn, and adding a bias input x0 = 1 to all instances. In this chapter we will
+use  a  convention  that  is  more  convenient  (and  more  common)  when  dealing  with
+
+164 
+
+| 
+
+Chapter 5: Support Vector Machines
+
+SVMs: the bias term will be called b, and the feature weights vector will be called w.
+No bias feature will be added to the input feature vectors.
+
+Decision Function and Predictions
+The linear SVM classifier model predicts the class of a new instance x by simply com‐
+puting the decision function w⊺ x + b = w1 x1 + ⋯ + wn xn + b. If the result is positive,
+the predicted class ŷ is the positive class (1), and otherwise it is the negative class (0);
+see Equation 5-2.
+
+Equation 5-2. Linear SVM classifier prediction
+
+y =
+
+0 if w⊺x + b < 0,
+1 if w⊺x + b ≥ 0
+
+Figure 5-12 shows the decision function that corresponds to the model in the left in
+Figure 5-4: it is a 2D plane because this dataset has two features (petal width and petal
+length).  The  decision  boundary  is  the  set  of  points  where  the  decision  function  is
+equal to 0: it is the intersection of two planes, which is a straight line (represented by
+the thick solid line).3
+
+Figure 5-12. Decision function for the iris dataset
+
+3 More generally, when there are n features, the decision function is an n-dimensional hyperplane, and the deci‐
+
+sion boundary is an (n – 1)-dimensional hyperplane.
+
+Under the Hood 
+
+| 
+
+165
+
+The dashed lines represent the points where the decision function is equal to 1 or –1:
+they are parallel and at equal distance to the decision boundary, and they form a mar‐
+gin around it. Training a linear SVM classifier means finding the values of w and b
+that  make  this  margin  as  wide  as  possible  while  avoiding  margin  violations  (hard
+margin) or limiting them (soft margin).
+
+Training Objective
+Consider the slope of the decision function: it is equal to the norm of the weight vec‐
+tor, ∥ w ∥. If we divide this slope by 2, the points where the decision function is equal
+to ±1 are going to be twice as far away from the decision boundary. In other words,
+dividing the slope by 2 will multiply the margin by 2. This may be easier to visualize
+in  2D,  as  shown  in  Figure  5-13.  The  smaller  the  weight  vector  w,  the  larger  the
+margin.
+
+Figure 5-13. A smaller weight vector results in a larger margin
+
+So  we  want  to  minimize  ∥  w  ∥  to  get  a  large  margin.  If  we  also  want  to  avoid  any
+margin  violations  (hard  margin),  then  we  need  the  decision  function  to  be  greater
+than  1  for  all  positive  training  instances  and  lower  than  –1  for  negative  training
+instances. If we define t(i) = –1 for negative instances (if y(i) = 0) and t(i) = 1 for positive
+instances (if y(i) = 1), then we can express this constraint as t(i)(w⊺ x(i) + b) ≥ 1 for all
+instances.
+
+We can therefore express the hard margin linear SVM classifier objective as the con‐
+strained optimization problem in Equation 5-3.
+
+Equation 5-3. Hard margin linear SVM classifier objective
+
+minimize
+w, b
+
+w⊺w
+
+1
+2
+
+subject to t i w⊺x i + b ≥ 1
+
+for i = 1, 2, ⋯, m
+
+166 
+
+| 
+
+Chapter 5: Support Vector Machines
+
+We are minimizing ½ w⊺ w, which is equal to ½∥ w ∥2, rather than
+minimizing ∥ w ∥. Indeed, ½∥ w ∥2 has a nice, simple derivative (it
+is just w), while ∥ w ∥ is not differentiable at w = 0. Optimization
+algorithms work much better on differentiable functions.
+
+To get the soft margin objective, we need to introduce a slack variable ζ(i) ≥ 0 for each
+instance:4 ζ(i) measures how much the ith instance is allowed to violate the margin. We
+now have two conflicting objectives: make the slack variables as small as possible to
+reduce the margin violations, and make ½ w⊺ w as small as possible to increase the
+margin. This is where the C hyperparameter comes in: it allows us to define the trade‐
+off between these two objectives. This gives us the constrained optimization problem
+in Equation 5-4.
+
+Equation 5-4. Soft margin linear SVM classifier objective
+
+minimize
+w, b, ζ
+
+1
+2
+
+m
+
+w⊺w + C ∑
+
+ζ i

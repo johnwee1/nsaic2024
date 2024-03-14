@@ -1,0 +1,409 @@
+arning system?
+
+10. What is out-of-core learning?
+
+11. What type of learning algorithm relies on a similarity measure to make predic‐
+
+tions?
+
+12. What  is  the  difference  between  a  model  parameter  and  a  learning  algorithm’s
+
+hyperparameter?
+
+13. What do model-based learning algorithms search for? What is the most common
+
+strategy they use to succeed? How do they make predictions?
+
+14. Can you name four of the main challenges in Machine Learning?
+
+15. If your model performs great on the training data but generalizes poorly to new
+
+instances, what is happening? Can you name three possible solutions?
+
+16. What is a test set, and why would you want to use it?
+
+17. What is the purpose of a validation set?
+
+18. What is the train-dev set, when do you need it, and how do you use it?
+
+19. What can go wrong if you tune hyperparameters using the test set?
+
+Solutions to these exercises are available in Appendix A.
+
+34 
+
+| 
+
+Chapter 1: The Machine Learning Landscape
+
+CHAPTER 2
+End-to-End Machine Learning Project
+
+In this chapter you will work through an example project end to end, pretending to
+be  a  recently  hired  data  scientist  at  a  real  estate  company.1  Here  are  the  main  steps
+you will go through:
+
+1. Look at the big picture.
+
+2. Get the data.
+
+3. Discover and visualize the data to gain insights.
+
+4. Prepare the data for Machine Learning algorithms.
+
+5. Select a model and train it.
+
+6. Fine-tune your model.
+
+7. Present your solution.
+
+8. Launch, monitor, and maintain your system.
+
+Working with Real Data
+When  you  are  learning  about  Machine  Learning,  it  is  best  to  experiment  with  real-
+world data, not artificial datasets. Fortunately, there are thousands of open datasets to
+choose from, ranging across all sorts of domains. Here are a few places you can look
+to get data:
+
+1 The example project is fictitious; the goal is to illustrate the main steps of a Machine Learning project, not to
+
+learn anything about the real estate business.
+
+35
+
+• Popular open data repositories
+
+— UC Irvine Machine Learning Repository
+
+— Kaggle datasets
+
+— Amazon’s AWS datasets
+
+• Meta portals (they list open data repositories)
+
+— Data Portals
+
+— OpenDataMonitor
+
+— Quandl
+
+• Other pages listing many popular open data repositories
+
+— Wikipedia’s list of Machine Learning datasets
+
+— Quora.com
+
+— The datasets subreddit
+
+In this chapter we’ll use the California Housing Prices dataset from the StatLib repos‐
+itory2 (see Figure 2-1). This dataset is based on data from the 1990 California census.
+It is not exactly recent (a nice house in the Bay Area was still affordable at the time),
+but it has many qualities for learning, so we will pretend it is recent data. For teaching
+purposes I’ve added a categorical attribute and removed a few features.
+
+Figure 2-1. California housing prices
+
+2 The original dataset appeared in R. Kelley Pace and Ronald Barry, “Sparse Spatial Autoregressions,” Statistics
+
+& Probability Letters 33, no. 3 (1997): 291–297.
+
+36 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+Look at the Big Picture
+Welcome to the Machine Learning Housing Corporation! Your first task is to use Cal‐
+ifornia census data to build a model of housing prices in the state. This data includes
+metrics such as the population, median income, and median housing price for each
+block group in California. Block groups are the smallest geographical unit for which
+the US Census Bureau publishes sample data (a block group typically has a popula‐
+tion of 600 to 3,000 people). We will call them “districts” for short.
+
+Your  model  should  learn  from  this  data  and  be  able  to  predict  the  median  housing
+price in any district, given all the other metrics.
+
+Since  you  are  a  well-organized  data  scientist,  the  first  thing  you
+should do is pull out your Machine Learning project checklist. You
+can  start  with  the  one  in  Appendix  B;  it  should  work  reasonably
+well for most Machine Learning projects, but make sure to adapt it
+to  your  needs.  In  this  chapter  we  will  go  through  many  checklist
+items,  but  we  will  also  skip  a  few,  either  because  they  are  self-
+explanatory or because they will be discussed in later chapters.
+
+Frame the Problem
+The first question to ask your boss is what exactly the business objective is. Building a
+model is probably not the end goal. How does the company expect to use and benefit
+from this model? Knowing the objective is important because it will determine how
+you frame the problem, which algorithms you will select, which performance meas‐
+ure you will use to evaluate your model, and how much effort you will spend tweak‐
+ing it.
+
+Your boss answers that your model’s output (a prediction of a district’s median hous‐
+ing  price)  will  be  fed  to  another  Machine  Learning  system  (see  Figure  2-2),  along
+with many other signals.3 This downstream system will determine whether it is worth
+investing  in  a  given  area  or  not.  Getting  this  right  is  critical,  as  it  directly  affects
+revenue.
+
+3 A piece of information fed to a Machine Learning system is often called a signal, in reference to Claude Shan‐
+non’s information theory, which he developed at Bell Labs to improve telecommunications. His theory: you
+want a high signal-to-noise ratio.
+
+Look at the Big Picture 
+
+| 
+
+37
+
+Figure 2-2. A Machine Learning pipeline for real estate investments
+
+Pipelines
+A sequence of data processing components is called a data pipeline. Pipelines are very
+common in Machine Learning systems, since there is a lot of data to manipulate and
+many data transformations to apply.
+
+Components typically run asynchronously. Each component pulls in a large amount
+of data, processes it, and spits out the result in another data store. Then, some time
+later, the next component in the pipeline pulls this data and spits out its own output.
+Each component is fairly self-contained: the interface between components is simply
+the  data  store.  This  makes  the  system  simple  to  grasp  (with  the  help  of  a  data  flow
+graph), and different teams can focus on different components. Moreover, if a com‐
+ponent  breaks  down,  the  downstream  components  can  often  continue  to  run  nor‐
+mally (at least for a while) by just using the last output from the broken component.
+This makes the architecture quite robust.
+
+On  the  other  hand,  a  broken  component  can  go  unnoticed  for  some  time  if  proper
+monitoring  is  not  implemented.  The  data  gets  stale  and  the  overall  system’s  perfor‐
+mance drops.
+
+The  next  question  to  ask  your  boss  is  what  the  current  solution  looks  like  (if  any).
+The  current  situation  will  often  give  you  a  reference  for  performance,  as  well  as
+insights on how to solve the problem. Your boss answers that the district housing pri‐
+ces are currently estimated manually by experts: a team gathers up-to-date informa‐
+tion  about  a  district,  and  when  they  cannot  get  the  median  housing  price,  they
+estimate it using complex rules.
+
+This is costly and time-consuming, and their estimates are not great; in cases where
+they manage to find out the actual median housing price, they often realize that their
+estimates were off by more than 20%. This is why the company thinks that it would
+be  useful  to  train  a  model  to  predict  a  district’s  median  housing  price,  given  other
+
+38 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+data about that district. The census data looks like a great dataset to exploit for this
+purpose, since it includes the median housing prices of thousands of districts, as well
+as other data.
+
+With  all  this  information,  you  are  now  ready  to  start  designing  your  system.  First,
+you  need  to  frame  the  problem:  is  it  supervised,  unsupervised,  or  Reinforcement
+Learning? Is it a classification task, a regression task, or something else? Should you
+use batch learning or online learning techniques? Before you read on, pause and try
+to answer these questions for yourself.
+
+Have you found the answers? Let’s see: it is clearly a typical supervised learning task,
+since you are given labeled training examples (each instance comes with the expected
+output,  i.e.,  the  district’s  median  housing  price).  It  is  also  a  typical  regression  task,
+since you are asked to predict a value. More specifically, this is a multiple regression
+problem, since the system will use multiple features to make a prediction (it will use
+the  district’s  population,  the  median  income,  etc.).  It  is  also  a  univariate  regression
+problem, since we are only trying to predict a single value for each district. If we were
+trying  to  predict  multiple  values  per  district,  it  would  be  a  multivariate  regression
+problem. Finally, there is no continuous flow of data coming into the system, there is
+no particular need to adjust to changing data rapidly, and the data is small enough to
+fit in memory, so plain batch learning should do just fine.
+
+If  the  data  were  huge,  you  could  either  split  your  batch  learning
+work across multiple servers (using the MapReduce technique) or
+use an online learning technique.
+
+Select a Performance Measure
+Your next step is to select a performance measure. A typical performance measure for
+regression problems is the Root Mean Square Error (RMSE). It gives an idea of how
+much  error  the  system  typically  makes  in  its  predictions,  with  a  higher  weight  for
+large errors. Equation 2-1 shows the mathematical formula to compute the RMSE.
+
+Equation 2-1. Root Mean Square Error (RMSE)
+
+RMSE X, h =
+
+m
+
+1
+m ∑
+
+i = 1
+
+h x i − y i 2
+
+Look at the Big Picture 
+
+| 
+
+39
+
+Notations
+This equation introduces several very common Machine Learning notations that we
+will use throughout this book:
+
+• m is the number of instances in the dataset you are measuring the RMSE on.
+
+— For example, if you are evaluating the RMSE on a validation set of 2,000 dis‐
+
+tricts, then m = 2,000.
+
+• x(i) is a vector of all the feature values (excluding the label) of the ith instance in
+
+the dataset, and y(i) is its label (the desired output value for that instance).
+
+— For example, if the first district in the dataset is located at longitude –118.29°,
+latitude 33.91°, and it has 1,416 inhabitants with a median income of $38,372,
+and the median house value is $156,400 (ignoring the other features for now),
+then:
+
+x 1 =
+
+−118.29
+33.91
+1,416
+38,372
+
+and:
+
+y 1 = 156,400
+
+• X is a matrix containing all the feature values (excluding labels) of all instances in
+the dataset. There is one row per instance, and the ith row is equal to the trans‐
+pose of x(i), noted (x(i))⊺.4
+
+— For example, if the first district is as just described, then the matrix X looks
+
+like this:
+
+X =
+
+x 1 ⊺
+x 2 ⊺
+⋮
+x 1999 ⊺
+x 2000 ⊺
+
+=
+
+−118.29 33.91 1,416 38,372
+
+⋮
+
+⋮
+
+⋮
+
+⋮
+
+4 Recall that the transpose operator flips a column vector into a row vector (and vice versa).
+
+40 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+• h is your system’s prediction function, also called a hypothesis. When your system
+is given an instance’s feature vector x(i), it outputs a predicted value ŷ(i) = h(x(i))
+for that instance (ŷ is pronounced “y-hat”).
+
+— For example, if your system predicts that the median housing price in the first
+district is $158,400, then ŷ(1) = h(x(1)) = 158,400. The prediction error for this
+district is ŷ(1) – y(1) = 2,000.
+
+• RMSE(X,h)  is  the  cost  function  measured  on  the  set  of  examples  using  your
+
+hypothesis h.
+
+We use lowercase italic font for scalar values (such as m or y(i)) and function names
+(such as h), lowercase bold font for vectors (such as x(i)), and uppercase bold font for
+matrices (such as X).
+
+Even though the RMSE is generally the preferred performance measure for regression
+tasks, in some contexts you may prefer to use another function. For example, suppose
+that there are many outlier districts. In that case, you may consider using the mean
+absolute error (MAE, also called the average absolute deviation; see Equation 2-2):
+
+Equation 2-2. Mean absolute error (MAE)
+
+MAE X, h =
+
+m
+
+1
+m ∑
+
+i = 1
+
+h x i − y i
+
+Both the RMSE and the MAE are ways to measure the distance between two vectors:
+the vector of predictions and the vector of target values. Various distance measures,
+or norms, are possible:
+
+• Computing  the  root  of  a  sum  of  squares  (RMSE)  corresponds  to  the  Euclidean
+norm: this is the notion of distance you are familiar with. It is also called the ℓ2
+norm, noted ∥ · ∥2 (or just ∥ · ∥).
+
+• Computing the sum of absolutes (MAE) corresponds to the ℓ1 norm, noted ∥ · ∥1.
+This  is  sometimes  called  the  Manhattan  norm  because  it  measures  the  distance
+between two points in a city if you can only travel along orthogonal city blocks.
+• More generally, the ℓk norm of a vector v containing n elements is defined as ∥v∥k
+= (|v0|k + |v1|k + ... + |vn|k)1/k. ℓ0 gives the number of nonzero elements in the vec‐
+tor, and ℓ∞ gives the maximum absolute value in the vector.
+
+• The higher the norm index, the more it focuses on large values and neglects small
+ones. This is why the RMSE is more sensitive to outliers than the MAE. But when
+outliers are exponentially rare (like in a bell-shaped curve), the RMSE performs
+very well and is generally preferred.
+
+Look at the Big Picture 
+
+| 
+
+41
+
+Check the Assumptions
+Lastly, it is good practice to list and verify the assumptions that have been made so far
+(by you or others); this can help you catch serious issues early on. For example, the
+district  prices  that  your  system  outputs  are  going  to  be  fed  into  a  downstream
+Machine Learning system, and you assume that these prices are going to be used as
+such.  But  what  if  the  downstream  system  converts  the  prices  into  categories  (e.g.,
+“cheap,” “medium,” or “expensive”) and then uses those categories instead of the pri‐
+ces  themselves?  In  this  case,  getting  the  price  perfectly  right  is  not  important  at  all;
+your system just needs to get the category right. If that’s so, then the problem should
+have been framed as a classification task, not a regression task. You don’t want to find
+this out after working on a regression system for months.
+
+Fortunately, after talking with the team in charge of the downstream system, you are
+confident that they do indeed need the actual prices, not just categories. Great! You’re
+all set, the lights are green, and you can start coding now!
+
+Get the Data
+It’s  time  to  get  your  hands  dirty.  Don’t  hesitate  to  pick  up  your  laptop  and  walk
+through  the  following  code  examples  in  a  Jupyter  notebook.  The  full  Jupyter  note‐
+book is available at https://github.com/ageron/handson-ml2.
+
+Create the Workspace
+First you will need to have Python installed. It is probably already installed on your
+system. If not, you can get it at https://www.python.org/.5
+
+Next you need to create a workspace directory for your Machine Learning code and
+datasets. Open a terminal and type the following commands (after the $ prompts):
+
+$ export ML_PATH="$HOME/ml"      # You can change the path if you prefer
+$ mkdir -p $ML_PATH
+
+You will need a number of Python modules: Jupyter, NumPy, pandas, Matplotlib, and
+Scikit-Learn.  If  you  already  have  Jupyter  running  with  all  these  modules  installed,
+you can safely skip to “Download the Data” on page 46. If you don’t have them yet,
+there  are  many  ways  to  install  them  (and  thei

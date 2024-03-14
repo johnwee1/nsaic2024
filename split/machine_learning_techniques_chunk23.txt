@@ -1,0 +1,381 @@
+ith the deci‐
+sion  boundary  of  a  bagging  ensemble  of  500  trees  (from  the  preceding  code),  both
+trained  on  the  moons  dataset.  As  you  can  see,  the  ensemble’s  predictions  will  likely
+generalize much better than the single Decision Tree’s predictions: the ensemble has a
+comparable bias but a smaller variance (it makes roughly the same number of errors
+on the training set, but the decision boundary is less irregular).
+
+5 max_samples can alternatively be set to a float between 0.0 and 1.0, in which case the max number of instances
+
+to sample is equal to the size of the training set times max_samples.
+
+194 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+Figure 7-5. A single Decision Tree (left) versus a bagging ensemble of 500 trees (right)
+
+Bootstrapping  introduces  a  bit  more  diversity  in  the  subsets  that  each  predictor  is
+trained on, so bagging ends up with a slightly higher bias than pasting; but the extra
+diversity also means that the predictors end up being less correlated, so the ensemble’s
+variance  is  reduced.  Overall,  bagging  often  results  in  better  models,  which  explains
+why it is generally preferred. However, if you have spare time and CPU power, you
+can use cross-validation to evaluate both bagging and pasting and select the one that
+works best.
+
+Out-of-Bag Evaluation
+With bagging, some instances may be sampled several times for any given predictor,
+while others may not be sampled at all. By default a BaggingClassifier samples m
+training  instances  with  replacement  (bootstrap=True),  where  m  is  the  size  of  the
+training set. This means that only about 63% of the training instances are sampled on
+average for each predictor.6 The remaining 37% of the training instances that are not
+sampled  are  called  out-of-bag  (oob)  instances.  Note  that  they  are  not  the  same  37%
+for all predictors.
+
+Since a predictor never sees the oob instances during training, it can be evaluated on
+these  instances,  without  the  need  for  a  separate  validation  set.  You  can  evaluate  the
+ensemble itself by averaging out the oob evaluations of each predictor.
+
+In Scikit-Learn, you can set oob_score=True when creating a BaggingClassifier to
+request an automatic oob evaluation after training. The following code demonstrates
+this. The resulting evaluation score is available through the oob_score_ variable:
+
+6 As m grows, this ratio approaches 1 – exp(–1) ≈ 63.212%.
+
+Bagging and Pasting 
+
+| 
+
+195
+
+>>> bag_clf = BaggingClassifier(
+...     DecisionTreeClassifier(), n_estimators=500,
+...     bootstrap=True, n_jobs=-1, oob_score=True)
+...
+>>> bag_clf.fit(X_train, y_train)
+>>> bag_clf.oob_score_
+0.90133333333333332
+
+According to this oob evaluation, this BaggingClassifier is likely to achieve about
+90.1% accuracy on the test set. Let’s verify this:
+
+>>> from sklearn.metrics import accuracy_score
+>>> y_pred = bag_clf.predict(X_test)
+>>> accuracy_score(y_test, y_pred)
+0.91200000000000003
+
+We get 91.2% accuracy on the test set—close enough!
+
+The  oob  decision  function  for  each  training  instance  is  also  available  through  the
+oob_decision_function_  variable.  In  this  case  (since  the  base  estimator  has  a  pre
+dict_proba() method), the decision function returns the class probabilities for each
+training  instance.  For  example,  the  oob  evaluation  estimates  that  the  first  training
+instance  has  a  68.25%  probability  of  belonging  to  the  positive  class  (and  31.75%  of
+belonging to the negative class):
+
+>>> bag_clf.oob_decision_function_
+array([[0.31746032, 0.68253968],
+       [0.34117647, 0.65882353],
+       [1.        , 0.        ],
+       ...
+       [1.        , 0.        ],
+       [0.03108808, 0.96891192],
+       [0.57291667, 0.42708333]])
+
+Random Patches and Random Subspaces
+The  BaggingClassifier  class  supports  sampling  the  features  as  well.  Sampling  is
+controlled  by  two  hyperparameters:  max_features  and  bootstrap_features.  They
+work the same way as max_samples and bootstrap, but for feature sampling instead
+of instance sampling. Thus, each predictor will be trained on a random subset of the
+input features.
+
+This  technique  is  particularly  useful  when  you  are  dealing  with  high-dimensional
+inputs  (such  as  images).  Sampling  both  training  instances  and  features  is  called  the
+Random Patches method.7 Keeping all training instances (by setting bootstrap=False
+
+7 Gilles Louppe and Pierre Geurts, “Ensembles on Random Patches,” Lecture Notes in Computer Science 7523
+
+(2012): 346–361.
+
+196 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+  and  max_samples=1.0)  but  sampling  features  (by  setting  bootstrap_features  to
+True and/or max_features to a value smaller than 1.0) is called the Random Subspa‐
+ces method.8
+
+Sampling features results in even more predictor diversity, trading a bit more bias for
+a lower variance.
+
+Random Forests
+As we have discussed, a Random Forest9 is an ensemble of Decision Trees, generally
+trained via the bagging method (or sometimes pasting), typically with  max_samples
+set to the size of the training set. Instead of building a BaggingClassifier and pass‐
+ing it a DecisionTreeClassifier, you can instead use the RandomForestClassifier
+class, which is more convenient and optimized for Decision Trees10 (similarly, there is
+a  RandomForestRegressor  class  for  regression  tasks).  The  following  code  uses  all
+available CPU cores to train a Random Forest classifier with 500 trees (each limited
+to maximum 16 nodes):
+
+from sklearn.ensemble import RandomForestClassifier
+
+rnd_clf = RandomForestClassifier(n_estimators=500, max_leaf_nodes=16, n_jobs=-1)
+rnd_clf.fit(X_train, y_train)
+
+y_pred_rf = rnd_clf.predict(X_test)
+
+With a few exceptions, a RandomForestClassifier has all the hyperparameters of a
+DecisionTreeClassifier  (to  control  how  trees  are  grown),  plus  all  the  hyperpara‐
+meters of a BaggingClassifier to control the ensemble itself.11
+
+The  Random  Forest  algorithm  introduces  extra  randomness  when  growing  trees;
+instead of searching for the very best feature when splitting a node (see Chapter 6), it
+searches  for  the  best  feature  among  a  random  subset  of  features.  The  algorithm
+results  in  greater  tree  diversity,  which  (again)  trades  a  higher  bias  for  a  lower  var‐
+iance, generally yielding an overall better model. The following BaggingClassifier
+is roughly equivalent to the previous RandomForestClassifier:
+
+8 Tin Kam Ho, “The Random Subspace Method for Constructing Decision Forests,” IEEE Transactions on Pat‐
+
+tern Analysis and Machine Intelligence 20, no. 8 (1998): 832–844.
+
+9 Tin Kam Ho, “Random Decision Forests,” Proceedings of the Third International Conference on Document
+
+Analysis and Recognition 1 (1995): 278.
+
+10 The BaggingClassifier class remains useful if you want a bag of something other than Decision Trees.
+11 There are a few notable exceptions: splitter is absent (forced to "random"), presort is absent (forced to
+
+False), max_samples is absent (forced to 1.0), and base_estimator is absent (forced to DecisionTreeClassi
+fier with the provided hyperparameters).
+
+Random Forests 
+
+| 
+
+197
+
+bag_clf = BaggingClassifier(
+    DecisionTreeClassifier(splitter="random", max_leaf_nodes=16),
+    n_estimators=500, max_samples=1.0, bootstrap=True, n_jobs=-1)
+
+Extra-Trees
+When you are growing a tree in a Random Forest, at each node only a random subset
+of the features is considered for splitting (as discussed earlier). It is possible to make
+trees even more random by also using random thresholds for each feature rather than
+searching for the best possible thresholds (like regular Decision Trees do).
+
+A  forest  of  such  extremely  random  trees  is  called  an  Extremely  Randomized  Trees
+ensemble12 (or Extra-Trees for short). Once again, this technique trades more bias for
+a lower variance. It also makes Extra-Trees much faster to train than regular Random
+Forests, because finding the best possible threshold for each feature at every node is
+one of the most time-consuming tasks of growing a tree.
+
+You  can  create  an  Extra-Trees  classifier  using  Scikit-Learn’s  ExtraTreesClassifier
+class. Its API is identical to the RandomForestClassifier class. Similarly, the Extra
+TreesRegressor class has the same API as the RandomForestRegressor class.
+
+It  is  hard  to  tell  in  advance  whether  a  RandomForestClassifier
+will perform better or worse than an ExtraTreesClassifier. Gen‐
+erally, the only way to know is to try both and compare them using
+cross-validation (tuning the hyperparameters using grid search).
+
+Feature Importance
+Yet another great quality of Random Forests is that they make it easy to measure the
+relative importance of each feature. Scikit-Learn measures a feature’s importance by
+looking at how much the tree nodes that use that feature reduce impurity on average
+(across  all  trees  in  the  forest).  More  precisely,  it  is  a  weighted  average,  where  each
+node’s  weight  is  equal  to  the  number  of  training  samples  that  are  associated  with  it
+(see Chapter 6).
+
+Scikit-Learn computes this score automatically for each feature after training, then it
+scales the results so that the sum of all importances is equal to 1. You can access the
+result  using  the  feature_importances_  variable.  For  example,  the  following  code
+trains a  RandomForestClassifier on the iris dataset (introduced in Chapter 4) and
+outputs each feature’s importance. It seems that the most important features are the
+petal length (44%) and width (42%), while sepal length and width are rather unim‐
+portant in comparison (11% and 2%, respectively):
+
+12 Pierre Geurts et al., “Extremely Randomized Trees,” Machine Learning 63, no. 1 (2006): 3–42.
+
+198 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+>>> from sklearn.datasets import load_iris
+>>> iris = load_iris()
+>>> rnd_clf = RandomForestClassifier(n_estimators=500, n_jobs=-1)
+>>> rnd_clf.fit(iris["data"], iris["target"])
+>>> for name, score in zip(iris["feature_names"], rnd_clf.feature_importances_):
+...     print(name, score)
+...
+sepal length (cm) 0.112492250999
+sepal width (cm) 0.0231192882825
+petal length (cm) 0.441030464364
+petal width (cm) 0.423357996355
+
+Similarly, if you train a Random Forest classifier on the MNIST dataset (introduced
+in  Chapter  3)  and  plot  each  pixel’s  importance,  you  get  the  image  represented  in
+Figure 7-6.
+
+Figure 7-6. MNIST pixel importance (according to a Random Forest classifier)
+
+Random  Forests  are  very  handy  to  get  a  quick  understanding  of  what  features
+actually matter, in particular if you need to perform feature selection.
+
+Boosting
+Boosting  (originally  called  hypothesis  boosting)  refers  to  any  Ensemble  method  that
+can  combine  several  weak  learners  into  a  strong  learner.  The  general  idea  of  most
+boosting methods is to train predictors sequentially, each trying to correct its prede‐
+cessor. There are many boosting methods available, but by far the most popular are
+
+Boosting 
+
+| 
+
+199
+
+AdaBoost13 (short for Adaptive Boosting) and Gradient Boosting. Let’s start with Ada‐
+Boost.
+
+AdaBoost
+One way for a new predictor to correct its predecessor is to pay a bit more attention
+to the training instances that the predecessor underfitted. This results in new predic‐
+tors  focusing  more  and  more  on  the  hard  cases.  This  is  the  technique  used  by
+AdaBoost.
+
+For  example,  when  training  an  AdaBoost  classifier,  the  algorithm  first  trains  a  base
+classifier (such as a Decision Tree) and uses it to make predictions on the training set.
+The  algorithm  then  increases  the  relative  weight  of  misclassified  training  instances.
+Then it trains a second classifier, using the updated weights, and again makes predic‐
+tions on the training set, updates the instance weights, and so on (see Figure 7-7).
+
+Figure 7-7. AdaBoost sequential training with instance weight updates
+
+Figure  7-8  shows  the  decision  boundaries  of  five  consecutive  predictors  on  the
+moons dataset (in this example, each predictor is a highly regularized SVM classifier
+with an RBF kernel14). The first classifier gets many instances wrong, so their weights
+
+13 Yoav Freund and Robert E. Schapire, “A Decision-Theoretic Generalization of On-Line Learning and an
+
+Application to Boosting,” Journal of Computer and System Sciences 55, no. 1 (1997): 119–139.
+
+14 This is just for illustrative purposes. SVMs are generally not good base predictors for AdaBoost; they are slow
+
+and tend to be unstable with it.
+
+200 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+get boosted. The second classifier therefore does a better job on these instances, and
+so on. The plot on the right represents the same sequence of predictors, except that
+the learning rate is halved (i.e., the misclassified instance weights are boosted half as
+much at every iteration). As you can see, this sequential learning technique has some
+similarities with Gradient Descent, except that instead of tweaking a single predictor’s
+parameters to minimize a cost function, AdaBoost adds predictors to the ensemble,
+gradually making it better.
+
+Figure 7-8. Decision boundaries of consecutive predictors
+
+Once all predictors are trained, the ensemble makes predictions very much like bag‐
+ging  or  pasting,  except  that  predictors  have  different  weights  depending  on  their
+overall accuracy on the weighted training set.
+
+There is one important drawback to this sequential learning techni‐
+que: it cannot be parallelized (or only partially), since each predic‐
+tor  can  only  be  trained  after  the  previous  predictor  has  been
+trained and evaluated. As a result, it does not scale as well as bag‐
+ging or pasting.
+
+Let’s take a closer look at the AdaBoost algorithm. Each instance weight w(i) is initially
+set to 1/m. A first predictor is trained, and its weighted error rate r1 is computed on
+the training set; see Equation 7-1.
+
+Equation 7-1. Weighted error rate of the jth predictor
+
+w i
+
+m
+∑
+i = 1
+i
+j
+
+≠ y
+
+y
+
+i
+
+m
+∑
+i = 1
+
+w i
+
+r j =
+
+i
+where y j
+
+is the jth predictor’s prediction for the ith instance.
+
+Boosting 
+
+| 
+
+201
+
+The predictor’s weight αj is then computed using Equation 7-2, where η is the learn‐
+ing  rate  hyperparameter  (defaults  to  1).15  The  more  accurate  the  predictor  is,  the
+higher its weight will be. If it is just guessing randomly, then its weight will be close to
+zero.  However,  if  it  is  most  often  wrong  (i.e.,  less  accurate  than  random  guessing),
+then its weight will be negative.
+
+Equation 7-2. Predictor weight
+
+α j = η log
+
+1 − r j
+r j
+
+Next,  the  AdaBoost  algorithm  updates  the  instance  weights,  using  Equation  7-3,
+which boosts the weights of the misclassified instances.
+
+Equation 7-3. Weight update rule
+
+for i = 1, 2, ⋯, m
+w i
+w i exp α j
+
+w i
+
+if y j
+
+if y j
+
+i = y i
+
+i ≠ y i
+
+Then all the instance weights are normalized (i.e., divided by ∑i = 1
+
+m w i ).
+
+Finally, a new predictor is trained using the updated weights, and the whole process is
+repeated (the new predictor’s weight is computed, the instance weights are updated,
+then another predictor is trained, and so on). The algorithm stops when the desired
+number of predictors is reached, or when a perfect predictor is found.
+
+To make predictions, AdaBoost simply computes the predictions of all the predictors
+and  weighs  them  using  the  predictor  weights  

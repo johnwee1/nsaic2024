@@ -1,0 +1,311 @@
+s):  an  ANN  is  a  Machine  Learning  model
+inspired  by  the  networks  of  biological  neurons  found  in  our  brains.  However,
+although planes were inspired by birds, they don’t have to flap their wings. Similarly,
+ANNs  have  gradually  become  quite  different  from  their  biological  cousins.  Some
+researchers even argue that we should drop the biological analogy altogether (e.g., by
+saying  “units”  rather  than  “neurons”),  lest  we  restrict  our  creativity  to  biologically
+plausible systems.1
+
+ANNs are at the very core of Deep Learning. They are versatile, powerful, and scala‐
+ble,  making  them  ideal  to  tackle  large  and  highly  complex  Machine  Learning  tasks
+such as classifying billions of images (e.g., Google Images), powering speech recogni‐
+tion services (e.g., Apple’s Siri), recommending the best videos to watch to hundreds
+of millions of users every day (e.g., YouTube), or learning to beat the world champion
+at the game of Go (DeepMind’s AlphaGo).
+
+The  first  part  of  this  chapter  introduces  artificial  neural  networks,  starting  with  a
+quick  tour  of  the  very  first  ANN  architectures  and  leading  up  to  Multilayer  Percep‐
+trons  (MLPs),  which  are  heavily  used  today  (other  architectures  will  be  explored  in
+the next chapters). In the second part, we will look at how to implement neural net‐
+works using the popular Keras API. This is a beautifully designed and simple high-
+
+1 You can get the best of both worlds by being open to biological inspirations without being afraid to create
+
+biologically unrealistic models, as long as they work well.
+
+279
+
+level API for building, training, evaluating, and running neural networks. But don’t
+be fooled by its simplicity: it is expressive and flexible enough to let you build a wide
+variety of neural network architectures. In fact, it will probably be sufficient for most
+of  your  use  cases.  And  should  you  ever  need  extra  flexibility,  you  can  always  write
+custom Keras components using its lower-level API, as we will see in Chapter 12.
+
+But first, let’s go back in time to see how artificial neural networks came to be!
+
+From Biological to Artificial Neurons
+Surprisingly,  ANNs  have  been  around  for  quite  a  while:  they  were  first  introduced
+back  in  1943  by  the  neurophysiologist  Warren  McCulloch  and  the  mathematician
+Walter  Pitts.  In  their  landmark  paper2  “A  Logical  Calculus  of  Ideas  Immanent  in
+Nervous Activity,” McCulloch and Pitts presented a simplified computational model
+of how biological neurons might work together in animal brains to perform complex
+computations  using  propositional  logic.  This  was  the  first  artificial  neural  network
+architecture. Since then many other architectures have been invented, as we will see.
+
+The early successes of ANNs led to the widespread belief that we would soon be con‐
+versing with truly intelligent machines. When it became clear in the 1960s that this
+promise would go unfulfilled (at least for quite a while), funding flew elsewhere, and
+ANNs entered a long winter. In the early 1980s, new architectures were invented and
+better  training  techniques  were  developed,  sparking  a  revival  of  interest  in  connec‐
+tionism (the study of neural networks). But progress was slow, and by the 1990s other
+powerful  Machine  Learning  techniques  were  invented,  such  as  Support  Vector
+Machines (see Chapter 5). These techniques seemed to offer better results and stron‐
+ger theoretical foundations than ANNs, so once again the study of neural networks
+was put on hold.
+
+We are now witnessing yet another wave of interest in ANNs. Will this wave die out
+like the previous ones did? Well, here are a few good reasons to believe that this time
+is different and that the renewed interest in ANNs will have a much more profound
+impact on our lives:
+
+• There  is  now  a  huge  quantity  of  data  available  to  train  neural  networks,  and
+ANNs  frequently  outperform  other  ML  techniques  on  very  large  and  complex
+problems.
+
+• The tremendous increase in computing power since the 1990s now makes it pos‐
+sible  to  train  large  neural  networks  in  a  reasonable  amount  of  time.  This  is  in
+part  due  to  Moore’s  law  (the  number  of  components  in  integrated  circuits  has
+
+2 Warren S. McCulloch and Walter Pitts, “A Logical Calculus of the Ideas Immanent in Nervous Activity,” The
+
+Bulletin of Mathematical Biology 5, no. 4 (1943): 115–113.
+
+280 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+doubled about every 2 years over the last 50 years), but also thanks to the gaming
+industry, which has stimulated the production of powerful GPU cards by the mil‐
+lions. Moreover, cloud platforms have made this power accessible to everyone.
+
+• The training algorithms have been improved. To be fair they are only slightly dif‐
+ferent from the ones used in the 1990s, but these relatively small tweaks have had
+a huge positive impact.
+
+• Some theoretical limitations of ANNs have turned out to be benign in practice.
+For example, many people thought that ANN training algorithms were doomed
+because they were likely to get stuck in local optima, but it turns out that this is
+rather rare in practice (and when it is the case, they are usually fairly close to the
+global optimum).
+
+• ANNs seem to have entered a virtuous circle of funding and progress. Amazing
+products  based  on  ANNs  regularly  make  the  headline  news,  which  pulls  more
+and more attention and funding toward them, resulting in more and more pro‐
+gress and even more amazing products.
+
+Biological Neurons
+Before we discuss artificial neurons, let’s take a quick look at a biological neuron (rep‐
+resented in Figure 10-1). It is an unusual-looking cell mostly found in animal brains.
+It’s  composed  of  a  cell  body  containing  the  nucleus  and  most  of  the  cell’s  complex
+components, many branching extensions called dendrites, plus one very long exten‐
+sion called the axon. The axon’s length may be just a few times longer than the cell
+body, or up to tens of thousands of times longer. Near its extremity the axon splits off
+into many branches called telodendria, and at the tip of these branches are minuscule
+structures called synaptic terminals (or simply synapses), which are connected to the
+dendrites or cell bodies of other neurons.3 Biological neurons produce short electrical
+impulses  called  action  potentials  (APs,  or  just  signals)  which  travel  along  the  axons
+and make the synapses release chemical signals called neurotransmitters. When a neu‐
+ron receives a sufficient amount of these neurotransmitters within a few milliseconds,
+it  fires  its  own  electrical  impulses  (actually,  it  depends  on  the  neurotransmitters,  as
+some of them inhibit the neuron from firing).
+
+3 They are not actually attached, just so close that they can very quickly exchange chemical signals.
+
+From Biological to Artificial Neurons 
+
+| 
+
+281
+
+Figure 10-1. Biological neuron4
+
+Thus, individual biological neurons seem to behave in a rather simple way, but they
+are organized in a vast network of billions, with each neuron typically connected to
+thousands  of  other  neurons.  Highly  complex  computations  can  be  performed  by  a
+network of fairly simple neurons, much like a complex anthill can emerge from the
+combined  efforts  of  simple  ants.  The  architecture  of  biological  neural  networks
+(BNNs)5 is still the subject of active research, but some parts of the brain have been
+mapped,  and  it  seems  that  neurons  are  often  organized  in  consecutive  layers,  espe‐
+cially  in  the  cerebral  cortex  (i.e.,  the  outer  layer  of  your  brain),  as  shown  in
+Figure 10-2.
+
+4 Image by Bruce Blaus (Creative Commons 3.0). Reproduced from https://en.wikipedia.org/wiki/Neuron.
+
+5 In the context of Machine Learning, the phrase “neural networks” generally refers to ANNs, not BNNs.
+
+282 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+Figure 10-2. Multiple layers in a biological neural network (human cortex)6
+
+Logical Computations with Neurons
+McCulloch and Pitts proposed a very simple model of the biological neuron, which
+later became known as an artificial neuron: it has one or more binary (on/off) inputs
+and  one  binary  output.  The  artificial  neuron  activates  its  output  when  more  than  a
+certain  number  of  its  inputs  are  active.  In  their  paper,  they  showed  that  even  with
+such  a  simplified  model  it  is  possible  to  build  a  network  of  artificial  neurons  that
+computes  any  logical  proposition  you  want.  To  see  how  such  a  network  works,  let’s
+build  a  few  ANNs  that  perform  various  logical  computations  (see  Figure  10-3),
+assuming that a neuron is activated when at least two of its inputs are active.
+
+Figure 10-3. ANNs performing simple logical computations
+
+6 Drawing of a cortical lamination by S. Ramon y Cajal (public domain). Reproduced from https://en.wikipe
+
+dia.org/wiki/Cerebral_cortex.
+
+From Biological to Artificial Neurons 
+
+| 
+
+283
+
+Let’s see what these networks do:
+
+• The  first  network  on  the  left  is  the  identity  function:  if  neuron  A  is  activated,
+then neuron C gets activated as well (since it receives two input signals from neu‐
+ron A); but if neuron A is off, then neuron C is off as well.
+
+• The  second  network  performs  a  logical  AND:  neuron  C  is  activated  only  when
+both neurons A and B are activated (a single input signal is not enough to acti‐
+vate neuron C).
+
+• The third network performs a logical OR: neuron C gets activated if either neu‐
+
+ron A or neuron B is activated (or both).
+
+• Finally, if we suppose that an input connection can inhibit the neuron’s activity
+(which is the case with biological neurons), then the fourth network computes a
+slightly more complex logical proposition: neuron C is activated only if neuron A
+is  active  and  neuron  B  is  off.  If  neuron  A  is  active  all  the  time,  then  you  get  a
+logical NOT: neuron C is active when neuron B is off, and vice versa.
+
+You can imagine how these networks can be combined to compute complex logical
+expressions (see the exercises at the end of the chapter for an example).
+
+The Perceptron
+The Perceptron is one of the simplest ANN architectures, invented in 1957 by Frank
+Rosenblatt. It is based on a slightly different artificial neuron (see Figure 10-4) called
+a threshold logic unit (TLU), or sometimes a linear threshold unit (LTU). The inputs
+and output are numbers (instead of binary on/off values), and each input connection
+is associated with a weight. The TLU computes a weighted sum of its inputs (z = w1 x1
++ w2 x2 + ⋯ + wn xn = x⊺ w), then applies a step function to that sum and outputs the
+result: hw(x) = step(z), where z = x⊺ w.
+
+Figure 10-4. Threshold logic unit: an artificial neuron which computes a weighted sum
+of its inputs then applies a step function
+
+284 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+The  most  common  step  function  used  in  Perceptrons  is  the  Heaviside  step  function
+(see Equation 10-1). Sometimes the sign function is used instead.
+
+Equation 10-1. Common step functions used in Perceptrons (assuming threshold =
+0)
+
+heaviside z =
+
+0 if z < 0
+1 if z ≥ 0
+
+sgn z =
+
+−1 if z < 0
+if z = 0
+0
++1 if z > 0
+
+A single TLU can be used for simple linear binary classification. It computes a linear
+combination of the inputs, and if the result exceeds a threshold, it outputs the posi‐
+tive  class.  Otherwise  it  outputs  the  negative  class  (just  like  a  Logistic  Regression  or
+linear SVM classifier). You could, for example, use a single TLU to classify iris flowers
+based on petal length and width (also adding an extra bias feature x0 = 1, just like we
+did in previous chapters). Training a TLU in this case means finding the right values
+for w0, w1, and w2 (the training algorithm is discussed shortly).
+
+A Perceptron is simply composed of a single layer of TLUs,7 with each TLU connected
+to all the inputs. When all the neurons in a layer are connected to every neuron in the
+previous layer (i.e., its input neurons), the layer is called a fully connected layer, or a
+dense  layer.  The  inputs  of  the  Perceptron  are  fed  to  special  passthrough  neurons
+called input neurons: they output whatever input they are fed. All the input neurons
+form the input layer. Moreover, an extra bias feature is generally added (x0 = 1): it is
+typically represented using a special type of neuron called a bias neuron, which out‐
+puts 1 all the time. A Perceptron with two inputs and three outputs is represented in
+Figure 10-5. This Perceptron can classify instances simultaneously into three different
+binary classes, which makes it a multioutput classifier.
+
+7 The name Perceptron is sometimes used to mean a tiny network with a single TLU.
+
+From Biological to Artificial Neurons 
+
+| 
+
+285
+
+Figure 10-5. Architecture of a Perceptron with two input neurons, one bias neuron, and
+three output neurons
+
+Thanks to the magic of linear algebra, Equation 10-2 makes it possible to efficiently
+compute the outputs of a layer of artificial neurons for several instances at once.
+
+Equation 10-2. Computing the outputs of a fully connected layer
+
+hW, b X = ϕ XW + b
+
+In this equation:
+
+• As always, X represents the matrix of input features. It has one row per instance
+
+and one column per feature.
+
+• The  weight  matrix  W  contains  all  the  connection  weights  except  for  the  ones
+from the bias neuron. It has one row per input neuron and one column per artifi‐
+cial neuron in the layer.
+
+• The  bias  vector  b  contains  all  the  connection  weights  between  the  bias  neuron
+
+and the artificial neurons. It has one bias term per artificial neuron.
+
+• The  function  ϕ  is  called  the  activation  function:  when  the  artificial  neurons  are
+TLUs, it is a step function (but we will discuss other activation functions shortly).
+
+So,  how  is  a  Perceptron  trained?  The  Perceptron  training  algorithm  proposed  by
+Rosenblatt was largely inspired by Hebb’s rule. In his 1949 book The Organization of
+Behavior  (Wiley),  Donald  Hebb  suggested  that  when  a  biological  neuron  triggers
+another neuron often, the connection between these two neurons grows stronger. Sie‐
+grid  Löwel  later  summarized  Hebb’s  idea  in  the  catchy  phrase,  “Cells  that  fire
+together, wire together”; that is, the connection weight between two neurons tends to
+increase when they fire simultaneously. This rule later became known as Hebb’s rule
+(or Hebbian learning). Perceptrons are trained using a variant of this rule that takes
+into  account  the  error  made  by  the  network  when  it  makes  a  prediction;  the
+
+286 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+Perceptron  learning  rule  reinforces  connections  that  help  reduce  the  error.  More
+specifically,  the  Perceptron  is  fed  one  training  instance  at  a  time,  and  for  each
+instance  it  makes  its  predictions.  For  every  output  neuron  that  produced  a  wrong
+prediction, it reinforces the connection weights from the inputs that would have con‐
+tributed to the correct prediction. The rule is shown in Equation 10-3.
+
+Equation 10-3. Perceptron learning rule (weight update)
+
+wi, j
+
+next step = wi, j + η y j − y j xi
+
+In this equation:
+
+• wi,  j  is  the  connection  weight  betwee

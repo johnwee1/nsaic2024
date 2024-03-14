@@ -1,0 +1,326 @@
+
+
+Before you can run the training job, you need to write the training code, exactly like
+you did earlier for a distributed setup (e.g., using the ParameterServerStrategy). AI
+Platform will take care of setting TF_CONFIG for you on each VM. Once that’s done,
+you can deploy it and run it on a TF cluster with a command line like this:
+
+$ gcloud ai-platform jobs submit training my_job_20190531_164700 \
+    --region asia-southeast1 \
+    --scale-tier PREMIUM_1 \
+    --runtime-version 2.0 \
+    --python-version 3.5 \
+    --package-path /my_project/src/trainer \
+    --module-name trainer.task \
+    --staging-bucket gs://my-staging-bucket \
+    --job-dir gs://my-mnist-model-bucket/trained_model \
+    --
+    --my-extra-argument1 foo --my-extra-argument2 bar
+
+Let’s  go  through  these  options.  The  command  will  start  a  training  job  named
+my_job_20190531_164700,  in  the  asia-southeast1  region,  using  a  PREMIUM_1  scale
+tier:  this  corresponds  to  20  workers  (including  a  chief)  and  11  parameter  servers
+(check  out  the  other  available  scale  tiers).  All  these  VMs  will  be  based  on  AI  Plat‐
+form’s 2.0 runtime (a VM configuration that includes TensorFlow 2.0 and many other
+packages)22 and Python 3.5. The training code is located in the /my_project/src/trainer
+directory, and the  gcloud command will automatically bundle it into a pip package
+and  upload  it  to  GCS  at  gs://my-staging-bucket.  Next,  AI  Platform  will  start  several
+VMs, deploy the package to them, and run the trainer.task module. Lastly, the --
+job-dir argument and the extra arguments (i.e., all the arguments located after the
+-- separator) will be passed to the training program: the chief task will usually use the
+--job-dir argument to find out where to save the final model on GCS, in this case at
+gs://my-mnist-model-bucket/trained_model. And that’s it! In the GCP console, you can
+then open the navigation menu, scroll down to the Artificial Intelligence section, and
+open  AI  Platform  →  Jobs.  You  should  see  your  job  running,  and  if  you  click  it  you
+will see graphs showing the CPU, GPU, and RAM utilization for every task. You can
+click View Logs to access the detailed logs using Stackdriver.
+
+If  you  place  the  training  data  on  GCS,  you  can  create  a
+tf.data.TextLineDataset or tf.data.TFRecordDataset to access
+it:  just  use  the  GCS  paths  as  the  filenames  (e.g.,  gs://my-data-
+bucket/my_data_001.csv).  These  datasets  rely  on  the  tf.io.gfile
+package  to  access  files:  it  supports  both  local  files  and  GCS  files
+(but make sure the service account you use has access to GCS).
+
+22 At the time of this writing, the 2.0 runtime is not yet available, but it should be ready by the time you read
+
+this. Check out the list of available runtimes.
+
+Training Models Across Multiple Devices 
+
+| 
+
+715
+
+If you want to explore a few hyperparameter values, you can simply run multiple jobs
+and  specify  the  hyperparameter  values  using  the  extra  arguments  for  your  tasks.
+However, if you want to explore many hyperparameters efficiently, it’s a good idea to
+use AI Platform’s hyperparameter tuning service instead.
+
+Black Box Hyperparameter Tuning on AI Platform
+AI  Platform  provides  a  powerful  Bayesian  optimization  hyperparameter  tuning  ser‐
+vice  called  Google  Vizier.23  To  use  it,  you  need  to  pass  a  YAML  configuration  file
+when creating the job (--config tuning.yaml). For example, it may look like this:
+
+trainingInput:
+  hyperparameters:
+    goal: MAXIMIZE
+    hyperparameterMetricTag: accuracy
+    maxTrials: 10
+    maxParallelTrials: 2
+    params:
+      - parameterName: n_layers
+        type: INTEGER
+        minValue: 10
+        maxValue: 100
+        scaleType: UNIT_LINEAR_SCALE
+      - parameterName: momentum
+        type: DOUBLE
+        minValue: 0.1
+        maxValue: 1.0
+        scaleType: UNIT_LOG_SCALE
+
+This tells AI Platform that we want to maximize the metric named "accuracy", the
+job will run a maximum of 10 trials (each trial will run our training code to train the
+model from scratch), and it will run a maximum of 2 trials in parallel. We want it to
+tune two hyperparameters: the n_layers hyperparameter (an integer between 10 and
+100) and the momentum hyperparameter (a float between 0.1 and 1.0). The scaleType
+argument  specifies  the  prior  for  the  hyperparameter  value:  UNIT_LINEAR_SCALE
+means a flat prior (i.e., no a priori preference), while UNIT_LOG_SCALE says we have a
+prior belief that the optimal value lies closer to the max value (the other possible prior
+is UNIT_REVERSE_LOG_SCALE, when we believe the optimal value to be close to the min
+value).
+
+The  n_layers  and  momentum  arguments  will  be  passed  as  command-line  arguments
+to the training code, and of course it is expected to use them. The question is, how
+will the training code communicate the metric back to the AI Platform so that it can
+
+23 Daniel Golovin et al., “Google Vizier: A Service for Black-Box Optimization,” Proceedings of the 23rd ACM
+
+SIGKDD International Conference on Knowledge Discovery and Data Mining (2017): 1487–1495.
+
+716 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+decide which hyperparameter values to use during the next trial? Well, AI Platform
+just monitors the output directory (specified via --job-dir) for any event file (intro‐
+duced  in  Chapter  10)  containing  summaries  for  a  metric  named  "accuracy"  (or
+whatever  metric  name  is  specified  as  the  hyperparameterMetricTag),  and  it  reads
+those  values.  So  your  training  code  simply  has  to  use  the  TensorBoard()  callback
+(which you will want to do anyway for monitoring), and you’re good to go!
+
+Once  the  job  is  finished,  all  the  hyperparameter  values  used  in  each  trial  and  the
+resulting accuracy will be available in the job’s output (available via the AI Platform →
+Jobs page).
+
+AI Platform jobs can also be used to efficiently execute your model
+on  large  amounts  of  data:  each  worker  can  read  part  of  the  data
+from GCS, make predictions, and save them to GCS.
+
+Now you have all the tools and knowledge you need to create state-of-the-art neural
+net architectures and train them at scale using various distribution strategies, on your
+own  infrastructure  or  on  the  cloud—and  you  can  even  perform  powerful  Bayesian
+optimization to fine-tune the hyperparameters!
+
+Exercises
+
+1. What does a SavedModel contain? How do you inspect its content?
+
+2. When  should  you  use  TF  Serving?  What  are  its  main  features?  What  are  some
+
+tools you can use to deploy it?
+
+3. How do you deploy a model across multiple TF Serving instances?
+
+4. When should you use the gRPC API rather than the REST API to query a model
+
+served by TF Serving?
+
+5. What  are  the  different  ways  TFLite  reduces  a  model’s  size  to  make  it  run  on  a
+
+mobile or embedded device?
+
+6. What is quantization-aware training, and why would you need it?
+
+7. What  are  model  parallelism  and  data  parallelism?  Why  is  the  latter  generally
+
+recommended?
+
+8. When training a model across multiple servers, what distribution strategies can
+
+you use? How do you choose which one to use?
+
+9. Train a model (any model you like) and deploy it to TF Serving or Google Cloud
+AI Platform. Write the client code to query it using the REST API or the gRPC
+
+Exercises 
+
+| 
+
+717
+
+API.  Update  the  model  and  deploy  the  new  version.  Your  client  code  will  now
+query the new version. Roll back to the first version.
+
+10. Train any model across multiple GPUs on the same machine using the Mirrored
+Strategy (if you do not have access to GPUs, you can use Colaboratory with a
+GPU  Runtime  and  create  two  virtual  GPUs).  Train  the  model  again  using  the
+CentralStorageStrategy and compare the training time.
+
+11. Train a small model on Google Cloud AI Platform, using black box hyperpara‐
+
+meter tuning.
+
+Thank You!
+Before we close the last chapter of this book, I would like to thank you for reading it
+up to the last paragraph. I truly hope that you had as much pleasure reading this book
+as I had writing it, and that it will be useful for your projects, big or small.
+
+If you find errors, please send feedback. More generally, I would love to know what
+you  think,  so  please  don’t  hesitate  to  contact  me  via  O’Reilly,  through  the  ageron/
+handson-ml2 GitHub project, or on Twitter at @aureliengeron.
+
+Going forward, my best advice to you is to practice and practice: try going through all
+the exercises (if you have not done so already), play with the Jupyter notebooks, join
+Kaggle.com  or  some  other  ML  community,  watch  ML  courses,  read  papers,  attend
+conferences, and meet experts. It also helps tremendously to have a concrete project
+to work on, whether it is for work or for fun (ideally for both), so if there’s anything
+you have always dreamt of building, give it a shot! Work incrementally; don’t shoot
+for the moon right away, but stay focused on your project and build it piece by piece.
+It  will  require  patience  and  perseverance,  but  when  you  have  a  walking  robot,  or  a
+working chatbot, or whatever else you fancy to build, it will be immensely rewarding.
+
+My greatest hope is that this book will inspire you to build a wonderful ML applica‐
+tion that will benefit all of us! What will it be?
+
+—Aurélien Géron, June 17, 2019
+
+718 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+APPENDIX A
+Exercise Solutions
+
+Solutions to the coding exercises are available in the online Jupyter
+notebooks at https://github.com/ageron/handson-ml2.
+
+Chapter 1: The Machine Learning Landscape
+
+1. Machine Learning is about building systems that can learn from data. Learning
+
+means getting better at some task, given some performance measure.
+
+2. Machine Learning is great for complex problems for which we have no algorith‐
+mic solution, to replace long lists of hand-tuned rules, to build systems that adapt
+to fluctuating environments, and finally to help humans learn (e.g., data mining).
+
+3. A labeled training set is a training set that contains the desired solution (a.k.a. a
+
+label) for each instance.
+
+4. The two most common supervised tasks are regression and classification.
+
+5. Common  unsupervised  tasks  include  clustering,  visualization,  dimensionality
+
+reduction, and association rule learning.
+
+6. Reinforcement Learning is likely to perform best if we want a robot to learn to
+walk in various unknown terrains, since this is typically the type of problem that
+Reinforcement Learning tackles. It might be possible to express the problem as a
+supervised or semisupervised learning problem, but it would be less natural.
+
+7. If you don’t know how to define the groups, then you can use a clustering algo‐
+rithm (unsupervised learning) to segment your customers into clusters of similar
+customers. However, if you know what groups you would like to have, then you
+
+719
+
+can feed many examples of each group to a classification algorithm (supervised
+learning), and it will classify all your customers into these groups.
+
+8. Spam  detection  is  a  typical  supervised  learning  problem:  the  algorithm  is  fed
+
+many emails along with their labels (spam or not spam).
+
+9. An online learning system can learn incrementally, as opposed to a batch learn‐
+ing system. This makes it capable of adapting rapidly to both changing data and
+autonomous systems, and of training on very large quantities of data.
+
+10. Out-of-core  algorithms  can  handle  vast  quantities  of  data  that  cannot  fit  in  a
+computer’s main memory. An out-of-core learning algorithm chops the data into
+mini-batches  and  uses  online  learning  techniques  to  learn  from  these  mini-
+batches.
+
+11. An instance-based learning system learns the training data by heart; then, when
+given a new instance, it uses a similarity measure to find the most similar learned
+instances and uses them to make predictions.
+
+12. A model has one or more model parameters that determine what it will predict
+given a new instance (e.g., the slope of a linear model). A learning algorithm tries
+to find optimal values for these parameters such that the model generalizes well
+to  new  instances.  A  hyperparameter  is  a  parameter  of  the  learning  algorithm
+itself, not of the model (e.g., the amount of regularization to apply).
+
+13. Model-based  learning  algorithms  search  for  an  optimal  value  for  the  model
+parameters such that the model will generalize well to new instances. We usually
+train such systems by minimizing a cost function that measures how bad the sys‐
+tem is at making predictions on the training data, plus a penalty for model com‐
+plexity  if  the  model  is  regularized.  To  make  predictions,  we  feed  the  new
+instance’s features into the model’s prediction function, using the parameter val‐
+ues found by the learning algorithm.
+
+14. Some of the main challenges in Machine Learning are the lack of data, poor data
+quality, nonrepresentative data, uninformative features, excessively simple mod‐
+els  that  underfit  the  training  data,  and  excessively  complex  models  that  overfit
+the data.
+
+15. If  a  model  performs  great  on  the  training  data  but  generalizes  poorly  to  new
+instances,  the  model  is  likely  overfitting  the  training  data  (or  we  got  extremely
+lucky  on  the  training  data).  Possible  solutions  to  overfitting  are  getting  more
+data, simplifying the model (selecting a simpler algorithm, reducing the number
+of parameters or features used, or regularizing the model), or reducing the noise
+in the training data.
+
+16. A test set is used to estimate the generalization error that a model will make on
+
+new instances, before the model is launched in production.
+
+720 
+
+|  Appendix A: Exercise Solutions
+
+17. A validation set is used to compare models. It makes it possible to select the best
+
+model and tune the hyperparameters.
+
+18. The train-dev set is used when there is a risk of mismatch between the training
+data and the data used in the validation and test datasets (which should always be
+as close as possible to the data used once the model is in production). The train-
+dev set is a part of the training set that’s held out (the model is not trained on it).
+The  model  is  trained  on  the  rest  of  the  training  set,  and  evaluated  on  both  the
+train-dev set and the validation set. If the model performs well on the training set
+but not on the train-dev set, then the model is likely overfitting the training set. If
+it performs well on both the training set and the train-dev set, but not on the val‐
+idation set, then there is probably a significant data mismatch between the train‐
+ing  data  and  the  validation  +  test  data,  and  you  should  try  to  improve  the
+training data to make it look more like the validation + test data.
+
+19. If  you  tune  hyperparameters  using  the  test  set,  you  risk  overfitting  the  test  set,
+and  the  generalization  error  you  measure  will  be  optimistic  (you  may  launch  a
+model that performs worse than you expect).
+
+Chapter 2: End-to-End Machine Learning Project
+See the Jupyter notebooks available at https://github.com/ageron/handson-ml2.
+
+Chapter 3: Classification
+See the Jupyter notebooks available at https://github.com/ageron/handson-ml2.
+
+Chapter 4: Training Models
+
+1. If you have a training set with millions of features you can use

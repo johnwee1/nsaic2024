@@ -1,0 +1,341 @@
+iffer‐
+ence. It’s unclear whether this idea would actually work for companies, but it certainly
+does for neural networks. Neurons trained with dropout cannot co-adapt with their
+neighboring  neurons;  they  have  to  be  as  useful  as  possible  on  their  own.  They  also
+cannot rely excessively on just a few input neurons; they must pay attention to each of
+their input neurons. They end up being less sensitive to slight changes in the inputs.
+In the end, you get a more robust network that generalizes better.
+
+Another  way  to  understand  the  power  of  dropout  is  to  realize  that  a  unique  neural
+network is generated at each training step. Since each neuron can be either present or
+absent, there are a total of 2N possible networks (where N is the total number of drop‐
+pable neurons). This is such a huge number that it is virtually impossible for the same
+neural  network  to  be  sampled  twice.  Once  you  have  run  10,000  training  steps,  you
+have essentially trained 10,000 different neural networks (each with just one training
+instance).  These  neural  networks  are  obviously  not  independent  because  they  share
+many  of  their  weights,  but  they  are  nevertheless  all  different.  The  resulting  neural
+network can be seen as an averaging ensemble of all these smaller neural networks.
+
+366 
+
+| 
+
+Chapter 11: Training Deep Neural Networks
+
+In practice, you can usually apply dropout only to the neurons in
+the top one to three layers (excluding the output layer).
+
+There  is  one  small  but  important  technical  detail.  Suppose  p  =  50%,  in  which  case
+during  testing  a  neuron  would  be  connected  to  twice  as  many  input  neurons  as  it
+would be (on average) during training. To compensate for this fact, we need to multi‐
+ply  each  neuron’s  input  connection  weights  by  0.5  after  training.  If  we  don’t,  each
+neuron  will  get  a  total  input  signal  roughly  twice  as  large  as  what  the  network  was
+trained on and will be unlikely to perform well. More generally, we need to multiply
+each input connection weight by the keep probability (1 – p) after training. Alterna‐
+tively,  we  can  divide  each  neuron’s  output  by  the  keep  probability  during  training
+(these alternatives are not perfectly equivalent, but they work equally well).
+
+To  implement  dropout  using  Keras,  you  can  use  the  keras.layers.Dropout  layer.
+During training, it randomly drops some inputs (setting them to 0) and divides the
+remaining inputs by the keep probability. After training, it does nothing at all; it just
+passes the inputs to the next layer. The following code applies dropout regularization
+before every Dense layer, using a dropout rate of 0.2:
+
+model = keras.models.Sequential([
+    keras.layers.Flatten(input_shape=[28, 28]),
+    keras.layers.Dropout(rate=0.2),
+    keras.layers.Dense(300, activation="elu", kernel_initializer="he_normal"),
+    keras.layers.Dropout(rate=0.2),
+    keras.layers.Dense(100, activation="elu", kernel_initializer="he_normal"),
+    keras.layers.Dropout(rate=0.2),
+    keras.layers.Dense(10, activation="softmax")
+])
+
+Since dropout is only active during training, comparing the train‐
+ing loss and the validation loss can be misleading. In particular, a
+model  may  be  overfitting  the  training  set  and  yet  have  similar
+training and validation losses. So make sure to evaluate the training
+loss without dropout (e.g., after training).
+
+If you observe that the model is overfitting, you can increase the dropout rate. Con‐
+versely, you should try decreasing the dropout rate if the model underfits the training
+set.  It  can  also  help  to  increase  the  dropout  rate  for  large  layers,  and  reduce  it  for
+small ones. Moreover, many state-of-the-art architectures only use dropout after the
+last hidden layer, so you may want to try this if full dropout is too strong.
+
+Avoiding Overfitting Through Regularization 
+
+| 
+
+367
+
+Dropout does tend to significantly slow down convergence, but it usually results in a
+much better model when tuned properly. So, it is generally well worth the extra time
+and effort.
+
+If you want to regularize a self-normalizing network based on the
+SELU  activation  function  (as  discussed  earlier),  you  should  use
+alpha dropout: this is a variant of dropout that preserves the mean
+and standard deviation of its inputs (it was introduced in the same
+paper as SELU, as regular dropout would break self-normalization).
+
+Monte Carlo (MC) Dropout
+In 2016, a paper25 by Yarin Gal and Zoubin Ghahramani added a few more good rea‐
+sons to use dropout:
+
+• First,  the  paper  established  a  profound  connection  between  dropout  networks
+(i.e., neural networks containing a Dropout layer before every weight layer) and
+approximate Bayesian inference,26 giving dropout a solid mathematical justifica‐
+tion.
+
+• Second, the authors introduced a powerful technique called MC Dropout, which
+can  boost  the  performance  of  any  trained  dropout  model  without  having  to
+retrain it or even modify it at all, provides a much better measure of the model’s
+uncertainty, and is also amazingly simple to implement.
+
+If this all sounds like a “one weird trick” advertisement, then take a look at the follow‐
+ing  code.  It  is  the  full  implementation  of  MC  Dropout,  boosting  the  dropout  model
+we trained earlier without retraining it:
+
+y_probas = np.stack([model(X_test_scaled, training=True)
+                     for sample in range(100)])
+y_proba = y_probas.mean(axis=0)
+
+We just make 100 predictions over the test set, setting training=True to ensure that
+the Dropout layer is active, and stack the predictions. Since dropout is active, all the
+predictions will be different. Recall that predict() returns a matrix with one row per
+instance and one column per class. Because there are 10,000 instances in the test set
+and 10 classes, this is a matrix of shape [10000, 10]. We stack 100 such matrices, so
+y_probas  is  an  array  of  shape  [100,  10000,  10].  Once  we  average  over  the  first
+
+25 Yarin Gal and Zoubin Ghahramani, “Dropout as a Bayesian Approximation: Representing Model Uncertainty
+in Deep Learning,” Proceedings of the 33rd International Conference on Machine Learning (2016): 1050–1059.
+
+26 Specifically, they show that training a dropout network is mathematically equivalent to approximate Bayesian
+
+inference in a specific type of probabilistic model called a Deep Gaussian Process.
+
+368 
+
+| 
+
+Chapter 11: Training Deep Neural Networks
+
+dimension (axis=0), we get y_proba, an array of shape [10000, 10], like we would get
+with a single prediction. That’s all! Averaging over multiple predictions with dropout
+on gives us a Monte Carlo estimate that is generally more reliable than the result of a
+single  prediction  with  dropout  off.  For  example,  let’s  look  at  the  model’s  prediction
+for the first instance in the Fashion MNIST test set, with dropout off:
+
+>>> np.round(model.predict(X_test_scaled[:1]), 2)
+array([[0.  , 0.  , 0.  , 0.  , 0.  , 0.  , 0.  , 0.01, 0.  , 0.99]],
+      dtype=float32)
+
+The  model  seems  almost  certain  that  this  image  belongs  to  class  9  (ankle  boot).
+Should  you  trust  it?  Is  there  really  so  little  room  for  doubt?  Compare  this  with  the
+predictions made when dropout is activated:
+
+>>> np.round(y_probas[:, :1], 2)
+array([[[0.  , 0.  , 0.  , 0.  , 0.  , 0.14, 0.  , 0.17, 0.  , 0.68]],
+       [[0.  , 0.  , 0.  , 0.  , 0.  , 0.16, 0.  , 0.2 , 0.  , 0.64]],
+       [[0.  , 0.  , 0.  , 0.  , 0.  , 0.02, 0.  , 0.01, 0.  , 0.97]],
+       [...]
+
+This  tells  a  very  different  story:  apparently,  when  we  activate  dropout,  the  model  is
+not  sure  anymore.  It  still  seems  to  prefer  class  9,  but  sometimes  it  hesitates  with
+classes 5 (sandal) and 7 (sneaker), which makes sense given they’re all footwear. Once
+we average over the first dimension, we get the following MC Dropout predictions:
+
+>>> np.round(y_proba[:1], 2)
+array([[0.  , 0.  , 0.  , 0.  , 0.  , 0.22, 0.  , 0.16, 0.  , 0.62]],
+      dtype=float32)
+
+The model still thinks this image belongs to class 9, but only with a 62% confidence,
+which seems much more reasonable than 99%. Plus it’s useful to know exactly which
+other classes it thinks are likely. And you can also take a look at the standard devia‐
+tion of the probability estimates:
+
+>>> y_std = y_probas.std(axis=0)
+>>> np.round(y_std[:1], 2)
+array([[0.  , 0.  , 0.  , 0.  , 0.  , 0.28, 0.  , 0.21, 0.02, 0.32]],
+      dtype=float32)
+
+Apparently  there’s  quite  a  lot  of  variance  in  the  probability  estimates:  if  you  were
+building a risk-sensitive system (e.g., a medical or financial system), you should prob‐
+ably  treat  such  an  uncertain  prediction  with  extreme  caution.  You  definitely  would
+not  treat  it  like  a  99%  confident  prediction.  Moreover,  the  model’s  accuracy  got  a
+small boost from 86.8 to 86.9:
+
+>>> accuracy = np.sum(y_pred == y_test) / len(y_test)
+>>> accuracy
+0.8694
+
+Avoiding Overfitting Through Regularization 
+
+| 
+
+369
+
+The number of Monte Carlo samples you use (100 in this example)
+is a hyperparameter you can tweak. The higher it is, the more accu‐
+rate  the  predictions  and  their  uncertainty  estimates  will  be.  How‐
+ever,  if  you  double  it,  inference  time  will  also  be  doubled.
+Moreover, above a certain number of samples, you will notice little
+improvement.  So  your  job  is  to  find  the  right  trade-off  between
+latency and accuracy, depending on your application.
+
+If your model contains other layers that behave in a special way during training (such
+as BatchNormalization layers), then you should not force training mode like we just
+did.  Instead,  you  should  replace  the  Dropout  layers  with  the  following  MCDropout
+class:27
+
+class MCDropout(keras.layers.Dropout):
+    def call(self, inputs):
+        return super().call(inputs, training=True)
+
+Here, we just subclass the Dropout layer and override the call() method to force its
+training argument to True (see Chapter 12). Similarly, you could define an MCAlpha
+Dropout class by subclassing AlphaDropout instead. If you are creating a model from
+scratch, it’s just a matter of using MCDropout rather than Dropout. But if you have a
+model that was already trained using Dropout, you need to create a new model that’s
+identical to the existing model except that it replaces the Dropout layers with MCDrop
+out, then copy the existing model’s weights to your new model.
+
+In short, MC Dropout is a fantastic technique that boosts dropout models and pro‐
+vides better uncertainty estimates. And of course, since it is just regular dropout dur‐
+ing training, it also acts like a regularizer.
+
+Max-Norm Regularization
+Another regularization technique that is popular for neural networks is called max-
+norm  regularization:  for  each  neuron,  it  constrains  the  weights  w  of  the  incoming
+connections such that ∥ w ∥2 ≤ r, where r is the max-norm hyperparameter and ∥ · ∥2
+is the ℓ2 norm.
+
+Max-norm regularization does not add a regularization loss term to the overall loss
+function. Instead, it is typically implemented by computing ∥w∥2 after each training
+step and rescaling w if needed (w ← w r/‖ w ‖2).
+
+27 This MCDropout class will work with all Keras APIs, including the Sequential API. If you only care about the
+
+Functional API or the Subclassing API, you do not have to create an MCDropout class; you can create a regular
+Dropout layer and call it with training=True.
+
+370 
+
+| 
+
+Chapter 11: Training Deep Neural Networks
+
+Reducing r increases the amount of regularization and helps reduce overfitting. Max-
+norm  regularization  can  also  help  alleviate  the  unstable  gradients  problems  (if  you
+are not using Batch Normalization).
+
+To  implement  max-norm  regularization  in  Keras,  set  the  kernel_constraint  argu‐
+ment of each hidden layer to a max_norm() constraint with the appropriate max value,
+like this:
+
+keras.layers.Dense(100, activation="elu", kernel_initializer="he_normal",
+                   kernel_constraint=keras.constraints.max_norm(1.))
+
+After each training iteration, the model’s fit() method will call the object returned
+by  max_norm(), passing it the layer’s weights and getting rescaled weights in return,
+which  then  replace  the  layer’s  weights.  As  you’ll  see  in  Chapter  12,  you  can  define
+your  own  custom  constraint  function  if  necessary  and  use  it  as  the  kernel_con
+straint.  You  can  also  constrain  the  bias  terms  by  setting  the  bias_constraint
+argument.
+
+The max_norm() function has an axis argument that defaults to 0. A Dense layer usu‐
+ally  has  weights  of  shape  [number  of  inputs,  number  of  neurons],  so  using  axis=0
+means  that  the  max-norm  constraint  will  apply  independently  to  each  neuron’s
+weight  vector.  If  you  want  to  use  max-norm  with  convolutional  layers  (see  Chap‐
+ter  14),  make  sure  to  set  the  max_norm()  constraint’s  axis  argument  appropriately
+(usually axis=[0, 1, 2]).
+
+Summary and Practical Guidelines
+In this chapter we have covered a wide range of techniques, and you may be wonder‐
+ing which ones you should use. This depends on the task, and there is no clear con‐
+sensus  yet,  but  I  have  found  the  configuration  in  Table  11-3  to  work  fine  in  most
+cases, without requiring much hyperparameter tuning. That said, please do not con‐
+sider these defaults as hard rules!
+
+Table 11-3. Default DNN configuration
+
+Hyperparameter
+Kernel initializer
+
+Default value
+He initialization
+
+Activation function
+
+ELU
+
+Normalization
+
+Regularization
+
+Optimizer
+
+None if shallow; Batch Norm if deep
+Early stopping (+ℓ2 reg. if needed)
+Momentum optimization (or RMSProp or Nadam)
+
+Learning rate schedule
+
+1cycle
+
+Summary and Practical Guidelines 
+
+| 
+
+371
+
+If the network is a simple stack of dense layers, then it can self-normalize, and you
+should use the configuration in Table 11-4 instead.
+
+Table 11-4. DNN configuration for a self-normalizing net
+
+Hyperparameter
+Kernel initializer
+
+Default value
+LeCun initialization
+
+Activation function
+
+SELU
+
+Normalization
+
+Regularization
+
+Optimizer
+
+None (self-normalization)
+
+Alpha dropout if needed
+
+Momentum optimization (or RMSProp or Nadam)
+
+Learning rate schedule
+
+1cycle
+
+Don’t forget to normalize the input features! You should also try to reuse parts of a
+pretrained neural network if you can find one that solves a similar problem, or use
+unsupervised pretraining if you have a lot of unlabeled data, or use pretraining on an
+auxiliary task if you have a lot of labeled data for a similar task.
+
+While the previous guidelines should cover most cases, here are some exceptions:
+
+• If you need a sparse model, you can use ℓ1 regularization (and optionally zero out
+the tiny weights after training). If you need an even sparser model, you can use
+the TensorFlow Model Optimization Toolkit. This will break self-normalization,
+so you should use the default configuration in this case.
+
+• If  you  need  a  low-latency  model  (one  that  performs  lightning-fast  predictions),
+you  may  need  to  use  fewer  layers,  fold  the  Batch  Normalization  layers  into  the
+previous layers, and possibly use a faster activation function such as leaky ReLU
+or  just  ReLU.  Having  a  sparse  model  will  also  help.  Finally,  you  may  want  to
+reduce  the  float  precision  from  32  bits  to  16  or  even  8  bits  (see  “Deploying  a
+Model  to  a  Mobile  or  Embedde

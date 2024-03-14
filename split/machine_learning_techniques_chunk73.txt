@@ -1,0 +1,299 @@
+upper Multi-Head Attention layer is where the decoder pays attention to the
+words in the input sentence. For example, the decoder will probably pay close
+attention to the word “Queen” in the input sentence when it is about to output
+this word’s translation.
+
+— The positional embeddings are simply dense vectors (much like word embed‐
+dings) that represent the position of a word in the sentence. The nth positional
+embedding is added to the word embedding of the nth word in each sentence.
+This gives the model access to each word’s position, which is needed because
+the Multi-Head Attention layers do not consider the order or the position of
+the words; they only look at their relationships. Since all the other layers are
+
+556 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+time-distributed,  they  have  no  way  of  knowing  the  position  of  each  word
+(either  relative  or  absolute).  Obviously,  the  relative  and  absolute  word  posi‐
+tions  are  important,  so  we  need  to  give  this  information  to  the  Transformer
+somehow, and positional embeddings are a good way to do this.
+
+Let’s look a bit closer at both these novel components of the Transformer architecture,
+starting with the positional embeddings.
+
+Positional embeddings
+
+A positional embedding is a dense vector that encodes the position of a word within a
+sentence: the ith positional embedding is simply added to the word embedding of the
+ith word in the sentence. These positional embeddings can be learned by the model,
+but  in  the  paper  the  authors  preferred  to  use  fixed  positional  embeddings,  defined
+using  the  sine  and  cosine  functions  of  different  frequencies.  The  positional  embed‐
+ding  matrix  P  is  defined  in  Equation  16-2  and  represented  at  the  bottom  of
+Figure  16-9  (transposed),  where  Pp,i  is  the  ith  component  of  the  embedding  for  the
+word located at the pth position in the sentence.
+
+Equation 16-2. Sine/cosine positional embeddings
+
+Pp, 2i = sin p/100002i/d
+Pp, 2i + 1 = cos p/100002i/d
+
+Figure 16-9. Sine/cosine positional embedding matrix (transposed, top) with a focus on
+two values of i (bottom)
+
+Attention Mechanisms 
+
+| 
+
+557
+
+This solution gives the same performance as learned positional embeddings do, but it
+can extend to arbitrarily long sentences, which is why it’s favored. After the positional
+embeddings are added to the word embeddings, the rest of the model has access to
+the  absolute  position  of  each  word  in  the  sentence  because  there  is  a  unique  posi‐
+tional embedding for each position (e.g., the positional embedding for the word loca‐
+ted at the 22nd position in a sentence is represented by the vertical dashed line at the
+bottom left of Figure 16-9, and you can see that it is unique to that position). More‐
+over,  the  choice  of  oscillating  functions  (sine  and  cosine)  makes  it  possible  for  the
+model to learn relative positions as well. For example, words located 38 words apart
+(e.g., at positions p = 22 and p = 60) always have the same positional embedding val‐
+ues in the embedding dimensions i = 100 and i = 101, as you can see in Figure 16-9.
+This explains why we need both the sine and the cosine for each frequency: if we only
+used the sine (the blue wave at i = 100), the model would not be able to distinguish
+positions p = 25 and p = 35 (marked by a cross).
+
+There  is  no  PositionalEmbedding  layer  in  TensorFlow,  but  it  is  easy  to  create  one.
+For efficiency reasons, we precompute the positional embedding matrix in the con‐
+structor  (so  we  need  to  know  the  maximum  sentence  length,  max_steps,  and  the
+number  of  dimensions  for  each  word  representation,  max_dims).  Then  the  call()
+method  crops  this  embedding  matrix  to  the  size  of  the  inputs,  and  it  adds  it  to  the
+inputs. Since we added an extra first dimension of size 1 when creating the positional
+embedding matrix, the rules of broadcasting will ensure that the matrix gets added to
+every sentence in the inputs:
+
+class PositionalEncoding(keras.layers.Layer):
+    def __init__(self, max_steps, max_dims, dtype=tf.float32, **kwargs):
+        super().__init__(dtype=dtype, **kwargs)
+        if max_dims % 2 == 1: max_dims += 1 # max_dims must be even
+        p, i = np.meshgrid(np.arange(max_steps), np.arange(max_dims // 2))
+        pos_emb = np.empty((1, max_steps, max_dims))
+        pos_emb[0, :, ::2] = np.sin(p / 10000**(2 * i / max_dims)).T
+        pos_emb[0, :, 1::2] = np.cos(p / 10000**(2 * i / max_dims)).T
+        self.positional_embedding = tf.constant(pos_emb.astype(self.dtype))
+    def call(self, inputs):
+        shape = tf.shape(inputs)
+        return inputs + self.positional_embedding[:, :shape[-2], :shape[-1]]
+
+Then we can create the first layers of the Transformer:
+
+embed_size = 512; max_steps = 500; vocab_size = 10000
+encoder_inputs = keras.layers.Input(shape=[None], dtype=np.int32)
+decoder_inputs = keras.layers.Input(shape=[None], dtype=np.int32)
+embeddings = keras.layers.Embedding(vocab_size, embed_size)
+encoder_embeddings = embeddings(encoder_inputs)
+decoder_embeddings = embeddings(decoder_inputs)
+positional_encoding = PositionalEncoding(max_steps, max_dims=embed_size)
+encoder_in = positional_encoding(encoder_embeddings)
+decoder_in = positional_encoding(decoder_embeddings)
+
+558 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+Now let’s look deeper into the heart of the Transformer model: the Multi-Head Atten‐
+tion layer.
+
+Multi-Head Attention
+
+To understand how a Multi-Head Attention layer works, we must first understand the
+Scaled  Dot-Product  Attention  layer,  which  it  is  based  on.  Let’s  suppose  the  encoder
+analyzed the input sentence “They played chess,” and it managed to understand that
+the word “They” is the subject and the word “played” is the verb, so it encoded this
+information  in  the  representations  of  these  words.  Now  suppose  the  decoder  has
+already translated the subject, and it thinks that it should translate the verb next. For
+this, it needs to fetch the verb from the input sentence. This is analog to a dictionary
+lookup: it’s as if the encoder created a dictionary {“subject”: “They”, “verb”: “played”,
+…} and the decoder wanted to look up the value that corresponds to the key “verb.”
+However, the model does not have discrete tokens to represent the keys (like “subject”
+or “verb”); it has vectorized representations of these concepts (which it learned dur‐
+ing training), so the key it will use for the lookup (called the query) will not perfectly
+match  any  key  in  the  dictionary.  The  solution  is  to  compute  a  similarity  measure
+between the query and each key in the dictionary, and then use the softmax function
+to convert these similarity scores to weights that add up to 1. If the key that represents
+the verb is by far the most similar to the query, then that key’s weight will be close to
+1. Then the model can compute a weighted sum of the corresponding values, so if the
+weight of the “verb” key is close to 1, then the weighted sum will be very close to the
+representation of the word “played.” In short, you can think of this whole process as a
+differentiable dictionary lookup. The similarity measure used by the Transformer is
+just the dot product, like in Luong attention. In fact, the equation is the same as for
+Luong attention, except for a scaling factor. The equation is shown in Equation 16-3,
+in a vectorized form.
+
+Equation 16-3. Scaled Dot-Product Attention
+
+Attention , ,  = softmax
+
+⊺
+dkeys
+
+
+
+In this equation:
+
+• Q  is  a  matrix  containing  one  row  per  query.  Its  shape  is  [nqueries,  dkeys],  where
+nqueries  is  the  number  of  queries  and  dkeys  is  the  number  of  dimensions  of  each
+query and each key.
+
+• K is a matrix containing one row per key. Its shape is [nkeys, dkeys], where nkeys is
+
+the number of keys and values.
+
+Attention Mechanisms 
+
+| 
+
+559
+
+• V is a matrix containing one row per value. Its shape is [nkeys, dvalues], where dvalues
+
+is the number of each value.
+
+• The  shape  of  Q  K⊺  is  [nqueries,  nkeys]:  it  contains  one  similarity  score  for  each
+query/key  pair.  The  output  of  the  softmax  function  has  the  same  shape,  but  all
+rows sum up to 1. The final output has a shape of [nqueries, dvalues]: there is one row
+per query, where each row represents the query result (a weighted sum of the val‐
+ues).
+
+• The scaling factor scales down the similarity scores to avoid saturating the soft‐
+
+max function, which would lead to tiny gradients.
+
+• It  is  possible  to  mask  out  some  key/value  pairs  by  adding  a  very  large  negative
+value to the corresponding similarity scores, just before computing the softmax.
+This is useful in the Masked Multi-Head Attention layer.
+
+In the encoder, this equation is applied to every input sentence in the batch, with Q,
+K, and V all equal to the list of words in the input sentence (so each word in the sen‐
+tence  will  be  compared  to  every  word  in  the  same  sentence,  including  itself).  Simi‐
+larly,  in  the  decoder’s  masked  attention  layer,  the  equation  will  be  applied  to  every
+target sentence in the batch, with Q, K, and V all equal to the list of words in the tar‐
+get sentence, but this time using a mask to prevent any word from comparing itself to
+words located after it (at inference time the decoder will only have access to the words
+it  already  output,  not  to  future  words,  so  during  training  we  must  mask  out  future
+output tokens). In the upper attention layer of the decoder, the keys K and values V
+are simply the list of word encodings produced by the encoder, and the queries Q are
+the list of word encodings produced by the decoder.
+
+The keras.layers.Attention layer implements Scaled Dot-Product Attention, effi‐
+ciently applying Equation 16-3 to multiple sentences in a batch. Its inputs are just like
+Q, K, and V, except with an extra batch dimension (the first dimension).
+
+In TensorFlow, if  A and  B are tensors with more than two dimen‐
+sions—say,  of  shape  [2,  3,  4,  5]  and  [2,  3,  5,  6]  respectively—then
+tf.matmul(A, B) will treat these tensors as 2 × 3 arrays where each
+cell contains a matrix, and it will multiply the corresponding matri‐
+ces: the matrix at the ith row and jth column in A will be multiplied
+by the matrix at the ith row and jth column in B. Since the product of
+a 4 × 5 matrix with a 5 × 6 matrix is a 4 × 6 matrix, tf.matmul(A,
+B) will return an array of shape [2, 3, 4, 6].
+
+560 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+If  we  ignore  the  skip  connections,  the  layer  normalization  layers,  the  Feed  Forward
+blocks, and the fact that this is Scaled Dot-Product Attention, not exactly Multi-Head
+Attention, then the rest of the Transformer model can be implemented like this:
+
+Z = encoder_in
+for N in range(6):
+    Z = keras.layers.Attention(use_scale=True)([Z, Z])
+
+encoder_outputs = Z
+Z = decoder_in
+for N in range(6):
+    Z = keras.layers.Attention(use_scale=True, causal=True)([Z, Z])
+    Z = keras.layers.Attention(use_scale=True)([Z, encoder_outputs])
+
+outputs = keras.layers.TimeDistributed(
+    keras.layers.Dense(vocab_size, activation="softmax"))(Z)
+
+The  use_scale=True  argument  creates  an  additional  parameter  that  lets  the  layer
+learn how to properly downscale the similarity scores. This is a bit different from the
+Transformer model, which always downscales the similarity scores by the same factor
+( dkeys).  The  causal=True  argument  when  creating  the  second  attention  layer
+ensures  that  each  output  token  only  attends  to  previous  output  tokens,  not  future
+ones.
+
+Now it’s time to look at the final piece of the puzzle: what is a Multi-Head Attention
+layer? Its architecture is shown in Figure 16-10.
+
+Attention Mechanisms 
+
+| 
+
+561
+
+Figure 16-10. Multi-Head Attention layer architecture23
+
+As you can see, it is just a bunch of Scaled Dot-Product Attention layers, each pre‐
+ceded  by  a  linear  transformation  of  the  values,  keys,  and  queries  (i.e.,  a  time-
+distributed  Dense  layer  with  no  activation  function).  All  the  outputs  are  simply
+concatenated,  and  they  go  through  a  final  linear  transformation  (again,  time-
+distributed). But why? What is the intuition behind this architecture? Well, consider
+the  word  “played”  we  discussed  earlier  (in  the  sentence  “They  played  chess”).  The
+encoder was smart enough to encode the fact that it is a verb. But the word represen‐
+tation also includes its position in the text, thanks to the positional encodings, and it
+probably includes many other features that are useful for its translation, such as the
+fact that it is in the past tense. In short, the word representation encodes many differ‐
+ent characteristics of the word. If we just used a single Scaled Dot-Product Attention
+layer, we would only be able to query all of these characteristics in one shot. This is
+why the Multi-Head Attention layer applies multiple different linear transformations
+of the values, keys, and queries: this allows the model to apply many different projec‐
+tions of the word representation into different subspaces, each focusing on a subset of
+the word’s characteristics. Perhaps one of the linear layers will project the word repre‐
+sentation into a subspace where all that remains is the information that the word is a
+
+23 This is the right part of figure 2 from the paper, reproduced with the kind authorization of the authors.
+
+562 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+verb, another linear layer will extract just the fact that it is past tense, and so on. Then
+the Scaled Dot-Product Attention layers implement the lookup phase, and finally we
+concatenate all the results and project them back to the original space.
+
+At  the  time  of  this  writing,  there  is  no  Transformer  class  or  MultiHeadAttention
+class available for TensorFlow 2. However, you can check out TensorFlow’s great tuto‐
+rial for building a Transformer model for language understanding. Moreover, the TF
+Hub team is currently porting several Transformer-based modules to TensorFlow 2,
+and they should be available soon. In the meantime, I hope I have demonstrated that
+it  is  not  that  hard  to  implement  a  Transformer  yourself,  and  it  is  certainly  a  great
+exercise!
+
+Recent Innovations in Language Models
+The  year  2018  has  been  called  the  “ImageNet  moment  for  NLP”:  progress  was
+astounding,  with  larger  and  larger  LSTM  and  Transformer-based  architectures
+trained  on  immense  datasets.  I  highly  recommend  you  check  out  the  following
+papers, all published in 2018:
+
+• The  ELMo  paper24  by  Matthew  Peters  introduced  Embeddings  from  Language
+Models  (ELMo):  these  are  contextualized  word  embeddings  learned  from  the
+internal  states  of  a  deep  bidirectional  language  model.  For  example,  the  word
+“queen”  will  not  have  the  same  embedding  in  “Queen  of  the  United  Kingdom”
+and in “queen bee.”
+
+• The ULMFiT paper25 by Jeremy Howard and Sebastian Ruder demonstrated the
+effectiveness  of  unsupervised  pretraining  for  NLP  tasks:  the  authors  trained  an
+LSTM  language  model  using  self-supervised  learning  (i.e.,  generating  the  labels
+automatically  from  the  data)  on  a  huge  text  corpus,  then  they  fine-tuned  it  on
+various tasks. Their mo

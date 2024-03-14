@@ -1,0 +1,338 @@
+, you would need to tell the tape to watch them.
+
+Most  of  the  time  a  gradient  tape  is  used  to  compute  the  gradients  of  a  single  value
+(usually the loss) with regard to a set of values (usually the model parameters). This is
+where reverse-mode autodiff shines, as it just needs to do one forward pass and one
+reverse pass to get all the gradients at once. If you try to compute the gradients of a
+vector,  for  example  a  vector  containing  multiple  losses,  then  TensorFlow  will  com‐
+pute the gradients of the vector’s sum. So if you ever need to get the individual gradi‐
+ents (e.g., the gradients of each loss with regard to the model parameters), you must
+call  the  tape’s  jacobian()  method:  it  will  perform  reverse-mode  autodiff  once  for
+each  loss  in  the  vector  (all  in  parallel  by  default).  It  is  even  possible  to  compute
+second-order partial derivatives (the Hessians, i.e., the partial derivatives of the par‐
+tial derivatives), but this is rarely needed in practice (see the “Computing Gradients
+with Autodiff ” section of the notebook for an example).
+
+In some cases you may want to stop gradients from backpropagating through some
+part of your neural network. To do this, you must use the tf.stop_gradient() func‐
+tion.  The  function  returns  its  inputs  during  the  forward  pass  (like  tf.identity()),
+but it does not let gradients through during backpropagation (it acts like a constant):
+
+def f(w1, w2):
+    return 3 * w1 ** 2 + tf.stop_gradient(2 * w1 * w2)
+
+with tf.GradientTape() as tape:
+    z = f(w1, w2) # same result as without stop_gradient()
+
+gradients = tape.gradient(z, [w1, w2]) # => returns [tensor 30., None]
+
+Finally, you may occasionally run into some numerical issues when computing gradi‐
+ents.  For  example,  if  you  compute  the  gradients  of  the  my_softplus()  function  for
+large inputs, the result will be NaN:
+
+>>> x = tf.Variable([100.])
+>>> with tf.GradientTape() as tape:
+...     z = my_softplus(x)
+...
+>>> tape.gradient(z, [x])
+<tf.Tensor: [...] numpy=array([nan], dtype=float32)>
+
+Customizing Models and Training Algorithms 
+
+| 
+
+401
+
+This is because computing the gradients of this function using autodiff leads to some
+numerical  difficulties:  due  to  floating-point  precision  errors,  autodiff  ends  up  com‐
+puting infinity divided by infinity (which returns NaN). Fortunately, we can analyti‐
+cally find that the derivative of the softplus function is just 1 / (1 + 1 / exp(x)), which
+is numerically stable. Next, we can tell TensorFlow to use this stable function when
+computing  the  gradients  of  the  my_softplus()  function  by  decorating  it  with
+@tf.custom_gradient and making it return both its normal output and the function
+that computes the derivatives (note that it will receive as input the gradients that were
+backpropagated so far, down to the softplus function; and according to the chain rule,
+we should multiply them with this function’s gradients):
+
+@tf.custom_gradient
+def my_better_softplus(z):
+    exp = tf.exp(z)
+    def my_softplus_gradients(grad):
+        return grad / (1 + 1 / exp)
+    return tf.math.log(exp + 1), my_softplus_gradients
+
+Now when we compute the gradients of the my_better_softplus() function, we get
+the proper result, even for large input values (however, the main output still explodes
+because of the exponential; one workaround is to use tf.where() to return the inputs
+when they are large).
+
+Congratulations! You can now compute the gradients of any function (provided it is
+differentiable  at  the  point  where  you  compute  it),  even  blocking  backpropagation
+when needed, and write your own gradient functions! This is probably more flexibil‐
+ity than you will ever need, even if you build your own custom training loops, as we
+will see now.
+
+Custom Training Loops
+In some rare cases, the fit() method may not be flexible enough for what you need
+to do. For example, the Wide & Deep paper we discussed in Chapter 10 uses two dif‐
+ferent  optimizers:  one  for  the  wide  path  and  the  other  for  the  deep  path.  Since  the
+fit() method only uses one optimizer (the one that we specify when compiling the
+model), implementing this paper requires writing your own custom loop.
+
+You may also like to write custom training loops simply to feel more confident that
+they  do  precisely  what  you  intend  them  to  do  (perhaps  you  are  unsure  about  some
+details of the fit() method). It can sometimes feel safer to make everything explicit.
+However, remember that writing a custom training loop will make your code longer,
+more error-prone, and harder to maintain.
+
+402 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+Unless you really need the extra flexibility, you should prefer using
+the  fit()  method  rather  than  implementing  your  own  training
+loop, especially if you work in a team.
+
+First, let’s build a simple model. No need to compile it, since we will handle the train‐
+ing loop manually:
+
+l2_reg = keras.regularizers.l2(0.05)
+model = keras.models.Sequential([
+    keras.layers.Dense(30, activation="elu", kernel_initializer="he_normal",
+                       kernel_regularizer=l2_reg),
+    keras.layers.Dense(1, kernel_regularizer=l2_reg)
+])
+
+Next, let’s create a tiny function that will randomly sample a batch of instances from
+the training set (in Chapter 13 we will discuss the Data API, which offers a much bet‐
+ter alternative):
+
+def random_batch(X, y, batch_size=32):
+    idx = np.random.randint(len(X), size=batch_size)
+    return X[idx], y[idx]
+
+Let’s also define a function that will display the training status, including the number
+of steps, the total number of steps, the mean loss since the start of the epoch (i.e., we
+will use the Mean metric to compute it), and other metrics:
+
+def print_status_bar(iteration, total, loss, metrics=None):
+    metrics = " - ".join(["{}: {:.4f}".format(m.name, m.result())
+                         for m in [loss] + (metrics or [])])
+    end = "" if iteration < total else "\n"
+    print("\r{}/{} - ".format(iteration, total) + metrics,
+          end=end)
+
+This  code  is  self-explanatory,  unless  you  are  unfamiliar  with  Python  string  format‐
+ting: {:.4f} will format a float with four digits after the decimal point, and using \r
+(carriage return) along with end="" ensures that the status bar always gets printed on
+the same line. In the notebook, the print_status_bar() function includes a progress
+bar, but you could use the handy tqdm library instead.
+
+With that, let’s get down to business! First, we need to define some hyperparameters
+and  choose  the  optimizer,  the  loss  function,  and  the  metrics  (just  the  MAE  in  this
+example):
+
+n_epochs = 5
+batch_size = 32
+n_steps = len(X_train) // batch_size
+optimizer = keras.optimizers.Nadam(lr=0.01)
+loss_fn = keras.losses.mean_squared_error
+
+Customizing Models and Training Algorithms 
+
+| 
+
+403
+
+mean_loss = keras.metrics.Mean()
+metrics = [keras.metrics.MeanAbsoluteError()]
+
+And now we are ready to build the custom loop!
+
+for epoch in range(1, n_epochs + 1):
+    print("Epoch {}/{}".format(epoch, n_epochs))
+    for step in range(1, n_steps + 1):
+        X_batch, y_batch = random_batch(X_train_scaled, y_train)
+        with tf.GradientTape() as tape:
+            y_pred = model(X_batch, training=True)
+            main_loss = tf.reduce_mean(loss_fn(y_batch, y_pred))
+            loss = tf.add_n([main_loss] + model.losses)
+        gradients = tape.gradient(loss, model.trainable_variables)
+        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+        mean_loss(loss)
+        for metric in metrics:
+            metric(y_batch, y_pred)
+        print_status_bar(step * batch_size, len(y_train), mean_loss, metrics)
+    print_status_bar(len(y_train), len(y_train), mean_loss, metrics)
+    for metric in [mean_loss] + metrics:
+        metric.reset_states()
+
+There’s a lot going on in this code, so let’s walk through it:
+
+• We create two nested loops: one for the epochs, the other for the batches within
+
+an epoch.
+
+• Then we sample a random batch from the training set.
+• Inside the tf.GradientTape() block, we make a prediction for one batch (using
+the  model  as  a  function),  and  we  compute  the  loss:  it  is  equal  to  the  main  loss
+plus  the  other  losses  (in  this  model,  there  is  one  regularization  loss  per  layer).
+Since  the  mean_squared_error()  function  returns  one  loss  per  instance,  we
+compute  the  mean  over  the  batch  using  tf.reduce_mean()  (if  you  wanted  to
+apply different weights to each instance, this is where you would do it). The regu‐
+larization  losses  are  already  reduced  to  a  single  scalar  each,  so  we  just  need  to
+sum  them  (using  tf.add_n(),  which  sums  multiple  tensors  of  the  same  shape
+and data type).
+
+• Next,  we  ask  the  tape  to  compute  the  gradient  of  the  loss  with  regard  to  each
+trainable variable (not all variables!), and we apply them to the optimizer to per‐
+form a Gradient Descent step.
+
+• Then we update the mean loss and the metrics (over the current epoch), and we
+
+display the status bar.
+
+404 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+• At the end of each epoch, we display the status bar again to make it look com‐
+plete13 and to print a line feed, and we reset the states of the mean loss and the
+metrics.
+
+If you set the optimizer’s clipnorm or clipvalue hyperparameter, it will take care of
+this for you. If you want to apply any other transformation to the gradients, simply do
+so before calling the apply_gradients() method.
+
+If you add weight constraints to your model (e.g., by setting kernel_constraint or
+bias_constraint  when  creating  a  layer),  you  should  update  the  training  loop  to
+apply these constraints just after apply_gradients():
+
+for variable in model.variables:
+    if variable.constraint is not None:
+        variable.assign(variable.constraint(variable))
+
+Most  importantly,  this  training  loop  does  not  handle  layers  that  behave  differently
+during training and testing (e.g., BatchNormalization or Dropout). To handle these,
+you need to call the model with training=True and make sure it propagates this to
+every layer that needs it.
+
+As you can see, there are quite a lot of things you need to get right, and it’s easy to
+make a mistake. But on the bright side, you get full control, so it’s your call.
+
+Now that you know how to customize any part of your models14 and training algo‐
+rithms, let’s see how you can use TensorFlow’s automatic graph generation feature: it
+can speed up your custom code considerably, and it will also make it portable to any
+platform supported by TensorFlow (see Chapter 19).
+
+TensorFlow Functions and Graphs
+In TensorFlow 1, graphs were unavoidable (as were the complexities that came with
+them) because they were a central part of TensorFlow’s API. In TensorFlow 2, they are
+still there, but not as central, and they’re much (much!) simpler to use. To show just
+how simple, let’s start with a trivial function that computes the cube of its input:
+
+def cube(x):
+    return x ** 3
+
+13 The truth is we did not process every single instance in the training set, because we sampled instances ran‐
+
+domly: some were processed more than once, while others were not processed at all. Likewise, if the training
+set size is not a multiple of the batch size, we will miss a few instances. In practice that’s fine.
+
+14 With the exception of optimizers, as very few people ever customize these; see the “Custom Optimizers” sec‐
+
+tion in the notebook for an example.
+
+TensorFlow Functions and Graphs 
+
+| 
+
+405
+
+We can obviously call this function with a Python value, such as an int or a float, or
+we can call it with a tensor:
+
+>>> cube(2)
+8
+>>> cube(tf.constant(2.0))
+<tf.Tensor: id=18634148, shape=(), dtype=float32, numpy=8.0>
+
+Now,  let’s  use  tf.function()  to  convert  this  Python  function  to  a  TensorFlow
+Function:
+
+>>> tf_cube = tf.function(cube)
+>>> tf_cube
+<tensorflow.python.eager.def_function.Function at 0x1546fc080>
+
+This TF Function can then be used exactly like the original Python function, and it
+will return the same result (but as tensors):
+
+>>> tf_cube(2)
+<tf.Tensor: id=18634201, shape=(), dtype=int32, numpy=8>
+>>> tf_cube(tf.constant(2.0))
+<tf.Tensor: id=18634211, shape=(), dtype=float32, numpy=8.0>
+
+Under the hood, tf.function() analyzed the computations performed by the cube()
+function  and  generated  an  equivalent  computation  graph!  As  you  can  see,  it  was
+rather painless (we will see how this works shortly). Alternatively, we could have used
+tf.function as a decorator; this is actually more common:
+
+@tf.function
+def tf_cube(x):
+    return x ** 3
+
+The original Python function is still available via the TF Function’s python_function
+attribute, in case you ever need it:
+
+>>> tf_cube.python_function(2)
+8
+
+TensorFlow  optimizes  the  computation  graph,  pruning  unused  nodes,  simplifying
+expressions  (e.g.,  1  +  2  would  get  replaced  with  3),  and  more.  Once  the  optimized
+graph is ready, the TF Function efficiently executes the operations in the graph, in the
+appropriate order (and in parallel when it can). As a result, a TF Function will usually
+run much faster than the original Python function, especially if it performs complex
+computations.15  Most  of  the  time  you  will  not  really  need  to  know  more  than  that:
+when  you  want  to  boost  a  Python  function,  just  transform  it  into  a  TF  Function.
+That’s all!
+
+15 However, in this trivial example, the computation graph is so small that there is nothing at all to optimize, so
+
+tf_cube() actually runs much slower than cube().
+
+406 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+Moreover, when you write a custom loss function, a custom metric, a custom layer, or
+any other custom function and you use it in a Keras model (as we did throughout this
+chapter), Keras automatically converts your function into a TF Function—no need to
+use tf.function(). So most of the time, all this magic is 100% transparent.
+
+You  can  tell  Keras  not  to  convert  your  Python  functions  to  TF
+Functions  by  setting  dynamic=True  when  creating  a  custom  layer
+or  a  custom  model.  Alternatively,  you  can  set  run_eagerly=True
+when calling the model’s compile() method.
+
+By default, a TF Function generates a new graph for every unique set of input shapes
+and  data  types  and  caches  it  for  subsequent  calls.  For  example,  if  you  call
+tf_cube(tf.constant(10)), a graph will be generated for int32 tensors of shape [].
+Then  if  you  call  tf_cube(tf.constant(20)),  the  same  graph  will  be  reused.  But  if
+you then call tf_cube(tf.constant([10, 20])), a new graph will be generated for
+int32 tensors of shape [2]. This is how TF Functions handle polymorphism (i.e., vary‐
+ing  argument  types  and  shapes).  However,  this  is  only  true  for  tensor  arguments:  if
+you pass numerical Python values to a TF Function, a new graph will be generated for
+every distinct value: for example, calling tf_cube(10) and tf_cube(20) will generate
+two graphs.
+
+If  you  call  a  TF  Function  many  times  with  different  numerical
+Python values, then many graphs will be generated, slowing down
+your program and using up a lot of RAM (you must delete the TF
+Function to release it). Python values should be reserved for argu‐
+ments  that  will  have  few  unique  values,  such  as  hyp

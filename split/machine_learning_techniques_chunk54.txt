@@ -1,0 +1,332 @@
+t  input  pipelines  to  load  and  preprocess  data
+from multiple text files. We have discussed the most common dataset methods, but
+there  are  a  few  more  you  may  want  to  look  at:  concatenate(),  zip(),  window(),
+reduce(), shard(), flat_map(), and padded_batch(). There are also a couple more
+class  methods:  from_generator()  and  from_tensors(),  which  create  a  new  dataset
+from a Python generator or a list of tensors, respectively. Please check the API docu‐
+mentation for more details. Also note that there are experimental features available in
+tf.data.experimental, many of which will likely make it to the core API in future
+releases  (e.g.,  check  out  the  CsvDataset  class,  as  well  as  the  make_csv_dataset()
+method, which takes care of inferring the type of each column).
+
+Using the Dataset with tf.keras
+Now we can use the csv_reader_dataset() function to create a dataset for the train‐
+ing set. Note that we do not need to repeat it, as this will be taken care of by tf.keras.
+We also create datasets for the validation set and the test set:
+
+train_set = csv_reader_dataset(train_filepaths)
+valid_set = csv_reader_dataset(valid_filepaths)
+test_set = csv_reader_dataset(test_filepaths)
+
+And now we can simply build and train a Keras model using these datasets.4 All we
+need to do is pass the training and validation datasets to the fit() method, instead of
+X_train, y_train, X_valid, and y_valid:5
+
+model = keras.models.Sequential([...])
+model.compile([...])
+model.fit(train_set, epochs=10, validation_data=valid_set)
+
+Similarly, we can pass a dataset to the evaluate() and predict() methods:
+
+model.evaluate(test_set)
+new_set = test_set.take(3).map(lambda X, y: X) # pretend we have 3 new instances
+model.predict(new_set) # a dataset containing new instances
+
+Unlike the other sets, the new_set will usually not contain labels (if it does, Keras will
+ignore them). Note that in all these cases, you can still use NumPy arrays instead of
+
+4 Support for datasets is specific to tf.keras; this will not work in other implementations of the Keras API.
+5 The fit() method will take care of repeating the training dataset. Alternatively, you could call repeat() on
+the training dataset so that it repeats forever and specify the steps_per_epoch argument when calling the
+fit() method. This may be useful in some rare cases, for example if you want to use a shuffle buffer that
+crosses over epochs.
+
+The Data API 
+
+| 
+
+423
+
+datasets if you want (but of course they need to have been loaded and preprocessed
+first).
+
+If you want to build your own custom training loop (as in Chapter 12), you can just
+iterate over the training set, very naturally:
+
+for X_batch, y_batch in train_set:
+    [...] # perform one Gradient Descent step
+
+In fact, it is even possible to create a TF Function (see Chapter 12) that performs the
+whole training loop:
+
+@tf.function
+def train(model, optimizer, loss_fn, n_epochs, [...]):
+    train_set = csv_reader_dataset(train_filepaths, repeat=n_epochs, [...])
+    for X_batch, y_batch in train_set:
+        with tf.GradientTape() as tape:
+            y_pred = model(X_batch)
+            main_loss = tf.reduce_mean(loss_fn(y_batch, y_pred))
+            loss = tf.add_n([main_loss] + model.losses)
+        grads = tape.gradient(loss, model.trainable_variables)
+        optimizer.apply_gradients(zip(grads, model.trainable_variables))
+
+Congratulations, you now know how to build powerful input pipelines using the Data
+API! However, so far we have used CSV files, which are common, simple, and conve‐
+nient  but  not  really  efficient,  and  do  not  support  large  or  complex  data  structures
+(such as images or audio) very well. So let’s see how to use TFRecords instead.
+
+If you are happy with CSV files (or whatever other format you are
+using), you do not have to use TFRecords. As the saying goes, if it
+ain’t broke, don’t fix it! TFRecords are useful when the bottleneck
+during training is loading and parsing the data.
+
+The TFRecord Format
+The TFRecord format is TensorFlow’s preferred format for storing large amounts of
+data  and  reading  it  efficiently.  It  is  a  very  simple  binary  format  that  just  contains  a
+sequence of binary records of varying sizes (each record is comprised of a length, a
+CRC checksum to check that the length was not corrupted, then the actual data, and
+finally a CRC checksum for the data). You can easily create a TFRecord file using the
+tf.io.TFRecordWriter class:
+
+with tf.io.TFRecordWriter("my_data.tfrecord") as f:
+    f.write(b"This is the first record")
+    f.write(b"And this is the second record")
+
+424 
+
+| 
+
+Chapter 13: Loading and Preprocessing Data with TensorFlow
+
+And  you  can  then  use  a  tf.data.TFRecordDataset  to  read  one  or  more  TFRecord
+files:
+
+filepaths = ["my_data.tfrecord"]
+dataset = tf.data.TFRecordDataset(filepaths)
+for item in dataset:
+    print(item)
+
+This will output:
+
+tf.Tensor(b'This is the first record', shape=(), dtype=string)
+tf.Tensor(b'And this is the second record', shape=(), dtype=string)
+
+By default, a  TFRecordDataset will read files one by one, but you
+can  make  it  read  multiple  files  in  parallel  and  interleave  their
+records  by  setting  num_parallel_reads.  Alternatively,  you  could
+obtain  the  same  result  by  using  list_files()  and  interleave()
+as we did earlier to read multiple CSV files.
+
+Compressed TFRecord Files
+It can sometimes be useful to compress your TFRecord files, especially if they need to
+be loaded via a network connection. You can create a compressed TFRecord file by
+setting the options argument:
+
+options = tf.io.TFRecordOptions(compression_type="GZIP")
+with tf.io.TFRecordWriter("my_compressed.tfrecord", options) as f:
+  [...]
+
+When reading a compressed TFRecord file, you need to specify the compression type:
+
+dataset = tf.data.TFRecordDataset(["my_compressed.tfrecord"],
+                                  compression_type="GZIP")
+
+A Brief Introduction to Protocol Buffers
+Even though each record can use any binary format you want, TFRecord files usually
+contain serialized protocol buffers (also called protobufs). This is a portable, extensi‐
+ble,  and  efficient  binary  format  developed  at  Google  back  in  2001  and  made  open
+source  in  2008;  protobufs  are  now  widely  used,  in  particular  in  gRPC,  Google’s
+remote  procedure  call  system.  They  are  defined  using  a  simple  language  that  looks
+like this:
+
+syntax = "proto3";
+message Person {
+  string name = 1;
+  int32 id = 2;
+  repeated string email = 3;
+}
+
+The TFRecord Format 
+
+| 
+
+425
+
+This  definition  says  we  are  using  version  3  of  the  protobuf  format,  and  it  specifies
+that each Person object6 may (optionally) have a name of type string, an id of type
+int32, and zero or more email fields, each of type string. The numbers 1, 2, and 3
+are the field identifiers: they will be used in each record’s binary representation. Once
+you  have  a  definition  in  a  .proto  file,  you  can  compile  it.  This  requires  protoc,  the
+protobuf  compiler,  to  generate  access  classes  in  Python  (or  some  other  language).
+Note  that  the  protobuf  definitions  we  will  use  have  already  been  compiled  for  you,
+and their Python classes are part of TensorFlow, so you will not need to use protoc.
+All you need to know is how to use protobuf access classes in Python. To illustrate the
+basics,  let’s  look  at  a  simple  example  that  uses  the  access  classes  generated  for  the
+Person protobuf (the code is explained in the comments):
+
+>>> from person_pb2 import Person  # import the generated access class
+>>> person = Person(name="Al", id=123, email=["a@b.com"])  # create a Person
+>>> print(person)  # display the Person
+name: "Al"
+id: 123
+email: "a@b.com"
+>>> person.name  # read a field
+"Al"
+>>> person.name = "Alice"  # modify a field
+>>> person.email[0]  # repeated fields can be accessed like arrays
+"a@b.com"
+>>> person.email.append("c@d.com")  # add an email address
+>>> s = person.SerializeToString()  # serialize the object to a byte string
+>>> s
+b'\n\x05Alice\x10{\x1a\x07a@b.com\x1a\x07c@d.com'
+>>> person2 = Person()  # create a new Person
+>>> person2.ParseFromString(s)  # parse the byte string (27 bytes long)
+27
+>>> person == person2  # now they are equal
+True
+
+In short, we import the Person class generated by protoc, we create an instance and
+play  with  it,  visualizing  it  and  reading  and  writing  some  fields,  then  we  serialize  it
+using  the  SerializeToString()  method.  This  is  the  binary  data  that  is  ready  to  be
+saved or transmitted over the network. When reading or receiving this binary data,
+we can parse it using the ParseFromString() method, and we get a copy of the object
+that was serialized.7
+
+We could save the serialized Person object to a TFRecord file, then we could load and
+parse it: everything would work fine. However, SerializeToString() and ParseFrom
+
+6 Since protobuf objects are meant to be serialized and transmitted, they are called messages.
+
+7 This chapter contains the bare minimum you need to know about protobufs to use TFRecords. To learn more
+
+about protobufs, please visit https://homl.info/protobuf.
+
+426 
+
+| 
+
+Chapter 13: Loading and Preprocessing Data with TensorFlow
+
+String() are not TensorFlow operations (and neither are the other operations in this
+code),  so  they  cannot  be  included  in  a  TensorFlow  Function  (except  by  wrapping
+them in a tf.py_function() operation, which would make the code slower and less
+portable, as we saw in Chapter 12). Fortunately, TensorFlow does include special pro‐
+tobuf definitions for which it provides parsing operations.
+
+TensorFlow Protobufs
+The main protobuf typically used in a TFRecord file is the Example protobuf, which
+represents one instance in a dataset. It contains a list of named features, where each
+feature can either be a list of byte strings, a list of floats, or a list of integers. Here is
+the protobuf definition:
+
+syntax = "proto3";
+message BytesList { repeated bytes value = 1; }
+message FloatList { repeated float value = 1 [packed = true]; }
+message Int64List { repeated int64 value = 1 [packed = true]; }
+message Feature {
+    oneof kind {
+        BytesList bytes_list = 1;
+        FloatList float_list = 2;
+        Int64List int64_list = 3;
+    }
+};
+message Features { map<string, Feature> feature = 1; };
+message Example { Features features = 1; };
+
+The  definitions  of  BytesList,  FloatList,  and  Int64List  are  straightforward
+enough. Note that [packed = true] is used for repeated numerical fields, for a more
+efficient  encoding.  A  Feature  contains  either  a  BytesList,  a  FloatList,  or  an
+Int64List. A Features (with an s) contains a dictionary that maps a feature name to
+the  corresponding  feature  value.  And  finally,  an  Example  contains  only  a  Features
+object.8 Here is how you could create a tf.train.Example representing the same per‐
+son as earlier and write it to a TFRecord file:
+
+from tensorflow.train import BytesList, FloatList, Int64List
+from tensorflow.train import Feature, Features, Example
+
+person_example = Example(
+    features=Features(
+        feature={
+            "name": Feature(bytes_list=BytesList(value=[b"Alice"])),
+
+8 Why was Example even defined, since it contains no more than a Features object? Well, TensorFlow’s devel‐
+opers may one day decide to add more fields to it. As long as the new Example definition still contains the
+features field, with the same ID, it will be backward compatible. This extensibility is one of the great features
+of protobufs.
+
+The TFRecord Format 
+
+| 
+
+427
+
+            "id": Feature(int64_list=Int64List(value=[123])),
+            "emails": Feature(bytes_list=BytesList(value=[b"a@b.com",
+                                                          b"c@d.com"]))
+        }))
+
+The code is a bit verbose and repetitive, but it’s rather straightforward (and you could
+easily wrap it inside a small helper function). Now that we have an Example protobuf,
+we can serialize it by calling its SerializeToString() method, then write the result‐
+ing data to a TFRecord file:
+
+with tf.io.TFRecordWriter("my_contacts.tfrecord") as f:
+    f.write(person_example.SerializeToString())
+
+Normally you would write much more than one Example! Typically, you would create
+a  conversion  script  that  reads  from  your  current  format  (say,  CSV  files),  creates  an
+Example protobuf for each instance, serializes them, and saves them to several TFRe‐
+cord files, ideally shuffling them in the process. This requires a bit of work, so once
+again  make  sure  it  is  really  necessary  (perhaps  your  pipeline  works  fine  with  CSV
+files).
+
+Now  that  we  have  a  nice  TFRecord  file  containing  a  serialized  Example,  let’s  try  to
+load it.
+
+Loading and Parsing Examples
+To  load  the  serialized  Example  protobufs,  we  will  use  a  tf.data.TFRecordDataset
+once again, and we will parse each  Example using  tf.io.parse_single_example().
+This is a TensorFlow operation, so it can be included in a TF Function. It requires at
+least  two  arguments:  a  string  scalar  tensor  containing  the  serialized  data,  and  a
+description  of  each  feature.  The  description  is  a  dictionary  that  maps  each  feature
+name  to  either  a  tf.io.FixedLenFeature  descriptor  indicating  the  feature’s  shape,
+type, and default value, or a tf.io.VarLenFeature descriptor indicating only the type
+(if the length of the feature’s list may vary, such as for the "emails" feature).
+
+The following code defines a description dictionary, then it iterates over the TFRecord
+Dataset and parses the serialized Example protobuf this dataset contains:
+
+feature_description = {
+    "name": tf.io.FixedLenFeature([], tf.string, default_value=""),
+    "id": tf.io.FixedLenFeature([], tf.int64, default_value=0),
+    "emails": tf.io.VarLenFeature(tf.string),
+}
+
+for serialized_example in tf.data.TFRecordDataset(["my_contacts.tfrecord"]):
+    parsed_example = tf.io.parse_single_example(serialized_example,
+                                                feature_description)
+
+428 
+
+| 
+
+Chapter 13: Loading and Preprocessing Data with TensorFlow
+
+The  fixed-length  features  are  parsed  as  regular  tensors,  but  the  variable-length  fea‐
+tures are parsed as sparse tensors. You can convert a sparse tensor to a dense tensor
+using tf.sparse.to_dense(), but in this case it is simpler to just access its values:
+
+>>> tf.sparse.to_dense(parsed_example["emails"], default_value=b"")
+<tf.Tensor: [...] dtype=string, numpy=array([b'a@b.com', b'c@d.com'], [...])>
+>>> parsed_example["emails"].values
+<tf.Tensor: [...] dtype=string, numpy=array([b'a@b.com', b'c@d.com'], [...])>
+
+A BytesList can contain any binary data you want, including any serialized object.
+For example, you can use tf.io.encode_jpeg() to encode an image using the JPEG
+format  and  put  this  binary  data  in  a  BytesList.  Later,  when  your  code  reads  the
+TFRecord,  it  will  start  by  parsing  the  Example,  then  it  will  need  to  call
+tf.io.decode_jpeg()  to  parse  the  data  and  get  the  original  image  (or  you  can  use
+tf.io.decode_image(), which can decode any BMP, GIF, JPEG, or PNG image). You
+can  also  store  any  tensor  you  want  in  a  BytesList  by  serializing  the  tensor  using
+tf.io.serialize_tensor()  then  putting  the  resulting  byte  string  in  a  BytesList
+feature.  Later,  when  you  parse  the  TFRecord,  you  can  parse  this  data  usin

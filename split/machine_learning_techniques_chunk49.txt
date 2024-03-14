@@ -1,0 +1,315 @@
+ layer’s  weights  will  be  initialized  using  the
+value returned by the initializer. At each training step the weights will be passed to the
+regularization function to compute the regularization loss, which will be added to the
+main loss to get the final loss used for training. Finally, the constraint function will be
+called  after  each  training  step,  and  the  layer’s  weights  will  be  replaced  by  the  con‐
+strained weights.
+
+If a function has hyperparameters that need to be saved along with the model, then
+you will want to subclass the appropriate class, such as keras.regularizers.Regular
+izer,  keras.constraints.Constraint,  keras.initializers.Initializer,  or
+keras.layers.Layer (for any layer, including activation functions). Much like we did
+for  the  custom  loss,  here  is  a  simple  class  for  ℓ1  regularization  that  saves  its  factor
+hyperparameter  (this  time  we  do  not  need  to  call  the  parent  constructor  or  the
+get_config() method, as they are not defined by the parent class):
+
+class MyL1Regularizer(keras.regularizers.Regularizer):
+    def __init__(self, factor):
+        self.factor = factor
+    def __call__(self, weights):
+        return tf.reduce_sum(tf.abs(self.factor * weights))
+    def get_config(self):
+        return {"factor": self.factor}
+
+Note that you must implement the call() method for losses, layers (including activa‐
+tion functions), and models, or the __call__() method for regularizers, initializers,
+and constraints. For metrics, things are a bit different, as we will see now.
+
+Custom Metrics
+Losses  and  metrics  are  conceptually  not  the  same  thing:  losses  (e.g.,  cross  entropy)
+are used by Gradient Descent to train a model, so they must be differentiable (at least
+where they are evaluated), and their gradients should not be 0 everywhere. Plus, it’s
+OK if they are not easily interpretable by humans. In contrast, metrics (e.g., accuracy)
+are used to evaluate a model: they must be more easily interpretable, and they can be
+non-differentiable or have 0 gradients everywhere.
+
+That  said,  in  most  cases,  defining  a  custom  metric  function  is  exactly  the  same  as
+defining a custom loss function. In fact, we could even use the Huber loss function we
+created earlier as a metric;6 it would work just fine (and persistence would also work
+the same way, in this case only saving the name of the function, "huber_fn"):
+
+6 However, the Huber loss is seldom used as a metric (the MAE or MSE is preferred).
+
+388 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+model.compile(loss="mse", optimizer="nadam", metrics=[create_huber(2.0)])
+
+For each batch during training, Keras will compute this metric and keep track of its
+mean  since  the  beginning  of  the  epoch.  Most  of  the  time,  this  is  exactly  what  you
+want. But not always! Consider a binary classifier’s precision, for example. As we saw
+in Chapter 3, precision is the number of true positives divided by the number of posi‐
+tive predictions (including both true positives and false positives). Suppose the model
+made five positive predictions in the first batch, four of which were correct: that’s 80%
+precision.  Then  suppose  the  model  made  three  positive  predictions  in  the  second
+batch, but they were all incorrect: that’s 0% precision for the second batch. If you just
+compute the mean of these two precisions, you get 40%. But wait a second—that’s not
+the model’s precision over these two batches! Indeed, there were a total of four true
+positives (4 + 0) out of eight positive predictions (5 + 3), so the overall precision is
+50%, not 40%. What we need is an object that can keep track of the number of true
+positives  and  the  number  of  false  positives  and  that  can  compute  their  ratio  when
+requested. This is precisely what the keras.metrics.Precision class does:
+
+>>> precision = keras.metrics.Precision()
+>>> precision([0, 1, 1, 1, 0, 1, 0, 1], [1, 1, 0, 1, 0, 1, 0, 1])
+<tf.Tensor: id=581729, shape=(), dtype=float32, numpy=0.8>
+>>> precision([0, 1, 0, 0, 1, 0, 1, 1], [1, 0, 1, 1, 0, 0, 0, 0])
+<tf.Tensor: id=581780, shape=(), dtype=float32, numpy=0.5>
+
+In this example, we created a Precision object, then we used it like a function, pass‐
+ing  it  the  labels  and  predictions  for  the  first  batch,  then  for  the  second  batch  (note
+that  we  could  also  have  passed  sample  weights).  We  used  the  same  number  of  true
+and false positives as in the example we just discussed. After the first batch, it returns
+a precision of 80%; then after the second batch, it returns 50% (which is the overall
+precision so far, not the second batch’s precision). This is called a streaming metric (or
+stateful metric), as it is gradually updated, batch after batch.
+
+At any point, we can call the result() method to get the current value of the metric.
+We can also look at its variables (tracking the number of true and false positives) by
+using  the  variables  attribute,  and  we  can  reset  these  variables  using  the
+reset_states() method:
+
+>>> precision.result()
+<tf.Tensor: id=581794, shape=(), dtype=float32, numpy=0.5>
+>>> precision.variables
+[<tf.Variable 'true_positives:0' [...] numpy=array([4.], dtype=float32)>,
+ <tf.Variable 'false_positives:0' [...] numpy=array([4.], dtype=float32)>]
+>>> precision.reset_states() # both variables get reset to 0.0
+
+If  you  need  to  create  such  a  streaming  metric,  create  a  subclass  of  the  keras.met
+rics.Metric class. Here is a simple example that keeps track of the total Huber loss
+
+Customizing Models and Training Algorithms 
+
+| 
+
+389
+
+and  the  number  of  instances  seen  so  far.  When  asked  for  the  result,  it  returns  the
+ratio, which is simply the mean Huber loss:
+
+class HuberMetric(keras.metrics.Metric):
+    def __init__(self, threshold=1.0, **kwargs):
+        super().__init__(**kwargs) # handles base args (e.g., dtype)
+        self.threshold = threshold
+        self.huber_fn = create_huber(threshold)
+        self.total = self.add_weight("total", initializer="zeros")
+        self.count = self.add_weight("count", initializer="zeros")
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        metric = self.huber_fn(y_true, y_pred)
+        self.total.assign_add(tf.reduce_sum(metric))
+        self.count.assign_add(tf.cast(tf.size(y_true), tf.float32))
+    def result(self):
+        return self.total / self.count
+    def get_config(self):
+        base_config = super().get_config()
+        return {**base_config, "threshold": self.threshold}
+
+Let’s walk through this code:7
+
+• The constructor uses the add_weight() method to create the variables needed to
+keep track of the metric’s state over multiple batches—in this case, the sum of all
+Huber losses (total) and the number of instances seen so far (count). You could
+just create variables manually if you preferred. Keras tracks any tf.Variable that
+is set as an attribute (and more generally, any “trackable” object, such as layers or
+models).
+
+• The update_state() method is called when you use an instance of this class as a
+function (as we did with the Precision object). It updates the variables, given the
+labels  and  predictions  for  one  batch  (and  sample  weights,  but  in  this  case  we
+ignore them).
+
+• The  result()  method  computes  and  returns  the  final  result,  in  this  case  the
+mean Huber metric over all instances. When you use the metric as a function, the
+update_state()  method  gets  called  first,  then  the  result()  method  is  called,
+and its output is returned.
+
+• We  also  implement  the  get_config()  method  to  ensure  the  threshold  gets
+
+saved along with the model.
+
+• The default implementation of the reset_states() method resets all variables to
+
+0.0 (but you can override it if needed).
+
+7 This class is for illustration purposes only. A simpler and better implementation would just subclass the
+
+keras.metrics.Mean class; see the “Streaming metrics” section of the notebook for an example.
+
+390 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+Keras will take care of variable persistence seamlessly; no action is
+required.
+
+When  you  define  a  metric  using  a  simple  function,  Keras  automatically  calls  it  for
+each batch, and it keeps track of the mean during each epoch, just like we did man‐
+ually. So the only benefit of our HuberMetric class is that the threshold will be saved.
+But of course, some metrics, like precision, cannot simply be averaged over batches:
+in those cases, there’s no other option than to implement a streaming metric.
+
+Now that we have built a streaming metric, building a custom layer will seem like a
+walk in the park!
+
+Custom Layers
+You may occasionally want to build an architecture that contains an exotic layer for
+which TensorFlow does not provide a default implementation. In this case, you will
+need  to  create  a  custom  layer.  Or  you  may  simply  want  to  build  a  very  repetitive
+architecture, containing identical blocks of layers repeated many times, and it would
+be convenient to treat each block of layers as a single layer. For example, if the model
+is a sequence of layers A, B, C, A, B, C, A, B, C, then you might want to define a cus‐
+tom layer D containing layers A, B, C, so your model would then simply be D, D, D.
+Let’s see how to build custom layers.
+
+First,  some  layers  have  no  weights,  such  as  keras.layers.Flatten  or  keras.lay
+ers.ReLU.  If  you  want  to  create  a  custom  layer  without  any  weights,  the  simplest
+option is to write a function and wrap it in a keras.layers.Lambda layer. For exam‐
+ple, the following layer will apply the exponential function to its inputs:
+
+exponential_layer = keras.layers.Lambda(lambda x: tf.exp(x))
+
+This custom layer can then be used like any other layer, using the Sequential API, the
+Functional API, or the Subclassing API. You can also use it as an activation function
+(or  you  could  use  activation=tf.exp,  activation=keras.activations.exponen
+tial,  or  simply  activation="exponential").  The  exponential  layer  is  sometimes
+used in the output layer of a regression model when the values to predict have very
+different scales (e.g., 0.001, 10., 1,000.).
+
+As you’ve probably guessed by now, to build a custom stateful layer (i.e., a layer with
+weights), you need to create a subclass of the keras.layers.Layer class. For exam‐
+ple, the following class implements a simplified version of the Dense layer:
+
+Customizing Models and Training Algorithms 
+
+| 
+
+391
+
+class MyDense(keras.layers.Layer):
+    def __init__(self, units, activation=None, **kwargs):
+        super().__init__(**kwargs)
+        self.units = units
+        self.activation = keras.activations.get(activation)
+
+    def build(self, batch_input_shape):
+        self.kernel = self.add_weight(
+            name="kernel", shape=[batch_input_shape[-1], self.units],
+            initializer="glorot_normal")
+        self.bias = self.add_weight(
+            name="bias", shape=[self.units], initializer="zeros")
+        super().build(batch_input_shape) # must be at the end
+
+    def call(self, X):
+        return self.activation(X @ self.kernel + self.bias)
+
+    def compute_output_shape(self, batch_input_shape):
+        return tf.TensorShape(batch_input_shape.as_list()[:-1] + [self.units])
+
+    def get_config(self):
+        base_config = super().get_config()
+        return {**base_config, "units": self.units,
+                "activation": keras.activations.serialize(self.activation)}
+
+Let’s walk through this code:
+
+• The  constructor  takes  all  the  hyperparameters  as  arguments  (in  this  example,
+units  and  activation),  and  importantly  it  also  takes  a  **kwargs  argument.  It
+calls  the  parent  constructor,  passing  it  the  kwargs:  this  takes  care  of  standard
+arguments such as input_shape, trainable, and name. Then it saves the hyper‐
+parameters as attributes, converting the activation argument to the appropriate
+activation  function  using  the  keras.activations.get()  function  (it  accepts
+functions, standard strings like "relu" or "selu", or simply None).8
+
+• The  build()  method’s  role  is  to  create  the  layer’s  variables  by  calling  the
+add_weight()  method  for  each  weight.  The  build()  method  is  called  the  first
+time  the  layer  is  used.  At  that  point,  Keras  will  know  the  shape  of  this  layer’s
+inputs, and it will pass it to the build() method,9 which is often necessary to cre‐
+ate some of the weights. For example, we need to know the number of neurons in
+the  previous  layer  in  order  to  create  the  connection  weights  matrix  (i.e.,  the
+"kernel"): this corresponds to the size of the last dimension of the inputs. At the
+end  of  the  build()  method  (and  only  at  the  end),  you  must  call  the  parent’s
+
+8 This function is specific to tf.keras. You could use keras.layers.Activation instead.
+9 The Keras API calls this argument input_shape, but since it also includes the batch dimension, I prefer to call
+
+it batch_input_shape. Same for compute_output_shape().
+
+392 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+build()  method:  this  tells  Keras  that  the 
+self.built=True).
+
+layer 
+
+is  built  (it 
+
+just  sets
+
+• The  call()  method  performs  the  desired  operations.  In  this  case,  we  compute
+the matrix multiplication of the inputs  X and the layer’s kernel, we add the bias
+vector,  and  we  apply  the  activation  function  to  the  result,  and  this  gives  us  the
+output of the layer.
+
+• The  compute_output_shape()  method  simply  returns  the  shape  of  this  layer’s
+outputs. In this case, it is the same shape as the inputs, except the last dimension
+is replaced with the number of neurons in the layer. Note that in tf.keras, shapes
+are instances of the tf.TensorShape class, which you can convert to Python lists
+using as_list().
+
+• The get_config() method is just like in the previous custom classes. Note that
+we  save  the  activation  function’s  full  configuration  by  calling  keras.activa
+tions.serialize().
+
+You can now use a MyDense layer just like any other layer!
+
+You  can  generally  omit  the  compute_output_shape()  method,  as
+tf.keras  automatically  infers  the  output  shape,  except  when  the
+layer is dynamic (as we will see shortly). In other Keras implemen‐
+tations, this method is either required or its default implementation
+assumes the output shape is the same as the input shape.
+
+To create a layer with multiple inputs (e.g., Concatenate), the argument to the call()
+method should be a tuple containing all the inputs, and similarly the argument to the
+compute_output_shape()  method  should  be  a  tuple  containing  each  input’s  batch
+shape. To create a layer with multiple outputs, the call() method should return the
+list of outputs, and  compute_output_shape() should return the list of batch output
+shapes  (one  per  output).  For  example,  the  following  toy  layer  takes  two  inputs  and
+returns three outputs:
+
+class MyMultiLayer(keras.layers.Layer):
+    def call(self, X):
+        X1, X2 = X
+        return [X1 + X2, X1 * X2, X1 / X2]
+
+    def compute_output_shape(self, batch_input_shape):
+        b1, b2 = batch_input_shape
+        return [b1, b1, b1] # should probably handle broadcasting rules
+
+Customizing Models and Training Algorithms 
+
+| 
+
+393
+
+This layer may now be used like any other layer, but of course only using the Func‐
+tional and Subclassing APIs, n

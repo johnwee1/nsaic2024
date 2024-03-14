@@ -1,0 +1,346 @@
+ensorFlow operations to NumPy arrays and NumPy oper‐
+ations to tensors:
+
+>>> a = np.array([2., 4., 5.])
+>>> tf.constant(a)
+<tf.Tensor: id=111, shape=(3,), dtype=float64, numpy=array([2., 4., 5.])>
+>>> t.numpy() # or np.array(t)
+array([[1., 2., 3.],
+       [4., 5., 6.]], dtype=float32)
+>>> tf.square(a)
+<tf.Tensor: id=116, shape=(3,), dtype=float64, numpy=array([4., 16., 25.])>
+>>> np.square(t)
+array([[ 1.,  4.,  9.],
+       [16., 25., 36.]], dtype=float32)
+
+Notice that NumPy uses 64-bit precision by default, while Tensor‐
+Flow uses 32-bit. This is because 32-bit precision is generally more
+than  enough  for  neural  networks,  plus  it  runs  faster  and  uses  less
+RAM. So when you create a tensor from a NumPy array, make sure
+to set dtype=tf.float32.
+
+Type Conversions
+Type  conversions  can  significantly  hurt  performance,  and  they  can  easily  go  unno‐
+ticed when they are done automatically. To avoid this, TensorFlow does not perform
+
+Using TensorFlow like NumPy 
+
+| 
+
+381
+
+any type conversions automatically: it just raises an exception if you try to execute an
+operation  on  tensors  with  incompatible  types.  For  example,  you  cannot  add  a  float
+tensor and an integer tensor, and you cannot even add a 32-bit float and a 64-bit float:
+
+>>> tf.constant(2.) + tf.constant(40)
+Traceback[...]InvalidArgumentError[...]expected to be a float[...]
+>>> tf.constant(2.) + tf.constant(40., dtype=tf.float64)
+Traceback[...]InvalidArgumentError[...]expected to be a double[...]
+
+This may be a bit annoying at first, but remember that it’s for a good cause! And of
+course you can use tf.cast() when you really need to convert types:
+
+>>> t2 = tf.constant(40., dtype=tf.float64)
+>>> tf.constant(2.0) + tf.cast(t2, tf.float32)
+<tf.Tensor: id=136, shape=(), dtype=float32, numpy=42.0>
+
+Variables
+The tf.Tensor values we’ve seen so far are immutable: you cannot modify them. This
+means that we cannot use regular tensors to implement weights in a neural network,
+since they need to be tweaked by backpropagation. Plus, other parameters may also
+need to change over time (e.g., a momentum optimizer keeps track of past gradients).
+What we need is a tf.Variable:
+
+>>> v = tf.Variable([[1., 2., 3.], [4., 5., 6.]])
+>>> v
+<tf.Variable 'Variable:0' shape=(2, 3) dtype=float32, numpy=
+array([[1., 2., 3.],
+       [4., 5., 6.]], dtype=float32)>
+
+A  tf.Variable  acts  much  like  a  tf.Tensor:  you  can  perform  the  same  operations
+with it, it plays nicely with NumPy as well, and it is just as picky with types. But it can
+also  be  modified  in  place  using  the  assign()  method  (or  assign_add()  or
+assign_sub(),  which  increment  or  decrement  the  variable  by  the  given  value).  You
+can  also  modify  individual  cells  (or  slices),  by  using  the  cell’s  (or  slice’s)  assign()
+method (direct item assignment will not work) or by using the scatter_update() or
+scatter_nd_update() methods:
+
+v.assign(2 * v)           # => [[2., 4., 6.], [8., 10., 12.]]
+v[0, 1].assign(42)        # => [[2., 42., 6.], [8., 10., 12.]]
+v[:, 2].assign([0., 1.])  # => [[2., 42., 0.], [8., 10., 1.]]
+v.scatter_nd_update(indices=[[0, 0], [1, 2]], updates=[100., 200.])
+                          # => [[100., 42., 0.], [8., 10., 200.]]
+
+382 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+In practice you will rarely have to create variables manually, since
+Keras provides an add_weight() method that will take care of it for
+you,  as  we  will  see.  Moreover,  model  parameters  will  generally  be
+updated  directly  by  the  optimizers,  so  you  will  rarely  need  to
+update variables manually.
+
+Other Data Structures
+TensorFlow supports several other data structures, including the following (please see
+the  “Tensors  and  Operations”  section  in  the  notebook  or  Appendix  F  for  more
+details):
+
+Sparse tensors (tf.SparseTensor)
+
+Efficiently  represent  tensors  containing  mostly  zeros.  The  tf.sparse  package
+contains operations for sparse tensors.
+
+Tensor arrays (tf.TensorArray)
+
+Are lists of tensors. They have a fixed size by default but can optionally be made
+dynamic. All tensors they contain must have the same shape and data type.
+
+Ragged tensors (tf.RaggedTensor)
+
+Represent  static  lists  of  lists  of  tensors,  where  every  tensor  has  the  same  shape
+and data type. The tf.ragged package contains operations for ragged tensors.
+
+String tensors
+
+Are regular tensors of type tf.string. These represent byte strings, not Unicode
+strings,  so  if  you  create  a  string  tensor  using  a  Unicode  string  (e.g.,  a  regular
+Python  3  string  like  "café"),  then  it  will  get  encoded  to  UTF-8  automatically
+(e.g.,  b"caf\xc3\xa9").  Alternatively,  you  can  represent  Unicode  strings  using
+tensors of type tf.int32, where each item represents a Unicode code point (e.g.,
+[99, 97, 102, 233]). The tf.strings package (with an s) contains ops for byte
+strings and Unicode strings (and to convert one into the other). It’s important to
+note that a tf.string is atomic, meaning that its length does not appear in the
+tensor’s  shape.  Once  you  convert  it  to  a  Unicode  tensor  (i.e.,  a  tensor  of  type
+tf.int32 holding Unicode code points), the length appears in the shape.
+
+Sets
+
+Are  represented  as  regular  tensors  (or  sparse  tensors).  For  example,  tf.con
+stant([[1, 2], [3, 4]]) represents the two sets {1, 2} and {3, 4}. More gener‐
+ally,  each  set  is  represented  by  a  vector  in  the  tensor’s  last  axis.  You  can
+manipulate sets using operations from the tf.sets package.
+
+Queues
+
+Store  tensors  across  multiple  steps.  TensorFlow  offers  various  kinds  of  queues:
+simple First In, First Out (FIFO) queues (FIFOQueue), queues that can prioritize
+
+Using TensorFlow like NumPy 
+
+| 
+
+383
+
+some  items  (PriorityQueue),  shuffle  their  items  (RandomShuffleQueue),  and
+batch items of different shapes by padding (PaddingFIFOQueue). These classes are
+all in the tf.queue package.
+
+With tensors, operations, variables, and various data structures at your disposal, you
+are now ready to customize your models and training algorithms!
+
+Customizing Models and Training Algorithms
+Let’s start by creating a custom loss function, which is a simple and common use case.
+
+Custom Loss Functions
+Suppose you want to train a regression model, but your training set is a bit noisy. Of
+course, you start by trying to clean up your dataset by removing or fixing the outliers,
+but  that  turns  out  to  be  insufficient;  the  dataset  is  still  noisy.  Which  loss  function
+should you use? The mean squared error might penalize large errors too much and
+cause your model to be imprecise. The mean absolute error would not penalize outli‐
+ers  as  much,  but  training  might  take  a  while  to  converge,  and  the  trained  model
+might not be very precise. This is probably a good time to use the Huber loss (intro‐
+duced in Chapter 10) instead of the good old MSE. The Huber loss is not currently
+part of the official Keras API, but it is available in tf.keras (just use an instance of the
+keras.losses.Huber class). But let’s pretend it’s not there: implementing it is easy as
+pie! Just create a function that takes the labels and predictions as arguments, and use
+TensorFlow operations to compute every instance’s loss:
+
+def huber_fn(y_true, y_pred):
+    error = y_true - y_pred
+    is_small_error = tf.abs(error) < 1
+    squared_loss = tf.square(error) / 2
+    linear_loss  = tf.abs(error) - 0.5
+    return tf.where(is_small_error, squared_loss, linear_loss)
+
+For  better  performance,  you  should  use  a  vectorized  implementa‐
+tion, as in this example. Moreover, if you want to benefit from Ten‐
+sorFlow’s  graph  features,  you  should  use  only  TensorFlow
+operations.
+
+It  is  also  preferable  to  return  a  tensor  containing  one  loss  per  instance,  rather  than
+returning  the  mean  loss.  This  way,  Keras  can  apply  class  weights  or  sample  weights
+when requested (see Chapter 10).
+
+384 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+Now you can use this loss when you compile the Keras model, then train your model:
+
+model.compile(loss=huber_fn, optimizer="nadam")
+model.fit(X_train, y_train, [...])
+
+And that’s it! For each batch during training, Keras will call the huber_fn() function
+to compute the loss and use it to perform a Gradient Descent step. Moreover, it will
+keep  track  of  the  total  loss  since  the  beginning  of  the  epoch,  and  it  will  display  the
+mean loss.
+
+But what happens to this custom loss when you save the model?
+
+Saving and Loading Models That Contain Custom Components
+Saving a model containing a custom loss function works fine, as Keras saves the name
+of the function. Whenever you load it, you’ll need to provide a dictionary that maps
+the  function  name  to  the  actual  function.  More  generally,  when  you  load  a  model
+containing custom objects, you need to map the names to the objects:
+
+model = keras.models.load_model("my_model_with_a_custom_loss.h5",
+                                custom_objects={"huber_fn": huber_fn})
+
+With the current implementation, any error between –1 and 1 is considered “small.”
+But what if you want a different threshold? One solution is to create a function that
+creates a configured loss function:
+
+def create_huber(threshold=1.0):
+    def huber_fn(y_true, y_pred):
+        error = y_true - y_pred
+        is_small_error = tf.abs(error) < threshold
+        squared_loss = tf.square(error) / 2
+        linear_loss  = threshold * tf.abs(error) - threshold**2 / 2
+        return tf.where(is_small_error, squared_loss, linear_loss)
+    return huber_fn
+
+model.compile(loss=create_huber(2.0), optimizer="nadam")
+
+Unfortunately, when you save the model, the threshold will not be saved. This means
+that you will have to specify the threshold value when loading the model (note that
+the name to use is "huber_fn", which is the name of the function you gave Keras, not
+the name of the function that created it):
+
+model = keras.models.load_model("my_model_with_a_custom_loss_threshold_2.h5",
+                                custom_objects={"huber_fn": create_huber(2.0)})
+
+You  can  solve  this  by  creating  a  subclass  of  the  keras.losses.Loss  class,  and  then
+implementing its get_config() method:
+
+Customizing Models and Training Algorithms 
+
+| 
+
+385
+
+class HuberLoss(keras.losses.Loss):
+    def __init__(self, threshold=1.0, **kwargs):
+        self.threshold = threshold
+        super().__init__(**kwargs)
+    def call(self, y_true, y_pred):
+        error = y_true - y_pred
+        is_small_error = tf.abs(error) < self.threshold
+        squared_loss = tf.square(error) / 2
+        linear_loss  = self.threshold * tf.abs(error) - self.threshold**2 / 2
+        return tf.where(is_small_error, squared_loss, linear_loss)
+    def get_config(self):
+        base_config = super().get_config()
+        return {**base_config, "threshold": self.threshold}
+
+The  Keras  API  currently  only  specifies  how  to  use  subclassing  to
+define layers, models, callbacks, and regularizers. If you build other
+components  (such  as  losses,  metrics,  initializers,  or  constraints)
+using subclassing, they may not be portable to other Keras imple‐
+mentations. It’s likely that the Keras API will be updated to specify
+subclassing for all these components as well.
+
+Let’s walk through this code:
+
+• The  constructor  accepts  **kwargs  and  passes  them  to  the  parent  constructor,
+which handles standard hyperparameters: the name of the loss and the reduction
+algorithm  to  use  to  aggregate  the  individual  instance  losses.  By  default,  it  is
+"sum_over_batch_size",  which  means  that  the  loss  will  be  the  sum  of  the
+instance losses, weighted by the sample weights, if any, and divided by the batch
+size (not by the sum of weights, so this is not the weighted mean).5 Other possible
+values are "sum" and "none".
+
+• The  call()  method  takes  the  labels  and  predictions,  computes  all  the  instance
+
+losses, and returns them.
+
+• The  get_config()  method  returns  a  dictionary  mapping  each  hyperparameter
+name to its value. It first calls the parent class’s get_config() method, then adds
+the new hyperparameters to this dictionary (note that the convenient {**x} syn‐
+tax was added in Python 3.5).
+
+You can then use any instance of this class when you compile the model:
+
+model.compile(loss=HuberLoss(2.), optimizer="nadam")
+
+5 It would not be a good idea to use a weighted mean: if you did, then two instances with the same weight but in
+
+different batches would have a different impact on training, depending on the total weight of each batch.
+
+386 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+When you save the model, the threshold will be saved along with it; and when you
+load the model, you just need to map the class name to the class itself:
+
+model = keras.models.load_model("my_model_with_a_custom_loss_class.h5",
+                                custom_objects={"HuberLoss": HuberLoss})
+
+When  you  save  a  model,  Keras  calls  the  loss  instance’s  get_config()  method  and
+saves  the  config  as  JSON  in  the  HDF5  file.  When  you  load  the  model,  it  calls  the
+from_config() class method on the HuberLoss class: this method is implemented by
+the  base  class  (Loss)  and  creates  an  instance  of  the  class,  passing  **config  to  the
+constructor.
+
+That’s it for losses! That wasn’t too hard, was it? Just as simple are custom activation
+functions, initializers, regularizers, and constraints. Let’s look at these now.
+
+Custom Activation Functions, Initializers, Regularizers, and
+Constraints
+Most Keras functionalities, such as losses, regularizers, constraints, initializers, met‐
+rics,  activation  functions,  layers,  and  even  full  models,  can  be  customized  in  very
+much the same way. Most of the time, you will just need to write a simple function
+with  the  appropriate  inputs  and  outputs.  Here  are  examples  of  a  custom  activation
+function  (equivalent  to  keras.activations.softplus()  or  tf.nn.softplus()),  a
+custom  Glorot  initializer  (equivalent  to  keras.initializers.glorot_normal()),  a
+custom  ℓ1  regularizer  (equivalent  to  keras.regularizers.l1(0.01)),  and  a  custom
+constraint  that  ensures  weights  are  all  positive  (equivalent  to  keras.con
+straints.nonneg() or tf.nn.relu()):
+
+def my_softplus(z): # return value is just tf.nn.softplus(z)
+    return tf.math.log(tf.exp(z) + 1.0)
+
+def my_glorot_initializer(shape, dtype=tf.float32):
+    stddev = tf.sqrt(2. / (shape[0] + shape[1]))
+    return tf.random.normal(shape, stddev=stddev, dtype=dtype)
+
+def my_l1_regularizer(weights):
+    return tf.reduce_sum(tf.abs(0.01 * weights))
+
+def my_positive_weights(weights): # return value is just tf.nn.relu(weights)
+    return tf.where(weights < 0., tf.zeros_like(weights), weights)
+
+As you can see, the arguments depend on the type of custom function. These custom
+functions can then be used normally; for example:
+
+layer = keras.layers.Dense(30, activation=my_softplus,
+                           kernel_initializer=my_glorot_initializer,
+                           kernel_regularizer=my_l1_regularizer,
+                           kernel_constraint=my_positive_weights)
+
+Customizing Models and Training Algorithms 
+
+| 
+
+387
+
+The activation function will be applied to the output of this Dense layer, and its result
+will  be  passed  on  to  the  next  layer.  The 

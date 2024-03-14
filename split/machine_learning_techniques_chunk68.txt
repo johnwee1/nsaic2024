@@ -1,0 +1,297 @@
+ks, such as skip connections like in a ResNet, and Gated Activation
+
+Units similar to those found in a GRU cell. Please see the notebook for more details.
+
+522 
+
+| 
+
+Chapter 15: Processing Sequences Using RNNs and CNNs
+
+similar  pairs  of  layers  using  growing  dilation  rates:  1,  2,  4,  8,  and  again  1,  2,  4,  8.
+Finally,  we  add  the  output  layer:  a  convolutional  layer  with  10  filters  of  size  1  and
+without  any  activation  function.  Thanks  to  the  padding  layers,  every  convolutional
+layer outputs a sequence of the same length as the input sequences, so the targets we
+use during training can be the full sequences: no need to crop them or downsample
+them.
+
+The last two models offer the best performance so far in forecasting our time series!
+In the WaveNet paper, the authors achieved state-of-the-art performance on various
+audio tasks (hence the name of the architecture), including text-to-speech tasks, pro‐
+ducing incredibly realistic voices across several languages. They also used the model
+to  generate  music,  one  audio  sample  at  a  time.  This  feat  is  all  the  more  impressive
+when you realize that a single second of audio can contain tens of thousands of time
+steps—even LSTMs and GRUs cannot handle such long sequences.
+
+In Chapter 16, we will continue to explore RNNs, and we will see how they can tackle
+various NLP tasks.
+
+Exercises
+
+1. Can  you  think  of  a  few  applications  for  a  sequence-to-sequence  RNN?  What
+
+about a sequence-to-vector RNN, and a vector-to-sequence RNN?
+
+2. How many dimensions must the inputs of an RNN layer have? What does each
+
+dimension represent? What about its outputs?
+
+3. If  you  want  to  build  a  deep  sequence-to-sequence  RNN,  which  RNN  layers
+should have return_sequences=True? What about a sequence-to-vector RNN?
+
+4. Suppose you have a daily univariate time series, and you want to forecast the next
+
+seven days. Which RNN architecture should you use?
+
+5. What are the main difficulties when training RNNs? How can you handle them?
+
+6. Can you sketch the LSTM cell’s architecture?
+
+7. Why would you want to use 1D convolutional layers in an RNN?
+
+8. Which neural network architecture could you use to classify videos?
+
+9. Train a classification model for the SketchRNN dataset, available in TensorFlow
+
+Datasets.
+
+10. Download the Bach chorales dataset and unzip it. It is composed of 382 chorales
+composed by Johann Sebastian Bach. Each chorale is 100 to 640 time steps long,
+and each time step contains 4 integers, where each integer corresponds to a note’s
+index  on  a  piano  (except  for  the  value  0,  which  means  that  no  note  is  played).
+Train a model—recurrent, convolutional, or both—that can predict the next time
+step  (four  notes),  given  a  sequence  of  time  steps  from  a  chorale.  Then  use  this
+
+Exercises 
+
+| 
+
+523
+
+model to generate Bach-like music, one note at a time: you can do this by giving
+the model the start of a chorale and asking it to predict the next time step, then
+appending these time steps to the input sequence and asking the model for the
+next  note,  and  so  on.  Also  make  sure  to  check  out  Google’s  Coconet  model,
+which was used for a nice Google doodle about Bach.
+
+Solutions to these exercises are available in Appendix A.
+
+524 
+
+| 
+
+Chapter 15: Processing Sequences Using RNNs and CNNs
+
+CHAPTER 16
+Natural Language Processing with
+RNNs and Attention
+
+When  Alan  Turing  imagined  his  famous  Turing  test1  in  1950,  his  objective  was  to
+evaluate  a  machine’s  ability  to  match  human  intelligence.  He  could  have  tested  for
+many  things,  such  as  the  ability  to  recognize  cats  in  pictures,  play  chess,  compose
+music,  or  escape  a  maze,  but,  interestingly,  he  chose  a  linguistic  task.  More  specifi‐
+cally,  he  devised  a  chatbot  capable  of  fooling  its  interlocutor  into  thinking  it  was
+human.2 This test does have its weaknesses: a set of hardcoded rules can fool unsus‐
+pecting or naive humans (e.g., the machine could give vague predefined answers in
+response to some keywords; it could pretend that it is joking or drunk, to get a pass
+on its weirdest answers; or it could escape difficult questions by answering them with
+its own questions), and many aspects of human intelligence are utterly ignored (e.g.,
+the  ability  to  interpret  nonverbal  communication  such  as  facial  expressions,  or  to
+learn  a  manual  task).  But  the  test  does  highlight  the  fact  that  mastering  language  is
+arguably  Homo  sapiens’s  greatest  cognitive  ability.  Can  we  build  a  machine  that  can
+read and write natural language?
+
+A common approach for natural language tasks is to use recurrent neural networks.
+We will therefore continue to explore RNNs (introduced in Chapter 15), starting with
+a character RNN, trained to predict the next character in a sentence. This will allow us
+to generate some original text, and in the process we will see how to build a Tensor‐
+Flow Dataset on a very long sequence. We will first use a stateless RNN (which learns
+
+1 Alan Turing, “Computing Machinery and Intelligence,” Mind 49 (1950): 433–460.
+
+2 Of course, the word chatbot came much later. Turing called his test the imitation game: machine A and human
+B chat with human interrogator C via text messages; the interrogator asks questions to figure out which one is
+the machine (A or B). The machine passes the test if it can fool the interrogator, while the human B must try
+to help the interrogator.
+
+525
+
+on random portions of text at each iteration, without any information on the rest of
+the text), then we will build a stateful RNN (which preserves the hidden state between
+training iterations and continues reading where it left off, allowing it to learn longer
+patterns).  Next,  we  will  build  an  RNN  to  perform  sentiment  analysis  (e.g.,  reading
+movie reviews and extracting the rater’s feeling about the movie), this time treating
+sentences  as  sequences  of  words,  rather  than  characters.  Then  we  will  show  how
+RNNs can be used to build an Encoder–Decoder architecture capable of performing
+neural machine translation (NMT). For this, we will use the seq2seq API provided by
+the TensorFlow Addons project.
+
+In the second part of this chapter, we will look at attention mechanisms. As their name
+suggests,  these  are  neural  network  components  that  learn  to  select  the  part  of  the
+inputs that the rest of the model should focus on at each time step. First we will see
+how to boost the performance of an RNN-based Encoder–Decoder architecture using
+attention, then we will drop RNNs altogether and look at a very successful attention-
+only  architecture  called  the  Transformer.  Finally,  we  will  take  a  look  at  some  of  the
+most  important  advances  in  NLP  in  2018  and  2019,  including  incredibly  powerful
+language models such as GPT-2 and BERT, both based on Transformers.
+
+Let’s start with a simple and fun model that can write like Shakespeare (well, sort of).
+
+Generating Shakespearean Text Using a Character RNN
+In a famous 2015 blog post titled “The Unreasonable Effectiveness of Recurrent Neu‐
+ral  Networks,”  Andrej  Karpathy  showed  how  to  train  an  RNN  to  predict  the  next
+character in a sentence. This Char-RNN can then be used to generate novel text, one
+character  at  a  time.  Here  is  a  small  sample  of  the  text  generated  by  a  Char-RNN
+model after it was trained on all of Shakespeare’s work:
+
+PANDARUS:
+
+Alas, I think he shall be come approached and the day
+
+When little srain would be attain’d into being never fed,
+
+And who is but a chain and subjects of his death,
+
+I should not sleep.
+
+Not  exactly  a  masterpiece,  but  it  is  still  impressive  that  the  model  was  able  to  learn
+words, grammar, proper punctuation, and more, just by learning to predict the next
+character in a sentence. Let’s look at how to build a Char-RNN, step by step, starting
+with the creation of the dataset.
+
+526 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+Creating the Training Dataset
+First, let’s download all of Shakespeare’s work, using Keras’s handy get_file() func‐
+tion and downloading the data from Andrej Karpathy’s Char-RNN project:
+
+shakespeare_url = "https://homl.info/shakespeare" # shortcut URL
+filepath = keras.utils.get_file("shakespeare.txt", shakespeare_url)
+with open(filepath) as f:
+    shakespeare_text = f.read()
+
+Next, we must encode every character as an integer. One option is to create a custom
+preprocessing layer, as we did in Chapter 13. But in this case, it will be simpler to use
+Keras’s Tokenizer class. First we need to fit a tokenizer to the text: it will find all the
+characters used in the text and map each of them to a different character ID, from 1
+to the number of distinct characters (it does not start at 0, so we can use that value for
+masking, as we will see later in this chapter):
+
+tokenizer = keras.preprocessing.text.Tokenizer(char_level=True)
+tokenizer.fit_on_texts([shakespeare_text])
+
+We  set  char_level=True  to  get  character-level  encoding  rather  than  the  default
+word-level  encoding.  Note  that  this  tokenizer  converts  the  text  to  lowercase  by
+default (but you can set lower=False if you do not want that). Now the tokenizer can
+encode  a  sentence  (or  a  list  of  sentences)  to  a  list  of  character  IDs  and  back,  and  it
+tells us how many distinct characters there are and the total number of characters in
+the text:
+
+>>> tokenizer.texts_to_sequences(["First"])
+[[20, 6, 9, 8, 3]]
+>>> tokenizer.sequences_to_texts([[20, 6, 9, 8, 3]])
+['f i r s t']
+>>> max_id = len(tokenizer.word_index) # number of distinct characters
+>>> dataset_size = tokenizer.document_count # total number of characters
+
+Let’s encode the full text so each character is represented by its ID (we subtract 1 to
+get IDs from 0 to 38, rather than from 1 to 39):
+
+[encoded] = np.array(tokenizer.texts_to_sequences([shakespeare_text])) - 1
+
+Before we continue, we need to split the dataset into a training set, a validation set,
+and a test set. We can’t just shuffle all the characters in the text, so how do you split a
+sequential dataset?
+
+How to Split a Sequential Dataset
+It is very important to avoid any overlap between the training set, the validation set,
+and the test set. For example, we can take the first 90% of the text for the training set,
+then the next 5% for the validation set, and the final 5% for the test set. It would also
+
+Generating Shakespearean Text Using a Character RNN 
+
+| 
+
+527
+
+be a good idea to leave a gap between these sets to avoid the risk of a paragraph over‐
+lapping over two sets.
+
+When dealing with time series, you would in general split across time,: for example,
+you might take the years 2000 to 2012 for the training set, the years 2013 to 2015 for
+the validation set, and the years 2016 to 2018 for the test set. However, in some cases
+you may be able to split along other dimensions, which will give you a longer time
+period to train on. For example, if you have data about the financial health of 10,000
+companies from 2000 to 2018, you might be able to split this data across the different
+companies. It’s very likely that many of these companies will be strongly correlated,
+though  (e.g.,  whole  economic  sectors  may  go  up  or  down  jointly),  and  if  you  have
+correlated companies across the training set and the test set your test set will not be as
+useful, as its measure of the generalization error will be optimistically biased.
+
+So, it is often safer to split across time—but this implicitly assumes that the patterns
+the RNN can learn in the past (in the training set) will still exist in the future. In other
+words,  we  assume  that  the  time  series  is  stationary  (at  least  in  a  wide  sense).3  For
+many  time  series  this  assumption  is  reasonable  (e.g.,  chemical  reactions  should  be
+fine, since the laws of chemistry don’t change every day), but for many others it is not
+(e.g., financial markets are notoriously not stationary since patterns disappear as soon
+as  traders  spot  them  and  start  exploiting  them).  To  make  sure  the  time  series  is
+indeed  sufficiently  stationary,  you  can  plot  the  model’s  errors  on  the  validation  set
+across time: if the model performs much better on the first part of the validation set
+than  on  the  last  part,  then  the  time  series  may  not  be  stationary  enough,  and  you
+might be better off training the model on a shorter time span.
+
+In short, splitting a time series into a training set, a validation set, and a test set is not
+a trivial task, and how it’s done will depend strongly on the task at hand.
+
+Now  back  to  Shakespeare!  Let’s  take  the  first  90%  of  the  text  for  the  training  set
+(keeping the rest for the validation set and the test set), and create a tf.data.Dataset
+that will return each character one by one from this set:
+
+train_size = dataset_size * 90 // 100
+dataset = tf.data.Dataset.from_tensor_slices(encoded[:train_size])
+
+Chopping the Sequential Dataset into Multiple Windows
+The training set now consists of a single sequence of over a million characters, so we
+can’t just train the neural network directly on it: the RNN would be equivalent to a
+
+3 By definition, a stationary time series’s mean, variance, and autocorrelations (i.e., correlations between values
+in the time series separated by a given interval) do not change over time. This is quite restrictive; for example,
+it excludes time series with trends or cyclical patterns. RNNs are more tolerant in that they can learn trends
+and cyclical patterns.
+
+528 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+deep net with over a million layers, and we would have a single (very long) instance
+to  train  it.  Instead,  we  will  use  the  dataset’s  window()  method  to  convert  this  long
+sequence of characters into many smaller windows of text. Every instance in the data‐
+set  will  be  a  fairly  short  substring  of  the  whole  text,  and  the  RNN  will  be  unrolled
+only  over  the  length  of  these  substrings.  This  is  called  truncated  backpropagation
+through time. Let’s call the window() method to create a dataset of short text windows:
+
+n_steps = 100
+window_length = n_steps + 1 # target = input shifted 1 character ahead
+dataset = dataset.window(window_length, shift=1, drop_remainder=True)
+
+You  can  try  tuning  n_steps:  it  is  easier  to  train  RNNs  on  shorter
+input  sequences,  but  of  course  the  RNN  will  not  be  able  to  learn
+any pattern longer than n_steps, so don’t make it too small.
+
+By  default,  the  window()  method  creates  nonoverlapping  windows,  but  to  get  the
+largest possible training set we use shift=1 so that the first window contains charac‐
+ters 0 to 100, the second contains characters 1 to 101, and so on. To ensure that all
+windows  are  exactly  101  characters  long  (which  will  allow  us  to  create  batches
+without having to do any padding), we set drop_remainder=True (otherwise the last
+100  windows  will  contain  100  characters,  99  characters,  and  so  on  down  to  1
+character).
+
+The window() method creates a dataset that contains windows, each of which is also
+represented as a dataset. It’s a nested dataset, analogous to a list of lists. This is useful
+when  you  want  to  transform  each  window  by  calling  its  dataset  methods  (e.g.

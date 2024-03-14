@@ -1,0 +1,357 @@
+  to_tensor()  method,  it  gets  converted  to  a  regular  tensor,  padding
+shorter tensors with zeros to get tensors of equal lengths (you can change the default
+value by setting the default_value argument):
+
+>>> r.to_tensor()
+<tf.Tensor: id=1056, shape=(4, 6), dtype=int32, numpy=
+array([[   67,    97,   102,   233,     0,     0],
+       [   67,   111,   102,   102,   101,   101],
+       [   99,    97,   102,   102,   232,     0],
+       [21654, 21857,     0,     0,     0,     0]], dtype=int32)>
+
+Many TF operations support ragged tensors. For the full list, see the documentation
+of the tf.RaggedTensor class.
+
+Sparse Tensors
+TensorFlow  can  also  efficiently  represent  sparse  tensors  (i.e.,  tensors  containing
+mostly zeros). Just create a tf.SparseTensor, specifying the indices and values of the
+nonzero  elements  and  the  tensor’s  shape.  The  indices  must  be  listed  in  “reading
+order”  (from  left  to  right,  and  top  to  bottom).  If  you  are  unsure,  just  use
+tf.sparse.reorder(). You can convert a sparse tensor to a dense tensor (i.e., a regu‐
+lar tensor) using tf.sparse.to_dense():
+
+Special Data Structures 
+
+| 
+
+785
+
+>>> s = tf.SparseTensor(indices=[[0, 1], [1, 0], [2, 3]],
+                        values=[1., 2., 3.],
+                        dense_shape=[3, 4])
+>>> tf.sparse.to_dense(s)
+<tf.Tensor: id=1074, shape=(3, 4), dtype=float32, numpy=
+array([[0., 1., 0., 0.],
+       [2., 0., 0., 0.],
+       [0., 0., 0., 3.]], dtype=float32)>
+
+Note  that  sparse  tensors  do  not  support  as  many  operations  as  dense  tensors.  For
+example,  you  can  multiply  a  sparse  tensor  by  any  scalar  value,  and  you  get  a  new
+sparse tensor, but you cannot add a scalar value to a sparse tensor, as this would not
+return a sparse tensor:
+
+>>> s * 3.14
+<tensorflow.python.framework.sparse_tensor.SparseTensor at 0x13205d470>
+>>> s + 42.0
+[...] TypeError: unsupported operand type(s) for +: 'SparseTensor' and 'float'
+
+Tensor Arrays
+A tf.TensorArray represents a list of tensors. This can be handy in dynamic models
+containing  loops,  to  accumulate  results  and  later  compute  some  statistics.  You  can
+read or write tensors at any location in the array:
+
+array = tf.TensorArray(dtype=tf.float32, size=3)
+array = array.write(0, tf.constant([1., 2.]))
+array = array.write(1, tf.constant([3., 10.]))
+array = array.write(2, tf.constant([5., 7.]))
+tensor1 = array.read(1) # => returns (and pops!) tf.constant([3., 10.])
+
+Notice that reading an item pops it from the array, replacing it with a tensor of the
+same shape, full of zeros.
+
+When  you  write  to  the  array,  you  must  assign  the  output  back  to
+the  array,  as  shown  in  this  code  example.  If  you  don’t,  although
+your code will work fine in eager mode, it will break in graph mode
+(these modes were presented in Chapter 12).
+
+When  creating  a  TensorArray,  you  must  provide  its  size,  except  in  graph  mode.
+Alternatively, you can leave the  size unset and instead set  dynamic_size=True, but
+this will hinder performance, so if you know the size in advance, you should set it.
+You  must  also  specify  the  dtype,  and  all  elements  must  have  the  same  shape  as  the
+first one written to the array.
+
+You can stack all the items into a regular tensor by calling the stack() method:
+
+786 
+
+|  Appendix F: Special Data Structures
+
+>>> array.stack()
+<tf.Tensor: id=2110875, shape=(3, 2), dtype=float32, numpy=
+array([[1., 2.],
+       [0., 0.],
+       [5., 7.]], dtype=float32)>
+
+Sets
+TensorFlow  supports  sets  of  integers  or  strings  (but  not  floats).  It  represents  them
+using regular tensors. For example, the set {1, 5, 9} is just represented as the tensor
+[[1,  5,  9]].  Note  that  the  tensor  must  have  at  least  two  dimensions,  and  the  sets
+must be in the last dimension. For example, [[1, 5, 9], [2, 5, 11]] is a tensor
+holding two independent sets: {1, 5, 9} and {2, 5, 11}. If some sets are shorter
+than others, you must pad them with a padding value (0 by default, but you can use
+any other value you prefer).
+
+The tf.sets package contains several functions to manipulate sets. For example, let’s
+create  two  sets  and  compute  their  union  (the  result  is  a  sparse  tensor,  so  we  call
+to_dense() to display it):
+
+>>> a = tf.constant([[1, 5, 9]])
+>>> b = tf.constant([[5, 6, 9, 11]])
+>>> u = tf.sets.union(a, b)
+>>> u
+<tensorflow.python.framework.sparse_tensor.SparseTensor at 0x132b60d30>
+>>> tf.sparse.to_dense(u)
+<tf.Tensor: [...] numpy=array([[ 1,  5,  6,  9, 11]], dtype=int32)>
+
+You can also compute the union of multiple pairs of sets simultaneously:
+
+>>> a = tf.constant([[1, 5, 9], [10, 0, 0]])
+>>> b = tf.constant([[5, 6, 9, 11], [13, 0, 0, 0, 0]])
+>>> u = tf.sets.union(a, b)
+>>> tf.sparse.to_dense(u)
+<tf.Tensor: [...] numpy=array([[ 1,  5,  6,  9, 11],
+                               [ 0, 10, 13,  0,  0]], dtype=int32)>
+
+If you prefer to use a different padding value, you must set default_value when call‐
+ing to_dense():
+
+>>> tf.sparse.to_dense(u, default_value=-1)
+<tf.Tensor: [...] numpy=array([[ 1,  5,  6,  9, 11],
+                               [ 0, 10, 13, -1, -1]], dtype=int32)>
+
+The  default  default_value  is  0,  so  when  dealing  with  string  sets,
+you must set the default_value (e.g., to an empty string).
+
+Special Data Structures 
+
+| 
+
+787
+
+Other  functions  available  in  tf.sets  include  difference(),  intersection(),  and
+size(), which are self-explanatory. If you want to check whether or not a set contains
+some given values, you can compute the intersection of that set and the values. If you
+want to add some values to a set, you can compute the union of the set and the values.
+
+Queues
+A queue is a data structure to which you can push data records, and later pull them
+out. TensorFlow implements several types of queues in the tf.queue package. They
+used to be very important when implementing efficient data loading and preprocess‐
+ing  pipelines,  but  the  tf.data  API  has  essentially  rendered  them  useless  (except  per‐
+haps in some rare cases) because it is much simpler to use and provides all the tools
+you need to build efficient pipelines. For the sake of completeness, though, let’s take a
+quick look at them.
+
+The  simplest  kind  of  queue  is  the  first-in,  first-out  (FIFO)  queue.  To  build  it,  you
+need  to  specify  the  maximum  number  of  records  it  can  contain.  Moreover,  each
+record is a tuple of tensors, so you must specify the type of each tensor, and option‐
+ally their shapes. For example, the following code example creates a FIFO queue with
+maximum  three  records,  each  containing  a  tuple  with  a  32-bit  integer  and  a  string.
+Then it pushes two records to it, looks at the size (which is 2 at this point), and pulls a
+record out:
+
+>>> q = tf.queue.FIFOQueue(3, [tf.int32, tf.string], shapes=[(), ()])
+>>> q.enqueue([10, b"windy"])
+>>> q.enqueue([15, b"sunny"])
+>>> q.size()
+<tf.Tensor: id=62, shape=(), dtype=int32, numpy=2>
+>>> q.dequeue()
+[<tf.Tensor: id=6, shape=(), dtype=int32, numpy=10>,
+ <tf.Tensor: id=7, shape=(), dtype=string, numpy=b'windy'>]
+
+It is also possible to enqueue and dequeue multiple records at once (the latter requires
+specifying the shapes when creating the queue):
+
+>>> q.enqueue_many([[13, 16], [b'cloudy', b'rainy']])
+>>> q.dequeue_many(3)
+[<tf.Tensor: [...] numpy=array([15, 13, 16], dtype=int32)>,
+ <tf.Tensor: [...] numpy=array([b'sunny', b'cloudy', b'rainy'], dtype=object)>]
+
+Other queue types include:
+
+PaddingFIFOQueue
+
+Same as FIFOQueue, but its dequeue_many() method supports dequeueing multi‐
+ple  records  of  different  shapes.  It  automatically  pads  the  shortest  records  to
+ensure all the records in the batch have the same shape.
+
+788 
+
+|  Appendix F: Special Data Structures
+
+PriorityQueue
+
+A queue that dequeues records in a prioritized order. The priority must be a 64-
+bit integer included as the first element of each record. Surprisingly, records with
+a  lower  priority  will  be  dequeued  first.  Records  with  the  same  priority  will  be
+dequeued in FIFO order.
+
+RandomShuffleQueue
+
+A queue whose records are dequeued in random order. This was useful to imple‐
+ment a shuffle buffer before tf.data existed.
+
+If  a  queue  is  already  full  and  you  try  to  enqueue  another  record,  the  enqueue*()
+method will freeze until a record is dequeued by another thread. Similarly, if a queue
+is  empty  and  you  try  to  dequeue  a  record,  the  dequeue*()  method  will  freeze  until
+records are pushed to the queue by another thread.
+
+Special Data Structures 
+
+| 
+
+789
+
+APPENDIX G
+TensorFlow Graphs
+
+In  this  appendix,  we  will  explore  the  graphs  generated  by  TF  Functions  (see  Chap‐
+ter 12).
+
+TF Functions and Concrete Functions
+TF Functions are polymorphic, meaning they support inputs of different types (and
+shapes). For example, consider the following tf_cube() function:
+
+@tf.function
+def tf_cube(x):
+    return x ** 3
+
+Every time you call a TF Function with a new combination of input types or shapes, it
+generates  a  new  concrete  function,  with  its  own  graph  specialized  for  this  particular
+combination. Such a combination of argument types and shapes is called an input sig‐
+nature. If you call the TF Function with an input signature it has already seen before,
+it  will  reuse  the  concrete  function  it  generated  earlier.  For  example,  if  you  call
+tf_cube(tf.constant(3.0)), the TF Function will reuse the same concrete function
+it used for tf_cube(tf.constant(2.0)) (for float32 scalar tensors). But it will gener‐
+if  you  call  tf_cube(tf.constant([2.0]))  or
+ate  a  new  concrete  function 
+tf_cube(tf.constant([3.0])) (for float32 tensors of shape [1]), and yet another for
+tf_cube(tf.constant([[1.0,  2.0],  [3.0,  4.0]]))  (for  float32  tensors  of  shape
+[2,  2]).  You  can  get  the  concrete  function  for  a  particular  combination  of  inputs  by
+calling  the  TF  Function’s  get_concrete_function()  method.  It  can  then  be  called
+like a regular function, but it will only support one input signature (in this example,
+float32 scalar tensors):
+
+791
+
+>>> concrete_function = tf_cube.get_concrete_function(tf.constant(2.0))
+>>> concrete_function
+<tensorflow.python.eager.function.ConcreteFunction at 0x155c29240>
+>>> concrete_function(tf.constant(2.0))
+<tf.Tensor: id=19068249, shape=(), dtype=float32, numpy=8.0>
+
+Figure  G-1  shows  the  tf_cube()  TF  Function,  after  we  called  tf_cube(2)  and
+tf_cube(tf.constant(2.0)):  two  concrete  functions  were  generated,  one  for  each
+signature, each with its own optimized function graph (FuncGraph), and its own func‐
+tion definition (FunctionDef). A function definition points to the parts of the graph
+that  correspond  to  the  function’s  inputs  and  outputs.  In  each  FuncGraph,  the  nodes
+(ovals)  represent  operations  (e.g.,  power,  constants,  or  placeholders  for  arguments
+like x), while the edges (the solid arrows between the operations) represent the ten‐
+sors that will flow through the graph. The concrete function on the left is specialized
+for x = 2, so TensorFlow managed to simplify it to just output 8 all the time (note
+that the function definition does not even have an input). The concrete function on
+the right is specialized for float32 scalar tensors, and it could not be simplified. If we
+call  tf_cube(tf.constant(5.0)),  the  second  concrete  function  will  be  called,  the
+placeholder  operation  for  x  will  output  5.0,  then  the  power  operation  will  compute
+5.0 ** 3, so the output will be 125.0.
+
+Figure G-1. The tf_cube() TF Function, with its ConcreteFunctions and their Function‐
+Graphs
+
+The tensors in these graphs are symbolic tensors, meaning they don’t have an actual
+value, just a data type, a shape, and a name. They represent the future tensors that will
+flow through the graph once an actual value is fed to the placeholder x and the graph
+is  executed.  Symbolic  tensors  make  it  possible  to  specify  ahead  of  time  how  to
+
+792 
+
+|  Appendix G: TensorFlow Graphs
+
+connect operations, and they also allow TensorFlow to recursively infer the data types
+and shapes of all tensors, given the data types and shapes of their inputs.
+
+Now let’s continue to peek under the hood, and see how to access function definitions
+and function graphs and how to explore a graph’s operations and tensors.
+
+Exploring Function Definitions and Graphs
+You  can  access  a  concrete  function’s  computation  graph  using  the  graph  attribute,
+and get the list of its operations by calling the graph’s get_operations() method:
+
+>>> concrete_function.graph
+<tensorflow.python.framework.func_graph.FuncGraph at 0x14db5ef98>
+>>> ops = concrete_function.graph.get_operations()
+>>> ops
+[<tf.Operation 'x' type=Placeholder>,
+ <tf.Operation 'pow/y' type=Const>,
+ <tf.Operation 'pow' type=Pow>,
+ <tf.Operation 'Identity' type=Identity>]
+
+In  this  example,  the  first  operation  represents  the  input  argument  x  (it  is  called  a
+placeholder),  the  second  “operation”  represents  the  constant  3,  the  third  operation
+represents the power operation (**), and the final operation represents the output of
+this function (it is an identity operation, meaning it will do nothing more than copy
+the output of the addition operation1). Each operation has a list of input and output
+tensors that you can easily access using the operation’s inputs and outputs attributes.
+For example, let’s get the list of inputs and outputs of the power operation:
+
+>>> pow_op = ops[2]
+>>> list(pow_op.inputs)
+[<tf.Tensor 'x:0' shape=() dtype=float32>,
+ <tf.Tensor 'pow/y:0' shape=() dtype=float32>]
+>>> pow_op.outputs
+[<tf.Tensor 'pow:0' shape=() dtype=float32>]
+
+This computation graph is represented in Figure G-2.
+
+1 You can safely ignore it—it is only here for technical reasons, to ensure that TF Functions don’t leak internal
+
+structures.
+
+TensorFlow Graphs 
+
+| 
+
+793
+
+Figure G-2. Example of a computation graph
+
+Note  that  each  operation  has  a  name.  It  defaults  to  the  name  of  the  operation  (e.g.,
+"pow"),  but  you  can  define  it  manually  when  calling  the  operation  (e.g.,  tf.pow(x,
+3, name="other_name")). If a name already exists, TensorFlow automatically adds a
+unique index (e.g., "pow_1", "pow_2", etc.). Each tensor also has a unique name: it is
+always the name of the operation that outputs this tensor, plus :0 if it is the opera‐
+tion’s first output, or :1 if it is the second output, and so on. You can fetch an opera‐
+tion  or  a  tensor  by  name  using  the  graph’s  get_operation_by_name()  or
+get_tensor_by_name() methods:
+
+>>> concrete_function.graph.get_operation_by_name('x')
+<tf.Operation 'x' type=Placeholder>
+>>> concrete_function.graph.get_tensor_by_name('Identity:0')
+<tf.Tensor 'Identity:0' shape=() dtype=float32>
+
+The concrete function also contains the function definition (represented as a protocol
+buffer2),  which  includes  the  function’s  signature.  This  signature  allows  the  concrete
+function to know which placeholders to feed with the input values, and which tensors
+to return:
+
+>>> concrete_function.function_def.signature
+name: "__inference_cube_19068241"
+input_arg {
+  name: "x"
+  type: DT_FLOAT
+}
+output_arg {
+  name: "identity"
+  type: DT_FLOAT
+}
+
+2 A popular binary format discussed in Chapter 13.
+
+794 
+
+|  Appendix G: TensorFlow Graphs
+
+Now let’s look more closely at tracing.
+
+A Closer Look at Tracing
+Let’s tweak the tf_cube

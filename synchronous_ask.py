@@ -25,13 +25,13 @@ answerprompt = "Give a detailed answer to the following question that is asked i
 
 # change the filename to ur MANUALLY cleaned file
 # txt_filename = "YOURFILENAMEHERE.txt"
-with open(txt_filename, "r") as f:
+with open("sanitized_reinforcement_learning_qns.txt", "r") as f:
     text = f.readlines()
 
 
 ######## YOU NEED TO CREATE A TEXT FILE WITH A NUMBER (START WITH 0) INSIDE TO MANUALLY TRACK THE LINES so u can stop and start as needed
 def createResponse(provider):
-    with open("FILENAME_progress.txt", "r") as f:
+    with open("manual_progress.txt", "r") as f:
         line = int(f.read())
 
     if int(line) == len(text):

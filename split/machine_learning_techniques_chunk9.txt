@@ -1,0 +1,350 @@
+ly well.
+
+the  Decision  Tree  model  would  be 
+
+to  use 
+
+A great alternative is to use Scikit-Learn’s K-fold cross-validation feature. The follow‐
+ing code randomly splits the training set into 10 distinct subsets called folds, then it
+trains  and  evaluates  the  Decision  Tree  model  10  times,  picking  a  different  fold  for
+evaluation  every  time  and  training  on  the  other  9  folds.  The  result  is  an  array  con‐
+taining the 10 evaluation scores:
+
+from sklearn.model_selection import cross_val_score
+scores = cross_val_score(tree_reg, housing_prepared, housing_labels,
+                         scoring="neg_mean_squared_error", cv=10)
+tree_rmse_scores = np.sqrt(-scores)
+
+Select and Train a Model 
+
+| 
+
+73
+
+Scikit-Learn’s  cross-validation  features  expect  a  utility  function
+(greater  is  better)  rather  than  a  cost  function  (lower  is  better),  so
+the scoring function is actually the opposite of the MSE (i.e., a neg‐
+ative  value),  which  is  why  the  preceding  code  computes  -scores
+before calculating the square root.
+
+Let’s look at the results:
+
+>>> def display_scores(scores):
+...     print("Scores:", scores)
+...     print("Mean:", scores.mean())
+...     print("Standard deviation:", scores.std())
+...
+>>> display_scores(tree_rmse_scores)
+Scores: [70194.33680785 66855.16363941 72432.58244769 70758.73896782
+ 71115.88230639 75585.14172901 70262.86139133 70273.6325285
+ 75366.87952553 71231.65726027]
+Mean: 71407.68766037929
+Standard deviation: 2439.4345041191004
+
+Now the Decision Tree doesn’t look as good as it did earlier. In fact, it seems to per‐
+form  worse  than  the  Linear  Regression  model!  Notice  that  cross-validation  allows
+you to get not only an estimate of the performance of your model, but also a measure
+of how precise this estimate is (i.e., its standard deviation). The Decision Tree has a
+score of approximately 71,407, generally ±2,439. You would not have this information
+if you just used one validation set. But cross-validation comes at the cost of training
+the model several times, so it is not always possible.
+
+Let’s compute the same scores for the Linear Regression model just to be sure:
+
+>>> lin_scores = cross_val_score(lin_reg, housing_prepared, housing_labels,
+...                              scoring="neg_mean_squared_error", cv=10)
+...
+>>> lin_rmse_scores = np.sqrt(-lin_scores)
+>>> display_scores(lin_rmse_scores)
+Scores: [66782.73843989 66960.118071   70347.95244419 74739.57052552
+ 68031.13388938 71193.84183426 64969.63056405 68281.61137997
+ 71552.91566558 67665.10082067]
+Mean: 69052.46136345083
+Standard deviation: 2731.674001798348
+
+That’s  right:  the  Decision  Tree  model  is  overfitting  so  badly  that  it  performs  worse
+than the Linear Regression model.
+
+Let’s  try  one  last  model  now:  the  RandomForestRegressor.  As  we  will  see  in  Chap‐
+ter 7, Random Forests work by training many Decision Trees on random subsets of
+the features, then averaging out their predictions. Building a model on top of many
+other models is called Ensemble Learning, and it is often a great way to push ML algo‐
+rithms even further. We will skip most of the code since it is essentially the same as
+for the other models:
+
+74 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+>>> from sklearn.ensemble import RandomForestRegressor
+>>> forest_reg = RandomForestRegressor()
+>>> forest_reg.fit(housing_prepared, housing_labels)
+>>> [...]
+>>> forest_rmse
+18603.515021376355
+>>> display_scores(forest_rmse_scores)
+Scores: [49519.80364233 47461.9115823  50029.02762854 52325.28068953
+ 49308.39426421 53446.37892622 48634.8036574  47585.73832311
+ 53490.10699751 50021.5852922 ]
+Mean: 50182.303100336096
+Standard deviation: 2097.0810550985693
+
+Wow, this is much better: Random Forests look very promising. However, note that
+the score on the training set is still much lower than on the validation sets, meaning
+that the model is still overfitting the training set. Possible solutions for overfitting are
+to simplify the model, constrain it (i.e., regularize it), or get a lot more training data.
+Before  you  dive  much  deeper  into  Random  Forests,  however,  you  should  try  out
+many  other  models  from  various  categories  of  Machine  Learning  algorithms  (e.g.,
+several  Support  Vector  Machines  with  different  kernels,  and  possibly  a  neural  net‐
+work), without spending too much time tweaking the hyperparameters. The goal is to
+shortlist a few (two to five) promising models.
+
+You should save every model you experiment with so that you can
+come back easily to any model you want. Make sure you save both
+the  hyperparameters  and  the  trained  parameters,  as  well  as  the
+cross-validation  scores  and  perhaps  the  actual  predictions  as  well.
+This  will  allow  you  to  easily  compare  scores  across  model  types,
+and  compare  the  types  of  errors  they  make.  You  can  easily  save
+Scikit-Learn models by using Python’s pickle module or by using
+the  joblib  library,  which  is  more  efficient  at  serializing  large
+NumPy arrays (you can install this library using pip):
+
+import joblib
+
+joblib.dump(my_model, "my_model.pkl")
+# and later...
+my_model_loaded = joblib.load("my_model.pkl")
+
+Fine-Tune Your Model
+Let’s  assume  that  you  now  have  a  shortlist  of  promising  models.  You  now  need  to
+fine-tune them. Let’s look at a few ways you can do that.
+
+Fine-Tune Your Model 
+
+| 
+
+75
+
+Grid Search
+One option would be to fiddle with the hyperparameters manually, until you find a
+great combination of hyperparameter values. This would be very tedious work, and
+you may not have time to explore many combinations.
+
+Instead, you should get Scikit-Learn’s GridSearchCV to search for you. All you need
+to do is tell it which hyperparameters you want it to experiment with and what values
+to try out, and it will use cross-validation to evaluate all the possible combinations of
+hyperparameter values. For example, the following code searches for the best combi‐
+nation of hyperparameter values for the RandomForestRegressor:
+
+from sklearn.model_selection import GridSearchCV
+
+param_grid = [
+    {'n_estimators': [3, 10, 30], 'max_features': [2, 4, 6, 8]},
+    {'bootstrap': [False], 'n_estimators': [3, 10], 'max_features': [2, 3, 4]},
+  ]
+
+forest_reg = RandomForestRegressor()
+
+grid_search = GridSearchCV(forest_reg, param_grid, cv=5,
+                           scoring='neg_mean_squared_error',
+                           return_train_score=True)
+
+grid_search.fit(housing_prepared, housing_labels)
+
+When you have no idea what value a hyperparameter should have,
+a  simple  approach  is  to  try  out  consecutive  powers  of  10  (or  a
+smaller number if you want a more fine-grained search, as shown
+in this example with the n_estimators hyperparameter).
+
+This  param_grid  tells  Scikit-Learn  to  first  evaluate  all  3  ×  4  =  12  combinations  of
+n_estimators  and  max_features  hyperparameter  values  specified  in  the  first  dict
+(don’t worry about what these hyperparameters mean for now; they will be explained
+in  Chapter  7),  then  try  all  2  ×  3  =  6  combinations  of  hyperparameter  values  in  the
+second dict, but this time with the bootstrap hyperparameter set to False instead of
+True (which is the default value for this hyperparameter).
+
+The  grid  search  will  explore  12  +  6  =  18  combinations  of  RandomForestRegressor
+hyperparameter values, and it will train each model 5 times (since we are using five-
+fold cross validation). In other words, all in all, there will be 18 × 5 = 90 rounds of
+training! It may take quite a long time, but when it is done you can get the best com‐
+bination of parameters like this:
+
+>>> grid_search.best_params_
+{'max_features': 8, 'n_estimators': 30}
+
+76 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+Since  8  and  30  are  the  maximum  values  that  were  evaluated,  you
+should  probably  try  searching  again  with  higher  values;  the  score
+may continue to improve.
+
+You can also get the best estimator directly:
+
+>>> grid_search.best_estimator_
+RandomForestRegressor(bootstrap=True, criterion='mse', max_depth=None,
+           max_features=8, max_leaf_nodes=None, min_impurity_decrease=0.0,
+           min_impurity_split=None, min_samples_leaf=1,
+           min_samples_split=2, min_weight_fraction_leaf=0.0,
+           n_estimators=30, n_jobs=None, oob_score=False, random_state=None,
+           verbose=0, warm_start=False)
+
+If  GridSearchCV  is  initialized  with  refit=True  (which  is  the
+default),  then  once  it  finds  the  best  estimator  using  cross-
+validation, it retrains it on the whole training set. This is usually a
+good  idea,  since  feeding  it  more  data  will  likely  improve  its
+performance.
+
+And of course the evaluation scores are also available:
+
+>>> cvres = grid_search.cv_results_
+>>> for mean_score, params in zip(cvres["mean_test_score"], cvres["params"]):
+...     print(np.sqrt(-mean_score), params)
+...
+63669.05791727153 {'max_features': 2, 'n_estimators': 3}
+55627.16171305252 {'max_features': 2, 'n_estimators': 10}
+53384.57867637289 {'max_features': 2, 'n_estimators': 30}
+60965.99185930139 {'max_features': 4, 'n_estimators': 3}
+52740.98248528835 {'max_features': 4, 'n_estimators': 10}
+50377.344409590376 {'max_features': 4, 'n_estimators': 30}
+58663.84733372485 {'max_features': 6, 'n_estimators': 3}
+52006.15355973719 {'max_features': 6, 'n_estimators': 10}
+50146.465964159885 {'max_features': 6, 'n_estimators': 30}
+57869.25504027614 {'max_features': 8, 'n_estimators': 3}
+51711.09443660957 {'max_features': 8, 'n_estimators': 10}
+49682.25345942335 {'max_features': 8, 'n_estimators': 30}
+62895.088889905004 {'bootstrap': False, 'max_features': 2, 'n_estimators': 3}
+54658.14484390074 {'bootstrap': False, 'max_features': 2, 'n_estimators': 10}
+59470.399594730654 {'bootstrap': False, 'max_features': 3, 'n_estimators': 3}
+52725.01091081235 {'bootstrap': False, 'max_features': 3, 'n_estimators': 10}
+57490.612956065226 {'bootstrap': False, 'max_features': 4, 'n_estimators': 3}
+51009.51445842374 {'bootstrap': False, 'max_features': 4, 'n_estimators': 10}
+
+In this example, we obtain the best solution by setting the max_features hyperpara‐
+meter  to  8  and  the  n_estimators  hyperparameter  to  30.  The  RMSE  score  for  this
+combination is 49,682, which is slightly better than the score you got earlier using the
+
+Fine-Tune Your Model 
+
+| 
+
+77
+
+default  hyperparameter  values  (which  was  50,182).  Congratulations,  you  have  suc‐
+cessfully fine-tuned your best model!
+
+Don’t forget that you can treat some of the data preparation steps as
+hyperparameters.  For  example,  the  grid  search  will  automatically
+find out whether or not to add a feature you were not sure about
+(e.g.,  using  the  add_bedrooms_per_room  hyperparameter  of  your
+CombinedAttributesAdder  transformer).  It  may  similarly  be  used
+to  automatically  find  the  best  way  to  handle  outliers,  missing  fea‐
+tures, feature selection, and more.
+
+Randomized Search
+The grid search approach is fine when you are exploring relatively few combinations,
+like in the previous example, but when the hyperparameter search space is large, it is
+often preferable to use RandomizedSearchCV instead. This class can be used in much
+the same way as the GridSearchCV class, but instead of trying out all possible combi‐
+nations, it evaluates a given number of random combinations by selecting a random
+value  for  each  hyperparameter  at  every  iteration.  This  approach  has  two  main
+benefits:
+
+• If you let the randomized search run for, say, 1,000 iterations, this approach will
+explore 1,000 different values for each hyperparameter (instead of just a few val‐
+ues per hyperparameter with the grid search approach).
+
+• Simply by setting the number of iterations, you have more control over the com‐
+
+puting budget you want to allocate to hyperparameter search.
+
+Ensemble Methods
+Another way to fine-tune your system is to try to combine the models that perform
+best.  The  group  (or  “ensemble”)  will  often  perform  better  than  the  best  individual
+model  (just  like  Random  Forests  perform  better  than  the  individual  Decision  Trees
+they rely on), especially if the individual models make very different types of errors.
+We will cover this topic in more detail in Chapter 7.
+
+Analyze the Best Models and Their Errors
+You will often gain good insights on the problem by inspecting the best models. For
+example,  the  RandomForestRegressor  can  indicate  the  relative  importance  of  each
+attribute for making accurate predictions:
+
+>>> feature_importances = grid_search.best_estimator_.feature_importances_
+>>> feature_importances
+array([7.33442355e-02, 6.29090705e-02, 4.11437985e-02, 1.46726854e-02,
+
+78 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+       1.41064835e-02, 1.48742809e-02, 1.42575993e-02, 3.66158981e-01,
+       5.64191792e-02, 1.08792957e-01, 5.33510773e-02, 1.03114883e-02,
+       1.64780994e-01, 6.02803867e-05, 1.96041560e-03, 2.85647464e-03])
+
+Let’s display these importance scores next to their corresponding attribute names:
+
+>>> extra_attribs = ["rooms_per_hhold", "pop_per_hhold", "bedrooms_per_room"]
+>>> cat_encoder = full_pipeline.named_transformers_["cat"]
+>>> cat_one_hot_attribs = list(cat_encoder.categories_[0])
+>>> attributes = num_attribs + extra_attribs + cat_one_hot_attribs
+>>> sorted(zip(feature_importances, attributes), reverse=True)
+[(0.3661589806181342, 'median_income'),
+ (0.1647809935615905, 'INLAND'),
+ (0.10879295677551573, 'pop_per_hhold'),
+ (0.07334423551601242, 'longitude'),
+ (0.0629090704826203, 'latitude'),
+ (0.05641917918195401, 'rooms_per_hhold'),
+ (0.05335107734767581, 'bedrooms_per_room'),
+ (0.041143798478729635, 'housing_median_age'),
+ (0.014874280890402767, 'population'),
+ (0.014672685420543237, 'total_rooms'),
+ (0.014257599323407807, 'households'),
+ (0.014106483453584102, 'total_bedrooms'),
+ (0.010311488326303787, '<1H OCEAN'),
+ (0.002856474637320158, 'NEAR OCEAN'),
+ (0.00196041559947807, 'NEAR BAY'),
+ (6.028038672736599e-05, 'ISLAND')]
+
+With this information, you may want to try dropping some of the less useful features
+(e.g., apparently only one ocean_proximity category is really useful, so you could try
+dropping the others).
+
+You should also look at the specific errors that your system makes, then try to under‐
+stand  why  it  makes  them  and  what  could  fix  the  problem  (adding  extra  features  or
+getting rid of uninformative ones, cleaning up outliers, etc.).
+
+Evaluate Your System on the Test Set
+After tweaking your models for a while, you eventually have a system that performs
+sufficiently well. Now is the time to evaluate the final model on the test set. There is
+nothing  special  about  this  process;  just  get  the  predictors  and  the  labels  from  your
+test  set,  run  your  full_pipeline  to  transform  the  data  (call  transform(),  not
+fit_transform()—you do not want to fit the test set!), and evaluate the final model
+on the test set:
+
+final_model = grid_search.best_estimator_
+
+X_test = strat_test_set.drop("median_house_value", axis=1)
+y_test = strat_test_set["median_house_value"].copy()
+
+X_test_prepared = full_pipeline.transform(X_test)
+
+Fine-Tune Your Model 
+
+| 
+
+79
+
+final_predictions = final_model.predict(X_test_prepared)
+
+final_mse = mean_squared_error(y_test, final_predictions)
+final_rmse = np.sqrt(final_mse)   # => evaluates to 47,730.2
+
+In  some  cases,  such  a  point 

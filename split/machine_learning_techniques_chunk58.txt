@@ -1,0 +1,338 @@
+ a stride of 2 (in this example the stride is the
+same  in  both  directions,  but  it  does  not  have  to  be  so).  A  neuron  located  in  row  i,
+column j in the upper layer is connected to the outputs of the neurons in the previous
+layer located in rows i × sh to i × sh + fh – 1, columns j × sw to j × sw + fw – 1, where sh
+and sw are the vertical and horizontal strides.
+
+Convolutional Layers 
+
+| 
+
+449
+
+Figure 14-4. Reducing dimensionality using a stride of 2
+
+Filters
+A neuron’s weights can be represented as a small image the size of the receptive field.
+For example, Figure 14-5 shows two possible sets of weights, called filters (or convolu‐
+tion kernels). The first one is represented as a black square with a vertical white line in
+the middle (it is a 7 × 7 matrix full of 0s except for the central column, which is full of
+1s); neurons using these weights will ignore everything in their receptive field except
+for  the  central  vertical  line  (since  all  inputs  will  get  multiplied  by  0,  except  for  the
+ones  located  in  the  central  vertical  line).  The  second  filter  is  a  black  square  with  a
+horizontal  white  line  in  the  middle.  Once  again,  neurons  using  these  weights  will
+ignore everything in their receptive field except for the central horizontal line.
+
+Now if all neurons in a layer use the same vertical line filter (and the same bias term),
+and you feed the network the input image shown in Figure 14-5 (the bottom image),
+the  layer  will  output  the  top-left  image.  Notice  that  the  vertical  white  lines  get
+enhanced while the rest gets blurred. Similarly, the upper-right image is what you get
+if all neurons use the same horizontal line filter; notice that the horizontal white lines
+get  enhanced  while  the  rest  is  blurred  out.  Thus,  a  layer  full  of  neurons  using  the
+same filter outputs a feature map, which highlights the areas in an image that activate
+the filter the most. Of course, you do not have to define the filters manually: instead,
+during training the convolutional layer will automatically learn the most useful filters
+for  its  task,  and  the  layers  above  will  learn  to  combine  them  into  more  complex
+patterns.
+
+450 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+Figure 14-5. Applying two different filters to get two feature maps
+
+Stacking Multiple Feature Maps
+Up to now, for simplicity, I have represented the output of each convolutional layer as
+a  2D  layer,  but  in  reality  a  convolutional  layer  has  multiple  filters  (you  decide  how
+many) and outputs one feature map per filter, so it is more accurately represented in
+3D (see Figure 14-6). It has one neuron per pixel in each feature map, and all neurons
+within a given feature map share the same parameters (i.e., the same weights and bias
+term). Neurons in different feature maps use different parameters. A neuron’s recep‐
+tive field is the same as described earlier, but it extends across all the previous layers’
+feature maps. In short, a convolutional layer simultaneously applies multiple trainable
+filters  to  its  inputs,  making  it  capable  of  detecting  multiple  features  anywhere  in  its
+inputs.
+
+The fact that all neurons in a feature map share the same parame‐
+ters dramatically reduces the number of parameters in the model.
+Once the CNN has learned to recognize a pattern in one location, it
+can  recognize  it  in  any  other  location.  In  contrast,  once  a  regular
+DNN has learned to recognize a pattern in one location, it can rec‐
+ognize it only in that particular location.
+
+Input  images  are  also  composed  of  multiple  sublayers:  one  per  color  channel.  There
+are  typically  three:  red,  green,  and  blue  (RGB).  Grayscale  images  have  just  one
+
+Convolutional Layers 
+
+| 
+
+451
+
+channel,  but  some  images  may  have  much  more—for  example,  satellite  images  that
+capture extra light frequencies (such as infrared).
+
+Figure 14-6. Convolutional layers with multiple feature maps, and images with three
+color channels
+
+Specifically, a neuron located in row i, column j of the feature map k in a given convo‐
+lutional layer l is connected to the outputs of the neurons in the previous layer l – 1,
+located in rows i × sh to i × sh + fh – 1 and columns j × sw to j × sw + fw – 1, across all
+feature maps (in layer l – 1). Note that all neurons located in the same row i and col‐
+umn  j  but  in  different  feature  maps  are  connected  to  the  outputs  of  the  exact  same
+neurons in the previous layer.
+
+Equation 14-1 summarizes the preceding explanations in one big mathematical equa‐
+tion: it shows how to compute the output of a given neuron in a convolutional layer.
+
+452 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+It is a bit ugly due to all the different indices, but all it does is calculate the weighted
+sum of all the inputs, plus the bias term.
+
+Equation 14-1. Computing the output of a neuron in a convolutional layer
+
+f
+
+− 1
+h
+zi, j, k = bk + ∑
+u = 0
+
+f
+
+− 1
+w
+∑
+v = 0
+
+f
+
+n′ − 1
+∑
+k′ = 0
+
+xi′, j′, k′ . wu, v, k′, k with
+
+i′ = i × sh + u
+j′ = j × sw + v
+
+In this equation:
+
+• zi, j, k is the output of the neuron located in row i, column j in feature map k of the
+
+convolutional layer (layer l).
+
+• As explained earlier, sh and sw are the vertical and horizontal strides, fh and fw are
+the height and width of the receptive field, and fn′ is the number of feature maps
+in the previous layer (layer l – 1).
+
+• xi′, j′, k′ is the output of the neuron located in layer l – 1, row i′, column j′, feature
+
+map k′ (or channel k′ if the previous layer is the input layer).
+
+• bk is the bias term for feature map k (in layer l). You can think of it as a knob that
+
+tweaks the overall brightness of the feature map k.
+
+• wu, v, k′ ,k is the connection weight between any neuron in feature map k of the layer
+l and its input located at row u, column v (relative to the neuron’s receptive field),
+and feature map k′.
+
+TensorFlow Implementation
+In  TensorFlow,  each  input  image  is  typically  represented  as  a  3D  tensor  of  shape
+[height, width, channels]. A mini-batch is represented as a 4D tensor of shape [mini-
+batch  size,  height,  width,  channels].  The  weights  of  a  convolutional  layer  are  repre‐
+sented as a 4D tensor of shape [fh, fw, fn′, fn]. The bias terms of a convolutional layer
+are simply represented as a 1D tensor of shape [fn].
+
+Let’s  look  at  a  simple  example.  The  following  code  loads  two  sample  images,  using
+Scikit-Learn’s load_sample_image() (which loads two color images, one of a Chinese
+temple, and the other of a flower), then it creates two filters and applies them to both
+images, and finally it displays one of the resulting feature maps. Note that you must
+pip install the Pillow package to use load_sample_image().
+
+from sklearn.datasets import load_sample_image
+
+# Load sample images
+china = load_sample_image("china.jpg") / 255
+flower = load_sample_image("flower.jpg") / 255
+
+Convolutional Layers 
+
+| 
+
+453
+
+images = np.array([china, flower])
+batch_size, height, width, channels = images.shape
+
+# Create 2 filters
+filters = np.zeros(shape=(7, 7, channels, 2), dtype=np.float32)
+filters[:, 3, :, 0] = 1  # vertical line
+filters[3, :, :, 1] = 1  # horizontal line
+
+outputs = tf.nn.conv2d(images, filters, strides=1, padding="SAME")
+
+plt.imshow(outputs[0, :, :, 1], cmap="gray") # plot 1st image's 2nd feature map
+plt.show()
+
+Let’s go through this code:
+
+• The pixel intensity for each color channel is represented as a byte from 0 to 255,
+so we scale these features simply by dividing by 255, to get floats ranging from 0
+to 1.
+
+• Then we create two 7 × 7 filters (one with a vertical white line in the middle, and
+
+the other with a horizontal white line in the middle).
+
+• We apply them to both images using the tf.nn.conv2d() function, which is part
+of TensorFlow’s low-level Deep Learning API. In this example, we use zero pad‐
+ding (padding="SAME") and a stride of 1.
+
+• Finally, we plot one of the resulting feature maps (similar to the top-right image
+
+in Figure 14-5).
+
+The tf.nn.conv2d() line deserves a bit more explanation:
+
+• images is the input mini-batch (a 4D tensor, as explained earlier).
+• filters is the set of filters to apply (also a 4D tensor, as explained earlier).
+• strides is equal to 1, but it could also be a 1D array with four elements, where
+the  two  central  elements  are  the  vertical  and  horizontal  strides  (sh  and  sw).  The
+first and last elements must currently be equal to 1. They may one day be used to
+specify a batch stride (to skip some instances) and a channel stride (to skip some
+of the previous layer’s feature maps or channels).
+
+• padding must be either "SAME" or "VALID":
+
+— If  set  to  "SAME",  the  convolutional  layer  uses  zero  padding  if  necessary.  The
+output size is set to the number of input neurons divided by the stride, roun‐
+ded up. For example, if the input size is 13 and the stride is 5 (see Figure 14-7),
+then the output size is 3 (i.e., 13 / 5 = 2.6, rounded up to 3). Then zeros are
+added  as  evenly  as  possible  around  the  inputs,  as  needed.  When  strides=1,
+the layer’s outputs will have the same spatial dimensions (width and height) as
+its inputs, hence the name same.
+
+454 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+— If set to "VALID", the convolutional layer does not use zero padding and may
+ignore  some  rows  and  columns  at  the  bottom  and  right  of  the  input  image,
+depending on the stride, as shown in Figure 14-7 (for simplicity, only the hor‐
+izontal dimension is shown here, but of course the same logic applies to the
+vertical dimension). This means that every neuron’s receptive field lies strictly
+within valid positions inside the input (it does not go out of bounds), hence
+the name valid.
+
+Figure 14-7. Padding="SAME” or “VALID” (with input width 13, filter width 6, stride
+5)
+
+In  this  example  we  manually  defined  the  filters,  but  in  a  real  CNN  you  would  nor‐
+mally  define  filters  as  trainable  variables  so  the  neural  net  can  learn  which  filters
+work  best,  as  explained  earlier.  Instead  of  manually  creating  the  variables,  use  the
+keras.layers.Conv2D layer:
+
+conv = keras.layers.Conv2D(filters=32, kernel_size=3, strides=1,
+                           padding="same", activation="relu")
+
+This code creates a Conv2D layer with 32 filters, each 3 × 3, using a stride of 1 (both
+horizontally  and  vertically)  and  "same"  padding,  and  applying  the  ReLU  activation
+function to its outputs. As you can see, convolutional layers have quite a few hyper‐
+parameters:  you  must  choose  the  number  of  filters,  their  height  and  width,  the
+strides, and the padding type. As always, you can use cross-validation to find the right
+hyperparameter  values,  but  this  is  very  time-consuming.  We  will  discuss  common
+CNN architectures later, to give you some idea of which hyperparameter values work
+best in practice.
+
+Convolutional Layers 
+
+| 
+
+455
+
+Memory Requirements
+Another problem with CNNs is that the convolutional layers require a huge amount
+of RAM. This is especially true during training, because the reverse pass of backpro‐
+pagation requires all the intermediate values computed during the forward pass.
+
+For example, consider a convolutional layer with 5 × 5 filters, outputting 200 feature
+maps of size 150 × 100, with stride 1 and "same" padding. If the input is a 150 × 100
+RGB image (three channels), then the number of parameters is (5 × 5 × 3 + 1) × 200
+= 15,200 (the + 1 corresponds to the bias terms), which is fairly small compared to a
+fully connected layer.7 However, each of the 200 feature maps contains 150 × 100 neu‐
+rons, and each of these neurons needs to compute a weighted sum of its 5 × 5 × 3 =
+75 inputs: that’s a total of 225 million float multiplications. Not as bad as a fully con‐
+nected layer, but still quite computationally intensive. Moreover, if the feature maps
+are represented using 32-bit floats, then the convolutional layer’s output will occupy
+200  ×  150  ×  100  ×  32  =  96  million  bits  (12  MB)  of  RAM.8  And  that’s  just  for  one
+instance—if a training batch contains 100 instances, then this layer will use up 1.2 GB
+of RAM!
+
+During inference (i.e., when making a prediction for a new instance) the RAM occu‐
+pied by one layer can be released as soon as the next layer has been computed, so you
+only need as much RAM as required by two consecutive layers. But during training
+everything computed during the forward pass needs to be preserved for the reverse
+pass, so the amount of RAM needed is (at least) the total amount of RAM required by
+all layers.
+
+If training crashes because of an out-of-memory error, you can try
+reducing  the  mini-batch  size.  Alternatively,  you  can  try  reducing
+dimensionality using a stride, or removing a few layers. Or you can
+try using 16-bit floats instead of 32-bit floats. Or you could distrib‐
+ute the CNN across multiple devices.
+
+Now let’s look at the second common building block of CNNs: the pooling layer.
+
+Pooling Layers
+Once  you  understand  how  convolutional  layers  work,  the  pooling  layers  are  quite
+easy  to  grasp.  Their  goal  is  to  subsample  (i.e.,  shrink)  the  input  image  in  order  to
+
+7 A fully connected layer with 150 × 100 neurons, each connected to all 150 × 100 × 3 inputs, would have 1502
+
+× 1002 × 3 = 675 million parameters!
+
+8 In the international system of units (SI), 1 MB = 1,000 KB = 1,000 × 1,000 bytes = 1,000 × 1,000 × 8 bits.
+
+456 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+reduce  the  computational  load,  the  memory  usage,  and  the  number  of  parameters
+(thereby limiting the risk of overfitting).
+
+Just  like  in  convolutional  layers,  each  neuron  in  a  pooling  layer  is  connected  to  the
+outputs of a limited number of neurons in the previous layer, located within a small
+rectangular receptive field. You must define its size, the stride, and the padding type,
+just like before. However, a pooling neuron has no weights; all it does is aggregate the
+inputs using an aggregation function such as the max or mean. Figure 14-8 shows a
+max pooling layer, which is the most common type of pooling layer. In this example,
+we use a 2 × 2 pooling kernel,9 with a stride of 2 and no padding. Only the max input
+value  in  each  receptive  field  makes  it  to  the  next  layer,  while  the  other  inputs  are
+dropped. For example, in the lower-left receptive field in Figure 14-8, the input values
+are 1, 5, 3, 2, so only the max value, 5, is propagated to the next layer. Because of the
+stride of 2, the output image has half the height and half the width of the input image
+(rounded down since we use no padding).
+
+Figure 14-8. Max pooling layer (2 × 2 pooling kernel, stride 2, no padding)
+
+A pooling layer typically works on every input channel independ‐
+ently, so the output depth is the same as the input depth.
+
+Other than reducing computations, memory usage, and the number of parameters, a
+max  pooling  layer  also  introduces  some  level  of  invariance  to  small  translations,  as
+shown in Figure 14-9. Here we assume that the bright pixels have a lower value than
+dark  pixels,  and  we  consider  three  images  (A,  B,  C)  going  through  a  max  pooling
+layer with a 2 × 2 kernel and stride 2. Images B and C are t

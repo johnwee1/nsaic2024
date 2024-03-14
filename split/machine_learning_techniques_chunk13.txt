@@ -1,0 +1,324 @@
+ 5556,    3,  123,    1],
+       [  20,   10,   53,   27,   50,   13,    3, 5696,  173,  220],
+       [  17,   64,   47,   91,    3,  125,   24,   11, 5421,   48],
+       [  24,   18,   29,   67,  116,   39,    1,  174,  329, 5152]])
+
+That’s a lot of numbers. It’s often more convenient to look at an image representation
+of the confusion matrix, using Matplotlib’s matshow() function:
+
+plt.matshow(conf_mx, cmap=plt.cm.gray)
+plt.show()
+
+This confusion matrix looks pretty good, since most images are on the main diago‐
+nal, which means that they were classified correctly. The 5s look slightly darker than
+the other digits, which could mean that there are fewer images of 5s in the dataset or
+that the classifier does not perform as well on 5s as on other digits. In fact, you can
+verify that both are the case.
+
+Let’s focus the plot on the errors. First, you need to divide each value in the confusion
+matrix by the number of images in the corresponding class so that you can compare
+error  rates  instead  of  absolute  numbers  of  errors  (which  would  make  abundant
+classes look unfairly bad):
+
+Error Analysis 
+
+| 
+
+103
+
+row_sums = conf_mx.sum(axis=1, keepdims=True)
+norm_conf_mx = conf_mx / row_sums
+
+Fill the diagonal with zeros to keep only the errors, and plot the result:
+
+np.fill_diagonal(norm_conf_mx, 0)
+plt.matshow(norm_conf_mx, cmap=plt.cm.gray)
+plt.show()
+
+You can clearly see the kinds of errors the classifier makes. Remember that rows rep‐
+resent actual classes, while columns represent predicted classes. The column for class
+8 is quite bright, which tells you that many images get misclassified as 8s. However,
+the row for class 8 is not that bad, telling you that actual 8s in general get properly
+classified as 8s. As you can see, the confusion matrix is not necessarily symmetrical.
+You can also see that 3s and 5s often get confused (in both directions).
+
+Analyzing  the  confusion  matrix  often  gives  you  insights  into  ways  to  improve  your
+classifier. Looking at this plot, it seems that your efforts should be spent on reducing
+the  false  8s.  For  example,  you  could  try  to  gather  more  training  data  for  digits  that
+look like 8s (but are not) so that the classifier can learn to distinguish them from real
+8s. Or you could engineer new features that would help the classifier—for example,
+writing an algorithm to count the number of closed loops (e.g., 8 has two, 6 has one, 5
+has  none).  Or  you  could  preprocess  the  images  (e.g.,  using  Scikit-Image,  Pillow,  or
+OpenCV) to make some patterns, such as closed loops, stand out more.
+
+Analyzing  individual  errors  can  also  be  a  good  way  to  gain  insights  on  what  your
+classifier is doing and why it is failing, but it is more difficult and time-consuming.
+For example, let’s plot examples of 3s and 5s (the  plot_digits() function just uses
+Matplotlib’s imshow() function; see this chapter’s Jupyter notebook for details):
+
+cl_a, cl_b = 3, 5
+X_aa = X_train[(y_train == cl_a) & (y_train_pred == cl_a)]
+X_ab = X_train[(y_train == cl_a) & (y_train_pred == cl_b)]
+X_ba = X_train[(y_train == cl_b) & (y_train_pred == cl_a)]
+X_bb = X_train[(y_train == cl_b) & (y_train_pred == cl_b)]
+
+104 
+
+| 
+
+Chapter 3: Classification
+
+plt.figure(figsize=(8,8))
+plt.subplot(221); plot_digits(X_aa[:25], images_per_row=5)
+plt.subplot(222); plot_digits(X_ab[:25], images_per_row=5)
+plt.subplot(223); plot_digits(X_ba[:25], images_per_row=5)
+plt.subplot(224); plot_digits(X_bb[:25], images_per_row=5)
+plt.show()
+
+The two 5 × 5 blocks on the left show digits classified as 3s, and the two 5 × 5 blocks
+on  the  right  show  images  classified  as  5s.  Some  of  the  digits  that  the  classifier  gets
+wrong (i.e., in the bottom-left and top-right blocks) are so badly written that even a
+human  would  have  trouble  classifying  them  (e.g.,  the  5  in  the  first  row  and  second
+column truly looks like a badly written 3). However, most misclassified images seem
+like obvious errors to us, and it’s hard to understand why the classifier made the mis‐
+takes  it  did.3  The  reason  is  that  we  used  a  simple  SGDClassifier,  which  is  a  linear
+model. All it does is assign a weight per class to each pixel, and when it sees a new
+image it just sums up the weighted pixel intensities to get a score for each class. So
+since 3s and 5s differ only by a few pixels, this model will easily confuse them.
+
+The main difference between 3s and 5s is the position of the small line that joins the
+top line to the bottom arc. If you draw a 3 with the junction slightly shifted to the left,
+the classifier might classify it as a 5, and vice versa. In other words, this classifier is
+quite sensitive to image shifting and rotation. So one way to reduce the 3/5 confusion
+would be to preprocess the images to ensure that they are well centered and not too
+rotated. This will probably help reduce other errors as well.
+
+3 But remember that our brain is a fantastic pattern recognition system, and our visual system does a lot of
+
+complex preprocessing before any information reaches our consciousness, so the fact that it feels simple does
+not mean that it is.
+
+Error Analysis 
+
+| 
+
+105
+
+Multilabel Classification
+Until now each instance has always been assigned to just one class. In some cases you
+may want your classifier to output multiple classes for each instance. Consider a face-
+recognition  classifier:  what  should  it  do  if  it  recognizes  several  people  in  the  same
+picture? It should attach one tag per person it recognizes. Say the classifier has been
+trained to recognize three faces, Alice, Bob, and Charlie. Then when the classifier is
+shown a picture of Alice and Charlie, it should output [1, 0, 1] (meaning “Alice yes,
+Bob no, Charlie yes”). Such a classification system that outputs multiple binary tags is
+called a multilabel classification system.
+
+We won’t go into face recognition just yet, but let’s look at a simpler example, just for
+illustration purposes:
+
+from sklearn.neighbors import KNeighborsClassifier
+
+y_train_large = (y_train >= 7)
+y_train_odd = (y_train % 2 == 1)
+y_multilabel = np.c_[y_train_large, y_train_odd]
+
+knn_clf = KNeighborsClassifier()
+knn_clf.fit(X_train, y_multilabel)
+
+This  code  creates  a  y_multilabel  array  containing  two  target  labels  for  each  digit
+image: the first indicates whether or not the digit is large (7, 8, or 9), and the second
+indicates  whether  or  not  it  is  odd.  The  next  lines  create  a  KNeighborsClassifier
+instance (which supports multilabel classification, though not all classifiers do), and
+we  train  it  using  the  multiple  targets  array.  Now  you  can  make  a  prediction,  and
+notice that it outputs two labels:
+
+>>> knn_clf.predict([some_digit])
+array([[False,  True]])
+
+And it gets it right! The digit 5 is indeed not large (False) and odd (True).
+
+There are many ways to evaluate a multilabel classifier, and selecting the right metric
+really  depends  on  your  project.  One  approach  is  to  measure  the  F1  score  for  each
+individual label (or any other binary classifier metric discussed earlier), then simply
+compute the average score. This code computes the average F1 score across all labels:
+
+>>> y_train_knn_pred = cross_val_predict(knn_clf, X_train, y_multilabel, cv=3)
+>>> f1_score(y_multilabel, y_train_knn_pred, average="macro")
+0.976410265560605
+
+This  assumes  that  all  labels  are  equally  important,  however,  which  may  not  be  the
+case. In particular, if you have many more pictures of Alice than of Bob or Charlie,
+you may want to give more weight to the classifier’s score on pictures of Alice. One
+simple  option  is  to  give  each  label  a  weight  equal  to  its  support  (i.e.,  the  number  of
+
+106 
+
+| 
+
+Chapter 3: Classification
+
+instances  with  that  target  label).  To  do  this,  simply  set  average="weighted"  in  the
+preceding code.4
+
+Multioutput Classification
+The last type of classification task we are going to discuss here is called multioutput–
+multiclass classification (or simply multioutput classification). It is simply a generaliza‐
+tion  of  multilabel  classification  where  each  label  can  be  multiclass  (i.e.,  it  can  have
+more than two possible values).
+
+To illustrate this, let’s build a system that removes noise from images. It will take as
+input  a  noisy  digit  image,  and  it  will  (hopefully)  output  a  clean  digit  image,  repre‐
+sented  as  an  array  of  pixel  intensities,  just  like  the  MNIST  images.  Notice  that  the
+classifier’s output is multilabel (one label per pixel) and each label can have multiple
+values (pixel intensity ranges from 0 to 255). It is thus an example of a multioutput
+classification system.
+
+The line between classification and regression is sometimes blurry,
+such as in this example. Arguably, predicting pixel intensity is more
+akin  to  regression  than  to  classification.  Moreover,  multioutput
+systems are not limited to classification tasks; you could even have
+a  system  that  outputs  multiple  labels  per  instance,  including  both
+class labels and value labels.
+
+Let’s  start  by  creating  the  training  and  test  sets  by  taking  the  MNIST  images  and
+adding noise to their pixel intensities with NumPy’s randint() function. The target
+images will be the original images:
+
+noise = np.random.randint(0, 100, (len(X_train), 784))
+X_train_mod = X_train + noise
+noise = np.random.randint(0, 100, (len(X_test), 784))
+X_test_mod = X_test + noise
+y_train_mod = X_train
+y_test_mod = X_test
+
+Let’s take a peek at an image from the test set (yes, we’re snooping on the test data, so
+you should be frowning right now):
+
+4 Scikit-Learn offers a few other averaging options and multilabel classifier metrics; see the documentation for
+
+more details.
+
+Multioutput Classification 
+
+| 
+
+107
+
+On the left is the noisy input image, and on the right is the clean target image. Now
+let’s train the classifier and make it clean this image:
+
+knn_clf.fit(X_train_mod, y_train_mod)
+clean_digit = knn_clf.predict([X_test_mod[some_index]])
+plot_digit(clean_digit)
+
+Looks  close  enough  to  the  target!  This  concludes  our  tour  of  classification.  You
+should now know how to select good metrics for classification tasks, pick the appro‐
+priate  precision/recall  trade-off,  compare  classifiers,  and  more  generally  build  good
+classification systems for a variety of tasks.
+
+Exercises
+
+1. Try to build a classifier for the MNIST dataset that achieves over 97% accuracy
+on  the  test  set.  Hint:  the  KNeighborsClassifier  works  quite  well  for  this  task;
+you  just  need  to  find  good  hyperparameter  values  (try  a  grid  search  on  the
+weights and n_neighbors hyperparameters).
+
+2. Write a function that can shift an MNIST image in any direction (left, right, up,
+or down) by one pixel.5 Then, for each image in the training set, create four shif‐
+ted copies (one per direction) and add them to the training set. Finally, train your
+best model on this expanded training set and measure its accuracy on the test set.
+You should observe that your model performs even better now! This technique of
+artificially  growing  the  training  set  is  called  data  augmentation  or  training  set
+expansion.
+
+5 You can use the shift() function from the scipy.ndimage.interpolation module. For example,
+
+shift(image, [2, 1], cval=0) shifts the image two pixels down and one pixel to the right.
+
+108 
+
+| 
+
+Chapter 3: Classification
+
+3. Tackle the Titanic dataset. A great place to start is on Kaggle.
+
+4. Build a spam classifier (a more challenging exercise):
+
+• Download  examples  of  spam  and  ham  from  Apache  SpamAssassin’s  public
+
+datasets.
+
+• Unzip the datasets and familiarize yourself with the data format.
+
+• Split the datasets into a training set and a test set.
+
+• Write  a  data  preparation  pipeline  to  convert  each  email  into  a  feature  vector.
+Your preparation pipeline should transform an email into a (sparse) vector that
+indicates  the  presence  or  absence  of  each  possible  word.  For  example,  if  all
+emails only ever contain four words, “Hello,” “how,” “are,” “you,” then the email
+“Hello  you  Hello  Hello  you”  would  be  converted  into  a  vector  [1,  0,  0,  1]
+(meaning  [“Hello”  is  present,  “how”  is  absent,  “are”  is  absent,  “you”  is
+present]),  or  [3,  0,  0,  2]  if  you  prefer  to  count  the  number  of  occurrences  of
+each word.
+
+You may want to add hyperparameters to your preparation pipeline to control
+whether  or  not  to  strip  off  email  headers,  convert  each  email  to  lowercase,
+remove  punctuation,  replace  all  URLs  with  “URL,”  replace  all  numbers  with
+“NUMBER,” or even perform stemming (i.e., trim off word endings; there are
+Python libraries available to do this).
+
+Finally, try out several classifiers and see if you can build a great spam classi‐
+fier, with both high recall and high precision.
+
+Solutions to these exercises can be found in the Jupyter notebooks available at https://
+github.com/ageron/handson-ml2.
+
+Exercises 
+
+| 
+
+109
+
+CHAPTER 4
+Training Models
+
+So far we have treated Machine Learning models and their training algorithms mostly
+like black boxes. If you went through some of the exercises in the previous chapters,
+you may have been surprised by how much you can get done without knowing any‐
+thing about what’s under the hood: you optimized a regression system, you improved
+a  digit  image  classifier,  and  you  even  built  a  spam  classifier  from  scratch,  all  this
+without knowing how they actually work. Indeed, in many situations you don’t really
+need to know the implementation details.
+
+However,  having  a  good  understanding  of  how  things  work  can  help  you  quickly
+home in on the appropriate model, the right training algorithm to use, and a good set
+of hyperparameters for your task. Understanding what’s under the hood will also help
+you debug issues and perform error analysis more efficiently. Lastly, most of the top‐
+ics discussed in this chapter will be essential in understanding, building, and training
+neural networks (discussed in Part II of this book).
+
+In  this  chapter  we  will  start  by  looking  at  the  Linear  Regression  model,  one  of  the
+simplest models there is. We will discuss two very different ways to train it:
+
+• Using a direct “closed-form” equation that directly computes the model parame‐
+ters  that  best  fit  the  model  to  the  training  set  (i.e.,  the  model  parameters  that
+minimize the cost function over the training set).
+
+• Using  an  iterative  optimization  approach  called  Gradient  Descent  (GD)  that
+gradually  tweaks  the  model  parameters  to  minimize  the  cost  function  over  the
+training  set,  eventually  converging  to  the  same  set  of  parameters  as  the  first
+method. We will look at a few variants of Gradient Descent that we will use again
+and again when we study neural networks in Part II: Batch GD, Mini-batch GD,
+and Stochastic GD.
+
+111
+
+Next we will look at Polynomial Regression, a more complex model that can fit non‐
+linear  datasets.  Since  this  model  has  more  parameters  than  Linear  Regression,  it  is
+more prone to overfitting the training data, so we will look at how to detect whether
+or not this is the case using learning curves, and then we will look at several regulari‐
+zation techniques that can reduce the risk of overfitting the training set.
+
+Finally,  we  will  look  at  two  more  models 

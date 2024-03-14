@@ -1,0 +1,296 @@
+our
+task.
+
+Not all TF Hub modules support TensorFlow 2, so make sure you
+choose a module that does.
+
+Next, we can just load the IMDb reviews dataset—no need to preprocess it (except for
+batching and prefetching)—and directly train the model:
+
+datasets, info = tfds.load("imdb_reviews", as_supervised=True, with_info=True)
+train_size = info.splits["train"].num_examples
+batch_size = 32
+train_set = datasets["train"].batch(batch_size).prefetch(1)
+history = model.fit(train_set, epochs=5)
+
+Note that the last part of the TF Hub module URL specified that we wanted version 1
+of the model. This versioning ensures that if a new module version is released, it will
+not break our model. Conveniently, if you just enter this URL in a web browser, you
+
+9 To be precise, the sentence embedding is equal to the mean word embedding multiplied by the square root of
+the number of words in the sentence. This compensates for the fact that the mean of n vectors gets shorter as
+n grows.
+
+Sentiment Analysis 
+
+| 
+
+541
+
+will get the documentation for this module. By default, TF Hub will cache the down‐
+loaded files into the local system’s temporary directory. You may prefer to download
+them into a more permanent directory to avoid having to download them again after
+every system cleanup. To do that, set the TFHUB_CACHE_DIR environment variable to
+the  directory  of  your  choice  (e.g.,  os.environ["TFHUB_CACHE_DIR"]  =  "./
+my_tfhub_cache").
+
+So far, we have looked at time series, text generation using Char-RNN, and sentiment
+analysis using word-level RNN models, training our own word embeddings or reus‐
+ing  pretrained  embeddings.  Let’s  now  look  at  another  important  NLP  task:  neural
+machine translation (NMT), first using a pure Encoder–Decoder model, then improv‐
+ing it with attention mechanisms, and finally looking the extraordinary Transformer
+architecture.
+
+An Encoder–Decoder Network for Neural Machine
+Translation
+Let’s  take  a  look  at  a  simple  neural  machine  translation  model10  that  will  translate
+English sentences to French (see Figure 16-3).
+
+In  short,  the  English  sentences  are  fed  to  the  encoder,  and  the  decoder  outputs  the
+French translations. Note that the French translations are also used as inputs to the
+decoder, but shifted back by one step. In other words, the decoder is given as input
+the word that it should have output at the previous step (regardless of what it actually
+output).  For  the  very  first  word,  it  is  given  the  start-of-sequence  (SOS)  token.  The
+decoder is expected to end the sentence with an end-of-sequence (EOS) token.
+
+Note that the English sentences are reversed before they are fed to the encoder. For
+example, “I drink milk” is reversed to “milk drink I.” This ensures that the beginning
+of the English sentence will be fed last to the encoder, which is useful because that’s
+generally the first thing that the decoder needs to translate.
+
+Each word is initially represented by its ID (e.g., 288 for the word “milk”). Next, an
+embedding  layer  returns  the  word  embedding.  These  word  embeddings  are  what  is
+actually fed to the encoder and the decoder.
+
+10 Ilya Sutskever et al., “Sequence to Sequence Learning with Neural Networks,” arXiv preprint arXiv:1409.3215
+
+(2014).
+
+542 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+Figure 16-3. A simple machine translation model
+
+At each step, the decoder outputs a score for each word in the output vocabulary (i.e.,
+French), and then the softmax layer turns these scores into probabilities. For exam‐
+ple,  at  the  first  step  the  word  “Je”  may  have  a  probability  of  20%,  “Tu”  may  have  a
+probability of 1%, and so on. The word with the highest probability is output. This is
+very  much  like  a  regular  classification  task,  so  you  can  train  the  model  using  the
+"sparse_categorical_crossentropy"  loss,  much  like  we  did  in  the  Char-RNN
+model.
+
+Note that at inference time (after training), you will not have the target sentence to
+feed  to  the  decoder.  Instead,  simply  feed  the  decoder  the  word  that  it  output  at  the
+previous step, as shown in Figure 16-4 (this will require an embedding lookup that is
+not shown in the diagram).
+
+An Encoder–Decoder Network for Neural Machine Translation 
+
+| 
+
+543
+
+Figure 16-4. Feeding the previous output word as input at inference time
+
+OK, now you have the big picture. Still, there are a few more details to handle if you
+implement this model:
+
+• So  far  we  have  assumed  that  all  input  sequences  (to  the  encoder  and  to  the
+decoder) have a constant length. But obviously sentence lengths vary. Since regu‐
+lar tensors have fixed shapes, they can only contain sentences of the same length.
+You can use masking to handle this, as discussed earlier. However, if the senten‐
+ces have very different lengths, you can’t just crop them like we did for sentiment
+analysis  (because  we  want  full  translations,  not  cropped  translations).  Instead,
+group  sentences  into  buckets  of  similar  lengths  (e.g.,  a  bucket  for  the  1-  to  6-
+word sentences, another for the 7- to 12-word sentences, and so on), using pad‐
+ding for the shorter sequences to ensure all sentences in a bucket have the same
+length  (check  out  the  tf.data.experimental.bucket_by_sequence_length()
+function  for  this).  For  example,  “I  drink  milk”  becomes  “<pad>  <pad>  <pad>
+milk drink I.”
+
+• We  want  to  ignore  any  output  past  the  EOS  token,  so  these  tokens  should  not
+contribute to the loss (they must be masked out). For example, if the model out‐
+puts “Je bois du lait <eos> oui,” the loss for the last word should be ignored.
+
+• When the output vocabulary is large (which is the case here), outputting a proba‐
+bility  for  each  and  every  possible  word  would  be  terribly  slow.  If  the  target
+vocabulary  contains,  say,  50,000  French  words,  then  the  decoder  would  output
+50,000-dimensional vectors, and then computing the softmax function over such
+a large vector would be very computationally intensive. To avoid this, one solu‐
+tion is to look only at the logits output by the model for the correct word and for
+a random sample of incorrect words, then compute an approximation of the loss
+based  only  on  these  logits.  This  sampled  softmax  technique  was  introduced  in
+
+544 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+2015  by  Sébastien  Jean  et  al..11  In  TensorFlow  you  can  use  the  tf.nn.sam
+pled_softmax_loss() function for this during training and use the normal soft‐
+max  function  at  inference  time  (sampled  softmax  cannot  be  used  at  inference
+time because it requires knowing the target).
+
+The TensorFlow Addons project includes many sequence-to-sequence tools to let you
+easily  build  production-ready  Encoder–Decoders.  For  example,  the  following  code
+creates  a  basic  Encoder–Decoder  model,  similar  to  the  one  represented  in
+Figure 16-3:
+
+import tensorflow_addons as tfa
+
+encoder_inputs = keras.layers.Input(shape=[None], dtype=np.int32)
+decoder_inputs = keras.layers.Input(shape=[None], dtype=np.int32)
+sequence_lengths = keras.layers.Input(shape=[], dtype=np.int32)
+
+embeddings = keras.layers.Embedding(vocab_size, embed_size)
+encoder_embeddings = embeddings(encoder_inputs)
+decoder_embeddings = embeddings(decoder_inputs)
+
+encoder = keras.layers.LSTM(512, return_state=True)
+encoder_outputs, state_h, state_c = encoder(encoder_embeddings)
+encoder_state = [state_h, state_c]
+
+sampler = tfa.seq2seq.sampler.TrainingSampler()
+
+decoder_cell = keras.layers.LSTMCell(512)
+output_layer = keras.layers.Dense(vocab_size)
+decoder = tfa.seq2seq.basic_decoder.BasicDecoder(decoder_cell, sampler,
+                                                 output_layer=output_layer)
+final_outputs, final_state, final_sequence_lengths = decoder(
+    decoder_embeddings, initial_state=encoder_state,
+    sequence_length=sequence_lengths)
+Y_proba = tf.nn.softmax(final_outputs.rnn_output)
+
+model = keras.Model(inputs=[encoder_inputs, decoder_inputs, sequence_lengths],
+                    outputs=[Y_proba])
+
+The code is mostly self-explanatory, but there are a few points to note. First, we set
+return_state=True when creating the LSTM layer so that we can get its final hidden
+state and pass it to the decoder. Since we are using an LSTM cell, it actually returns
+two hidden states (short term and long term). The TrainingSampler is one of several
+samplers available in TensorFlow Addons: their role is to tell the decoder at each step
+what it should pretend the previous output was. During inference, this should be the
+
+11 Sébastien Jean et al., “On Using Very Large Target Vocabulary for Neural Machine Translation,” Proceedings of
+the 53rd Annual Meeting of the Association for Computational Linguistics and the 7th International Joint Con‐
+ference on Natural Language Processing of the Asian Federation of Natural Language Processing 1 (2015): 1–10.
+
+An Encoder–Decoder Network for Neural Machine Translation 
+
+| 
+
+545
+
+embedding  of  the  token  that  was  actually  output.  During  training,  it  should  be  the
+embedding of the previous target token: this is why we used the TrainingSampler. In
+practice, it is often a good idea to start training with the embedding of the target of
+the previous time step and gradually transition to using the embedding of the actual
+token that was output at the previous step. This idea was introduced in a 2015 paper12
+by  Samy  Bengio  et  al.  The  ScheduledEmbeddingTrainingSampler  will  randomly
+choose between the target or the actual output, with a probability that you can gradu‐
+ally change during training.
+
+Bidirectional RNNs
+A  each  time  step,  a  regular  recurrent  layer  only  looks  at  past  and  present  inputs
+before generating its output. In other words, it is “causal,” meaning it cannot look into
+the future. This type of RNN makes sense when forecasting time series, but for many
+NLP tasks, such as Neural Machine Translation, it is often preferable to look ahead at
+the next words before encoding a given word. For example, consider the phrases “the
+Queen of the United Kingdom,” “the queen of hearts,” and “the queen bee”: to prop‐
+erly  encode  the  word  “queen,”  you  need  to  look  ahead.  To  implement  this,  run  two
+recurrent layers on the same inputs, one reading the words from left to right and the
+other  reading  them  from  right  to  left.  Then  simply  combine  their  outputs  at  each
+time step, typically by concatenating them. This is called a bidirectional recurrent layer
+(see Figure 16-5).
+
+To  implement  a  bidirectional  recurrent  layer  in  Keras,  wrap  a  recurrent  layer  in  a
+keras.layers.Bidirectional layer. For example, the following code creates a bidir‐
+ectional GRU layer:
+
+keras.layers.Bidirectional(keras.layers.GRU(10, return_sequences=True))
+
+The Bidirectional layer will create a clone of the GRU layer (but in
+the  reverse  direction),  and  it  will  run  both  and  concatenate  their
+outputs. So although the GRU layer has 10 units, the Bidirectional
+layer will output 20 values per time step.
+
+12 Samy Bengio et al., “Scheduled Sampling for Sequence Prediction with Recurrent Neural Networks,” arXiv
+
+preprint arXiv:1506.03099 (2015).
+
+546 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+Figure 16-5. A bidirectional recurrent layer
+
+Beam Search
+Suppose you train an Encoder–Decoder model, and use it to translate the French sen‐
+tence  “Comment  vas-tu?”  to  English.  You  are  hoping  that  it  will  output  the  proper
+translation (“How are you?”), but unfortunately it outputs “How will you?” Looking
+at  the  training  set,  you  notice  many  sentences  such  as  “Comment  vas-tu  jouer?”
+which translates to “How will you play?” So it wasn’t absurd for the model to output
+“How will” after seeing “Comment vas.” Unfortunately, in this case it was a mistake,
+and the model could not go back and fix it, so it tried to complete the sentence as best
+it could. By greedily outputting the most likely word at every step, it ended up with a
+suboptimal translation. How can we give the model a chance to go back and fix mis‐
+takes  it  made  earlier?  One  of  the  most  common  solutions  is  beam  search:  it  keeps
+track of a short list of the k most promising sentences (say, the top three), and at each
+decoder step it tries to extend them by one word, keeping only the k most likely sen‐
+tences. The parameter k is called the beam width.
+
+For example, suppose you use the model to translate the sentence “Comment vas-tu?”
+using beam search with a beam width of 3. At the first decoder step, the model will
+output an estimated probability for each possible word. Suppose the top three words
+are  “How”  (75%  estimated  probability),  “What”  (3%),  and  “You”  (1%).  That’s  our
+short list so far. Next, we create three copies of our model and use them to find the
+next  word  for  each  sentence.  Each  model  will  output  one  estimated  probability  per
+word in the vocabulary. The first model will try to find the next word in the sentence
+“How,” and perhaps it will output a probability of 36% for the word “will,” 32% for the
+word “are,” 16% for the word “do,” and so on. Note that these are actually conditional
+probabilities, given that the sentence starts with “How.” The second model will try to
+complete the sentence “What”; it might output a conditional probability of 50% for
+
+An Encoder–Decoder Network for Neural Machine Translation 
+
+| 
+
+547
+
+the  word  “are,”  and  so  on.  Assuming  the  vocabulary  has  10,000  words,  each  model
+will output 10,000 probabilities.
+
+Next,  we  compute  the  probabilities  of  each  of  the  30,000  two-word  sentences  that
+these models considered (3 × 10,000). We do this by multiplying the estimated condi‐
+tional probability of each word by the estimated probability of the sentence it com‐
+pletes. For example, the estimated probability of the sentence “How” was 75%, while
+the estimated conditional probability of the word “will” (given that the first word is
+“How”)  was  36%,  so  the  estimated  probability  of  the  sentence  “How  will”  is  75%  ×
+36% = 27%. After computing the probabilities of all 30,000 two-word sentences, we
+keep only the top 3. Perhaps they all start with the word “How”: “How will” (27%),
+“How are” (24%), and “How do” (12%). Right now, the sentence “How will” is win‐
+ning, but “How are” has not been eliminated.
+
+Then  we  repeat  the  same  process:  we  use  three  models  to  predict  the  next  word  in
+each  of  these  three  sentences,  and  we  compute  the  probabilities  of  all  30,000  three-
+word sentences we considered. Perhaps the top three are now “How are you” (10%),
+“How do you” (8%), and “How will you” (2%). At the next step we may get “How do
+you do” (7%), “How are you <eos>” (6%), and “How are you doing” (3%). Notice that
+“How will” was eliminated, and we now have three perfectly reasonable translations.
+We  boosted  our  Encoder–Decoder  model’s  performance  without  any  extra  training,
+simply by using it more wisely.
+
+You can implement beam search fairly easily using TensorFlow Addons:
+
+beam_width = 10
+decoder = tfa.seq2seq.beam_search_decoder.BeamSearchDecoder(
+    cell=decoder_cell, beam_width=beam_width, output_layer=output_layer)
+decoder_initial_state = tfa.seq2seq.beam_search_decoder.tile_batch(
+    encoder_state, multiplier=beam_width)
+ou

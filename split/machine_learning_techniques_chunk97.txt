@@ -1,0 +1,281 @@
+ the right
+number of predictors (you probably have too many).
+
+For  the  solutions  to  exercises  8  and  9,  please  see  the  Jupyter  notebooks  available  at
+https://github.com/ageron/handson-ml2.
+
+Chapter 8: Dimensionality Reduction
+
+1. The main motivations for dimensionality reduction are:
+
+• To  speed  up  a  subsequent  training  algorithm  (in  some  cases  it  may  even
+remove noise and redundant features, making the training algorithm perform
+better)
+
+• To visualize the data and gain insights on the most important features
+
+• To save space (compression)
+
+The main drawbacks are:
+
+• Some  information  is  lost,  possibly  degrading  the  performance  of  subsequent
+
+training algorithms.
+
+• It can be computationally intensive.
+
+• It adds some complexity to your Machine Learning pipelines.
+
+• Transformed features are often hard to interpret.
+
+2. The  curse  of  dimensionality  refers  to  the  fact  that  many  problems  that  do  not
+exist  in  low-dimensional  space  arise  in  high-dimensional  space.  In  Machine
+Learning,  one  common  manifestation  is  the  fact  that  randomly  sampled  high-
+dimensional  vectors  are  generally  very  sparse,  increasing  the  risk  of  overfitting
+and making it very difficult to identify patterns in the data without having plenty
+of training data.
+
+3. Once a dataset’s dimensionality has been reduced using one of the algorithms we
+discussed,  it  is  almost  always  impossible  to  perfectly  reverse  the  operation,
+because some information gets lost during dimensionality reduction. Moreover,
+while  some  algorithms  (such  as  PCA)  have  a  simple  reverse  transformation
+procedure  that  can  reconstruct  a  dataset  relatively  similar  to  the  original,  other
+algorithms (such as T-SNE) do not.
+
+Exercise Solutions 
+
+| 
+
+727
+
+4. PCA can be used to significantly reduce the dimensionality of most datasets, even
+if they are highly nonlinear, because it can at least get rid of useless dimensions.
+However,  if  there  are  no  useless  dimensions—as  in  a  Swiss  roll  dataset—then
+reducing dimensionality with PCA will lose too much information. You want to
+unroll the Swiss roll, not squash it.
+
+5. That’s a trick question: it depends on the dataset. Let’s look at two extreme exam‐
+ples.  First,  suppose  the  dataset  is  composed  of  points  that  are  almost  perfectly
+aligned.  In  this  case,  PCA  can  reduce  the  dataset  down  to  just  one  dimension
+while still preserving 95% of the variance. Now imagine that the dataset is com‐
+posed of perfectly random points, scattered all around the 1,000 dimensions. In
+this case roughly 950 dimensions are required to preserve 95% of the variance. So
+the answer is, it depends on the dataset, and it could be any number between 1
+and 950. Plotting the explained variance as a function of the number of dimen‐
+sions is one way to get a rough idea of the dataset’s intrinsic dimensionality.
+
+6. Regular PCA is the default, but it works only if the dataset fits in memory. Incre‐
+mental PCA is useful for large datasets that don’t fit in memory, but it is slower
+than  regular  PCA,  so  if  the  dataset  fits  in  memory  you  should  prefer  regular
+PCA.  Incremental  PCA  is  also  useful  for  online  tasks,  when  you  need  to  apply
+PCA  on  the  fly,  every  time  a  new  instance  arrives.  Randomized  PCA  is  useful
+when  you  want  to  considerably  reduce  dimensionality  and  the  dataset  fits  in
+memory; in this case, it is much faster than regular PCA. Finally, Kernel PCA is
+useful for nonlinear datasets.
+
+7. Intuitively, a dimensionality reduction algorithm performs well if it eliminates a
+lot  of  dimensions  from  the  dataset  without  losing  too  much  information.  One
+way  to  measure  this  is  to  apply  the  reverse  transformation  and  measure  the
+reconstruction error. However, not all dimensionality reduction algorithms pro‐
+vide  a  reverse  transformation.  Alternatively,  if  you  are  using  dimensionality
+reduction  as  a  preprocessing  step  before  another  Machine  Learning  algorithm
+(e.g., a Random Forest classifier), then you can simply measure the performance
+of  that  second  algorithm;  if  dimensionality  reduction  did  not  lose  too  much
+information,  then  the  algorithm  should  perform  just  as  well  as  when  using  the
+original dataset.
+
+8. It  can  absolutely  make  sense  to  chain  two  different  dimensionality  reduction
+algorithms. A common example is using PCA to quickly get rid of a large num‐
+ber  of  useless  dimensions,  then  applying  another  much  slower  dimensionality
+reduction  algorithm,  such  as  LLE.  This  two-step  approach  will  likely  yield  the
+same performance as using LLE only, but in a fraction of the time.
+
+For the solutions to exercises 9 and 10, please see the Jupyter notebooks available at
+https://github.com/ageron/handson-ml2.
+
+728 
+
+|  Appendix A: Exercise Solutions
+
+Chapter 9: Unsupervised Learning Techniques
+
+1. In  Machine  Learning,  clustering  is  the  unsupervised  task  of  grouping  similar
+instances  together.  The  notion  of  similarity  depends  on  the  task  at  hand:  for
+example, in some cases two nearby instances will be considered similar, while in
+others  similar  instances  may  be  far  apart  as  long  as  they  belong  to  the  same
+densely  packed  group.  Popular  clustering  algorithms 
+include  K-Means,
+DBSCAN,  agglomerative  clustering,  BIRCH,  Mean-Shift,  affinity  propagation,
+and spectral clustering.
+
+2. The  main  applications  of  clustering  algorithms  include  data  analysis,  customer
+segmentation, recommender systems, search engines, image segmentation, semi-
+supervised  learning,  dimensionality  reduction,  anomaly  detection,  and  novelty
+detection.
+
+3. The elbow rule is a simple technique to select the number of clusters when using
+K-Means: just plot the inertia (the mean squared distance from each instance to
+its nearest centroid) as a function of the number of clusters, and find the point in
+the  curve  where  the  inertia  stops  dropping  fast  (the  “elbow”).  This  is  generally
+close to the optimal number of clusters. Another approach is to plot the silhou‐
+ette score as a function of the number of clusters. There will often be a peak, and
+the  optimal  number  of  clusters  is  generally  nearby.  The  silhouette  score  is  the
+mean silhouette coefficient over all instances. This coefficient varies from +1 for
+instances that are well inside their cluster and far from other clusters, to –1 for
+instances that are very close to another cluster. You may also plot the silhouette
+diagrams and perform a more thorough analysis.
+
+4. Labeling a dataset is costly and time-consuming. Therefore, it is common to have
+plenty  of  unlabeled  instances,  but  few  labeled  instances.  Label  propagation  is  a
+technique  that  consists  in  copying  some  (or  all)  of  the  labels  from  the  labeled
+instances  to  similar  unlabeled  instances.  This  can  greatly  extend  the  number  of
+labeled instances, and thereby allow a supervised algorithm to reach better per‐
+formance (this is a form of semi-supervised learning). One approach is to use a
+clustering algorithm such as K-Means on all the instances, then for each cluster
+find the most common label or the label of the most representative instance (i.e.,
+the one closest to the centroid) and propagate it to the unlabeled instances in the
+same cluster.
+
+5. K-Means and BIRCH scale well to large datasets. DBSCAN and Mean-Shift look
+
+for regions of high density.
+
+6. Active  learning  is  useful  whenever  you  have  plenty  of  unlabeled  instances  but
+labeling  is  costly.  In  this  case  (which  is  very  common),  rather  than  randomly
+selecting  instances  to  label,  it  is  often  preferable  to  perform  active  learning,
+where  human  experts  interact  with  the  learning  algorithm,  providing  labels  for
+
+Exercise Solutions 
+
+| 
+
+729
+
+specific  instances  when  the  algorithm  requests  them.  A  common  approach  is
+uncertainty sampling (see the description in “Active Learning” on page 255).
+
+7. Many people use the terms anomaly detection and novelty detection interchangea‐
+bly,  but  they  are  not  exactly  the  same.  In  anomaly  detection,  the  algorithm  is
+trained on a dataset that may contain outliers, and the goal is typically to identify
+these outliers (within the training set), as well as outliers among new instances.
+In novelty detection, the algorithm is trained on a dataset that is presumed to be
+“clean,”  and  the  objective  is  to  detect  novelties  strictly  among  new  instances.
+Some  algorithms  work  best  for  anomaly  detection  (e.g.,  Isolation  Forest),  while
+others are better suited for novelty detection (e.g., one-class SVM).
+
+8. A Gaussian mixture model (GMM) is a probabilistic model that assumes that the
+instances were generated from a mixture of several Gaussian distributions whose
+parameters are unknown. In other words, the assumption is that the data is grou‐
+ped into a finite number of clusters, each with an ellipsoidal shape (but the clus‐
+ters may have different ellipsoidal shapes, sizes, orientations, and densities), and
+we  don’t  know  which  cluster  each  instance  belongs  to.  This  model  is  useful  for
+density estimation, clustering, and anomaly detection.
+
+9. One  way  to  find  the  right  number  of  clusters  when  using  a  Gaussian  mixture
+model is to plot the Bayesian information criterion (BIC) or the Akaike informa‐
+tion  criterion  (AIC)  as  a  function  of  the  number  of  clusters,  then  choose  the
+number of clusters that minimizes the BIC or AIC. Another technique is to use a
+Bayesian  Gaussian  mixture  model,  which  automatically  selects  the  number  of
+clusters.
+
+For the solutions to exercises 10 to 13, please see the Jupyter notebooks available at
+https://github.com/ageron/handson-ml2.
+
+Chapter 10: Introduction to Artificial Neural Networks
+with Keras
+
+1. Visit  the  TensorFlow  Playground  and  play  around  with  it,  as  described  in  this
+
+exercise.
+
+2. Here is a neural network based on the original artificial neurons that computes A
+⊕ B (where ⊕ represents the exclusive OR), using the fact that A ⊕ B = (A ∧ ¬ B)
+∨ (¬ A ∧ B). There are other solutions—for example, using the fact that A ⊕ B =
+(A ∨ B) ∧ ¬(A ∧ B), or the fact that A ⊕ B = (A ∨ B) ∧ (¬ A ∨ ∧ B), and so on.
+
+730 
+
+|  Appendix A: Exercise Solutions
+
+3. A classical Perceptron will converge only if the dataset is linearly separable, and it
+won’t  be  able  to  estimate  class  probabilities.  In  contrast,  a  Logistic  Regression
+classifier will converge to a good solution even if the dataset is not linearly sepa‐
+rable, and it will output class probabilities. If you change the Perceptron’s activa‐
+tion  function  to  the  logistic  activation  function  (or  the  softmax  activation
+function if there are multiple neurons), and if you train it using Gradient Descent
+(or  some  other  optimization  algorithm  minimizing  the  cost  function,  typically
+cross entropy), then it becomes equivalent to a Logistic Regression classifier.
+
+4. The  logistic  activation  function  was  a  key  ingredient  in  training  the  first  MLPs
+because  its  derivative  is  always  nonzero,  so  Gradient  Descent  can  always  roll
+down  the  slope.  When  the  activation  function  is  a  step  function,  Gradient
+Descent cannot move, as there is no slope at all.
+
+5. Popular  activation  functions  include  the  step  function,  the  logistic  (sigmoid)
+function,  the  hyperbolic  tangent  (tanh)  function,  and  the  Rectified  Linear  Unit
+(ReLU)  function  (see  Figure  10-8).  See  Chapter  11  for  other  examples,  such  as
+ELU and variants of the ReLU function.
+
+6. Considering  the  MLP  described  in  the  question,  composed  of  one  input  layer
+with 10 passthrough neurons, followed by one hidden layer with 50 artificial neu‐
+rons,  and  finally  one  output  layer  with  3  artificial  neurons,  where  all  artificial
+neurons use the ReLU activation function: ..The shape of the input matrix X is m
+× 10, where m represents the training batch size.
+
+a. The shape of the hidden layer’s weight vector Wh is 10 × 50, and the length of
+
+its bias vector bh is 50.
+
+b. The shape of the output layer’s weight vector Wo is 50 × 3, and the length of its
+
+bias vector bo is 3.
+
+c. The shape of the network’s output matrix Y is m × 3.
+
+d. Y* = ReLU(ReLU(X Wh + bh) Wo + bo). Recall that the ReLU function just sets
+every  negative  number  in  the  matrix  to  zero.  Also  note  that  when  you  are
+adding a bias vector to a matrix, it is added to every single row in the matrix,
+which is called broadcasting.
+
+Exercise Solutions 
+
+| 
+
+731
+
+7. To classify email into spam or ham, you just need one neuron in the output layer
+of  a  neural  network—for  example,  indicating  the  probability  that  the  email  is
+spam. You would typically use the logistic activation function in the output layer
+when estimating a probability. If instead you want to tackle MNIST, you need 10
+neurons in the output layer, and you must replace the logistic function with the
+softmax  activation  function,  which  can  handle  multiple  classes,  outputting  one
+probability per class. If you want your neural network to predict housing prices
+like in Chapter 2, then you need one output neuron, using no activation function
+at all in the output layer.3
+
+8. Backpropagation  is  a  technique  used  to  train  artificial  neural  networks.  It  first
+computes the gradients of the cost function with regard to every model parame‐
+ter  (all  the  weights  and  biases),  then  it  performs  a  Gradient  Descent  step  using
+these  gradients.  This  backpropagation  step  is  typically  performed  thousands  or
+millions of times, using many training batches, until the model parameters con‐
+verge to values that (hopefully) minimize the cost function. To compute the gra‐
+dients,  backpropagation  uses  reverse-mode  autodiff  (although  it  wasn’t  called
+that  when  backpropagation  was  invented,  and  it  has  been  reinvented  several
+times).  Reverse-mode  autodiff  performs  a  forward  pass  through  a  computation
+graph,  computing  every  node’s  value  for  the  current  training  batch,  and  then  it
+performs a reverse pass, computing all the gradients at once (see Appendix D for
+more details). So what’s the difference? Well, backpropagation refers to the whole
+process  of  training  an  artificial  neural  network  using  multiple  backpropagation
+steps,  each  of  which  computes  gradients  and  uses  them  to  perform  a  Gradient
+Descent  step.  In  contrast,  reverse-mode  autodiff  is  just  a  technique  to  compute
+gradients efficiently, and it happens to be used by backpropagation.
+
+9. Here is a list of all the hyperparameters you can tweak in a basic MLP: the num‐
+ber of hidden layers, the number of neurons in each hidden layer, and the activa‐
+tion function used in each hidden layer and in the output layer.4 In general, the
+ReLU activation function (or one of its variants; see Chapter 11) is a good default
+for the hidden layers. For the output layer, in general you will want the logistic
+activation  function  for  binary  classification,  the  softmax  activation  function  for
+multiclass classification, or no activation function for regression.
+
+3 When the values to predict can vary by many orders of magnitude, you may wan

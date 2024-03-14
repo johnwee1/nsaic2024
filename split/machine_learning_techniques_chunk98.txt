@@ -1,0 +1,269 @@
+t to predict the logarithm of
+
+the target value rather than the target value directly. Simply computing the exponential of the neural network’s
+output will give you the estimated value (since exp(log v) = v).
+
+4 In Chapter 11 we discuss many techniques that introduce additional hyperparameters: type of weight initiali‐
+zation, activation function hyperparameters (e.g., the amount of leak in leaky ReLU), Gradient Clipping thres‐
+hold, type of optimizer and its hyperparameters (e.g., the momentum hyperparameter when using a
+MomentumOptimizer), type of regularization for each layer and regularization hyperparameters (e.g., dropout
+rate when using dropout), and so on.
+
+732 
+
+|  Appendix A: Exercise Solutions
+
+If the MLP overfits the training data, you can try reducing the number of hidden
+layers and reducing the number of neurons per hidden layer.
+
+10. See the Jupyter notebooks available at https://github.com/ageron/handson-ml2.
+
+Chapter 11: Training Deep Neural Networks
+
+1. No,  all  weights  should  be  sampled  independently;  they  should  not  all  have  the
+same initial value. One important goal of sampling weights randomly is to break
+symmetry: if all the weights have the same initial value, even if that value is not
+zero, then symmetry is not broken (i.e., all neurons in a given layer are equiva‐
+lent), and backpropagation will be unable to break it. Concretely, this means that
+all the neurons in any given layer will always have the same weights. It’s like hav‐
+ing just one neuron per layer, and much slower. It is virtually impossible for such
+a configuration to converge to a good solution.
+
+2. It is perfectly fine to initialize the bias terms to zero. Some people like to initialize
+them just like weights, and that’s okay too; it does not make much difference.
+
+3. A few advantages of the SELU function over the ReLU function are:
+
+• It  can  take  on  negative  values,  so  the  average  output  of  the  neurons  in  any
+given  layer  is  typically  closer  to  zero  than  when  using  the  ReLU  activation
+function (which never outputs negative values). This helps alleviate the vanish‐
+ing gradients problem.
+
+• It always has a nonzero derivative, which avoids the dying units issue that can
+
+affect ReLU units.
+
+• When the conditions are right (i.e., if the model is sequential, and the weights
+are initialized using LeCun initialization, and the inputs are standardized, and
+there’s no incompatible layer or regularization, such as dropout or ℓ1 regulari‐
+zation),  then  the  SELU  activation  function  ensures  the  model  is  self-
+normalized, which solves the exploding/vanishing gradients problems.
+
+4. The SELU activation function is a good default. If you need the neural network to
+be as fast as possible, you can use one of the leaky ReLU variants instead (e.g., a
+simple leaky ReLU using the default hyperparameter value). The simplicity of the
+ReLU  activation  function  makes  it  many  people’s  preferred  option,  despite  the
+fact  that  it  is  generally  outperformed  by  SELU  and  leaky  ReLU.  However,  the
+ReLU activation function’s ability to output precisely zero can be useful in some
+cases (e.g., see Chapter 17). Moreover, it can sometimes benefit from optimized
+implementation  as  well  as  from  hardware  acceleration.  The  hyperbolic  tangent
+(tanh) can be useful in the output layer if you need to output a number between
+–1 and 1, but nowadays it is not used much in hidden layers (except in recurrent
+
+Exercise Solutions 
+
+| 
+
+733
+
+nets). The logistic activation function is also useful in the output layer when you
+need to estimate a probability (e.g., for binary classification), but is rarely used in
+hidden  layers  (there  are  exceptions—for  example,  for  the  coding  layer  of  varia‐
+tional  autoencoders;  see  Chapter  17).  Finally,  the  softmax  activation  function  is
+useful  in  the  output  layer  to  output  probabilities  for  mutually  exclusive  classes,
+but it is rarely (if ever) used in hidden layers.
+
+5. If you set the momentum hyperparameter too close to 1 (e.g., 0.99999) when using
+an SGD optimizer, then the algorithm will likely pick up a lot of speed, hopefully
+moving  roughly  toward  the  global  minimum,  but  its  momentum  will  carry  it
+right past the minimum. Then it will slow down and come back, accelerate again,
+overshoot again, and so on. It may oscillate this way many times before converg‐
+ing, so overall it will take much longer to converge than with a smaller momentum
+value.
+
+6. One way to produce a sparse model (i.e., with most weights equal to zero) is to
+train the model normally, then zero out tiny weights. For more sparsity, you can
+apply ℓ1 regularization during training, which pushes the optimizer toward spar‐
+sity. A third option is to use the TensorFlow Model Optimization Toolkit.
+
+7. Yes,  dropout  does  slow  down  training,  in  general  roughly  by  a  factor  of  two.
+However, it has no impact on inference speed since it is only turned on during
+training. MC Dropout is exactly like dropout during training, but it is still active
+during  inference,  so  each  inference  is  slowed  down  slightly.  More  importantly,
+when using MC Dropout you generally want to run inference 10 times or more
+to get better predictions. This means that making predictions is slowed down by
+a factor of 10 or more.
+
+For the solutions to exercises 8, 9, and 10, please see the Jupyter notebooks available
+at https://github.com/ageron/handson-ml2.
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+1. TensorFlow  is  an  open-source  library  for  numerical  computation,  particularly
+well suited and fine-tuned for large-scale Machine Learning. Its core is similar to
+NumPy,  but  it  also  features  GPU  support,  support  for  distributed  computing,
+computation graph analysis and optimization capabilities (with a portable graph
+format that allows you to train a TensorFlow model in one environment and run
+it in another), an optimization API based on reverse-mode autodiff, and several
+powerful APIs such as tf.keras, tf.data, tf.image, tf.signal, and more. Other popu‐
+lar Deep Learning libraries include PyTorch, MXNet, Microsoft Cognitive Tool‐
+kit, Theano, Caffe2, and Chainer.
+
+2. Although TensorFlow offers most of the functionalities provided by NumPy, it is
+not a drop-in replacement, for a few reasons. First, the names of the functions are
+
+734 
+
+|  Appendix A: Exercise Solutions
+
+not  always  the  same  (for  example,  tf.reduce_sum()  versus  np.sum()).  Second,
+some  functions  do  not  behave  in  exactly  the  same  way  (for  example,  tf.trans
+pose() creates a transposed copy of a tensor, while NumPy’s T attribute creates a
+transposed  view,  without  actually  copying  any  data).  Lastly,  NumPy  arrays  are
+mutable, while TensorFlow tensors are not (but you can use a tf.Variable if you
+need a mutable object).
+
+3. Both  tf.range(10)  and  tf.constant(np.arange(10)) 
+
+return  a  one-
+dimensional tensor containing the integers 0 to 9. However, the former uses 32-
+bit  integers  while  the  latter  uses  64-bit  integers.  Indeed,  TensorFlow  defaults  to
+32 bits, while NumPy defaults to 64 bits.
+
+4. Beyond regular tensors, TensorFlow offers several other data structures, includ‐
+ing sparse tensors, tensor arrays, ragged tensors, queues, string tensors, and sets.
+The last two are actually represented as regular tensors, but TensorFlow provides
+special functions to manipulate them (in tf.strings and tf.sets).
+
+5. When you want to define a custom loss function, in general you can just imple‐
+ment it as a regular Python function. However, if your custom loss function must
+support some hyperparameters (or any other state), then you should subclass the
+keras.losses.Loss class and implement the __init__() and call() methods. If
+you want the loss function’s hyperparameters to be saved along with the model,
+then you must also implement the get_config() method.
+
+6. Much like custom loss functions, most metrics can be defined as regular Python
+functions. But if you want your custom metric to support some hyperparameters
+(or any other state), then you should subclass the  keras.metrics.Metric class.
+Moreover, if computing the metric over a whole epoch is not equivalent to com‐
+puting the mean metric over all batches in that epoch (e.g., as for the precision
+and  recall  metrics),  then  you  should  subclass  the  keras.metrics.Metric  class
+and implement the __init__(), update_state(), and result() methods to keep
+track  of  a  running  metric  during  each  epoch.  You  should  also  implement  the
+reset_states()  method  unless  all  it  needs  to  do  is  reset  all  variables  to  0.0.  If
+you want the state to be saved along with the model, then you should implement
+the get_config() method as well.
+
+7. You  should  distinguish  the  internal  components  of  your  model  (i.e.,  layers  or
+reusable  blocks  of  layers)  from  the  model  itself  (i.e.,  the  object  you  will  train).
+The  former  should  subclass  the  keras.layers.Layer  class,  while  the  latter
+should subclass the keras.models.Model class.
+
+8. Writing your own custom training loop is fairly advanced, so you should only do
+it if you really need to. Keras provides several tools to customize training without
+having  to  write  a  custom  training  loop:  callbacks,  custom  regularizers,  custom
+constraints, custom losses, and so on. You should use these instead of writing a
+custom training loop whenever possible: writing a custom training loop is more
+
+Exercise Solutions 
+
+| 
+
+735
+
+error-prone, and it will be harder to reuse the custom code you write. However,
+in  some  cases  writing  a  custom  training  loop  is  necessary—for  example,  if  you
+want to use different optimizers for different parts of your neural network, like in
+the Wide & Deep paper. A custom training loop can also be useful when debug‐
+ging, or when trying to understand exactly how training works.
+
+9. Custom Keras components should be convertible to TF Functions, which means
+they should stick to TF operations as much as possible and respect all the rules
+listed in “TF Function Rules” on page 409. If you absolutely need to include arbi‐
+trary  Python  code  in  a  custom  component,  you  can  either  wrap  it  in  a
+tf.py_function()  operation  (but  this  will  reduce  performance  and  limit  your
+model’s  portability)  or  set  dynamic=True  when  creating  the  custom  layer  or
+model (or set run_eagerly=True when calling the model’s compile() method).
+
+10. Please  refer  to  “TF  Function  Rules”  on  page  409  for  the  list  of  rules  to  respect
+
+when creating a TF Function.
+
+11. Creating a dynamic Keras model can be useful for debugging, as it will not com‐
+pile  any  custom  component  to  a  TF  Function,  and  you  can  use  any  Python
+debugger  to  debug  your  code.  It  can  also  be  useful  if  you  want  to  include  arbi‐
+trary  Python  code  in  your  model  (or  in  your  training  code),  including  calls  to
+external libraries. To make a model dynamic, you must set dynamic=True when
+creating it. Alternatively, you can set run_eagerly=True when calling the model’s
+compile() method. Making a model dynamic prevents Keras from using any of
+TensorFlow’s graph features, so it will slow down training and inference, and you
+will  not  have  the  possibility  to  export  the  computation  graph,  which  will  limit
+your model’s portability.
+
+For the solutions to exercises 12 and 13, please see the Jupyter notebooks available at
+https://github.com/ageron/handson-ml2.
+
+Chapter 13: Loading and Preprocessing Data with
+TensorFlow
+
+1. Ingesting a large dataset and preprocessing it efficiently can be a complex engi‐
+neering challenge. The Data API makes it fairly simple. It offers many features,
+including loading data from various sources (such as text or binary files), reading
+data in parallel from multiple sources, transforming it, interleaving the records,
+shuffling the data, batching it, and prefetching it.
+
+2. Splitting  a  large  dataset  into  multiple  files  makes  it  possible  to  shuffle  it  at  a
+coarse  level  before  shuffling  it  at  a  finer  level  using  a  shuffling  buffer.  It  also
+makes it possible to handle huge datasets that do not fit on a single machine. It’s
+also simpler to manipulate thousands of small files rather than one huge file; for
+
+736 
+
+|  Appendix A: Exercise Solutions
+
+example, it’s easier to split the data into multiple subsets. Lastly, if the data is split
+across multiple files spread across multiple servers, it is possible to download sev‐
+eral  files  from  different  servers  simultaneously,  which  improves  the  bandwidth
+usage.
+
+3. You can use TensorBoard to visualize profiling data: if the GPU is not fully uti‐
+lized then your input pipeline is likely to be the bottleneck. You can fix it by mak‐
+ing  sure  it  reads  and  preprocesses  the  data  in  multiple  threads  in  parallel,  and
+ensuring  it  prefetches  a  few  batches.  If  this  is  insufficient  to  get  your  GPU  to
+100%  usage  during  training,  make  sure  your  preprocessing  code  is  optimized.
+You can also try saving the dataset into multiple TFRecord files, and if necessary
+perform some of the preprocessing ahead of time so that it does not need to be
+done on the fly during training (TF Transform can help with this). If necessary,
+use a machine with more CPU and RAM, and ensure that the GPU bandwidth is
+large enough.
+
+4. A TFRecord file is composed of a sequence of arbitrary binary records: you can
+store  absolutely  any  binary  data  you  want  in  each  record.  However,  in  practice
+most TFRecord files contain sequences of serialized protocol buffers. This makes
+it possible to benefit from the advantages of protocol buffers, such as the fact that
+they can be read easily across multiple platforms and languages and their defini‐
+tion can be updated later in a backward-compatible way.
+
+5. The Example protobuf format has the advantage that TensorFlow provides some
+operations to parse it (the tf.io.parse*example() functions) without you hav‐
+ing to define your own format. It is sufficiently flexible to represent instances in
+most datasets. However, if it does not cover your use case, you can define your
+own protocol buffer, compile it using protoc (setting the --descriptor_set_out
+and  --include_imports  arguments  to  export  the  protobuf  descriptor),  and  use
+the  tf.io.decode_proto()  function  to  parse  the  serialized  protobufs  (see  the
+“Custom  protobuf ”  section  of  the  notebook  for  an  example).  It’s  more  compli‐
+cated, and it requires deploying the descriptor along with the model, but it can be
+done.
+
+6. When  using  TFRecords,  you  will  generally  want  to  activate  compression  if  the
+TFRecord files will need to be downloaded by the training script, as compression
+will make files smaller and thus reduce download time. But if the files are located
+on the same machine as the training script, it’s usually preferable to leave com‐
+pression off, to avoid wasting CPU for decompression.
+
+7. Let’s look at the pros and cons of each preprocessing option:
+
+• If you preprocess the data when creating the data files, the training script will
+run faster, since it will not have to perform preprocessing on the fly. In some
+cases, the preprocessed data will also be much smaller than the original data, so
+you  can  save  some  space  and  speed  up  downloads.  It  ma

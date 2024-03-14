@@ -1,0 +1,260 @@
+ts, and a
+vector containing the values of the next 7 days as the target). This is a sequence-
+to-vector RNN. Alternatively, you could set return_sequences=True for all RNN
+layers  to  create  a  sequence-to-sequence  RNN.  You  can  train  this  model  using
+random windows from the time series, with sequences of the same length as the
+inputs as the targets. Each target sequence should have seven values per time step
+(e.g., for time step t, the target should be a vector containing the values at time
+steps t + 1 to t + 7).
+
+5. The two main difficulties when training RNNs are unstable gradients (exploding
+or  vanishing)  and  a  very  limited  short-term  memory.  These  problems  both  get
+worse  when  dealing  with  long  sequences.  To  alleviate  the  unstable  gradients
+problem, you can use a smaller learning rate, use a saturating activation function
+such  as  the  hyperbolic  tangent  (which  is  the  default),  and  possibly  use  gradient
+clipping, Layer Normalization, or dropout at each time step. To tackle the limited
+short-term memory problem, you can use LSTM or GRU layers (this also helps with
+the unstable gradients problem).
+
+6. An  LSTM  cell’s  architecture  looks  complicated,  but  it’s  actually  not  too  hard  if
+you understand the underlying logic. The cell has a short-term state vector and a
+long-term state vector. At each time step, the inputs and the previous short-term
+state are fed to a simple RNN cell and three gates: the forget gate decides what to
+remove from the long-term state, the input gate decides which part of the output
+of  the  simple  RNN  cell  should  be  added  to  the  long-term  state,  and  the  output
+gate decides which part of the long-term state should be output at this time step
+(after  going  through  the  tanh  activation  function).  The  new  short-term  state  is
+equal to the output of the cell. See Figure 15-9.
+
+7. An  RNN  layer  is  fundamentally  sequential:  in  order  to  compute  the  outputs  at
+time step t, it has to first compute the outputs at all earlier time steps. This makes
+it  impossible  to  parallelize.  On  the  other  hand,  a  1D  convolutional  layer  lends
+itself well to parallelization since it does not hold a state between time steps. In
+other  words,  it  has  no  memory:  the  output  at  any  time  step  can  be  computed
+based only on a small window of values from the inputs without having to know
+all the past values. Moreover, since a 1D convolutional layer is not recurrent, it
+
+Exercise Solutions 
+
+| 
+
+743
+
+suffers less from unstable gradients. One or more 1D convolutional layers can be
+useful in an RNN to efficiently preprocess the inputs, for example to reduce their
+temporal  resolution  (downsampling)  and  thereby  help  the  RNN  layers  detect
+long-term  patterns.  In  fact,  it  is  possible  to  use  only  convolutional  layers,  for
+example by building a WaveNet architecture.
+
+8. To classify videos based on their visual content, one possible architecture could
+be  to  take  (say)  one  frame  per  second,  then  run  every  frame  through  the  same
+convolutional neural network (e.g., a pretrained Xception model, possibly frozen
+if  your  dataset  is  not  large),  feed  the  sequence  of  outputs  from  the  CNN  to  a
+sequence-to-vector RNN, and finally run its output through a softmax layer, giv‐
+ing you all the class probabilities. For training you would use cross entropy as the
+cost function. If you wanted to use the audio for classification as well, you could
+use a stack of strided 1D convolutional layers to reduce the temporal resolution
+from thousands of audio frames per second to just one per second (to match the
+number  of  images  per  second),  and  concatenate  the  output  sequence  to  the
+inputs of the sequence-to-vector RNN (along the last dimension).
+
+For the solutions to exercises 9 and 10, please see the Jupyter notebooks available at
+https://github.com/ageron/handson-ml2.
+
+Chapter 16: Natural Language Processing with RNNs and
+Attention
+
+1. Stateless RNNs can only capture patterns whose length is less than, or equal to,
+the  size  of  the  windows  the  RNN  is  trained  on.  Conversely,  stateful  RNNs  can
+capture  longer-term  patterns.  However,  implementing  a  stateful  RNN  is  much
+harder—especially  preparing  the  dataset  properly.  Moreover,  stateful  RNNs  do
+not always work better, in part because consecutive batches are not independent
+and  identically  distributed  (IID).  Gradient  Descent  is  not  fond  of  non-IID
+datasets.
+
+2. In general, if you translate a sentence one word at a time, the result will be terri‐
+ble. For example, the French sentence “Je vous en prie” means “You are welcome,”
+but if you translate it one word at a time, you get “I you in pray.” Huh? It is much
+better to read the whole sentence first and then translate it. A plain sequence-to-
+sequence RNN would start translating a sentence immediately after reading the
+first  word,  while  an  Encoder–Decoder  RNN  will  first  read  the  whole  sentence
+and then translate it. That said, one could imagine a plain sequence-to-sequence
+RNN that would output silence whenever it is unsure about what to say next (just
+like human translators do when they must translate a live broadcast).
+
+3. Variable-length input sequences can be handled by padding the shorter sequen‐
+ces so that all sequences in a batch have the same length, and using masking to
+
+744 
+
+|  Appendix A: Exercise Solutions
+
+ensure  the  RNN  ignores  the  padding  token.  For  better  performance,  you  may
+also want to create batches containing sequences of similar sizes. Ragged tensors
+can hold sequences of variable lengths, and tf.keras will likely support them even‐
+tually,  which  will  greatly  simplify  handling  variable-length  input  sequences  (at
+the time of this writing, it is not the case yet). Regarding variable-length output
+sequences, if the length of the output sequence is known in advance (e.g., if you
+know that it is the same as the input sequence), then you just need to configure
+the loss function so that it ignores tokens that come after the end of the sequence.
+Similarly, the code that will use the model should ignore tokens beyond the end
+of  the  sequence.  But  generally  the  length  of  the  output  sequence  is  not  known
+ahead of time, so the solution is to train the model so that it outputs an end-of-
+sequence token at the end of each sequence.
+
+4. Beam  search  is  a  technique  used  to  improve  the  performance  of  a  trained
+Encoder–Decoder  model,  for  example  in  a  neural  machine  translation  system.
+The algorithm keeps track of a short list of the k most promising output senten‐
+ces (say, the top three), and at each decoder step it tries to extend them by one
+word; then it keeps only the k most likely sentences. The parameter k is called the
+beam width: the larger it is, the more CPU and RAM will be used, but also the
+more  accurate  the  system  will  be.  Instead  of  greedily  choosing  the  most  likely
+next word at each step to extend a single sentence, this technique allows the sys‐
+tem to explore several promising sentences simultaneously. Moreover, this tech‐
+nique  lends  itself  well  to  parallelization.  You  can  implement  beam  search  fairly
+easily using TensorFlow Addons.
+
+5. An attention mechanism is a technique initially used in Encoder–Decoder mod‐
+els  to  give  the  decoder  more  direct  access  to  the  input  sequence,  allowing  it  to
+deal with longer input sequences. At each decoder time step, the current decod‐
+er’s state and the full output of the encoder are processed by an alignment model
+that  outputs  an  alignment  score  for  each  input  time  step.  This  score  indicates
+which  part  of  the  input  is  most  relevant  to  the  current  decoder  time  step.  The
+weighted sum of the encoder output (weighted by their alignment score) is then
+fed to the decoder, which produces the next decoder state and the output for this
+time step. The main benefit of using an attention mechanism is the fact that the
+Encoder–Decoder  model  can  successfully  process  longer  input  sequences.
+Another benefit is that the alignment scores makes the model easier to debug and
+interpret: for example, if the model makes a mistake, you can look at which part
+of the input it was paying attention to, and this can help diagnose the issue. An
+attention  mechanism  is  also  at  the  core  of  the  Transformer  architecture,  in  the
+Multi-Head Attention layers. See the next answer.
+
+6. The  most  important  layer  in  the  Transformer  architecture  is  the  Multi-Head
+Attention  layer  (the  original  Transformer  architecture  contains  18  of  them,
+including  6  Masked  Multi-Head  Attention  layers).  It  is  at  the  core  of  language
+
+Exercise Solutions 
+
+| 
+
+745
+
+models  such  as  BERT  and  GPT-2.  Its  purpose  is  to  allow  the  model  to  identify
+which  words  are  most  aligned  with  each  other,  and  then  improve  each  word’s
+representation using these contextual clues.
+
+7. Sampled  softmax  is  used  when  training  a  classification  model  when  there  are
+many  classes  (e.g.,  thousands).  It  computes  an  approximation  of  the  cross-
+entropy loss based on the logit predicted by the model for the correct class, and
+the predicted logits for a sample of incorrect words. This speeds up training con‐
+siderably compared to computing the softmax over all logits and then estimating
+the cross-entropy loss. After training, the model can be used normally, using the
+regular  softmax  function  to  compute  all  the  class  probabilities  based  on  all  the
+logits.
+
+For  the  solutions  to  exercises  8  to  11,  please  see  the  Jupyter  notebooks  available  at
+https://github.com/ageron/handson-ml2.
+
+Chapter 17: Representation Learning and Generative
+Learning Using Autoencoders and GANs
+
+1. Here are some of the main tasks that autoencoders are used for:
+
+• Feature extraction
+
+• Unsupervised pretraining
+
+• Dimensionality reduction
+
+• Generative models
+
+• Anomaly detection (an autoencoder is generally bad at reconstructing outliers)
+
+2. If you want to train a classifier and you have plenty of unlabeled training data but
+only a few thousand labeled instances, then you could first train a deep autoen‐
+coder on the full dataset (labeled + unlabeled), then reuse its lower half for the
+classifier  (i.e.,  reuse  the  layers  up  to  the  codings  layer,  included)  and  train  the
+classifier using the labeled data. If you have little labeled data, you probably want
+to freeze the reused layers when training the classifier.
+
+3. The fact that an autoencoder perfectly reconstructs its inputs does not necessarily
+mean that it is a good autoencoder; perhaps it is simply an overcomplete autoen‐
+coder that learned to copy its inputs to the codings layer and then to the outputs.
+In fact, even if the codings layer contained a single neuron, it would be possible
+for a very deep autoencoder to learn to map each training instance to a different
+coding (e.g., the first instance could be mapped to 0.001, the second to 0.002, the
+third to 0.003, and so on), and it could learn “by heart” to reconstruct the right
+training  instance  for  each  coding.  It  would  perfectly  reconstruct  its  inputs
+
+746 
+
+|  Appendix A: Exercise Solutions
+
+without really learning any useful pattern in the data. In practice such a mapping
+is unlikely to happen, but it illustrates the fact that perfect reconstructions are not
+a guarantee that the autoencoder learned anything useful. However, if it produces
+very bad reconstructions, then it is almost guaranteed to be a bad autoencoder.
+To  evaluate  the  performance  of  an  autoencoder,  one  option  is  to  measure  the
+reconstruction  loss  (e.g.,  compute  the  MSE,  or  the  mean  square  of  the  outputs
+minus  the  inputs).  Again,  a  high  reconstruction  loss  is  a  good  sign  that  the
+autoencoder  is  bad,  but  a  low  reconstruction  loss  is  not  a  guarantee  that  it  is
+good. You should also evaluate the autoencoder according to what it will be used
+for. For example, if you are using it for unsupervised pretraining of a classifier,
+then you should also evaluate the classifier’s performance.
+
+4. An  undercomplete  autoencoder  is  one  whose  codings  layer  is  smaller  than  the
+input  and  output  layers.  If  it  is  larger,  then  it  is  an  overcomplete  autoencoder.
+The main risk of an excessively undercomplete autoencoder is that it may fail to
+reconstruct the inputs. The main risk of an overcomplete autoencoder is that it
+may just copy the inputs to the outputs, without learning any useful features.
+
+5. To tie the weights of an encoder layer and its corresponding decoder layer, you
+simply make the decoder weights equal to the transpose of the encoder weights.
+This reduces the number of parameters in the model by half, often making train‐
+ing converge faster with less training data and reducing the risk of overfitting the
+training set.
+
+6. A  generative  model  is  a  model  capable  of  randomly  generating  outputs  that
+resemble  the  training  instances.  For  example,  once  trained  successfully  on  the
+MNIST  dataset,  a  generative  model  can  be  used  to  randomly  generate  realistic
+images of digits. The output distribution is typically similar to the training data.
+For  example,  since  MNIST  contains  many  images  of  each  digit,  the  generative
+model  would  output  roughly  the  same  number  of  images  of  each  digit.  Some
+generative  models  can  be  parametrized—for  example,  to  generate  only  some
+kinds  of  outputs.  An  example  of  a  generative  autoencoder  is  the  variational
+autoencoder.
+
+7. A  generative  adversarial  network  is  a  neural  network  architecture  composed  of
+two parts, the generator and the discriminator, which have opposing objectives.
+The generator’s goal is to generate instances similar to those in the training set, to
+fool  the  discriminator.  The  discriminator  must  distinguish  the  real  instances
+from the generated ones. At each training iteration, the discriminator is trained
+like  a  normal  binary  classifier,  then  the  generator  is  trained  to  maximize  the
+discriminator’s error. GANs are used for advanced image processing tasks such as
+super  resolution,  colorization,  image  editing  (replacing  objects  with  realistic
+background),  turning  a  simple  sketch  into  a  photorealistic  image,  or  predicting
+the next frames in a video. They are also used to augment a dataset (to train other
+
+Exercise Solutions 
+
+| 
+
+747
+
+models), to generate other types of data (such as text, audio, and time series), and
+to identify the weaknesses in other models and strengthen them.
+
+8. Training  GANs  is  notoriously  difficult,  because  of  the  complex  dynamics
+between the generator and the discriminator. The biggest difficulty is mode col‐
+lapse, where the generator produces outputs with very little diversity. Moreover,
+training  can  be  terribly  unstable:  it  may  start  out  fine  and  then  suddenly  start
+oscillating or diverging, without any apparent reason. GANs are also very sensi‐
+tive to the choice of hyperparameters.
+
+For the solutions to exercises 9, 10, and 11, please see the Jupyter notebooks available
+at https://github.com/ageron/handson-ml2.
+
+Chapter 18: Reinforcement Learning
+
+1. Reinforcement Learning is an area of Machine Learning aimed at creatin

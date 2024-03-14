@@ -1,0 +1,295 @@
+g mean codings (lower left). In short, each of the three
+lower-left images represents the mean of the three images located above it. But this is
+not a simple mean computed at the pixel level (this would result in three overlapping
+faces), it is a mean computed in the latent space, so the images still look like normal
+faces. Amazingly, if you compute men with glasses, minus men without glasses, plus
+women without glasses—where each term corresponds to one of the mean codings—
+and you generate the image that corresponds to this coding, you get the image at the
+center of the 3 × 3 grid of faces on the right: a woman with glasses! The eight other
+images around it were generated based on the same vector plus a bit of noise, to illus‐
+trate the semantic interpolation capabilities of DCGANs. Being able to do arithmetic
+on faces feels like science fiction!
+
+600 
+
+| 
+
+Chapter 17: Representation Learning and Generative Learning Using Autoencoders and GANs
+
+Figure 17-18. Vector arithmetic for visual concepts (part of figure 7 from the DCGAN
+paper)14
+
+If you add each image’s class as an extra input to both the generator
+and  the  discriminator,  they  will  both  learn  what  each  class  looks
+like,  and  thus  you  will  be  able  to  control  the  class  of  each  image
+produced  by  the  generator.  This  is  called  a  conditional  GAN15
+(CGAN).
+
+DCGANs  aren’t  perfect,  though.  For  example,  when  you  try  to  generate  very  large
+images using DCGANs, you often end up with locally convincing features but overall
+inconsistencies (such as shirts with one sleeve much longer than the other). How can
+you fix this?
+
+Progressive Growing of GANs
+An important technique was proposed in a 2018 paper16 by Nvidia researchers Tero
+Karras  et  al.:  they  suggested  generating  small  images  at  the  beginning  of  training,
+then gradually adding convolutional layers to both the generator and the discrimina‐
+tor to produce larger and larger images (4 × 4, 8 × 8, 16 × 16, …, 512 × 512, 1,024 ×
+1,024). This approach resembles greedy layer-wise training of stacked autoencoders.
+
+14 Reproduced with the kind authorization of the authors.
+
+15 Mehdi Mirza and Simon Osindero, “Conditional Generative Adversarial Nets,” arXiv preprint arXiv:
+
+1411.1784 (2014).
+
+16 Tero Karras et al., “Progressive Growing of GANs for Improved Quality, Stability, and Variation,” Proceedings
+
+of the International Conference on Learning Representations (2018).
+
+Generative Adversarial Networks 
+
+| 
+
+601
+
+The extra layers get added at the end of the generator and at the beginning of the dis‐
+criminator, and previously trained layers remain trainable.
+
+For  example,  when  growing  the  generator’s  outputs  from  4  ×  4  to  8  ×  8  (see
+Figure 17-19), an upsampling layer (using nearest neighbor filtering) is added to the
+existing convolutional layer, so it outputs 8 × 8 feature maps, which are then fed to
+the new convolutional layer (which uses "same" padding and strides of 1, so its out‐
+puts are also 8 × 8). This new layer is followed by a new output convolutional layer:
+this is a regular convolutional layer with kernel size 1 that projects the outputs down
+to  the  desired  number  of  color  channels  (e.g.,  3).  To  avoid  breaking  the  trained
+weights of the first convolutional layer when the new convolutional layer is added, the
+final output is a weighted sum of the original output layer (which now outputs 8 × 8
+feature maps) and the new output layer. The weight of the new outputs is α, while the
+weight of the original outputs is 1 – α, and α is slowly increased from 0 to 1. In other
+words, the new convolutional layers (represented with dashed lines in Figure 17-19)
+are gradually faded in, while the original output layer is gradually faded out. A similar
+fade-in/fade-out  technique  is  used  when  a  new  convolutional  layer  is  added  to  the
+discriminator (followed by an average pooling layer for downsampling).
+
+Figure 17-19. Progressively growing GAN: a GAN generator outputs 4 × 4 color images
+(left); we extend it to output 8 × 8 images (right)
+
+602 
+
+| 
+
+Chapter 17: Representation Learning and Generative Learning Using Autoencoders and GANs
+
+The paper also introduced several other techniques aimed at increasing the diversity
+of the outputs (to avoid mode collapse) and making training more stable:
+
+Minibatch standard deviation layer
+
+Added near the end of the discriminator. For each position in the inputs, it com‐
+putes  the  standard  deviation  across  all  channels  and  all  instances  in  the  batch
+(S = tf.math.reduce_std(inputs, axis=[0, -1])). These standard deviations
+are  then  averaged  across  all  points  to  get  a  single  value  (v  =  tf.reduce_
+mean(S)). Finally, an extra feature map is added to each instance in the batch and
+filled  with  the  computed  value  (tf.concat([inputs,  tf.fill([batch_size,
+height, width, 1], v)], axis=-1)). How does this help? Well, if the genera‐
+tor produces images with little variety, then there will be a small standard devia‐
+tion  across  feature  maps  in  the  discriminator.  Thanks  to  this  layer,  the
+discriminator  will  have  easy  access  to  this  statistic,  making  it  less  likely  to  be
+fooled  by  a  generator  that  produces  too  little  diversity.  This  will  encourage  the
+generator to produce more diverse outputs, reducing the risk of mode collapse.
+
+Equalized learning rate
+
+Initializes all weights using a simple Gaussian distribution with mean 0 and stan‐
+dard  deviation  1  rather  than  using  He  initialization.  However,  the  weights  are
+scaled down at runtime (i.e., every time the layer is executed) by the same factor
+as in He initialization: they are divided by  2/ninputs, where ninputs is the number
+of  inputs  to  the  layer.  The  paper  demonstrated  that  this  technique  significantly
+improved the GAN’s performance when using RMSProp, Adam, or other adap‐
+tive gradient optimizers. Indeed, these optimizers normalize the gradient updates
+by their estimated standard deviation (see Chapter 11), so parameters that have a
+larger  dynamic  range17  will  take  longer  to  train,  while  parameters  with  a  small
+dynamic range may be updated too quickly, leading to instabilities. By rescaling
+the weights as part of the model itself rather than just rescaling them upon initi‐
+alization, this approach ensures that the dynamic range is the same for all param‐
+eters, throughout training, so they all learn at the same speed. This both speeds
+up and stabilizes training.
+
+Pixelwise normalization layer
+
+Added after each convolutional layer in the generator. It normalizes each activa‐
+tion based on all the activations in the same image and at the same location, but
+across all channels (dividing by the square root of the mean squared activation).
+In TensorFlow code, this is inputs / tf.sqrt(tf.reduce_mean(tf.square(X),
+axis=-1,  keepdims=True)  +  1e-8)  (the  smoothing  term  1e-8  is  needed  to
+
+17 The dynamic range of a variable is the ratio between the highest and the lowest value it may take.
+
+Generative Adversarial Networks 
+
+| 
+
+603
+
+avoid division by zero). This technique avoids explosions in the activations due
+to excessive competition between the generator and the discriminator.
+
+The  combination  of  all  these  techniques  allowed  the  authors  to  generate  extremely
+convincing high-definition images of faces. But what exactly do we call “convincing”?
+Evaluation is one of the big challenges when working with GANs: although it is possi‐
+ble to automatically evaluate the diversity of the generated images, judging their qual‐
+ity is a much trickier and subjective task. One technique is to use human raters, but
+this is costly and time-consuming. So the authors proposed to measure the similarity
+between  the  local  image  structure  of  the  generated  images  and  the  training  images,
+considering  every  scale.  This  idea  led  them  to  another  groundbreaking  innovation:
+StyleGANs.
+
+StyleGANs
+The state of the art in high-resolution image generation was advanced once again by
+the same Nvidia team in a 2018 paper18 that introduced the popular StyleGAN archi‐
+tecture. The authors used style transfer techniques in the generator to ensure that the
+generated images have the same local structure as the training images, at every scale,
+greatly improving the quality of the generated images. The discriminator and the loss
+function were not modified, only the generator. Let’s take a look at the StyleGAN. It is
+composed of two networks (see Figure 17-20):
+
+Mapping network
+
+An eight-layer MLP that maps the latent representations z (i.e., the codings) to a
+vector  w.  This  vector  is  then  sent  through  multiple  affine  transformations  (i.e.,
+Dense  layers  with  no  activation  functions,  represented  by  the  “A”  boxes  in
+Figure 17-20), which produces multiple vectors. These vectors control the style of
+the generated image at different levels, from fine-grained texture (e.g., hair color)
+to high-level features (e.g., adult or child). In short, the mapping network maps
+the codings to multiple style vectors.
+
+Synthesis network
+
+Responsible  for  generating  the  images.  It  has  a  constant  learned  input  (to  be
+clear, this input will be constant after training, but during training it keeps getting
+tweaked by backpropagation). It processes this input through multiple convolu‐
+tional and upsampling layers, as earlier, but there are two twists: first, some noise
+is added to the input and to all the outputs of the convolutional layers (before the
+activation function). Second, each noise layer is followed by an Adaptive Instance
+Normalization (AdaIN) layer: it standardizes each feature map independently (by
+
+18 Tero Karras et al., “A Style-Based Generator Architecture for Generative Adversarial Networks,” arXiv pre‐
+
+print arXiv:1812.04948 (2018).
+
+604 
+
+| 
+
+Chapter 17: Representation Learning and Generative Learning Using Autoencoders and GANs
+
+subtracting the feature map’s mean and dividing by its standard deviation), then
+it uses the style vector to determine the scale and offset of each feature map (the
+style vector contains one scale and one bias term for each feature map).
+
+Figure 17-20. StyleGAN’s generator architecture (part of figure 1 from the StyleGAN
+paper)19
+
+The  idea  of  adding  noise  independently  from  the  codings  is  very  important.  Some
+parts of an image are quite random, such as the exact position of each freckle or hair.
+In  earlier  GANs,  this  randomness  had  to  either  come  from  the  codings  or  be  some
+pseudorandom noise produced by the generator itself. If it came from the codings, it
+meant that the generator had to dedicate a significant portion of the codings’ repre‐
+sentational power to store noise: this is quite wasteful. Moreover, the noise had to be
+
+19 Reproduced with the kind authorization of the authors.
+
+Generative Adversarial Networks 
+
+| 
+
+605
+
+able  to  flow  through  the  network  and  reach  the  final  layers  of  the  generator:  this
+seems  like  an  unnecessary  constraint  that  probably  slowed  down  training.  And
+finally, some visual artifacts may appear because the same noise was used at different
+levels.  If  instead  the  generator  tried  to  produce  its  own  pseudorandom  noise,  this
+noise might not look very convincing, leading to more visual artifacts. Plus, part of
+the generator’s weights would be dedicated to generating pseudorandom noise, which
+again  seems  wasteful.  By  adding  extra  noise  inputs,  all  these  issues  are  avoided;  the
+GAN is able to use the provided noise to add the right amount of stochasticity to each
+part of the image.
+
+The added noise is different for each level. Each noise input consists of a single fea‐
+ture map full of Gaussian noise, which is broadcast to all feature maps (of the given
+level) and scaled using learned per-feature scaling factors (this is represented by the
+“B” boxes in Figure 17-20) before it is added.
+
+Finally,  StyleGAN  uses  a  technique  called  mixing  regularization  (or  style  mixing),
+where a percentage of the generated images are produced using two different codings.
+Specifically, the codings c1 and c2 are sent through the mapping network, giving two
+style vectors w1 and w2. Then the synthesis network generates an image based on the
+styles w1 for the first levels and the styles w2 for the remaining levels. The cutoff level
+is picked randomly. This prevents the network from assuming that styles at adjacent
+levels  are  correlated,  which  in  turn  encourages  locality  in  the  GAN,  meaning  that
+each style vector only affects a limited number of traits in the generated image.
+
+There is such a wide variety of GANs out there that it would require a whole book to
+cover them all. Hopefully this introduction has given you the main ideas, and most
+importantly  the  desire  to  learn  more.  If  you’re  struggling  with  a  mathematical  con‐
+cept, there are probably blog posts out there that will help you understand it better.
+Then go ahead and implement your own GAN, and do not get discouraged if it has
+trouble learning at first: unfortunately, this is normal, and it will require quite a bit of
+patience before it works, but the result is worth it. If you’re struggling with an imple‐
+mentation detail, there are plenty of Keras or TensorFlow implementations that you
+can look at. In fact, if all you want is to get some amazing results quickly, then you
+can just use a pretrained model (e.g., there are pretrained StyleGAN models available
+for Keras).
+
+In  the  next  chapter  we  will  move  to  an  entirely  different  branch  of  Deep  Learning:
+Deep Reinforcement Learning.
+
+606 
+
+| 
+
+Chapter 17: Representation Learning and Generative Learning Using Autoencoders and GANs
+
+Exercises
+
+1. What are the main tasks that autoencoders are used for?
+
+2. Suppose you want to train a classifier, and you have plenty of unlabeled training
+data  but  only  a  few  thousand  labeled  instances.  How  can  autoencoders  help?
+How would you proceed?
+
+3. If  an  autoencoder  perfectly  reconstructs  the  inputs,  is  it  necessarily  a  good
+
+autoencoder? How can you evaluate the performance of an autoencoder?
+
+4. What are undercomplete and overcomplete autoencoders? What is the main risk
+of  an  excessively  undercomplete  autoencoder?  What  about  the  main  risk  of  an
+overcomplete autoencoder?
+
+5. How do you tie weights in a stacked autoencoder? What is the point of doing so?
+
+6. What is a generative model? Can you name a type of generative autoencoder?
+
+7. What is a GAN? Can you name a few tasks where GANs can shine?
+
+8. What are the main difficulties when training GANs?
+
+9. Try  using  a  denoising  autoencoder  to  pretrain  an  image  classifier.  You  can  use
+MNIST (the simplest option), or a more complex image dataset such as CIFAR10
+if you want a bigger challenge. Regardless of the dataset you’re using, follow these
+steps:
+
+• Split  the  dataset  into  a  training  set  and  a  test  set.  Train  a  deep  denoising
+
+autoencoder on the full training set.
+
+• Check that the images are fairly well reconstructed. Visualize the images that
+
+most activate each neuron in the coding layer.
+
+• Build a classification DNN, reusing the lower layers of the autoencoder. Train
+it using only 500 images from the training set. Does it perform better with or
+without pretraining?
+
+10. Train a variational autoencoder on the image dataset of your ch

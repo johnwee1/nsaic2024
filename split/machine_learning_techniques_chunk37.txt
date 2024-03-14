@@ -1,0 +1,337 @@
+and we scale all the features:
+
+from sklearn.datasets import fetch_california_housing
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+Implementing MLPs with Keras 
+
+| 
+
+307
+
+housing = fetch_california_housing()
+
+X_train_full, X_test, y_train_full, y_test = train_test_split(
+    housing.data, housing.target)
+X_train, X_valid, y_train, y_valid = train_test_split(
+    X_train_full, y_train_full)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_valid = scaler.transform(X_valid)
+X_test = scaler.transform(X_test)
+
+Using the Sequential API to build, train, evaluate, and use a regression MLP to make
+predictions is quite similar to what we did for classification. The main differences are
+the fact that the output layer has a single neuron (since we only want to predict a sin‐
+gle value) and uses no activation function, and the loss function is the mean squared
+error.  Since  the  dataset  is  quite  noisy,  we  just  use  a  single  hidden  layer  with  fewer
+neurons than before, to avoid overfitting:
+
+model = keras.models.Sequential([
+    keras.layers.Dense(30, activation="relu", input_shape=X_train.shape[1:]),
+    keras.layers.Dense(1)
+])
+model.compile(loss="mean_squared_error", optimizer="sgd")
+history = model.fit(X_train, y_train, epochs=20,
+                    validation_data=(X_valid, y_valid))
+mse_test = model.evaluate(X_test, y_test)
+X_new = X_test[:3] # pretend these are new instances
+y_pred = model.predict(X_new)
+
+As  you  can  see,  the  Sequential  API  is  quite  easy  to  use.  However,  although  Sequen
+tial models are extremely common, it is sometimes useful to build neural networks
+with more complex topologies, or with multiple inputs or outputs. For this purpose,
+Keras offers the Functional API.
+
+Building Complex Models Using the Functional API
+One  example  of  a  nonsequential  neural  network  is  a  Wide  &  Deep  neural  network.
+This neural network architecture was introduced in a 2016 paper by Heng-Tze Cheng
+et  al.16  It  connects  all  or  part  of  the  inputs  directly  to  the  output  layer,  as  shown  in
+Figure 10-14. This architecture makes it possible for the neural network to learn both
+deep  patterns  (using  the  deep  path)  and  simple  rules  (through  the  short  path).17  In
+contrast,  a  regular  MLP  forces  all  the  data  to  flow  through  the  full  stack  of  layers;
+
+16 Heng-Tze Cheng et al., “Wide & Deep Learning for Recommender Systems,” Proceedings of the First Workshop
+
+on Deep Learning for Recommender Systems (2016): 7–10.
+
+17 The short path can also be used to provide manually engineered features to the neural network.
+
+308 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+thus,  simple  patterns  in  the  data  may  end  up  being  distorted  by  this  sequence  of
+transformations.
+
+Figure 10-14. Wide & Deep neural network
+
+Let’s build such a neural network to tackle the California housing problem:
+
+input_ = keras.layers.Input(shape=X_train.shape[1:])
+hidden1 = keras.layers.Dense(30, activation="relu")(input_)
+hidden2 = keras.layers.Dense(30, activation="relu")(hidden1)
+concat = keras.layers.Concatenate()([input_, hidden2])
+output = keras.layers.Dense(1)(concat)
+model = keras.Model(inputs=[input_], outputs=[output])
+
+Let’s go through each line of this code:
+
+• First,  we  need  to  create  an  Input  object.18  This  is  a  specification  of  the  kind  of
+input  the  model  will  get,  including  its  shape  and  dtype.  A  model  may  actually
+have multiple inputs, as we will see shortly.
+
+• Next, we create a Dense layer with 30 neurons, using the ReLU activation func‐
+tion. As soon as it is created, notice that we call it like a function, passing it the
+input. This is why this is called the Functional API. Note that we are just telling
+Keras how it should connect the layers together; no actual data is being processed
+yet.
+
+• We then create a second hidden layer, and again we use it as a function. Note that
+
+we pass it the output of the first hidden layer.
+
+18 The name input_ is used to avoid overshadowing Python’s built-in input() function.
+
+Implementing MLPs with Keras 
+
+| 
+
+309
+
+• Next, we create a Concatenate layer, and once again we immediately use it like a
+function, to concatenate the input and the output of the second hidden layer. You
+may  prefer  the  keras.layers.concatenate()  function,  which  creates  a
+Concatenate layer and immediately calls it with the given inputs.
+
+• Then we create the output layer, with a single neuron and no activation function,
+
+and we call it like a function, passing it the result of the concatenation.
+• Lastly, we create a Keras Model, specifying which inputs and outputs to use.
+
+Once you have built the Keras model, everything is exactly like earlier, so there’s no
+need to repeat it here: you must compile the model, train it, evaluate it, and use it to
+make predictions.
+
+But  what  if  you  want  to  send  a  subset  of  the  features  through  the  wide  path  and  a
+different subset (possibly overlapping) through the deep path (see Figure 10-15)? In
+this  case,  one  solution  is  to  use  multiple  inputs.  For  example,  suppose  we  want  to
+send five features through the wide path (features 0 to 4), and six features through the
+deep path (features 2 to 7):
+
+input_A = keras.layers.Input(shape=[5], name="wide_input")
+input_B = keras.layers.Input(shape=[6], name="deep_input")
+hidden1 = keras.layers.Dense(30, activation="relu")(input_B)
+hidden2 = keras.layers.Dense(30, activation="relu")(hidden1)
+concat = keras.layers.concatenate([input_A, hidden2])
+output = keras.layers.Dense(1, name="output")(concat)
+model = keras.Model(inputs=[input_A, input_B], outputs=[output])
+
+Figure 10-15. Handling multiple inputs
+
+310 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+The  code  is  self-explanatory.  You  should  name  at  least  the  most  important  layers,
+especially  when  the  model  gets  a  bit  complex  like  this.  Note  that  we  specified
+inputs=[input_A,  input_B]  when  creating  the  model.  Now  we  can  compile  the
+model as usual, but when we call the fit() method, instead of passing a single input
+matrix X_train, we must pass a pair of matrices (X_train_A, X_train_B): one per
+input.19 The same is true for X_valid, and also for X_test and X_new when you call
+evaluate() or predict():
+
+model.compile(loss="mse", optimizer=keras.optimizers.SGD(lr=1e-3))
+
+X_train_A, X_train_B = X_train[:, :5], X_train[:, 2:]
+X_valid_A, X_valid_B = X_valid[:, :5], X_valid[:, 2:]
+X_test_A, X_test_B = X_test[:, :5], X_test[:, 2:]
+X_new_A, X_new_B = X_test_A[:3], X_test_B[:3]
+
+history = model.fit((X_train_A, X_train_B), y_train, epochs=20,
+                    validation_data=((X_valid_A, X_valid_B), y_valid))
+mse_test = model.evaluate((X_test_A, X_test_B), y_test)
+y_pred = model.predict((X_new_A, X_new_B))
+
+There are many use cases in which you may want to have multiple outputs:
+
+• The  task  may  demand  it.  For  instance,  you  may  want  to  locate  and  classify  the
+main object in a picture. This is both a regression task (finding the coordinates of
+the object’s center, as well as its width and height) and a classification task.
+
+• Similarly, you may have multiple independent tasks based on the same data. Sure,
+you could train one neural network per task, but in many cases you will get better
+results on all tasks by training a single neural network with one output per task.
+This is because the neural network can learn features in the data that are useful
+across tasks. For example, you could perform multitask classification on pictures
+of faces, using one output to classify the person’s facial expression (smiling, sur‐
+prised, etc.) and another output to identify whether they are wearing glasses or
+not.
+
+• Another use case is as a regularization technique (i.e., a training constraint whose
+objective is to reduce overfitting and thus improve the model’s ability to general‐
+ize). For example, you may want to add some auxiliary outputs in a neural net‐
+work  architecture  (see  Figure  10-16)  to  ensure  that  the  underlying  part  of  the
+network  learns  something  useful  on  its  own,  without  relying  on  the  rest  of  the
+network.
+
+19 Alternatively, you can pass a dictionary mapping the input names to the input values, like {"wide_input":
+
+X_train_A, "deep_input": X_train_B}. This is especially useful when there are many inputs, to avoid get‐
+ting the order wrong.
+
+Implementing MLPs with Keras 
+
+| 
+
+311
+
+Figure 10-16. Handling multiple outputs, in this example to add an auxiliary output for
+regularization
+
+Adding  extra  outputs  is  quite  easy:  just  connect  them  to  the  appropriate  layers  and
+add them to your model’s list of outputs. For example, the following code builds the
+network represented in Figure 10-16:
+
+[...] # Same as above, up to the main output layer
+output = keras.layers.Dense(1, name="main_output")(concat)
+aux_output = keras.layers.Dense(1, name="aux_output")(hidden2)
+model = keras.Model(inputs=[input_A, input_B], outputs=[output, aux_output])
+
+Each output will need its own loss function. Therefore, when we compile the model,
+we  should  pass  a  list  of  losses20  (if  we  pass  a  single  loss,  Keras  will  assume  that  the
+same loss must be used for all outputs). By default, Keras will compute all these losses
+and simply add them up to get the final loss used for training. We care much more
+about the main output than about the auxiliary output (as it is just used for regulari‐
+zation), so we want to give the main output’s loss a much greater weight. Fortunately,
+it is possible to set all the loss weights when compiling the model:
+
+model.compile(loss=["mse", "mse"], loss_weights=[0.9, 0.1], optimizer="sgd")
+
+Now  when  we  train  the  model,  we  need  to  provide  labels  for  each  output.  In  this
+example,  the  main  output  and  the  auxiliary  output  should  try  to  predict  the  same
+thing, so they should use the same labels. So instead of passing y_train, we need to
+pass (y_train, y_train) (and the same goes for y_valid and y_test):
+
+history = model.fit(
+    [X_train_A, X_train_B], [y_train, y_train], epochs=20,
+    validation_data=([X_valid_A, X_valid_B], [y_valid, y_valid]))
+
+20 Alternatively, you can pass a dictionary that maps each output name to the corresponding loss. Just like for
+the inputs, this is useful when there are multiple outputs, to avoid getting the order wrong. The loss weights
+and metrics (discussed shortly) can also be set using dictionaries.
+
+312 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+When we evaluate the model, Keras will return the total loss, as well as all the individ‐
+ual losses:
+
+total_loss, main_loss, aux_loss = model.evaluate(
+    [X_test_A, X_test_B], [y_test, y_test])
+
+Similarly, the predict() method will return predictions for each output:
+
+y_pred_main, y_pred_aux = model.predict([X_new_A, X_new_B])
+
+As you can see, you can build any sort of architecture you want quite easily with the
+Functional API. Let’s look at one last way you can build Keras models.
+
+Using the Subclassing API to Build Dynamic Models
+Both the Sequential API and the Functional API are declarative: you start by declar‐
+ing which layers you want to use and how they should be connected, and only then
+can you start feeding the model some data for training or inference. This has many
+advantages:  the  model  can  easily  be  saved,  cloned,  and  shared;  its  structure  can  be
+displayed  and  analyzed;  the  framework  can  infer  shapes  and  check  types,  so  errors
+can be caught early (i.e., before any data ever goes through the model). It’s also fairly
+easy to debug, since the whole model is a static graph of layers. But the flip side is just
+that:  it’s  static.  Some  models  involve  loops,  varying  shapes,  conditional  branching,
+and other dynamic behaviors. For such cases, or simply if you prefer a more impera‐
+tive programming style, the Subclassing API is for you.
+
+Simply subclass the Model class, create the layers you need in the constructor, and use
+them to perform the computations you want in the call() method. For example, cre‐
+ating  an  instance  of  the  following  WideAndDeepModel  class  gives  us  an  equivalent
+model to the one we just built with the Functional API. You can then compile it, eval‐
+uate it, and use it to make predictions, exactly like we just did:
+
+class WideAndDeepModel(keras.Model):
+    def __init__(self, units=30, activation="relu", **kwargs):
+        super().__init__(**kwargs) # handles standard args (e.g., name)
+        self.hidden1 = keras.layers.Dense(units, activation=activation)
+        self.hidden2 = keras.layers.Dense(units, activation=activation)
+        self.main_output = keras.layers.Dense(1)
+        self.aux_output = keras.layers.Dense(1)
+
+    def call(self, inputs):
+        input_A, input_B = inputs
+        hidden1 = self.hidden1(input_B)
+        hidden2 = self.hidden2(hidden1)
+        concat = keras.layers.concatenate([input_A, hidden2])
+        main_output = self.main_output(concat)
+        aux_output = self.aux_output(hidden2)
+        return main_output, aux_output
+
+model = WideAndDeepModel()
+
+Implementing MLPs with Keras 
+
+| 
+
+313
+
+This example looks very much like the Functional API, except we do not need to cre‐
+ate the inputs; we just use the input argument to the call() method, and we separate
+the creation of the layers21 in the constructor from their usage in the call() method.
+The big difference is that you can do pretty much anything you want in the call()
+method:  for  loops,  if  statements,  low-level  TensorFlow  operations—your  imagina‐
+tion  is  the  limit  (see  Chapter  12)!  This  makes  it  a  great  API  for  researchers  experi‐
+menting with new ideas.
+
+This extra flexibility does come at a cost: your model’s architecture is hidden within
+the call() method, so Keras cannot easily inspect it; it cannot save or clone it; and
+when you call the summary() method, you only get a list of layers, without any infor‐
+mation on how they are connected to each other. Moreover, Keras cannot check types
+and shapes ahead of time, and it is easier to make mistakes. So unless you really need
+that  extra  flexibility,  you  should  probably  stick  to  the  Sequential  API  or  the  Func‐
+tional API.
+
+Keras models can be used just like regular layers, so you can easily
+combine them to build complex architectures.
+
+Now that you know how to build and train neural nets using Keras, you will want to
+save them!
+
+Saving and Restoring a Model
+When using the Sequential API or the Functional API, saving a trained Keras model
+is as simple as it gets:
+
+model = keras.models.Sequential([...]) # or keras.Model([...])
+model.compile([...])
+model.fit([...])
+model.save("my_keras_model.h5")
+
+Keras will use the HDF5 format to save both the model’s architecture (including every
+layer’s  hyperparameters)  and  the  values  of  all  the  model  parameters  for  every  layer
+(e.g., connection weights and biases). It also saves the optimizer (including its hyper‐
+parameters  and  any  state  it  may  have).  In  Chapter  19,  we  will  see  how  to  save  a
+tf.keras model using TensorFlow’s SavedModel format instead.
+
+21 Keras models have an output attribute, so we cannot use that name for the main output layer, which is why
+
+we renamed it to main_output.
+
+314 
+
+| 
+
+Chapter 10: Introduction 

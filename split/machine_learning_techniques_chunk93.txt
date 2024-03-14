@@ -1,0 +1,297 @@
+
+threads).
+
+For  example,  in  Figure  19-14,  operations  A,  B,  and  C  are  source  ops,  so  they  can
+immediately  be  evaluated.  Operations  A  and  B  are  placed  on  the  CPU,  so  they  are
+sent  to  the  CPU’s  evaluation  queue,  then  they  are  dispatched  to  the  inter-op  thread
+pool  and  immediately  evaluated  in  parallel.  Operation  A  happens  to  have  a  multi‐
+threaded kernel; its computations are split into three parts, which are executed in par‐
+allel by the intra-op thread pool. Operation C goes to GPU 0’s evaluation queue, and
+in this example its GPU kernel happens to use cuDNN, which manages its own intra-
+op thread pool and runs the operation across many GPU threads in parallel. Suppose
+C finishes first. The dependency counters of D and E are decremented and they reach
+zero, so both operations are pushed to GPU 0’s evaluation queue, and they are exe‐
+cuted sequentially. Note that C only gets evaluated once, even though both D and E
+depend on it. Suppose B finishes next. Then F’s dependency counter is decremented
+from 4 to 3, and since that’s not 0, it does not run yet. Once A, D, and E are finished,
+then  F’s  dependency  counter  reaches  0,  and  it  is  pushed  to  the  CPU’s  evaluation
+queue and evaluated. Finally, TensorFlow returns the requested outputs.
+
+An extra bit of magic that TensorFlow performs is when the TF Function modifies a
+stateful resource, such as a variable: it ensures that the order of execution matches the
+order in the code, even if there is no explicit dependency between the statements. For
+example, if your TF Function contains v.assign_add(1) followed by v.assign(v *
+2), TensorFlow will ensure that these operations are executed in that order.
+
+You  can  control  the  number  of  threads  in  the  inter-op  thread
+pool  by  calling  tf.config.threading.set_inter_op_parallel
+ism_threads().  To  set  the  number  of  intra-op  threads,  use
+tf.config.threading.set_intra_op_parallelism_threads().
+This  is  useful  if  you  want  do  not  want  TensorFlow  to  use  all  the
+CPU cores or if you want it to be single-threaded.16
+
+16 This can be useful if you want to guarantee perfect reproducibility, as I explain in this video, based on TF 1.
+
+700 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+With that, you have all you need to run any operation on any device, and exploit the
+power of your GPUs! Here are some of the things you could do:
+
+script 
+
+for  each  model  and 
+
+• You  could  train  several  models  in  parallel,  each  on  its  own  GPU:  just  write  a
+training 
+setting
+CUDA_DEVICE_ORDER  and  CUDA_VISIBLE_DEVICES  so  that  each  script  only  sees  a
+single GPU device. This is great for hyperparameter tuning, as you can train in
+parallel  multiple  models  with  different  hyperparameters.  If  you  have  a  single
+machine with two GPUs, and it takes one hour to train one model on one GPU,
+then  training  two  models  in  parallel,  each  on  its  own  dedicated  GPU,  will  take
+just one hour. Simple!
+
+in  parallel, 
+
+them 
+
+run 
+
+• You  could  train  a  model  on  a  single  GPU  and  perform  all  the  preprocessing  in
+parallel on the CPU, using the dataset’s prefetch() method17 to prepare the next
+few  batches  in  advance  so  that  they  are  ready  when  the  GPU  needs  them  (see
+Chapter 13).
+
+• If  your  model  takes  two  images  as  input  and  processes  them  using  two  CNNs
+before  joining  their  outputs,  then  it  will  probably  run  much  faster  if  you  place
+each CNN on a different GPU.
+
+• You can create an efficient ensemble: just place a different trained model on each
+GPU so that you can get all the predictions much faster to produce the ensem‐
+ble’s final prediction.
+
+But what if you want to train a single model across multiple GPUs?
+
+Training Models Across Multiple Devices
+There  are  two  main  approaches  to  training  a  single  model  across  multiple  devices:
+model  parallelism,  where  the  model  is  split  across  the  devices,  and  data  parallelism,
+where  the  model  is  replicated  across  every  device,  and  each  replica  is  trained  on  a
+subset of the data. Let’s look at these two options closely before we train a model on
+multiple GPUs.
+
+Model Parallelism
+So  far  we  have  trained  each  neural  network  on  a  single  device.  What  if  we  want  to
+train  a  single  neural  network  across  multiple  devices?  This  requires  chopping  the
+model  into  separate  chunks  and  running  each  chunk  on  a  different  device.
+
+17 At the time of this writing it only prefetches the data to the CPU RAM, but you can use tf.data.experimen
+tal.prefetch_to_device() to make it prefetch the data and push it to the device of your choice so that the
+GPU does not waste time waiting for the data to be transferred.
+
+Training Models Across Multiple Devices 
+
+| 
+
+701
+
+Unfortunately,  such  model  parallelism  turns  out  to  be  pretty  tricky,  and  it  really
+depends  on  the  architecture  of  your  neural  network.  For  fully  connected  networks,
+there is generally not much to be gained from this approach (see Figure 19-15). Intui‐
+tively, it may seem that an easy way to split the model is to place each layer on a dif‐
+ferent device, but this does not work because each layer needs to wait for the output
+of the previous layer before it can do anything. So perhaps you can slice it vertically—
+for  example,  with  the  left  half  of  each  layer  on  one  device,  and  the  right  part  on
+another device? This is slightly better, since both halves of each layer can indeed work
+in parallel, but the problem is that each half of the next layer requires the output of
+both halves, so there will be a lot of cross-device communication (represented by the
+dashed arrows). This is likely to completely cancel out the benefit of the parallel com‐
+putation, since cross-device communication is slow (especially when the devices are
+located on different machines).
+
+Figure 19-15. Splitting a fully connected neural network
+
+Some  neural  network  architectures,  such  as  convolutional  neural  networks  (see
+Chapter 14), contain layers that are only partially connected to the lower layers, so it
+is much easier to distribute chunks across devices in an efficient way (Figure 19-16).
+
+702 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+Figure 19-16. Splitting a partially connected neural network
+
+Deep  recurrent  neural  networks  (see  Chapter  15)  can  be  split  a  bit  more  efficiently
+across multiple GPUs. If you split the network horizontally by placing each layer on a
+different device, and you feed the network with an input sequence to process, then at
+the  first  time  step  only  one  device  will  be  active  (working  on  the  sequence’s  first
+value), at the second step two will be active (the second layer will be handling the out‐
+put of the first layer for the first value, while the first layer will be handling the second
+value),  and  by  the  time  the  signal  propagates  to  the  output  layer,  all  devices  will  be
+active simultaneously (Figure 19-17). There is still a lot of cross-device communica‐
+tion going on, but since each cell may be fairly complex, the benefit of running multi‐
+ple cells in parallel may (in theory) outweigh the communication penalty. However,
+in practice a regular stack of LSTM layers running on a single GPU actually runs much
+faster.
+
+Training Models Across Multiple Devices 
+
+| 
+
+703
+
+Figure 19-17. Splitting a deep recurrent neural network
+
+In short, model parallelism may speed up running or training some types of neural
+networks,  but  not  all,  and  it  requires  special  care  and  tuning,  such  as  making  sure
+that devices that need to communicate the most run on the same machine.18 Let’s look
+at a much simpler and generally more efficient option: data parallelism.
+
+Data Parallelism
+Another way to parallelize the training of a neural network is to replicate it on every
+device  and  run  each  training  step  simultaneously  on  all  replicas,  using  a  different
+mini-batch for each. The gradients computed by each replica are then averaged, and
+the  result  is  used  to  update  the  model  parameters.  This  is  called  data  parallelism.
+There are many variants of this idea, so let’s look at the most important ones.
+
+Data parallelism using the mirrored strategy
+
+Arguably  the  simplest  approach  is  to  completely  mirror  all  the  model  parameters
+across  all  the  GPUs  and  always  apply  the  exact  same  parameter  updates  on  every
+GPU. This way, all replicas always remain perfectly identical. This is called the mir‐
+rored  strategy,  and  it  turns  out  to  be  quite  efficient,  especially  when  using  a  single
+machine (see Figure 19-18).
+
+18 If you are interested in going further with model parallelism, check out Mesh TensorFlow.
+
+704 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+Figure 19-18. Data parallelism using the mirrored strategy
+
+The tricky part when using this approach is to efficiently compute the mean of all the
+gradients from all the GPUs and distribute the result across all the GPUs. This can be
+done using an AllReduce algorithm, a class of algorithms where multiple nodes col‐
+laborate to efficiently perform a reduce operation (such as computing the mean, sum,
+and  max),  while  ensuring  that  all  nodes  obtain  the  same  final  result.  Fortunately,
+there are off-the-shelf implementations of such algorithms, as we will see.
+
+Data parallelism with centralized parameters
+
+Another approach is to store the model parameters outside of the GPU devices per‐
+forming  the  computations  (called  workers),  for  example  on  the  CPU  (see
+Figure  19-19).  In  a  distributed  setup,  you  may  place  all  the  parameters  on  one  or
+more  CPU-only  servers  called  parameter  servers,  whose  only  role  is  to  host  and
+update the parameters.
+
+Training Models Across Multiple Devices 
+
+| 
+
+705
+
+Figure 19-19. Data parallelism with centralized parameters
+
+Whereas the mirrored strategy imposes synchronous weight updates across all GPUs,
+this  centralized  approach  allows  either  synchronous  or  asynchronous  updates.  Let’s
+see the pros and cons of both options.
+
+Synchronous updates.    With synchronous updates, the aggregator waits until all gradi‐
+ents  are  available  before  it  computes  the  average  gradients  and  passes  them  to  the
+optimizer, which will update the model parameters. Once a replica has finished com‐
+puting its gradients, it must wait for the parameters to be updated before it can pro‐
+ceed to the next mini-batch. The downside is that some devices may be slower than
+others,  so  all  other  devices  will  have  to  wait  for  them  at  every  step.  Moreover,  the
+parameters will be copied to every device almost at the same time (immediately after
+the gradients are applied), which may saturate the parameter servers’ bandwidth.
+
+To reduce the waiting time at each step, you could ignore the gradi‐
+ents  from  the  slowest  few  replicas  (typically  ~10%).  For  example,
+you  could  run  20  replicas,  but  only  aggregate  the  gradients  from
+the  fastest  18  replicas  at  each  step,  and  just  ignore  the  gradients
+from the last 2. As soon as the parameters are updated, the first 18
+replicas  can  start  working  again  immediately,  without  having  to
+wait for the 2 slowest replicas. This setup is generally described as
+having 18 replicas plus 2 spare replicas.19
+
+19 This name is slightly confusing because it sounds like some replicas are special, doing nothing. In reality, all
+replicas are equivalent: they all work hard to be among the fastest at each training step, and the losers vary at
+every step (unless some devices are really slower than others). However, it does mean that if a server crashes,
+training will continue just fine.
+
+706 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+Asynchronous updates.     With  asynchronous  updates,  whenever  a  replica  has  finished
+computing the gradients, it immediately uses them to update the model parameters.
+There is no aggregation (it removes the “mean” step in Figure 19-19) and no synchro‐
+nization. Replicas work independently of the other replicas. Since there is no waiting
+for the other replicas, this approach runs more training steps per minute. Moreover,
+although the parameters still need to be copied to every device at every step, this hap‐
+pens at different times for each replica, so the risk of bandwidth saturation is reduced.
+
+Data parallelism with asynchronous updates is an attractive choice because of its sim‐
+plicity, the absence of synchronization delay, and a better use of the bandwidth. How‐
+ever,  although  it  works  reasonably  well  in  practice,  it  is  almost  surprising  that  it
+works at all! Indeed, by the time a replica has finished computing the gradients based
+on some parameter values, these parameters will have been updated several times by
+other replicas (on average N – 1 times, if there are N replicas), and there is no guaran‐
+tee  that  the  computed  gradients  will  still  be  pointing  in  the  right  direction  (see
+Figure 19-20). When gradients are severely out-of-date, they are called stale gradients:
+they can slow down convergence, introducing noise and wobble effects (the learning
+curve may contain temporary oscillations), or they can even make the training algo‐
+rithm diverge.
+
+Figure 19-20. Stale gradients when using asynchronous updates
+
+There are a few ways you can reduce the effect of stale gradients:
+
+• Reduce the learning rate.
+
+• Drop stale gradients or scale them down.
+
+• Adjust the mini-batch size.
+
+Training Models Across Multiple Devices 
+
+| 
+
+707
+
+• Start the first few epochs using just one replica (this is called the warmup phase).
+Stale gradients tend to be more damaging at the beginning of training, when gra‐
+dients are typically large and the parameters have not settled into a valley of the
+cost function yet, so different replicas may push the parameters in quite different
+directions.
+
+A  paper  published  by  the  Google  Brain  team  in  201620  benchmarked  various
+approaches and found that using synchronous updates with a few spare replicas was
+more efficient than using asynchronous updates, not only converging faster but also
+producing  a  better  model.  However,  this  is  still  an  active  area  of  research,  so  you
+should not rule out asynchronous updates just yet.
+
+Bandwidth saturation
+
+Whether  you  use  synchronous  or  asynchronous  updates,  data  parallelism  with  cen‐
+tralized  parameters  still  requires  communicating  the  model  parameters  from  the
+parameter servers to every replica at the beginning of each training step, and the gra‐
+dients in the other direction at the end of each training step. Similarly, when using the
+mirrored strategy, the gradients produced by each GPU will need to be shared with
+every  other  GPU.  Unfortunately,  there  always  comes  a  point  where  adding  an  extra
+GPU will not improve performance at all because the time spent moving the data into
+and out of GPU RAM (and across the network in a distributed setup) will outweigh
+the speedup obtained by splitting the computation load. At that point, adding more
+GPUs will just worsen the bandwidth saturation and actually slow down training.
+
+For  some  models,  typically  relatively  small  and  trained  on  a  ve

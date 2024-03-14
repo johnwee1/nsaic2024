@@ -1,0 +1,272 @@
+. Since an
+FCN  contains  only  convolutional  layers  (and  pooling  layers,  which  have  the  same
+property), it can be trained and executed on images of any size!
+
+For example, suppose we’d already trained a CNN for flower classification and locali‐
+zation. It was trained on 224 × 224 images, and it outputs 10 numbers: outputs 0 to 4
+are sent through the softmax activation function, and this gives the class probabilities
+(one per class); output 5 is sent through the logistic activation function, and this gives
+the objectness score; outputs 6 to 9 do not use any activation function, and they rep‐
+resent the bounding box’s center coordinates, as well as its height and width. We can
+now  convert  its  dense  layers  to  convolutional  layers.  In  fact,  we  don’t  even  need  to
+retrain it; we can just copy the weights from the dense layers to the convolutional lay‐
+ers! Alternatively, we could have converted the CNN into an FCN before training.
+
+Now suppose the last convolutional layer before the output layer (also called the bot‐
+tleneck layer) outputs 7 × 7 feature maps when the network is fed a 224 × 224 image
+(see the left side of Figure 14-25). If we feed the FCN a 448 × 448 image (see the right
+side  of  Figure  14-25),  the  bottleneck  layer  will  now  output  14  ×  14  feature  maps.27
+Since the dense output layer was replaced by a convolutional layer using 10 filters of
+size 7 × 7, with "valid" padding and stride 1, the output will be composed of 10 fea‐
+tures  maps,  each  of  size  8  ×  8  (since  14  –  7  +  1  =  8).  In  other  words,  the  FCN  will
+process the whole image only once, and it will output an 8 × 8 grid where each cell
+contains  10  numbers  (5  class  probabilities,  1  objectness  score,  and  4  bounding  box
+coordinates). It’s exactly like taking the original CNN and sliding it across the image
+using 8 steps per row and 8 steps per column. To visualize this, imagine chopping the
+original image into a 14 × 14 grid, then sliding a 7 × 7 window across this grid; there
+will be 8 × 8 = 64 possible locations for the window, hence 8 × 8 predictions. How‐
+ever, the FCN approach is much more efficient, since the network only looks at the
+image once. In fact, You Only Look Once (YOLO) is the name of a very popular object
+detection architecture, which we’ll look at next.
+
+27 This assumes we used only "same" padding in the network: indeed, "valid" padding would reduce the size of
+the feature maps. Moreover, 448 can be neatly divided by 2 several times until we reach 7, without any round‐
+ing error. If any layer uses a different stride than 1 or 2, then there may be some rounding error, so again the
+feature maps may end up being smaller.
+
+488 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+Figure 14-25. The same fully convolutional network processing a small image (left) and a
+large one (right)
+
+You Only Look Once (YOLO)
+YOLO  is  an  extremely  fast  and  accurate  object  detection  architecture  proposed  by
+Joseph  Redmon  et  al.  in  a  2015  paper,28  and  subsequently  improved  in  201629
+(YOLOv2) and in 201830 (YOLOv3). It is so fast that it can run in real time on a video,
+as seen in Redmon’s demo.
+
+YOLOv3’s  architecture  is  quite  similar  to  the  one  we  just  discussed,  but  with  a  few
+important differences:
+
+28 Joseph Redmon et al., “You Only Look Once: Unified, Real-Time Object Detection,” Proceedings of the IEEE
+
+Conference on Computer Vision and Pattern Recognition (2016): 779–788.
+
+29 Joseph Redmon and Ali Farhadi, “YOLO9000: Better, Faster, Stronger,” Proceedings of the IEEE Conference on
+
+Computer Vision and Pattern Recognition (2017): 6517–6525.
+
+30 Joseph Redmon and Ali Farhadi, “YOLOv3: An Incremental Improvement,” arXiv preprint arXiv:1804.02767
+
+(2018).
+
+Object Detection 
+
+| 
+
+489
+
+• It outputs five bounding boxes for each grid cell (instead of just one), and each
+bounding box comes with an objectness score. It also outputs 20 class probabili‐
+ties per grid cell, as it was trained on the PASCAL VOC dataset, which contains
+20 classes. That’s a total of 45 numbers per grid cell: 5 bounding boxes, each with
+4 coordinates, plus 5 objectness scores, plus 20 class probabilities.
+
+• Instead  of  predicting  the  absolute  coordinates  of  the  bounding  box  centers,
+YOLOv3 predicts an offset relative to the coordinates of the grid cell, where (0, 0)
+means the top left of that cell and (1, 1) means the bottom right. For each grid
+cell, YOLOv3 is trained to predict only bounding boxes whose center lies in that
+cell  (but  the  bounding  box  itself  generally  extends  well  beyond  the  grid  cell).
+YOLOv3 applies the logistic activation function to the bounding box coordinates
+to ensure they remain in the 0 to 1 range.
+
+• Before  training  the  neural  net,  YOLOv3  finds  five  representative  bounding  box
+dimensions, called anchor boxes (or bounding box priors). It does this by applying
+the K-Means algorithm (see Chapter 9) to the height and width of the training set
+bounding  boxes.  For  example,  if  the  training  images  contain  many  pedestrians,
+then one of the anchor boxes will likely have the dimensions of a typical pedes‐
+trian.  Then  when  the  neural  net  predicts  five  bounding  boxes  per  grid  cell,  it
+actually  predicts  how  much  to  rescale  each  of  the  anchor  boxes.  For  example,
+suppose  one  anchor  box  is  100  pixels  tall  and  50  pixels  wide,  and  the  network
+predicts, say, a vertical rescaling factor of 1.5 and a horizontal rescaling of 0.9 (for
+one of the grid cells). This will result in a predicted bounding box of size 150 × 45
+pixels. To be more precise, for each grid cell and each anchor box, the network
+predicts the log of the vertical and horizontal rescaling factors. Having these pri‐
+ors makes the network more likely to predict bounding boxes of the appropriate
+dimensions, and it also speeds up training because it will more quickly learn what
+reasonable bounding boxes look like.
+
+• The network is trained using images of different scales: every few batches during
+training, the network randomly chooses a new image dimension (from 330 × 330
+to 608 × 608 pixels). This allows the network to learn to detect objects at different
+scales.  Moreover,  it  makes  it  possible  to  use  YOLOv3  at  different  scales:  the
+smaller  scale  will  be  less  accurate  but  faster  than  the  larger  scale,  so  you  can
+choose the right trade-off for your use case.
+
+There are a few more innovations you might be interested in, such as the use of skip
+connections to recover some of the spatial resolution that is lost in the CNN (we will
+discuss this shortly, when we look at semantic segmentation). In the 2016 paper, the
+authors  introduce  the  YOLO9000  model  that  uses  hierarchical  classification:  the
+model predicts a probability for each node in a visual hierarchy called WordTree. This
+makes it possible for the network to predict with high confidence that an image rep‐
+resents, say, a dog, even though it is unsure what specific type of dog. I encourage you
+
+490 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+to go ahead and read all three papers: they are quite pleasant to read, and they pro‐
+vide  excellent  examples  of  how  Deep  Learning  systems  can  be  incrementally
+improved.
+
+Mean Average Precision (mAP)
+A very common metric used in object detection tasks is the mean Average Precision
+(mAP). “Mean Average” sounds a bit redundant, doesn’t it? To understand this met‐
+ric, let’s go back to two classification metrics we discussed in Chapter 3: precision and
+recall. Remember the trade-off: the higher the recall, the lower the precision. You can
+visualize  this  in  a  precision/recall  curve  (see  Figure  3-5).  To  summarize  this  curve
+into a single number, we could compute its area under the curve (AUC). But note that
+the precision/recall curve may contain a few sections where precision actually goes up
+when recall increases, especially at low recall values (you can see this at the top left of
+Figure 3-5). This is one of the motivations for the mAP metric.
+
+Suppose  the  classifier  has  90%  precision  at  10%  recall,  but  96%  precision  at  20%
+recall. There’s really no trade-off here: it simply makes more sense to use the classifier
+at 20% recall rather than at 10% recall, as you will get both higher recall and higher
+precision.  So  instead  of  looking  at  the  precision  at  10%  recall,  we  should  really  be
+looking at the maximum precision that the classifier can offer with at least 10% recall.
+It would be 96%, not 90%. Therefore, one way to get a fair idea of the model’s perfor‐
+mance is to compute the maximum precision you can get with at least 0% recall, then
+10% recall, 20%, and so on up to 100%, and then calculate the mean of these maxi‐
+mum precisions. This is called the Average Precision (AP) metric. Now when there are
+more than two classes, we can compute the AP for each class, and then compute the
+mean AP (mAP). That’s it!
+
+In an object detection system, there is an additional level of complexity: what if the
+system detected the correct class, but at the wrong location (i.e., the bounding box is
+completely  off)?  Surely  we  should  not  count  this  as  a  positive  prediction.  One
+approach is to define an IOU threshold: for example, we may consider that a predic‐
+tion is correct only if the IOU is greater than, say, 0.5, and the predicted class is cor‐
+rect.  The  corresponding  mAP  is  generally  noted  mAP@0.5  (or  mAP@50%,  or
+sometimes  just  AP50).  In  some  competitions  (such  as  the  PASCAL  VOC  challenge),
+this is what is done. In others (such as the COCO competition), the mAP is computed
+for  different  IOU  thresholds  (0.50,  0.55,  0.60,  …,  0.95),  and  the  final  metric  is  the
+mean of all these mAPs (noted AP@[.50:.95] or AP@[.50:0.05:.95]). Yes, that’s a mean
+mean average.
+
+Several  YOLO  implementations  built  using  TensorFlow  are  available  on  GitHub.  In
+particular, check out Zihao Zang’s TensorFlow 2 implementation. Other object detec‐
+tion  models  are  available  in  the  TensorFlow  Models  project,  many  with  pretrained
+
+Object Detection 
+
+| 
+
+491
+
+weights;  and  some  have  even  been  ported  to  TF  Hub,  such  as  SSD31  and  Faster-
+RCNN,32  which  are  both  quite  popular.  SSD  is  also  a  “single  shot”  detection  model,
+similar  to  YOLO.  Faster  R-CNN  is  more  complex:  the  image  first  goes  through  a
+CNN,  then  the  output  is  passed  to  a  Region  Proposal  Network  (RPN)  that  proposes
+bounding  boxes  that  are  most  likely  to  contain  an  object,  and  a  classifier  is  run  for
+each bounding box, based on the cropped output of the CNN.
+
+The  choice  of  detection  system  depends  on  many  factors:  speed,  accuracy,  available
+pretrained models, training time, complexity, etc. The papers contain tables of met‐
+rics, but there is quite a lot of variability in the testing environments, and the technol‐
+ogies evolve so fast that it is difficult to make a fair comparison that will be useful for
+most people and remain valid for more than a few months.
+
+So, we can locate objects by drawing bounding boxes around them. Great! But per‐
+haps you want to be a bit more precise. Let’s see how to go down to the pixel level.
+
+Semantic Segmentation
+In semantic segmentation, each pixel is classified according to the class of the object it
+belongs to (e.g., road, car, pedestrian, building, etc.), as shown in Figure 14-26. Note
+that different objects of the same class are not distinguished. For example, all the bicy‐
+cles on the right side of the segmented image end up as one big lump of pixels. The
+main difficulty in this task is that when images go through a regular CNN, they grad‐
+ually lose their spatial resolution (due to the layers with strides greater than 1); so, a
+regular CNN may end up knowing that there’s a person somewhere in the bottom left
+of the image, but it will not be much more precise than that.
+
+Just like for object detection, there are many different approaches to tackle this prob‐
+lem, some quite complex. However, a fairly simple solution was proposed in the 2015
+paper by Jonathan Long et al. we discussed earlier. The authors start by taking a pre‐
+trained CNN and turning it into an FCN. The CNN applies an overall stride of 32 to
+the  input  image  (i.e.,  if  you  add  up  all  the  strides  greater  than  1),  meaning  the  last
+layer  outputs  feature  maps  that  are  32  times  smaller  than  the  input  image.  This  is
+clearly too coarse, so they add a single upsampling layer that multiplies the resolution
+by 32.
+
+31 Wei Liu et al., “SSD: Single Shot Multibox Detector,” Proceedings of the 14th European Conference on Computer
+
+Vision 1 (2016): 21–37.
+
+32 Shaoqing Ren et al., “Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks,”
+Proceedings of the 28th International Conference on Neural Information Processing Systems 1 (2015): 91–99.
+
+492 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+Figure 14-26. Semantic segmentation
+
+There are several solutions available for upsampling (increasing the size of an image),
+such  as  bilinear  interpolation,  but  that  only  works  reasonably  well  up  to  ×4  or  ×8.
+Instead, they use a transposed convolutional layer:33 it is equivalent to first stretching
+the  image  by  inserting  empty  rows  and  columns  (full  of  zeros),  then  performing  a
+regular convolution (see Figure 14-27). Alternatively, some people prefer to think of
+it  as  a  regular  convolutional  layer  that  uses  fractional  strides  (e.g.,  1/2  in
+Figure  14-27).  The  transposed  convolutional  layer  can  be  initialized  to  perform
+something close to linear interpolation, but since it is a trainable layer, it will learn to
+do better during training. In tf.keras, you can use the Conv2DTranspose layer.
+
+Figure 14-27. Upsampling using a transposed convolutional layer
+
+33 This type of layer is sometimes referred to as a deconvolution layer, but it does not perform what mathemati‐
+
+cians call a deconvolution, so this name should be avoided.
+
+Semantic Segmentation 
+
+| 
+
+493
+
+In  a  transposed  convolutional  layer,  the  stride  defines  how  much
+the  input  will  be  stretched,  not  the  size  of  the  filter  steps,  so  the
+larger the stride, the larger the output (unlike for convolutional lay‐
+ers or pooling layers).
+
+TensorFlow Convolution Operations
+TensorFlow also offers a few other kinds of convolutional layers:
+
+keras.layers.Conv1D
+
+Creates a convolutional layer for 1D inputs, such as time series or text (sequences
+of letters or words), as we will see in Chapter 15.
+
+keras.layers.Conv3D
+
+Creates a convolutional layer for 3D inputs, such as 3D PET scans.
+
+dilation_rate
+
+Setting the dilation_rate hyperparameter of any convolutional layer to a value
+of 2 or more creates an à-trous convolutional layer (“à trous” is French for “with
+holes”). This is equivalent to using a regular convolutional layer with a filter dila‐
+ted by inserting rows and columns of zeros (i.e., holes). For example, a 1 × 3 filter
+equal to [[1,2,3]] may be dilated with a dilation rate of 4, resulting in a dilated
+filter of [[1, 0, 0, 0, 2, 0, 0, 0, 3]]. This lets the convolutional layer have
+a larger receptive field at no computational price and using no extra parameters.
+
+tf.nn.depthwise_conv

@@ -1,0 +1,328 @@
+ou typically want
+to start by estimating the weights ϕ and all the distribution parameters μ(1) to μ(k) and
+Σ(1) to Σ(k). Scikit-Learn’s GaussianMixture class makes this super easy:
+
+from sklearn.mixture import GaussianMixture
+
+gm = GaussianMixture(n_components=3, n_init=10)
+gm.fit(X)
+
+Let’s look at the parameters that the algorithm estimated:
+
+>>> gm.weights_
+array([0.20965228, 0.4000662 , 0.39028152])
+>>> gm.means_
+array([[ 3.39909717,  1.05933727],
+       [-1.40763984,  1.42710194],
+       [ 0.05135313,  0.07524095]])
+>>> gm.covariances_
+array([[[ 1.14807234, -0.03270354],
+        [-0.03270354,  0.95496237]],
+
+       [[ 0.63478101,  0.72969804],
+        [ 0.72969804,  1.1609872 ]],
+
+       [[ 0.68809572,  0.79608475],
+        [ 0.79608475,  1.21234145]]])
+
+Great,  it  worked  fine!  Indeed,  the  weights  that  were  used  to  generate  the  data  were
+0.2, 0.4, and 0.4; and similarly, the means and covariance matrices were very close to
+those  found  by  the  algorithm.  But  how?  This  class  relies  on  the  Expectation-
+Maximization (EM) algorithm, which has many similarities with the K-Means algo‐
+rithm:  it  also  initializes  the  cluster  parameters  randomly,  then  it  repeats  two  steps
+until  convergence,  first  assigning  instances  to  clusters  (this  is  called  the  expectation
+step)  and  then  updating  the  clusters  (this  is  called  the  maximization  step).  Sounds
+familiar, right? In the context of clustering, you can think of EM as a generalization of
+K-Means that not only finds the cluster centers (μ(1) to μ(k)), but also their size, shape,
+and orientation (Σ(1) to Σ(k)), as well as their relative weights (ϕ(1) to ϕ(k)). Unlike K-
+Means,  though,  EM  uses  soft  cluster  assignments,  not  hard  assignments.  For  each
+instance, during the expectation step, the algorithm estimates the probability that it
+belongs  to  each  cluster  (based  on  the  current  cluster  parameters).  Then,  during  the
+maximization step, each cluster is updated using all the instances in the dataset, with
+each  instance  weighted  by  the  estimated  probability  that  it  belongs  to  that  cluster.
+These  probabilities  are  called  the  responsibilities  of  the  clusters  for  the  instances.
+
+262 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+During  the  maximization  step,  each  cluster’s  update  will  mostly  be  impacted  by  the
+instances it is most responsible for.
+
+Unfortunately,  just  like  K-Means,  EM  can  end  up  converging  to
+poor solutions, so it needs to be run several times, keeping only the
+best solution. This is why we set n_init to 10. Be careful: by default
+n_init is set to 1.
+
+You  can  check  whether  or  not  the  algorithm  converged  and  how  many  iterations  it
+took:
+
+>>> gm.converged_
+True
+>>> gm.n_iter_
+3
+
+Now  that  you  have  an  estimate  of  the  location,  size,  shape,  orientation,  and  relative
+weight  of  each  cluster,  the  model  can  easily  assign  each  instance  to  the  most  likely
+cluster  (hard  clustering)  or  estimate  the  probability  that  it  belongs  to  a  particular
+cluster  (soft  clustering).  Just  use  the  predict()  method  for  hard  clustering,  or  the
+predict_proba() method for soft clustering:
+
+>>> gm.predict(X)
+array([2, 2, 1, ..., 0, 0, 0])
+>>> gm.predict_proba(X)
+array([[2.32389467e-02, 6.77397850e-07, 9.76760376e-01],
+       [1.64685609e-02, 6.75361303e-04, 9.82856078e-01],
+       [2.01535333e-06, 9.99923053e-01, 7.49319577e-05],
+       ...,
+       [9.99999571e-01, 2.13946075e-26, 4.28788333e-07],
+       [1.00000000e+00, 1.46454409e-41, 5.12459171e-16],
+       [1.00000000e+00, 8.02006365e-41, 2.27626238e-15]])
+
+A  Gaussian  mixture  model  is  a  generative  model,  meaning  you  can  sample  new
+instances from it (note that they are ordered by cluster index):
+
+>>> X_new, y_new = gm.sample(6)
+>>> X_new
+array([[ 2.95400315,  2.63680992],
+       [-1.16654575,  1.62792705],
+       [-1.39477712, -1.48511338],
+       [ 0.27221525,  0.690366  ],
+       [ 0.54095936,  0.48591934],
+       [ 0.38064009, -0.56240465]])
+
+>>> y_new
+array([0, 1, 2, 2, 2, 2])
+
+It is also possible to estimate the density of the model at any given location. This is
+achieved  using  the  score_samples()  method:  for  each  instance  it  is  given,  this
+
+Gaussian Mixtures 
+
+| 
+
+263
+
+method  estimates  the  log  of  the  probability  density  function  (PDF)  at  that  location.
+The greater the score, the higher the density:
+
+>>> gm.score_samples(X)
+array([-2.60782346, -3.57106041, -3.33003479, ..., -3.51352783,
+       -4.39802535, -3.80743859])
+
+If you compute the exponential of these scores, you get the value of the PDF at the
+location of the given instances. These are not probabilities, but probability densities:
+they can take on any positive value, not just a value between 0 and 1. To estimate the
+probability  that  an  instance  will  fall  within  a  particular  region,  you  would  have  to
+integrate  the  PDF  over  that  region  (if  you  do  so  over  the  entire  space  of  possible
+instance locations, the result will be 1).
+
+Figure 9-17 shows the cluster means, the decision boundaries (dashed lines), and the
+density contours of this model.
+
+Figure 9-17. Cluster means, decision boundaries, and density contours of a trained
+Gaussian mixture model
+
+Nice! The algorithm clearly found an excellent solution. Of course, we made its task
+easy by generating the data using a set of 2D Gaussian distributions (unfortunately,
+real-life data is not always so Gaussian and low-dimensional). We also gave the algo‐
+rithm  the  correct  number  of  clusters.  When  there  are  many  dimensions,  or  many
+clusters, or few instances, EM can struggle to converge to the optimal solution. You
+might need to reduce the difficulty of the task by limiting the number of parameters
+that the algorithm has to learn. One way to do this is to limit the range of shapes and
+orientations that the clusters can have. This can be achieved by imposing constraints
+on the covariance matrices. To do this, set the  covariance_type hyperparameter to
+one of the following values:
+
+264 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+"spherical"
+
+All clusters must be spherical, but they can have different diameters (i.e., differ‐
+ent variances).
+
+"diag"
+
+Clusters can take on any ellipsoidal shape of any size, but the ellipsoid’s axes must
+be parallel to the coordinate axes (i.e., the covariance matrices must be diagonal).
+
+"tied"
+
+All  clusters  must  have  the  same  ellipsoidal  shape,  size,  and  orientation  (i.e.,  all
+clusters share the same covariance matrix).
+
+By  default,  covariance_type  is  equal  to  "full",  which  means  that  each  cluster  can
+take  on  any  shape,  size,  and  orientation  (it  has  its  own  unconstrained  covariance
+matrix).  Figure  9-18  plots  the  solutions  found  by  the  EM  algorithm  when  cova
+riance_type is set to "tied" or "spherical.”
+
+Figure 9-18. Gaussian mixtures for tied clusters (left) and spherical clusters (right)
+
+The  computational  complexity  of  training  a  GaussianMixture
+model  depends  on  the  number  of  instances  m,  the  number  of
+dimensions n, the number of clusters k, and the constraints on the
+covariance matrices. If covariance_type is "spherical or "diag",
+it is O(kmn), assuming the data has a clustering structure. If cova
+riance_type is "tied" or "full", it is O(kmn2 + kn3), so it will not
+scale to large numbers of features.
+
+Gaussian mixture models can also be used for anomaly detection. Let’s see how.
+
+Gaussian Mixtures 
+
+| 
+
+265
+
+Anomaly Detection Using Gaussian Mixtures
+Anomaly detection (also called outlier detection) is the task of detecting instances that
+deviate  strongly  from  the  norm.  These  instances  are  called  anomalies,  or  outliers,
+while  the  normal  instances  are  called  inliers.  Anomaly  detection  is  useful  in  a  wide
+variety of applications, such as fraud detection, detecting defective products in manu‐
+facturing, or removing outliers from a dataset before training another model (which
+can significantly improve the performance of the resulting model).
+
+Using a Gaussian mixture model for anomaly detection is quite simple: any instance
+located in a low-density region can be considered an anomaly. You must define what
+density  threshold  you  want  to  use.  For  example,  in  a  manufacturing  company  that
+tries  to  detect  defective  products,  the  ratio  of  defective  products  is  usually  well
+known. Say it is equal to 4%. You then set the density threshold to be the value that
+results in having 4% of the instances located in areas below that threshold density. If
+you notice that you get too many false positives (i.e., perfectly good products that are
+flagged as defective), you can lower the threshold. Conversely, if you have too many
+false negatives (i.e., defective products that the system does not flag as defective), you
+can increase the threshold. This is the usual precision/recall trade-off (see Chapter 3).
+Here is how you would identify the outliers using the fourth percentile lowest density
+as the threshold (i.e., approximately 4% of the instances will be flagged as anomalies):
+
+densities = gm.score_samples(X)
+density_threshold = np.percentile(densities, 4)
+anomalies = X[densities < density_threshold]
+
+Figure 9-19 represents these anomalies as stars.
+
+Figure 9-19. Anomaly detection using a Gaussian mixture model
+
+266 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+A closely related task is novelty detection: it differs from anomaly detection in that the
+algorithm is assumed to be trained on a “clean” dataset, uncontaminated by outliers,
+whereas anomaly detection does not make this assumption. Indeed, outlier detection
+is often used to clean up a dataset.
+
+Gaussian mixture models try to fit all the data, including the outli‐
+ers, so if you have too many of them, this will bias the model’s view
+of  “normality,”  and  some  outliers  may  wrongly  be  considered  as
+normal. If this happens, you can try to fit the model once, use it to
+detect  and  remove  the  most  extreme  outliers,  then  fit  the  model
+again on the cleaned-up dataset. Another approach is to use robust
+covariance estimation methods (see the EllipticEnvelope class).
+
+Just like K-Means, the GaussianMixture algorithm requires you to specify the num‐
+ber of clusters. So, how can you find it?
+
+Selecting the Number of Clusters
+With K-Means, you could use the inertia or the silhouette score to select the appro‐
+priate number of clusters. But with Gaussian mixtures, it is not possible to use these
+metrics because they are not reliable when the clusters are not spherical or have dif‐
+ferent sizes. Instead, you can try to find the model that minimizes a theoretical infor‐
+mation  criterion,  such  as  the  Bayesian  information  criterion  (BIC)  or  the  Akaike
+information criterion (AIC), defined in Equation 9-1.
+
+Equation 9-1. Bayesian information criterion (BIC) and Akaike information
+criterion (AIC)
+
+BIC =
+
+log m p − 2 log L
+
+AIC = 2p − 2 log L
+
+In these equations:
+
+• m is the number of instances, as always.
+
+• p is the number of parameters learned by the model.
+
+• L is the maximized value of the likelihood function of the model.
+
+Both the BIC and the AIC penalize models that have more parameters to learn (e.g.,
+more clusters) and reward models that fit the data well. They often end up selecting
+the same model. When they differ, the model selected by the BIC tends to be simpler
+
+Gaussian Mixtures 
+
+| 
+
+267
+
+(fewer  parameters)  than  the  one  selected  by  the  AIC,  but  tends  to  not  fit  the  data
+quite as well (this is especially true for larger datasets).
+
+Likelihood Function
+The  terms  “probability”  and  “likelihood”  are  often  used  interchangeably  in  the
+English language, but they have very different meanings in statistics. Given a statisti‐
+cal  model  with  some  parameters  θ,  the  word  “probability”  is  used  to  describe  how
+plausible  a  future  outcome  x  is  (knowing  the  parameter  values  θ),  while  the  word
+“likelihood”  is  used  to  describe  how  plausible  a  particular  set  of  parameter  values  θ
+are, after the outcome x is known.
+
+Consider a 1D mixture model of two Gaussian distributions centered at –4 and +1.
+For simplicity, this toy model has a single parameter θ that controls the standard devi‐
+ations of both distributions. The top-left contour plot in Figure 9-20 shows the entire
+model f(x; θ) as a function of both x and θ. To estimate the probability distribution of
+a future outcome x, you need to set the model parameter θ. For example, if you set θ
+to 1.3 (the horizontal line), you get the probability density function f(x; θ=1.3) shown
+in the lower-left plot. Say you want to estimate the probability that x will fall between
+–2 and +2. You must calculate the integral of the PDF on this range (i.e., the surface of
+the shaded region). But what if you don’t know θ, and instead if you have observed a
+single instance x=2.5 (the vertical line in the upper-left plot)? In this case, you get the
+likelihood function ℒ(θ|x=2.5)=f(x=2.5; θ), represented in the upper-right plot.
+
+Figure 9-20. A model’s parametric function (top left), and some derived functions: a PDF
+(lower left), a likelihood function (top right), and a log likelihood function (lower right)
+
+268 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+In short, the PDF is a function of x (with θ fixed), while the likelihood function is a
+function of θ (with x fixed). It is important to understand that the likelihood function
+is  not  a  probability  distribution:  if  you  integrate  a  probability  distribution  over  all
+possible values of x, you always get 1; but if you integrate the likelihood function over
+all possible values of θ, the result can be any positive value.
+
+Given a dataset X, a common task is to try to estimate the most likely values for the
+model parameters. To do this, you must find the values that maximize the likelihood
+function, given X. In this example, if you have observed a single instance x=2.5, the
+maximum likelihood estimate (MLE) of θ is θ=1.5. If a prior probability distribution g
+over  θ  exists,  it  is  possible  to  take  it  into  account  by  maximizing  ℒ(θ|x)g(θ)  rather
+than just maximizing ℒ(θ|x). This is called maximum a-posteriori (MAP) estimation.
+Since MAP constrains the parameter values, you can think of it as a regularized ver‐
+sion of MLE.
+
+Notice that maximizing the likelihood function is equivalent to maximizing its loga‐
+rithm (represented in the lower-righthand plot in Figure 9-20). Indeed the logarithm
+is a strictly increasing function, so if θ maximizes the log likelihood, it also maximizes
+the likelihood. It turns out that it is generally easier to maximize the log likelihood.
+For  example,  if  you  observed  several  independent  instances  x(1)  to  x(m),  you  would
+need  to  find  the  value  of  θ  that  maximizes  the  product  of  the  individual  likelihood
+functions. But it is equivalent, and much simpler, to maximize the sum (not the prod‐
+uct) of the log likelihood functions, thanks to the magic of the logarithm which con‐
+verts products into sums: log(ab)=log(a)+log(b).
+
+Once  you  have  estimated  θ,  the  value  of  θ  that  maximizes  the  likelihood  function,
+then you are ready to compute L = ℒ θ,  , which is the value used to compute the
+AIC and BIC; you can think of it as a measure of how well the model fits t

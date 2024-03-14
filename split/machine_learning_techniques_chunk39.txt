@@ -1,0 +1,289 @@
+       callbacks=[keras.callbacks.EarlyStopping(patience=10)])
+mse_test = keras_reg.score(X_test, y_test)
+y_pred = keras_reg.predict(X_new)
+
+Note  that  any  extra  parameter  you  pass  to  the  fit()  method  will  get  passed  to  the
+underlying  Keras  model.  Also  note  that  the  score  will  be  the  opposite  of  the  MSE
+because Scikit-Learn wants scores, not losses (i.e., higher should be better).
+
+We don’t want to train and evaluate a single model like this, though we want to train
+hundreds  of  variants  and  see  which  one  performs  best  on  the  validation  set.  Since
+there  are  many  hyperparameters,  it  is  preferable  to  use  a  randomized  search  rather
+than  grid  search  (as  we  discussed  in  Chapter  2).  Let’s  try  to  explore  the  number  of
+hidden layers, the number of neurons, and the learning rate:
+
+from scipy.stats import reciprocal
+from sklearn.model_selection import RandomizedSearchCV
+
+param_distribs = {
+    "n_hidden": [0, 1, 2, 3],
+    "n_neurons": np.arange(1, 100),
+    "learning_rate": reciprocal(3e-4, 3e-2),
+}
+
+rnd_search_cv = RandomizedSearchCV(keras_reg, param_distribs, n_iter=10, cv=3)
+rnd_search_cv.fit(X_train, y_train, epochs=100,
+                  validation_data=(X_valid, y_valid),
+                  callbacks=[keras.callbacks.EarlyStopping(patience=10)])
+
+This is identical to what we did in Chapter 2, except here we pass extra parameters to
+the  fit()  method,  and  they  get  relayed  to  the  underlying  Keras  models.  Note  that
+RandomizedSearchCV  uses  K-fold  cross-validation,  so  it  does  not  use  X_valid  and
+y_valid, which are only used for early stopping.
+
+The  exploration  may  last  many  hours,  depending  on  the  hardware,  the  size  of  the
+dataset, the complexity of the model, and the values of n_iter and cv. When it’s over,
+you can access the best parameters found, the best score, and the trained Keras model
+like this:
+
+Fine-Tuning Neural Network Hyperparameters 
+
+| 
+
+321
+
+>>> rnd_search_cv.best_params_
+{'learning_rate': 0.0033625641252688094, 'n_hidden': 2, 'n_neurons': 42}
+>>> rnd_search_cv.best_score_
+-0.3189529188278931
+>>> model = rnd_search_cv.best_estimator_.model
+
+You can now save this model, evaluate it on the test set, and, if you are satisfied with
+its  performance,  deploy  it  to  production.  Using  randomized  search  is  not  too  hard,
+and  it  works  well  for  many  fairly  simple  problems.  When  training  is  slow,  however
+(e.g.,  for  more  complex  problems  with  larger  datasets),  this  approach  will  only
+explore  a  tiny  portion  of  the  hyperparameter  space.  You  can  partially  alleviate  this
+problem  by  assisting  the  search  process  manually:  first  run  a  quick  random  search
+using  wide  ranges  of  hyperparameter  values,  then  run  another  search  using  smaller
+ranges of values centered on the best ones found during the first run, and so on. This
+approach will hopefully zoom in on a good set of hyperparameters. However, it’s very
+time consuming, and probably not the best use of your time.
+
+Fortunately,  there  are  many  techniques  to  explore  a  search  space  much  more  effi‐
+ciently than randomly. Their core idea is simple: when a region of the space turns out
+to be good, it should be explored more. Such techniques take care of the “zooming”
+process for you and lead to much better solutions in much less time. Here are some
+Python libraries you can use to optimize hyperparameters:
+
+Hyperopt
+
+A popular library for optimizing over all sorts of complex search spaces (includ‐
+ing real values, such as the learning rate, and discrete values, such as the number
+of layers).
+
+Hyperas, kopt, or Talos
+
+Useful  libraries  for  optimizing  hyperparameters  for  Keras  models  (the  first  two
+are based on Hyperopt).
+
+Keras Tuner
+
+An easy-to-use hyperparameter optimization library by Google for Keras models,
+with a hosted service for visualization and analysis.
+
+Scikit-Optimize (skopt)
+
+A  general-purpose  optimization  library.  The  BayesSearchCV  class  performs
+Bayesian optimization using an interface similar to GridSearchCV.
+
+Spearmint
+
+A Bayesian optimization library.
+
+322 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+Hyperband
+
+A fast hyperparameter tuning library based on the recent Hyperband paper22 by
+Lisha Li et al.
+
+Sklearn-Deap
+
+A hyperparameter optimization library based on evolutionary algorithms, with a
+GridSearchCV-like interface.
+
+Moreover, many companies offer services for hyperparameter optimization. We’ll dis‐
+cuss Google Cloud AI Platform’s hyperparameter tuning service in Chapter 19. Other
+options include services by Arimo and SigOpt, and CallDesk’s Oscar.
+
+Hyperparameter tuning is still an active area of research, and evolutionary algorithms
+are making a comeback. For example, check out DeepMind’s excellent 2017 paper,23
+where  the  authors  jointly  optimize  a  population  of  models  and  their  hyperparame‐
+ters. Google has also used an evolutionary approach, not just to search for hyperpara‐
+meters but also to look for the best neural network architecture for the problem; their
+AutoML suite is already available as a cloud service. Perhaps the days of building neu‐
+ral  networks  manually  will  soon  be  over?  Check  out  Google’s  post  on  this  topic.  In
+fact,  evolutionary  algorithms  have  been  used  successfully  to  train  individual  neural
+networks,  replacing  the  ubiquitous  Gradient  Descent!  For  an  example,  see  the  2017
+post by Uber where the authors introduce their Deep Neuroevolution technique.
+
+But despite all this exciting progress and all these tools and services, it still helps to
+have an idea of what values are reasonable for each hyperparameter so that you can
+build a quick prototype and restrict the search space. The following sections provide
+guidelines for choosing the number of hidden layers and neurons in an MLP and for
+selecting good values for some of the main hyperparameters.
+
+Number of Hidden Layers
+For  many  problems,  you  can  begin  with  a  single  hidden  layer  and  get  reasonable
+results.  An  MLP  with  just  one  hidden  layer  can  theoretically  model  even  the  most
+complex functions, provided it has enough neurons. But for complex problems, deep
+networks have a much higher parameter efficiency than shallow ones: they can model
+complex  functions  using  exponentially  fewer  neurons  than  shallow  nets,  allowing
+them to reach much better performance with the same amount of training data.
+
+To understand why, suppose you are asked to draw a forest using some drawing soft‐
+ware, but you are forbidden to copy and paste anything. It would take an enormous
+
+22 Lisha Li et al., “Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization,” Journal of
+
+Machine Learning Research 18 (April 2018): 1–52.
+
+23 Max Jaderberg et al., “Population Based Training of Neural Networks,” arXiv preprint arXiv:1711.09846
+
+(2017).
+
+Fine-Tuning Neural Network Hyperparameters 
+
+| 
+
+323
+
+amount  of  time:  you  would  have  to  draw  each  tree  individually,  branch  by  branch,
+leaf by leaf. If you could instead draw one leaf, copy and paste it to draw a branch,
+then copy and paste that branch to create a tree, and finally copy and paste this tree to
+make a forest, you would be finished in no time. Real-world data is often structured
+in such a hierarchical way, and deep neural networks automatically take advantage of
+this fact: lower hidden layers model low-level structures (e.g., line segments of vari‐
+ous  shapes  and  orientations),  intermediate  hidden  layers  combine  these  low-level
+structures to model intermediate-level structures (e.g., squares, circles), and the high‐
+est  hidden  layers  and  the  output  layer  combine  these  intermediate  structures  to
+model high-level structures (e.g., faces).
+
+Not only does this hierarchical architecture help DNNs converge faster to a good sol‐
+ution, but it also improves their ability to generalize to new datasets. For example, if
+you have already trained a model to recognize faces in pictures and you now want to
+train a new neural network to recognize hairstyles, you can kickstart the training by
+reusing  the  lower  layers  of  the  first  network.  Instead  of  randomly  initializing  the
+weights and biases of the first few layers of the new neural network, you can initialize
+them to the values of the weights and biases of the lower layers of the first network.
+This way the network will not have to learn from scratch all the low-level structures
+that occur in most pictures; it will only have to learn the higher-level structures (e.g.,
+hairstyles). This is called transfer learning.
+
+In summary, for many problems you can start with just one or two hidden layers and
+the neural network will work just fine. For instance, you can easily reach above 97%
+accuracy on the MNIST dataset using just one hidden layer with a few hundred neu‐
+rons, and above 98% accuracy using two hidden layers with the same total number of
+neurons, in roughly the same amount of training time. For more complex problems,
+you can ramp up the number of hidden layers until you start overfitting the training
+set. Very complex tasks, such as large image classification or speech recognition, typi‐
+cally require networks with dozens of layers (or even hundreds, but not fully connec‐
+ted ones, as we will see in Chapter 14), and they need a huge amount of training data.
+You will rarely have to train such networks from scratch: it is much more common to
+reuse  parts  of  a  pretrained  state-of-the-art  network  that  performs  a  similar  task.
+Training will then be a lot faster and require much less data (we will discuss this in
+Chapter 11).
+
+Number of Neurons per Hidden Layer
+The number of neurons in the input and output layers is determined by the type of
+input and output your task requires. For example, the MNIST task requires 28 × 28 =
+784 input neurons and 10 output neurons.
+
+As for the hidden layers, it used to be common to size them to form a pyramid, with
+fewer and fewer neurons at each layer—the rationale being that many low-level fea‐
+
+324 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+tures  can  coalesce  into  far  fewer  high-level  features.  A  typical  neural  network  for
+MNIST might have 3 hidden layers, the first with 300 neurons, the second with 200,
+and the third with 100. However, this practice has been largely abandoned because it
+seems  that  using  the  same  number  of  neurons  in  all  hidden  layers  performs  just  as
+well  in  most  cases,  or  even  better;  plus,  there  is  only  one  hyperparameter  to  tune,
+instead of one per layer. That said, depending on the dataset, it can sometimes help to
+make the first hidden layer bigger than the others.
+
+Just like the number of layers, you can try increasing the number of neurons gradu‐
+ally  until  the  network  starts  overfitting.  But  in  practice,  it’s  often  simpler  and  more
+efficient to pick a model with more layers and neurons than you actually need, then
+use early stopping and other regularization techniques to prevent it from overfitting.
+Vincent  Vanhoucke,  a  scientist  at  Google,  has  dubbed  this  the  “stretch  pants”
+approach:  instead  of  wasting  time  looking  for  pants  that  perfectly  match  your  size,
+just use large stretch pants that will shrink down to the right size. With this approach,
+you avoid bottleneck layers that could ruin your model. On the flip side, if a layer has
+too  few  neurons,  it  will  not  have  enough  representational  power  to  preserve  all  the
+useful information from the inputs (e.g., a layer with two neurons can only output 2D
+data, so if it processes 3D data, some information will be lost). No matter how big and
+powerful the rest of the network is, that information will never be recovered.
+
+In general you will get more bang for your buck by increasing the
+number of layers instead of the number of neurons per layer.
+
+Learning Rate, Batch Size, and Other Hyperparameters
+The numbers of hidden layers and neurons are not the only hyperparameters you can
+tweak in an MLP. Here are some of the most important ones, as well as tips on how to
+set them:
+
+Learning rate
+
+The learning rate is arguably the most important hyperparameter. In general, the
+optimal learning rate is about half of the maximum learning rate (i.e., the learn‐
+ing  rate  above  which  the  training  algorithm  diverges,  as  we  saw  in  Chapter  4).
+One way to find a good learning rate is to train the model for a few hundred iter‐
+ations, starting with a very low learning rate (e.g., 10-5) and gradually increasing
+it up to a very large value (e.g., 10). This is done by multiplying the learning rate
+by a constant factor at each iteration (e.g., by exp(log(106)/500) to go from 10-5 to
+10 in 500 iterations). If you plot the loss as a function of the learning rate (using a
+log  scale  for  the  learning  rate),  you  should  see  it  dropping  at  first.  But  after  a
+while, the learning rate will be too large, so the loss will shoot back up: the opti‐
+
+Fine-Tuning Neural Network Hyperparameters 
+
+| 
+
+325
+
+mal  learning  rate  will  be  a  bit  lower  than  the  point  at  which  the  loss  starts  to
+climb (typically about 10 times lower than the turning point). You can then reini‐
+tialize  your  model  and  train  it  normally  using  this  good  learning  rate.  We  will
+look at more learning rate techniques in Chapter 11.
+
+Optimizer
+
+Choosing  a  better  optimizer  than  plain  old  Mini-batch  Gradient  Descent  (and
+tuning its hyperparameters) is also quite important. We will see several advanced
+optimizers in Chapter 11.
+
+Batch size
+
+The  batch  size  can  have  a  significant  impact  on  your  model’s  performance  and
+training time. The main benefit of using large batch sizes is that hardware accel‐
+erators like GPUs can process them efficiently (see Chapter 19), so the training
+algorithm  will  see  more  instances  per  second.  Therefore,  many  researchers  and
+practitioners recommend using the largest batch size that can fit in GPU RAM.
+There’s a catch, though: in practice, large batch sizes often lead to training insta‐
+bilities, especially at the beginning of training, and the resulting model may not
+generalize as well as a model trained with a small batch size. In April 2018, Yann
+LeCun even tweeted “Friends don’t let friends use mini-batches larger than 32,”
+citing a 2018 paper24 by Dominic Masters and Carlo Luschi which concluded that
+using  small  batches  (from  2  to  32)  was  preferable  because  small  batches  led  to
+better models in less training time. Other papers point in the opposite direction,
+however; in 2017, papers by Elad Hoffer et al.25 and Priya Goyal et al.26 showed
+that it was possible to use very large batch sizes (up to 8,192) using various tech‐
+niques such as warming up the learning rate (i.e., starting training with a small
+learning rate, then ramping it up, as we will see in Chapter 11). This led to a very
+short training time, without any generalization gap. So, one strategy is to try to
+use a large batch size, using learning rate warmup, and if training is unstable or
+the final performance is disappointing, then try using a small batch size instead.
+
+Activation function
+
+We  discussed  how  to  choose  the  activation  function  earlier  in  this  chapter:  in
+general, the ReLU activation function wil

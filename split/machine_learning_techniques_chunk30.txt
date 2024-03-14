@@ -1,0 +1,349 @@
+ model again on this partially propagated dataset:
+
+>>> log_reg = LogisticRegression()
+>>> log_reg.fit(X_train_partially_propagated, y_train_partially_propagated)
+>>> log_reg.score(X_test, y_test)
+0.94
+
+Nice! With just 50 labeled instances (only 5 examples per class on average!), we got
+94.0%  accuracy,  which  is  pretty  close  to  the  performance  of  Logistic  Regression  on
+the fully labeled digits dataset (which was 96.9%). This good performance is due to
+the  fact  that  the  propagated  labels  are  actually  pretty  good—their  accuracy  is  very
+close to 99%, as the following code shows:
+
+254 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+>>> np.mean(y_train_partially_propagated == y_train[partially_propagated])
+0.9896907216494846
+
+Active Learning
+To continue improving your model and your training set, the next step could be to do
+a  few  rounds  of  active  learning,  which  is  when  a  human  expert  interacts  with  the
+learning  algorithm,  providing  labels  for  specific  instances  when  the  algorithm
+requests them. There are many different strategies for active learning, but one of the
+most common ones is called uncertainty sampling. Here is how it works:
+
+1. The model is trained on the labeled instances gathered so far, and this model is
+
+used to make predictions on all the unlabeled instances.
+
+2. The  instances  for  which  the  model  is  most  uncertain  (i.e.,  when  its  estimated
+
+probability is lowest) are given to the expert to be labeled.
+
+3. You  iterate  this  process  until  the  performance  improvement  stops  being  worth
+
+the labeling effort.
+
+Other strategies include labeling the instances that would result in the largest model
+change, or the largest drop in the model’s validation error, or the instances that differ‐
+ent models disagree on (e.g., an SVM or a Random Forest).
+
+Before  we  move  on  to  Gaussian  mixture  models,  let’s  take  a  look  at  DBSCAN,
+another popular clustering algorithm that illustrates a very different approach based
+on local density estimation. This approach allows the algorithm to identify clusters of
+arbitrary shapes.
+
+DBSCAN
+This algorithm defines clusters as continuous regions of high density. Here is how it
+works:
+
+• For each instance, the algorithm counts how many instances are located within a
+small  distance  ε  (epsilon)  from  it.  This  region  is  called  the  instance’s  ε-
+neighborhood.
+
+• If an instance has at least min_samples instances in its ε-neighborhood (includ‐
+ing itself), then it is considered a core instance. In other words, core instances are
+those that are located in dense regions.
+
+• All instances in the neighborhood of a core instance belong to the same cluster.
+This neighborhood may include other core instances; therefore, a long sequence
+of neighboring core instances forms a single cluster.
+
+Clustering 
+
+| 
+
+255
+
+• Any instance that is not a core instance and does not have one in its neighbor‐
+
+hood is considered an anomaly.
+
+This algorithm works well if all the clusters are dense enough and if they are well sep‐
+arated by low-density regions. The DBSCAN class in Scikit-Learn is as simple to use as
+you might expect. Let’s test it on the moons dataset, introduced in Chapter 5:
+
+from sklearn.cluster import DBSCAN
+from sklearn.datasets import make_moons
+
+X, y = make_moons(n_samples=1000, noise=0.05)
+dbscan = DBSCAN(eps=0.05, min_samples=5)
+dbscan.fit(X)
+
+The labels of all the instances are now available in the labels_ instance variable:
+
+>>> dbscan.labels_
+array([ 0,  2, -1, -1,  1,  0,  0,  0, ...,  3,  2,  3,  3,  4,  2,  6,  3])
+
+Notice that some instances have a cluster index equal to –1, which means that they
+are considered as anomalies by the algorithm. The indices of the core instances are
+available  in  the  core_sample_indices_  instance  variable,  and  the  core  instances
+themselves are available in the components_ instance variable:
+
+>>> len(dbscan.core_sample_indices_)
+808
+>>> dbscan.core_sample_indices_
+array([ 0,  4,  5,  6,  7,  8, 10, 11, ..., 992, 993, 995, 997, 998, 999])
+>>> dbscan.components_
+array([[-0.02137124,  0.40618608],
+       [-0.84192557,  0.53058695],
+                  ...
+       [-0.94355873,  0.3278936 ],
+       [ 0.79419406,  0.60777171]])
+
+This clustering is represented in the lefthand plot of Figure 9-14. As you can see, it
+identified quite a lot of anomalies, plus seven different clusters. How disappointing!
+Fortunately, if we widen each instance’s neighborhood by increasing eps to 0.2, we get
+the clustering on the right, which looks perfect. Let’s continue with this model.
+
+256 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+Figure 9-14. DBSCAN clustering using two different neighborhood radiuses
+
+Somewhat surprisingly, the DBSCAN class does not have a predict() method, although
+it has a fit_predict() method. In other words, it cannot predict which cluster a new
+instance belongs to. This implementation decision was made because different classi‐
+fication algorithms can be better for different tasks, so the authors decided to let the
+user choose which one to use. Moreover, it’s not hard to implement. For example, let’s
+train a KNeighborsClassifier:
+
+from sklearn.neighbors import KNeighborsClassifier
+
+knn = KNeighborsClassifier(n_neighbors=50)
+knn.fit(dbscan.components_, dbscan.labels_[dbscan.core_sample_indices_])
+
+Now, given a few new instances, we can predict which cluster they most likely belong
+to and even estimate a probability for each cluster:
+
+>>> X_new = np.array([[-0.5, 0], [0, 0.5], [1, -0.1], [2, 1]])
+>>> knn.predict(X_new)
+array([1, 0, 1, 0])
+>>> knn.predict_proba(X_new)
+array([[0.18, 0.82],
+       [1.  , 0.  ],
+       [0.12, 0.88],
+       [1.  , 0.  ]])
+
+Note that we only trained the classifier on the core instances, but we could also have
+chosen to train it on all the instances, or all but the anomalies: this choice depends on
+the final task.
+
+The decision boundary is represented in Figure 9-15 (the crosses represent the four
+instances in X_new). Notice that since there is no anomaly in the training set, the clas‐
+sifier always chooses a cluster, even when that cluster is far away. It is fairly straight‐
+forward to introduce a maximum distance, in which case the two instances that are
+far  away  from  both  clusters  are  classified  as  anomalies.  To  do  this,  use  the  kneigh
+bors() method of the KNeighborsClassifier. Given a set of instances, it returns the
+
+Clustering 
+
+| 
+
+257
+
+distances and the indices of the k nearest neighbors in the training set (two matrices,
+each with k columns):
+
+>>> y_dist, y_pred_idx = knn.kneighbors(X_new, n_neighbors=1)
+>>> y_pred = dbscan.labels_[dbscan.core_sample_indices_][y_pred_idx]
+>>> y_pred[y_dist > 0.2] = -1
+>>> y_pred.ravel()
+array([-1,  0,  1, -1])
+
+Figure 9-15. Decision boundary between two clusters
+
+In short, DBSCAN is a very simple yet powerful algorithm capable of identifying any
+number of clusters of any shape. It is robust to outliers, and it has just two hyperpara‐
+meters (eps and min_samples). If the density varies significantly across the clusters,
+however, it can be impossible for it to capture all the clusters properly. Its computa‐
+tional complexity is roughly O(m log m), making it pretty close to linear with regard
+to  the  number  of  instances,  but  Scikit-Learn’s  implementation  can  require  up  to
+O(m2) memory if eps is large.
+
+You  may  also  want  to  try  Hierarchical  DBSCAN  (HDBSCAN),
+which is implemented in the scikit-learn-contrib project.
+
+Other Clustering Algorithms
+Scikit-Learn  implements  several  more  clustering  algorithms  that  you  should  take  a
+look at. We cannot cover them all in detail here, but here is a brief overview:
+
+Agglomerative clustering
+
+A hierarchy of clusters is built from the bottom up. Think of many tiny bubbles
+floating on water and gradually attaching to each other until there’s one big group
+of  bubbles.  Similarly,  at  each  iteration,  agglomerative  clustering  connects  the
+nearest  pair  of  clusters  (starting  with  individual  instances).  If  you  drew  a  tree
+
+258 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+with a branch for every pair of clusters that merged, you would get a binary tree
+of  clusters,  where  the  leaves  are  the  individual  instances.  This  approach  scales
+very well to large numbers of instances or clusters. It can capture clusters of vari‐
+ous shapes, it produces a flexible and informative cluster tree instead of forcing
+you to choose a particular cluster scale, and it can be used with any pairwise dis‐
+tance. It can scale nicely to large numbers of instances if you provide a connectiv‐
+ity matrix, which is a sparse m × m matrix that indicates which pairs of instances
+are  neighbors  (e.g.,  returned  by  sklearn.neighbors.kneighbors_graph()).
+Without a connectivity matrix, the algorithm does not scale well to large datasets.
+
+BIRCH
+
+The  BIRCH  (Balanced  Iterative  Reducing  and  Clustering  using  Hierarchies)
+algorithm  was  designed  specifically  for  very  large  datasets,  and  it  can  be  faster
+than batch K-Means, with similar results, as long as the number of features is not
+too large (<20). During training, it builds a tree structure containing just enough
+information  to  quickly  assign  each  new  instance  to  a  cluster,  without  having  to
+store all the instances in the tree: this approach allows it to use limited memory,
+while handling huge datasets.
+
+Mean-Shift
+
+This algorithm starts by placing a circle centered on each instance; then for each
+circle it computes the mean of all the instances located within it, and it shifts the
+circle so that it is centered on the mean. Next, it iterates this mean-shifting step
+until all the circles stop moving (i.e., until each of them is centered on the mean
+of  the  instances  it  contains).  Mean-Shift  shifts  the  circles  in  the  direction  of
+higher density, until each of them has found a local density maximum. Finally, all
+the instances whose circles have settled in the same place (or close enough) are
+assigned  to  the  same  cluster.  Mean-Shift  has  some  of  the  same  features  as
+DBSCAN, like how it can find any number of clusters of any shape, it has very
+few hyperparameters (just one—the radius of the circles, called the bandwidth),
+and it relies on local density estimation. But unlike DBSCAN, Mean-Shift tends
+to chop clusters into pieces when they have internal density variations. Unfortu‐
+nately, its computational complexity is O(m2), so it is not suited for large datasets.
+
+Affinity propagation
+
+This algorithm uses a voting system, where instances vote for similar instances to
+be  their  representatives,  and  once  the  algorithm  converges,  each  representative
+and its voters form a cluster. Affinity propagation can detect any number of clus‐
+ters  of  different  sizes.  Unfortunately,  this  algorithm  has  a  computational  com‐
+plexity of O(m2), so it too is not suited for large datasets.
+
+Spectral clustering
+
+This algorithm takes a similarity matrix between the instances and creates a low-
+dimensional embedding from it (i.e., it reduces its dimensionality), then it uses
+
+Clustering 
+
+| 
+
+259
+
+another clustering algorithm in this low-dimensional space (Scikit-Learn’s imple‐
+mentation uses K-Means.) Spectral clustering can capture complex cluster struc‐
+tures, and it can also be used to cut graphs (e.g., to identify clusters of friends on
+a social network). It does not scale well to large numbers of instances, and it does
+not behave well when the clusters have very different sizes.
+
+Now let’s dive into Gaussian mixture models, which can be used for density estima‐
+tion, clustering, and anomaly detection.
+
+Gaussian Mixtures
+A  Gaussian  mixture  model  (GMM)  is  a  probabilistic  model  that  assumes  that  the
+instances  were  generated  from  a  mixture  of  several  Gaussian  distributions  whose
+parameters are unknown. All the instances generated from a single Gaussian distri‐
+bution form a cluster that typically looks like an ellipsoid. Each cluster can have a dif‐
+ferent ellipsoidal shape, size, density, and orientation, just like in Figure 9-11. When
+you observe an instance, you know it was generated from one of the Gaussian distri‐
+butions, but you are not told which one, and you do not know what the parameters of
+these distributions are.
+
+There  are  several  GMM  variants.  In  the  simplest  variant,  implemented  in  the  Gaus
+sianMixture  class,  you  must  know  in  advance  the  number  k  of  Gaussian  distribu‐
+tions.  The  dataset  X  is  assumed  to  have  been  generated  through  the  following
+probabilistic process:
+
+• For each instance, a cluster is picked randomly from among k clusters. The prob‐
+ability of choosing the jth cluster is defined by the cluster’s weight, ϕ(j).7 The index
+of the cluster chosen for the ith instance is noted z(i).
+
+• If z(i)=j, meaning the ith instance has been assigned to the jth cluster, the location
+x(i)  of  this  instance  is  sampled  randomly  from  the  Gaussian  distribution  with
+mean μ(j) and covariance matrix Σ(j). This is noted x i ∼  μ j , Σ j
+
+.
+
+This generative process can be represented as a graphical model. Figure 9-16 repre‐
+sents the structure of the conditional dependencies between random variables.
+
+7 Phi (ϕ or φ) is the 21st letter of the Greek alphabet.
+
+260 
+
+| 
+
+Chapter 9: Unsupervised Learning Techniques
+
+Figure 9-16. A graphical representation of a Gaussian mixture model, including its
+parameters (squares), random variables (circles), and their conditional dependencies
+(solid arrows)
+
+Here is how to interpret the figure:8
+
+• The circles represent random variables.
+
+• The squares represent fixed values (i.e., parameters of the model).
+
+• The large rectangles are called plates. They indicate that their content is repeated
+
+several times.
+
+• The number at the bottom right of each plate indicates how many times its con‐
+tent  is  repeated.  So,  there  are  m  random  variables  z(i)  (from  z(1)  to  z(m))  and  m
+random variables x(i). There are also k means μ(j) and k covariance matrices Σ(j).
+Lastly, there is just one weight vector ϕ (containing all the weights ϕ(1) to ϕ(k)).
+• Each variable z(i) is drawn from the categorical distribution with weights ϕ. Each
+variable x(i) is drawn from the normal distribution, with the mean and covariance
+matrix defined by its cluster z(i).
+
+• The solid arrows represent conditional dependencies. For example, the probabil‐
+ity  distribution  for  each  random  variable  z(i)  depends  on  the  weight  vector  ϕ.
+Note that when an arrow crosses a plate boundary, it means that it applies to all
+the  repetitions  of  that  plate.  For  example,  the  weight  vector  ϕ  conditions  the
+probability distributions of all the random variables x(1) to x(m).
+
+• The squiggly arrow from z(i) to x(i) represents a switch: depending on the value of
+z(i),  the  instance  x(i)  will  be  sampled  from  a  different  Gaussian  distribution.  For
+example, if z(i)=j, then x i ∼  μ j , Σ j
+.
+
+8 Most of these notations are standard, but a few additional notations were taken from the Wikipedia article on
+
+plate notation.
+
+Gaussian Mixtures 
+
+| 
+
+261
+
+• Shaded nodes indicate that the value is known. So, in this case, only the random
+variables x(i) have known values: they are called observed variables. The unknown
+random variables z(i) are called latent variables.
+
+So, what can you do with such a model? Well, given the dataset X, y

@@ -1,0 +1,334 @@
+erparameters
+like  the  number  of  neurons  per  layer.  This  allows  TensorFlow  to
+better optimize each variant of your model.
+
+AutoGraph and Tracing
+So how does TensorFlow generate graphs? It starts by analyzing the Python function’s
+source code to capture all the control flow statements, such as for loops, while loops,
+and if statements, as well as break, continue, and return statements. This first step
+is  called  AutoGraph.  The  reason  TensorFlow  has  to  analyze  the  source  code  is  that
+Python does not provide any other way to capture control flow statements: it offers
+magic methods like __add__() and __mul__() to capture operators like + and *, but
+there are no __while__() or __if__() magic methods. After analyzing the function’s
+code, AutoGraph outputs an upgraded version of that function in which all the con‐
+trol flow statements are replaced by the appropriate TensorFlow operations, such as
+tf.while_loop()  for  loops  and  tf.cond()  for  if  statements.  For  example,  in
+Figure  12-4,  AutoGraph  analyzes  the  source  code  of  the  sum_squares()  Python
+
+TensorFlow Functions and Graphs 
+
+| 
+
+407
+
+function, and it generates the tf__sum_squares() function. In this function, the for
+loop is replaced by the definition of the loop_body() function (containing the body
+of the original for loop), followed by a call to the for_stmt() function. This call will
+build the appropriate tf.while_loop() operation in the computation graph.
+
+Figure 12-4. How TensorFlow generates graphs using AutoGraph and tracing
+
+Next, TensorFlow calls this “upgraded” function, but instead of passing the argument,
+it  passes  a  symbolic  tensor—a  tensor  without  any  actual  value,  only  a  name,  a  data
+type, and a shape. For example, if you call sum_squares(tf.constant(10)), then the
+tf__sum_squares() function will be called with a symbolic tensor of type int32 and
+shape []. The function will run in graph mode, meaning that each TensorFlow opera‐
+tion  will  add  a  node  in  the  graph  to  represent  itself  and  its  output  tensor(s)  (as
+opposed to the regular mode, called eager execution, or eager mode). In graph mode,
+TF  operations  do  not  perform  any  computations.  This  should  feel  familiar  if  you
+know TensorFlow 1, as graph mode was the default mode. In Figure 12-4, you can see
+the tf__sum_squares() function being called with a symbolic tensor as its argument
+(in this case, an int32 tensor of shape []) and the final graph being generated during
+tracing. The nodes represent operations, and the arrows represent tensors (both the
+generated function and the graph are simplified).
+
+408 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+To view the generated function’s source code, you can call tf.auto
+graph.to_code(sum_squares.python_function).  The  code  is  not
+meant to be pretty, but it can sometimes help for debugging.
+
+TF Function Rules
+Most of the time, converting a Python function that performs TensorFlow operations
+into a TF Function is trivial: decorate it with @tf.function or let Keras take care of it
+for you. However, there are a few rules to respect:
+
+• If  you  call  any  external  library,  including  NumPy  or  even  the  standard  library,
+this  call  will  run  only  during  tracing;  it  will  not  be  part  of  the  graph.  Indeed,  a
+TensorFlow graph can only include TensorFlow constructs (tensors, operations,
+variables, datasets, and so on). So, make sure you use tf.reduce_sum() instead
+of  np.sum(),  tf.sort()  instead  of  the  built-in  sorted()  function,  and  so  on
+(unless you really want the code to run only during tracing). This has a few addi‐
+tional implications:
+— If you define a TF Function f(x) that just returns np.random.rand(), a ran‐
+dom number will only be generated when the function is traced, so f(tf.con
+stant(2.))  and  f(tf.constant(3.))  will  return  the  same  random  number,
+but  f(tf.constant([2.,  3.]))  will  return  a  different  one.  If  you  replace
+np.random.rand()  with  tf.random.uniform([]),  then  a  new  random  num‐
+ber will be generated upon every call, since the operation will be part of the
+graph.
+
+— If  your  non-TensorFlow  code  has  side  effects  (such  as  logging  something  or
+updating a Python counter), then you should not expect those side effects to
+occur every time you call the TF Function, as they will only occur when the
+function is traced.
+
+— You  can  wrap  arbitrary  Python  code  in  a  tf.py_function()  operation,  but
+doing  so  will  hinder  performance,  as  TensorFlow  will  not  be  able  to  do  any
+graph  optimization  on  this  code.  It  will  also  reduce  portability,  as  the  graph
+will  only  run  on  platforms  where  Python  is  available  (and  where  the  right
+libraries are installed).
+
+• You can call other Python functions or TF Functions, but they should follow the
+same  rules,  as  TensorFlow  will  capture  their  operations  in  the  computation
+graph.  Note  that  these  other  functions  do  not  need  to  be  decorated  with
+@tf.function.
+
+• If  the  function  creates  a  TensorFlow  variable  (or  any  other  stateful  TensorFlow
+object, such as a dataset or a queue), it must do so upon the very first call, and
+only  then,  or  else  you  will  get  an  exception.  It  is  usually  preferable  to  create
+
+TensorFlow Functions and Graphs 
+
+| 
+
+409
+
+variables  outside  of  the  TF  Function  (e.g.,  in  the  build()  method  of  a  custom
+layer).  If  you  want  to  assign  a  new  value  to  the  variable,  make  sure  you  call  its
+assign() method, instead of using the = operator.
+
+• The  source  code  of  your  Python  function  should  be  available  to  TensorFlow.  If
+the  source  code  is  unavailable  (for  example,  if  you  define  your  function  in  the
+Python shell, which does not give access to the source code, or if you deploy only
+the compiled *.pyc Python files to production), then the graph generation process
+will fail or have limited functionality.
+
+• TensorFlow will only capture for loops that iterate over a tensor or a dataset. So
+make sure you use for i in tf.range(x) rather than for i in range(x), or
+else the loop will not be captured in the graph. Instead, it will run during tracing.
+(This  may  be  what  you  want  if  the  for  loop  is  meant  to  build  the  graph,  for
+example to create each layer in a neural network.)
+
+• As always, for performance reasons, you should prefer a vectorized implementa‐
+
+tion whenever you can, rather than using loops.
+
+It’s time to sum up! In this chapter we started with a brief overview of TensorFlow,
+then  we  looked  at  TensorFlow’s  low-level  API,  including  tensors,  operations,  vari‐
+ables, and special data structures. We then used these tools to customize almost every
+component  in  tf.keras.  Finally,  we  looked  at  how  TF  Functions  can  boost  perfor‐
+mance,  how  graphs  are  generated  using  AutoGraph  and  tracing,  and  what  rules  to
+follow  when  you  write  TF  Functions  (if  you  would  like  to  open  the  black  box  a  bit
+further, for example to explore the generated graphs, you will find technical details in
+Appendix G).
+
+In the next chapter, we will look at how to efficiently load and preprocess data with
+TensorFlow.
+
+Exercises
+
+1. How would you describe TensorFlow in a short sentence? What are its main fea‐
+
+tures? Can you name other popular Deep Learning libraries?
+
+2. Is TensorFlow a drop-in replacement for NumPy? What are the main differences
+
+between the two?
+
+3. Do  you  get  the  same  result  with  tf.range(10)  and  tf.constant(np.ara
+
+nge(10))?
+
+4. Can you name six other data structures available in TensorFlow, beyond regular
+
+tensors?
+
+410 
+
+| 
+
+Chapter 12: Custom Models and Training with TensorFlow
+
+5. A custom loss function can be defined by writing a function or by subclassing the
+
+keras.losses.Loss class. When would you use each option?
+
+6. Similarly,  a  custom  metric  can  be  defined  in  a  function  or  a  subclass  of
+
+keras.metrics.Metric. When would you use each option?
+
+7. When should you create a custom layer versus a custom model?
+
+8. What are some use cases that require writing your own custom training loop?
+
+9. Can  custom  Keras  components  contain  arbitrary  Python  code,  or  must  they  be
+
+convertible to TF Functions?
+
+10. What are the main rules to respect if you want a function to be convertible to a
+
+TF Function?
+
+11. When would you need to create a dynamic Keras model? How do you do that?
+
+Why not make all your models dynamic?
+
+12. Implement  a  custom  layer  that  performs  Layer  Normalization  (we  will  use  this
+
+type of layer in Chapter 15):
+a. The  build()  method  should  define  two  trainable  weights  α  and  β,  both  of
+shape  input_shape[-1:]  and  data  type  tf.float32.  α  should  be  initialized
+with 1s, and β with 0s.
+
+b. The call() method should compute the mean μ and standard deviation σ of
+each  instance’s  features.  For  this,  you  can  use  tf.nn.moments(inputs,
+axes=-1, keepdims=True), which returns the mean μ and the variance σ2 of
+all  instances  (compute  the  square  root  of  the  variance  to  get  the  standard
+deviation). Then the function should compute and return α⊗(X - μ)/(σ + ε) +
+β, where ⊗ represents itemwise multiplication (*) and ε is a smoothing term
+(small constant to avoid division by zero, e.g., 0.001).
+
+c. Ensure  that  your  custom  layer  produces  the  same  (or  very  nearly  the  same)
+
+output as the keras.layers.LayerNormalization layer.
+
+13. Train a model using a custom training loop to tackle the Fashion MNIST dataset
+
+(see Chapter 10).
+
+a. Display the epoch, iteration, mean training loss, and mean accuracy over each
+epoch (updated at each iteration), as well as the validation loss and accuracy at
+the end of each epoch.
+
+b. Try using a different optimizer with a different learning rate for the upper lay‐
+
+ers and the lower layers.
+
+Solutions to these exercises are available in Appendix A.
+
+Exercises 
+
+| 
+
+411
+
+CHAPTER 13
+Loading and Preprocessing Data
+with TensorFlow
+
+So far we have used only datasets that fit in memory, but Deep Learning systems are
+often trained on very large datasets that will not fit in RAM. Ingesting a large dataset
+and preprocessing it efficiently can be tricky to implement with other Deep Learning
+libraries, but TensorFlow makes it easy thanks to the Data API: you just create a data‐
+set object, and tell it where to get the data and how to transform it. TensorFlow takes
+care of all the implementation details, such as multithreading, queuing, batching, and
+prefetching. Moreover, the Data API works seamlessly with tf.keras!
+
+Off  the  shelf,  the  Data  API  can  read  from  text  files  (such  as  CSV  files),  binary  files
+with  fixed-size  records,  and  binary  files  that  use  TensorFlow’s  TFRecord  format,
+which  supports  records  of  varying  sizes.  TFRecord  is  a  flexible  and  efficient  binary
+format usually containing protocol buffers (an open source binary format). The Data
+API also has support for reading from SQL databases. Moreover, many open source
+extensions are available to read from all sorts of data sources, such as Google’s Big‐
+Query service.
+
+Reading huge datasets efficiently is not the only difficulty: the data also needs to be
+preprocessed,  usually  normalized.  Moreover,  it  is  not  always  composed  strictly  of
+convenient  numerical  fields:  there  may  be  text  features,  categorical  features,  and  so
+on.  These  need  to  be  encoded,  for  example  using  one-hot  encoding,  bag-of-words
+encoding, or embeddings (as we will see, an embedding is a trainable dense vector that
+represents  a  category  or  token).  One  option  to  handle  all  this  preprocessing  is  to
+write your own custom preprocessing layers. Another is to use the standard prepro‐
+cessing layers provided by Keras.
+
+Loading and Preprocessing Data with TensorFlow 
+
+| 
+
+413
+
+In this chapter, we will cover the Data API, the TFRecord format, and how to create
+custom  preprocessing  layers  and  use  the  standard  Keras  ones.  We  will  also  take  a
+quick look at a few related projects from TensorFlow’s ecosystem:
+
+TF Transform (tf.Transform)
+
+Makes  it  possible  to  write  a  single  preprocessing  function  that  can  be  run  in
+batch  mode  on  your  full  training  set,  before  training  (to  speed  it  up),  and  then
+exported to a TF Function and incorporated into your trained model so that once
+it  is  deployed  in  production  it  can  take  care  of  preprocessing  new  instances  on
+the fly.
+
+TF Datasets (TFDS)
+
+Provides a convenient function to download many common datasets of all kinds,
+including  large  ones  like  ImageNet,  as  well  as  convenient  dataset  objects  to
+manipulate them using the Data API.
+
+So let’s get started!
+
+The Data API
+The whole Data API revolves around the concept of a dataset: as you might suspect,
+this represents a sequence of data items. Usually you will use datasets that gradually
+read  data  from  disk,  but  for  simplicity  let’s  create  a  dataset  entirely  in  RAM  using
+tf.data.Dataset.from_tensor_slices():
+
+>>> X = tf.range(10)  # any data tensor
+>>> dataset = tf.data.Dataset.from_tensor_slices(X)
+>>> dataset
+<TensorSliceDataset shapes: (), types: tf.int32>
+
+The  from_tensor_slices()  function  takes  a  tensor  and  creates  a  tf.data.Dataset
+whose elements are all the slices of X (along the first dimension), so this dataset con‐
+tains  10  items:  tensors  0,  1,  2,  …,  9.  In  this  case  we  would  have  obtained  the  same
+dataset if we had used tf.data.Dataset.range(10).
+
+You can simply iterate over a dataset’s items like this:
+
+>>> for item in dataset:
+...     print(item)
+...
+tf.Tensor(0, shape=(), dtype=int32)
+tf.Tensor(1, shape=(), dtype=int32)
+tf.Tensor(2, shape=(), dtype=int32)
+[...]
+tf.Tensor(9, shape=(), dtype=int32)
+
+414 
+
+| 
+
+Chapter 13: Loading and Preprocessing Data with TensorFlow
+
+Chaining Transformations
+Once you have a dataset, you can apply all sorts of transformations to it by calling its
+transformation methods. Each method returns a new dataset, so you can chain trans‐
+formations like this (this chain is illustrated in Figure 13-1):
+
+>>> dataset = dataset.repeat(3).batch(7)
+>>> for item in dataset:
+...     print(item)
+...
+tf.Tensor([0 1 2 3 4 5 6], shape=(7,), dtype=int32)
+tf.Tensor([7 8 9 0 1 2 3], shape=(7,), dtype=int32)
+tf.Tensor([4 5 6 7 8 9 0], shape=(7,), dtype=int32)
+tf.Tensor([1 2 3 4 5 6 7], shape=(7,), dtype=int32)
+tf.Tensor([8 9], shape=(2,), dtype=int32)
+
+Figure 13-1. Chaining dataset transformations
+
+In  this  example,  we  first  call  the  repeat()  method  on  the  original  dataset,  and  it
+returns a new dataset that will repeat the items of the original dataset three times. Of
+course, this will not copy all the data in memory three times! (If you call this method
+with no arguments, the new dataset will repeat the source dataset forever, so the code
+that  iterates  over  the  dataset  will  have  to  decide  when  to  stop.)  Then  we  call  the
+batch() method on this new dataset, and again this creates a new dataset. This one
+will group the items of the previous dataset in batches of seven items. Finally, we iter‐
+ate  over  the  items  of  this  final  dataset.  As  you  can  see,  the  batch()  method  had  to
+output a final batch of size two instead of seven, but you can call it with drop_remain
+der=True if you want it to drop this final batch so tha

@@ -1,0 +1,365 @@
+lly improved over the years by several research‐
+ers,  such  as  Alex  Graves,  Haşim  Sak,8  and  Wojciech  Zaremba.9  If  you  consider  the
+
+6 A character from the animated movies Finding Nemo and Finding Dory who has short-term memory loss.
+
+7 Sepp Hochreiter and Jürgen Schmidhuber, “Long Short-Term Memory,” Neural Computation 9, no. 8 (1997):
+
+1735–1780.
+
+8 Haşim Sak et al., “Long Short-Term Memory Based Recurrent Neural Network Architectures for Large
+
+Vocabulary Speech Recognition,” arXiv preprint arXiv:1402.1128 (2014).
+
+9 Wojciech Zaremba et al., “Recurrent Neural Network Regularization,” arXiv preprint arXiv:1409.2329 (2014).
+
+514 
+
+| 
+
+Chapter 15: Processing Sequences Using RNNs and CNNs
+
+LSTM cell as a black box, it can be used very much like a basic cell, except it will per‐
+form  much  better;  training  will  converge  faster,  and  it  will  detect  long-term  depen‐
+dencies  in  the  data.  In  Keras,  you  can  simply  use  the  LSTM  layer  instead  of  the
+SimpleRNN layer:
+
+model = keras.models.Sequential([
+    keras.layers.LSTM(20, return_sequences=True, input_shape=[None, 1]),
+    keras.layers.LSTM(20, return_sequences=True),
+    keras.layers.TimeDistributed(keras.layers.Dense(10))
+])
+
+Alternatively, you could use the general-purpose keras.layers.RNN layer, giving it an
+LSTMCell as an argument:
+
+model = keras.models.Sequential([
+    keras.layers.RNN(keras.layers.LSTMCell(20), return_sequences=True,
+                     input_shape=[None, 1]),
+    keras.layers.RNN(keras.layers.LSTMCell(20), return_sequences=True),
+    keras.layers.TimeDistributed(keras.layers.Dense(10))
+])
+
+However, the LSTM layer uses an optimized implementation when running on a GPU
+(see Chapter 19), so in general it is preferable to use it (the RNN layer is mostly useful
+when you define custom cells, as we did earlier).
+
+So how does an LSTM cell work? Its architecture is shown in Figure 15-9.
+
+If you don’t look at what’s inside the box, the LSTM cell looks exactly like a regular
+cell, except that its state is split into two vectors: h(t) and c(t) (“c” stands for “cell”). You
+can think of h(t) as the short-term state and c(t) as the long-term state.
+
+Handling Long Sequences 
+
+| 
+
+515
+
+Figure 15-9. LSTM cell
+
+Now let’s open the box! The key idea is that the network can learn what to store in the
+long-term state, what to throw away, and what to read from it. As the long-term state
+c(t–1) traverses the network from left to right, you can see that it first goes through a
+forget gate, dropping some memories, and then it adds some new memories via the
+addition  operation  (which  adds  the  memories  that  were  selected  by  an  input  gate).
+The result c(t) is sent straight out, without any further transformation. So, at each time
+step, some memories are dropped and some memories are added. Moreover, after the
+addition operation, the long-term state is copied and passed through the tanh func‐
+tion, and then the result is filtered by the output gate. This produces the short-term
+state h(t) (which is equal to the cell’s output for this time step, y(t)). Now let’s look at
+where new memories come from and how the gates work.
+
+First,  the  current  input  vector  x(t)  and  the  previous  short-term  state  h(t–1)  are  fed  to
+four different fully connected layers. They all serve a different purpose:
+
+• The main layer is the one that outputs g(t). It has the usual role of analyzing the
+current inputs x(t) and the previous (short-term) state h(t–1). In a basic cell, there is
+nothing other than this layer, and its output goes straight out to y(t) and h(t). In
+contrast, in an LSTM cell this layer’s output does not go straight out, but instead
+its  most  important  parts  are  stored  in  the  long-term  state  (and  the  rest  is
+dropped).
+
+• The  three  other  layers  are  gate  controllers.  Since  they  use  the  logistic  activation
+function, their outputs range from 0 to 1. As you can see, their outputs are fed to
+
+516 
+
+| 
+
+Chapter 15: Processing Sequences Using RNNs and CNNs
+
+element-wise  multiplication  operations,  so  if  they  output  0s  they  close  the  gate,
+and if they output 1s they open it. Specifically:
+
+— The forget gate (controlled by f(t)) controls which parts of the long-term state
+
+should be erased.
+
+— The input gate (controlled by i(t)) controls which parts of g(t) should be added
+
+to the long-term state.
+
+— Finally,  the  output  gate  (controlled  by  o(t))  controls  which  parts  of  the  long-
+term state should be read and output at this time step, both to h(t) and to y(t).
+
+In short, an LSTM cell can learn to recognize an important input (that’s the role of the
+input gate), store it in the long-term state, preserve it for as long as it is needed (that’s
+the  role  of  the  forget  gate),  and  extract  it  whenever  it  is  needed.  This  explains  why
+these  cells  have  been  amazingly  successful  at  capturing  long-term  patterns  in  time
+series, long texts, audio recordings, and more.
+
+Equation 15-3 summarizes how to compute the cell’s long-term state, its short-term
+state, and its output at each time step for a single instance (the equations for a whole
+mini-batch are very similar).
+
+i t = σ Wxi
+
+Equation 15-3. LSTM computations
+⊺h t − 1 + bi
+⊺x t + Whi
+⊺h t − 1 + b f
+⊺x t + Wh f
+⊺h t − 1 + bo
+⊺x t + Who
+
+o t = σ Wxo
+
+f t = σ Wx f
+
+g t = tanh Wxg
+c t = f t
+
+⊗ c t − 1 + i t
+
+⊺x t + Whg
+⊗ g t
+
+⊺h t − 1 + bg
+
+y t = h t = o t
+
+⊗ tanh c t
+
+In this equation:
+
+• Wxi, Wxf, Wxo, Wxg are the weight matrices of each of the four layers for their con‐
+
+nection to the input vector x(t).
+
+• Whi, Whf, Who, and Whg are the weight matrices of each of the four layers for their
+
+connection to the previous short-term state h(t–1).
+
+• bi, bf, bo, and bg are the bias terms for each of the four layers. Note that Tensor‐
+Flow  initializes  bf  to  a  vector  full  of  1s  instead  of  0s.  This  prevents  forgetting
+everything at the beginning of training.
+
+Handling Long Sequences 
+
+| 
+
+517
+
+Peephole connections
+
+In a regular LSTM cell, the gate controllers can look only at the input x(t) and the pre‐
+vious short-term state h(t–1). It may be a good idea to give them a bit more context by
+letting them peek at the long-term state as well. This idea was proposed by Felix Gers
+and Jürgen Schmidhuber in 2000.10 They proposed an LSTM variant with extra con‐
+nections called peephole connections: the previous long-term state c(t–1) is added as an
+input  to  the  controllers  of  the  forget  gate  and  the  input  gate,  and  the  current  long-
+term  state  c(t)  is  added  as  input  to  the  controller  of  the  output  gate.  This  often
+improves performance, but not always, and there is no clear pattern for which tasks
+are better off with or without them: you will have to try it on your task and see if it
+helps.
+
+In Keras, the LSTM layer is based on the keras.layers.LSTMCell cell, which does not
+support  peepholes.  The  experimental  tf.keras.experimental.PeepholeLSTMCell
+does, however, so you can create a keras.layers.RNN layer and pass a PeepholeLSTM
+Cell to its constructor.
+
+There are many other variants of the LSTM cell. One particularly popular variant is
+the GRU cell, which we will look at now.
+
+GRU cells
+
+The Gated Recurrent Unit (GRU) cell (see Figure 15-10) was proposed by Kyunghyun
+Cho  et  al.  in  a  2014  paper11  that  also  introduced  the  Encoder–Decoder  network  we
+discussed earlier.
+
+10 F. A. Gers and J. Schmidhuber, “Recurrent Nets That Time and Count,” Proceedings of the IEEE-INNS-ENNS
+
+International Joint Conference on Neural Networks (2000): 189–194.
+
+11 Kyunghyun Cho et al., “Learning Phrase Representations Using RNN Encoder-Decoder for Statistical
+
+Machine Translation,” Proceedings of the 2014 Conference on Empirical Methods in Natural Language Processing
+(2014): 1724–1734.
+
+518 
+
+| 
+
+Chapter 15: Processing Sequences Using RNNs and CNNs
+
+Figure 15-10. GRU cell
+
+The GRU cell is a simplified version of the LSTM cell, and it seems to perform just as
+well12 (which explains its growing popularity). These are the main simplifications:
+
+• Both state vectors are merged into a single vector h(t).
+• A single gate controller z(t) controls both the forget gate and the input gate. If the
+gate  controller  outputs  a  1,  the  forget  gate  is  open  (=  1)  and  the  input  gate  is
+closed (1 – 1 = 0). If it outputs a 0, the opposite happens. In other words, when‐
+ever a memory must be stored, the location where it will be stored is erased first.
+This is actually a frequent variant to the LSTM cell in and of itself.
+
+• There is no output gate; the full state vector is output at every time step. How‐
+ever,  there  is  a  new  gate  controller  r(t)  that  controls  which  part  of  the  previous
+state will be shown to the main layer (g(t)).
+
+12 A 2015 paper by Klaus Greff et al., “LSTM: A Search Space Odyssey”, seems to show that all LSTM variants
+
+perform roughly the same.
+
+Handling Long Sequences 
+
+| 
+
+519
+
+Equation 15-4 summarizes how to compute the cell’s state at each time step for a sin‐
+gle instance.
+
+z t = σ Wxz
+
+Equation 15-4. GRU computations
+⊺h t − 1 + bz
+⊺x t + Whz
+⊺h t − 1 + br
+⊺x t + Whr
+⊺ r t
+⊗ g t
+
+⊺x t + Whg
+⊗ h t − 1 + 1 − z t
+
+g t = tanh Wxg
+
+r t = σ Wxr
+
+h t = z t
+
+⊗ h t − 1 + bg
+
+Keras  provides  a  keras.layers.GRU  layer  (based  on  the  keras.layers.GRUCell
+memory cell); using it is just a matter of replacing SimpleRNN or LSTM with GRU.
+
+LSTM  and  GRU  cells  are  one  of  the  main  reasons  behind  the  success  of  RNNs.  Yet
+while  they  can  tackle  much  longer  sequences  than  simple  RNNs,  they  still  have  a
+fairly limited short-term memory, and they have a hard time learning long-term pat‐
+terns in sequences of 100 time steps or more, such as audio samples, long time series,
+or long sentences. One way to solve this is to shorten the input sequences, for exam‐
+ple using 1D convolutional layers.
+
+Using 1D convolutional layers to process sequences
+
+In  Chapter  14,  we  saw  that  a  2D  convolutional  layer  works  by  sliding  several  fairly
+small kernels (or filters) across an image, producing multiple 2D feature maps (one
+per  kernel).  Similarly,  a  1D  convolutional  layer  slides  several  kernels  across  a
+sequence, producing a 1D feature map per kernel. Each kernel will learn to detect a
+single very short sequential pattern (no longer than the kernel size). If you use 10 ker‐
+nels, then the layer’s output will be composed of 10 1-dimensional sequences (all of
+the same length), or equivalently you can view this output as a single 10-dimensional
+sequence.  This  means  that  you  can  build  a  neural  network  composed  of  a  mix  of
+recurrent layers and 1D convolutional layers (or even 1D pooling layers). If you use a
+1D  convolutional  layer  with  a  stride  of  1  and  "same"  padding,  then  the  output
+sequence  will  have  the  same  length  as  the  input  sequence.  But  if  you  use  "valid"
+padding or a stride greater than 1, then the output sequence will be shorter than the
+input sequence, so make sure you adjust the targets accordingly. For example, the fol‐
+lowing model is the same as earlier, except it starts with a 1D convolutional layer that
+downsamples the input sequence by a factor of 2, using a stride of 2. The kernel size is
+larger  than  the  stride,  so  all  inputs  will  be  used  to  compute  the  layer’s  output,  and
+therefore the model can learn to preserve the useful information, dropping only the
+unimportant  details.  By  shortening  the  sequences,  the  convolutional  layer  may  help
+the GRU layers detect longer patterns. Note that we must also crop off the first three
+
+520 
+
+| 
+
+Chapter 15: Processing Sequences Using RNNs and CNNs
+
+time steps in the targets (since the kernel’s size is 4, the first output of the convolu‐
+tional layer will be based on the input time steps 0 to 3), and downsample the targets
+by a factor of 2:
+
+model = keras.models.Sequential([
+    keras.layers.Conv1D(filters=20, kernel_size=4, strides=2, padding="valid",
+                        input_shape=[None, 1]),
+    keras.layers.GRU(20, return_sequences=True),
+    keras.layers.GRU(20, return_sequences=True),
+    keras.layers.TimeDistributed(keras.layers.Dense(10))
+])
+
+model.compile(loss="mse", optimizer="adam", metrics=[last_time_step_mse])
+history = model.fit(X_train, Y_train[:, 3::2], epochs=20,
+                    validation_data=(X_valid, Y_valid[:, 3::2]))
+
+If you train and evaluate this model, you will find that it is the best model so far. The
+convolutional layer really helps. In fact, it is actually possible to use only 1D convolu‐
+tional layers and drop the recurrent layers entirely!
+
+WaveNet
+
+In a 2016 paper,13 Aaron van den Oord and other DeepMind researchers introduced
+an architecture called WaveNet. They stacked 1D convolutional layers, doubling the
+dilation rate (how spread apart each neuron’s inputs are) at every layer: the first con‐
+volutional layer gets a glimpse of just two time steps at a time, while the next one sees
+four time steps (its receptive field is four time steps long), the next one sees eight time
+steps, and so on (see Figure 15-11). This way, the lower layers learn short-term pat‐
+terns, while the higher layers learn long-term patterns. Thanks to the doubling dila‐
+tion rate, the network can process extremely large sequences very efficiently.
+
+13 Aaron van den Oord et al., “WaveNet: A Generative Model for Raw Audio,” arXiv preprint arXiv:1609.03499
+
+(2016).
+
+Handling Long Sequences 
+
+| 
+
+521
+
+Figure 15-11. WaveNet architecture
+
+In the WaveNet paper, the authors actually stacked 10 convolutional layers with dila‐
+tion rates of 1, 2, 4, 8, …, 256, 512, then they stacked another group of 10 identical
+layers  (also  with  dilation  rates  1,  2,  4,  8,  …,  256,  512),  then  again  another  identical
+group of 10 layers. They justified this architecture by pointing out that a single stack
+of 10 convolutional layers with these dilation rates will act like a super-efficient con‐
+volutional  layer  with  a  kernel  of  size  1,024  (except  way  faster,  more  powerful,  and
+using significantly fewer parameters), which is why they stacked 3 such blocks. They
+also left-padded the input sequences with a number of zeros equal to the dilation rate
+before  every  layer,  to  preserve  the  same  sequence  length  throughout  the  network.
+Here  is  how  to  implement  a  simplified  WaveNet  to  tackle  the  same  sequences  as
+earlier:14
+
+model = keras.models.Sequential()
+model.add(keras.layers.InputLayer(input_shape=[None, 1]))
+for rate in (1, 2, 4, 8) * 2:
+    model.add(keras.layers.Conv1D(filters=20, kernel_size=2, padding="causal",
+                                  activation="relu", dilation_rate=rate))
+model.add(keras.layers.Conv1D(filters=10, kernel_size=1))
+model.compile(loss="mse", optimizer="adam", metrics=[last_time_step_mse])
+history = model.fit(X_train, Y_train, epochs=20,
+                    validation_data=(X_valid, Y_valid))
+
+This Sequential model starts with an explicit input layer (this is simpler than trying
+to  set  input_shape  only  on  the  first  layer),  then  continues  with  a  1D  convolutional
+layer using "causal" padding: this ensures that the convolutional layer does not peek
+into the future when making predictions (it is equivalent to padding the inputs with
+the  right  amount  of  zeros  on  the  left  and  using  "valid"  padding).  We  then  add
+
+14 The complete WaveNet uses a few more tric

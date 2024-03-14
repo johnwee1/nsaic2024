@@ -1,0 +1,358 @@
+d  be  considered  bad,  and  con‐
+versely all actions from the second episode would be considered good.
+
+We are almost ready to run the algorithm! Now let’s define the hyperparameters. We
+will  run  150  training  iterations,  playing  10  episodes  per  iteration,  and  each  episode
+will last at most 200 steps. We will use a discount factor of 0.95:
+
+n_iterations = 150
+n_episodes_per_update = 10
+n_max_steps = 200
+discount_factor = 0.95
+
+We  also  need  an  optimizer  and  the  loss  function.  A  regular  Adam  optimizer  with
+learning rate 0.01 will do just fine, and we will use the binary cross-entropy loss func‐
+tion because we are training a binary classifier (there are two possible actions: left or
+right):
+
+optimizer = keras.optimizers.Adam(lr=0.01)
+loss_fn = keras.losses.binary_crossentropy
+
+Policy Gradients 
+
+| 
+
+623
+
+We are now ready to build and run the training loop!
+
+for iteration in range(n_iterations):
+    all_rewards, all_grads = play_multiple_episodes(
+        env, n_episodes_per_update, n_max_steps, model, loss_fn)
+    all_final_rewards = discount_and_normalize_rewards(all_rewards,
+                                                       discount_factor)
+    all_mean_grads = []
+    for var_index in range(len(model.trainable_variables)):
+        mean_grads = tf.reduce_mean(
+            [final_reward * all_grads[episode_index][step][var_index]
+             for episode_index, final_rewards in enumerate(all_final_rewards)
+                 for step, final_reward in enumerate(final_rewards)], axis=0)
+        all_mean_grads.append(mean_grads)
+    optimizer.apply_gradients(zip(all_mean_grads, model.trainable_variables))
+
+Let’s walk through this code:
+
+• At  each  training  iteration,  this  loop  calls  the  play_multiple_episodes()  func‐
+tion, which plays the game 10 times and returns all the rewards and gradients for
+every episode and step.
+
+• Then we call the discount_and_normalize_rewards() to compute each action’s
+normalized  advantage  (which  in  the  code  we  call  the  final_reward).  This  pro‐
+vides a measure of how good or bad each action actually was, in hindsight.
+
+• Next,  we  go  through  each  trainable  variable,  and  for  each  of  them  we  compute
+the  weighted  mean  of  the  gradients  for  that  variable  over  all  episodes  and  all
+steps, weighted by the final_reward.
+
+• Finally, we apply these mean gradients using the optimizer: the model’s trainable
+
+variables will be tweaked, and hopefully the policy will be a bit better.
+
+And  we’re  done!  This  code  will  train  the  neural  network  policy,  and  it  will  success‐
+fully learn to balance the pole on the cart (you can try it out in the “Policy Gradients”
+section of the Jupyter notebook). The mean reward per episode will get very close to
+200 (which is the maximum by default with this environment). Success!
+
+Researchers  try  to  find  algorithms  that  work  well  even  when  the
+agent  initially  knows  nothing  about  the  environment.  However,
+unless  you  are  writing  a  paper,  you  should  not  hesitate  to  inject
+prior knowledge into the agent, as it will speed up training dramat‐
+ically. For example, since you know that the pole should be as verti‐
+cal as possible, you could add negative rewards proportional to the
+pole’s angle. This will make the rewards much less sparse and speed
+up training. Also, if you already have a reasonably good policy (e.g.,
+hardcoded), you may want to train the neural network to imitate it
+before using policy gradients to improve it.
+
+624 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+The simple policy gradients algorithm we just trained solved the CartPole task, but it
+would  not  scale  well  to  larger  and  more  complex  tasks.  Indeed,  it  is  highly  sample
+inefficient,  meaning  it  needs  to  explore  the  game  for  a  very  long  time  before  it  can
+make significant progress. This is due to the fact that it must run multiple episodes to
+estimate the advantage of each action, as we have seen. However, it is the foundation
+of more powerful algorithms, such as Actor-Critic algorithms (which we will discuss
+briefly at the end of this chapter).
+
+We  will  now  look  at  another  popular  family  of  algorithms.  Whereas  PG  algorithms
+directly try to optimize the policy to increase rewards, the algorithms we will look at
+now are less direct: the agent learns to estimate the expected return for each state, or
+for  each  action  in  each  state,  then  it  uses  this  knowledge  to  decide  how  to  act.  To
+understand these algorithms, we must first introduce Markov decision processes.
+
+Markov Decision Processes
+In the early 20th century, the mathematician Andrey Markov studied stochastic pro‐
+cesses with no memory, called Markov chains. Such a process has a fixed number of
+states, and it randomly evolves from one state to another at each step. The probability
+for it to evolve from a state s to a state s′ is fixed, and it depends only on the pair (s, s
+′), not on past states (this is why we say that the system has no memory).
+
+Figure 18-7 shows an example of a Markov chain with four states.
+
+Figure 18-7. Example of a Markov chain
+
+Suppose  that  the  process  starts  in  state  s0,  and  there  is  a  70%  chance  that  it  will
+remain  in  that  state  at  the  next  step.  Eventually  it  is  bound  to  leave  that  state  and
+never come back because no other state points back to s0. If it goes to state s1, it will
+then  most  likely  go  to  state  s2  (90%  probability),  then  immediately  back  to  state  s1
+
+Markov Decision Processes 
+
+| 
+
+625
+
+(with 100% probability). It may alternate a number of times between these two states,
+but  eventually  it  will  fall  into  state  s3  and  remain  there  forever  (this  is  a  terminal
+state). Markov chains can have very different dynamics, and they are heavily used in
+thermodynamics, chemistry, statistics, and much more.
+
+Markov  decision  processes  were  first  described  in  the  1950s  by  Richard  Bellman.12
+They resemble Markov chains but with a twist: at each step, an agent can choose one
+of  several  possible  actions,  and  the  transition  probabilities  depend  on  the  chosen
+action.  Moreover,  some  state  transitions  return  some  reward  (positive  or  negative),
+and the agent’s goal is to find a policy that will maximize reward over time.
+
+For example, the MDP represented in Figure 18-8 has three states (represented by cir‐
+cles) and up to three possible discrete actions at each step (represented by diamonds).
+
+Figure 18-8. Example of a Markov decision process
+
+If it starts in state s0, the agent can choose between actions a0, a1, or a2. If it chooses
+action a1, it just remains in state s0 with certainty, and without any reward. It can thus
+decide to stay there forever if it wants to. But if it chooses action a0, it has a 70% prob‐
+ability of gaining a reward of +10 and remaining in state s0. It can then try again and
+again  to  gain  as  much  reward  as  possible,  but  at  one  point  it  is  going  to  end  up
+instead in state s1. In state s1 it has only two possible actions: a0 or a2. It can choose to
+stay put by repeatedly choosing action a0, or it can choose to move on to state s2 and
+get  a  negative  reward  of  –50  (ouch).  In  state  s2  it  has  no  other  choice  than  to  take
+action a1, which will most likely lead it back to state s0, gaining a reward of +40 on the
+
+12 Richard Bellman, “A Markovian Decision Process,” Journal of Mathematics and Mechanics 6, no. 5 (1957):
+
+679–684.
+
+626 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+way. You get the picture. By looking at this MDP, can you guess which strategy will
+gain the most reward over time? In state s0 it is clear that action a0 is the best option,
+and  in  state  s2  the  agent  has  no  choice  but  to  take  action  a1,  but  in  state  s1  it  is  not
+obvious whether the agent should stay put (a0) or go through the fire (a2).
+
+Bellman  found  a  way  to  estimate  the  optimal  state  value  of  any  state  s,  noted  V*(s),
+which  is  the  sum  of  all  discounted  future  rewards  the  agent  can  expect  on  average
+after it reaches a state s, assuming it acts optimally. He showed that if the agent acts
+optimally,  then  the  Bellman  Optimality  Equation  applies  (see  Equation  18-1).  This
+recursive equation says that if the agent acts optimally, then the optimal value of the
+current  state  is  equal  to  the  reward  it  will  get  on  average  after  taking  one  optimal
+action, plus the expected optimal value of all possible next states that this action can
+lead to.
+
+Equation 18-1. Bellman Optimality Equation
+
+V* s = maxa ∑s T s, a, s′ R s, a, s′ + γ · V* s′
+
+for all s
+
+In this equation:
+
+• T(s, a, s′) is the transition probability from state s to state s′, given that the agent
+
+chose action a. For example, in Figure 18-8, T(s2, a1, s0) = 0.8.
+
+• R(s,  a,  s′)  is  the  reward  that  the  agent  gets  when  it  goes  from  state  s  to  state  s′,
+given  that  the  agent  chose  action  a.  For  example,  in  Figure  18-8,  R(s2,  a1,
+s0) = +40.
+
+• γ is the discount factor.
+
+This  equation  leads  directly  to  an  algorithm  that  can  precisely  estimate  the  optimal
+state  value  of  every  possible  state:  you  first  initialize  all  the  state  value  estimates  to
+zero,  and  then  you  iteratively  update  them  using  the  Value  Iteration  algorithm  (see
+Equation  18-2).  A  remarkable  result  is  that,  given  enough  time,  these  estimates  are
+guaranteed  to  converge  to  the  optimal  state  values,  corresponding  to  the  optimal
+policy.
+
+Equation 18-2. Value Iteration algorithm
+
+Vk + 1 s
+
+a ∑
+max
+s′
+
+T s, a, s′ R s, a, s′ + γ · Vk s′
+
+for all s
+
+In  this  equation,  Vk(s)  is  the  estimated  value  of  state  s  at  the  kth  iteration  of  the
+algorithm.
+
+Markov Decision Processes 
+
+| 
+
+627
+
+This  algorithm  is  an  example  of  Dynamic  Programming,  which
+breaks  down  a  complex  problem  into  tractable  subproblems  that
+can be tackled iteratively.
+
+Knowing the optimal state values can be useful, in particular to evaluate a policy, but
+it  does  not  give  us  the  optimal  policy  for  the  agent.  Luckily,  Bellman  found  a  very
+similar  algorithm  to  estimate  the  optimal  state-action  values,  generally  called  Q-
+Values  (Quality  Values).  The  optimal  Q-Value  of  the  state-action  pair  (s,  a),  noted
+Q*(s,  a),  is  the  sum  of  discounted  future  rewards  the  agent  can  expect  on  average
+after it reaches the state s and chooses action a, but before it sees the outcome of this
+action, assuming it acts optimally after that action.
+
+Here is how it works: once again, you start by initializing all the Q-Value estimates to
+zero,  then  you  update  them  using  the  Q-Value  Iteration  algorithm  (see  Equation
+18-3).
+
+Equation 18-3. Q-Value Iteration algorithm
+
+Qk + 1 s, a
+
+∑
+s′
+
+T s, a, s′ R s, a, s′ + γ · max
+a′
+
+Qk s′, a′
+
+for all
+
+s′a
+
+Once you have the optimal Q-Values, defining the optimal policy, noted π*(s), is triv‐
+ial: when the agent is in state s, it should choose the action with the highest Q-Value
+for that state: π* s = argmax
+
+Q* s, a .
+
+a
+
+Let’s  apply  this  algorithm  to  the  MDP  represented  in  Figure  18-8.  First,  we  need  to
+define the MDP:
+
+transition_probabilities = [ # shape=[s, a, s']
+        [[0.7, 0.3, 0.0], [1.0, 0.0, 0.0], [0.8, 0.2, 0.0]],
+        [[0.0, 1.0, 0.0], None, [0.0, 0.0, 1.0]],
+        [None, [0.8, 0.1, 0.1], None]]
+rewards = [ # shape=[s, a, s']
+        [[+10, 0, 0], [0, 0, 0], [0, 0, 0]],
+        [[0, 0, 0], [0, 0, 0], [0, 0, -50]],
+        [[0, 0, 0], [+40, 0, 0], [0, 0, 0]]]
+possible_actions = [[0, 1, 2], [0, 2], [1]]
+
+For example, to know the transition probability from s2 to s0 after playing action a1,
+we  will  look  up  transition_probabilities[2][1][0]  (which  is  0.8).  Similarly,  to
+get  the  corresponding  reward,  we  will  look  up  rewards[2][1][0]  (which  is  +40).
+And to get the list of possible actions in s2, we will look up possible_actions[2] (in
+this  case,  only  action  a1  is  possible).  Next,  we  must  initialize  all  the  Q-Values  to  0
+(except for the the impossible actions, for which we set the Q-Values to –∞):
+
+628 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+Q_values = np.full((3, 3), -np.inf) # -np.inf for impossible actions
+for state, actions in enumerate(possible_actions):
+    Q_values[state, actions] = 0.0  # for all possible actions
+
+Now let’s run the Q-Value Iteration algorithm. It applies Equation 18-3 repeatedly, to
+all Q-Values, for every state and every possible action:
+
+gamma = 0.90 # the discount factor
+
+for iteration in range(50):
+    Q_prev = Q_values.copy()
+    for s in range(3):
+        for a in possible_actions[s]:
+            Q_values[s, a] = np.sum([
+                    transition_probabilities[s][a][sp]
+                    * (rewards[s][a][sp] + gamma * np.max(Q_prev[sp]))
+                for sp in range(3)])
+
+That’s it! The resulting Q-Values look like this:
+
+>>> Q_values
+array([[18.91891892, 17.02702702, 13.62162162],
+       [ 0.        ,        -inf, -4.87971488],
+       [       -inf, 50.13365013,        -inf]])
+
+For example, when the agent is in state s0 and it chooses action a1, the expected sum
+of discounted future rewards is approximately 17.0.
+
+For each state, let’s look at the action that has the highest Q-Value:
+
+>>> np.argmax(Q_values, axis=1) # optimal action for each state
+array([0, 0, 1])
+
+This gives us the optimal policy for this MDP, when using a discount factor of 0.90: in
+state  s0  choose  action  a0;  in  state  s1  choose  action  a0  (i.e.,  stay  put);  and  in  state  s2
+choose action a1 (the only possible action). Interestingly, if we increase the discount
+factor to 0.95, the optimal policy changes: in state s1 the best action becomes a2 (go
+through the fire!). This makes sense because the more you value future rewards, the
+more you are willing to put up with some pain now for the promise of future bliss.
+
+Temporal Difference Learning
+Reinforcement  Learning  problems  with  discrete  actions  can  often  be  modeled  as
+Markov  decision  processes,  but  the  agent  initially  has  no  idea  what  the  transition
+probabilities are (it does not know T(s, a, s′)), and it does not know what the rewards
+are going to be either (it does not know R(s, a, s′)). It must experience each state and
+each transition at least once to know the rewards, and it must experience them multi‐
+ple times if it is to have a reasonable estimate of the transition probabilities.
+
+The  Temporal  Difference  Learning  (TD  Learning)  algorithm  is  very  similar  to  the
+Value Iteration algorithm, but tweaked to take into account the fact that the agent has
+
+Temporal Difference Learning 
+
+| 
+
+629
+
+only  partial  knowledge  of  the  MDP.  In  general  we  assume  that  the  agent  initially
+knows  only  the  possible  states  and  actions,  and  nothing  more.  The  agent  uses  an
+exploration policy—for example, a purely random policy—to explore the MDP, and as
+it  progresses,  the  TD  Learning  algorithm  updates  the  estimates  of  the  state  values
+based on the transitions and rewards that are actually observed (see Equation 18-4).
+
+Equation 18-4. TD Learning algorithm
+
+1 − α Vk s + α r + γ · Vk s′
+
+Vk + 1 s
+or, equivalently: 
+Vk + 1 s
+with δk s, r, s′ = r + γ · Vk s′ − Vk s
+
+Vk s + α · δk s, r, s′
+
+In this equation:
+
+• α is the learning rate (e.g., 0.01).
+• r + γ · 

@@ -1,0 +1,333 @@
+8500) and REST (on port 8501). Here is what
+all the command-line options mean:
+
+-it
+
+Makes the container interactive (so you can press Ctrl-C to stop it) and displays
+the server’s output.
+
+--rm
+
+Deletes  the  container  when  you  stop  it  (no  need  to  clutter  your  machine  with
+interrupted containers). However, it does not delete the image.
+
+-p 8500:8500
+
+Makes  the  Docker  engine  forward  the  host’s  TCP  port  8500  to  the  container’s
+TCP port 8500. By default, TF Serving uses this port to serve the gRPC API.
+
+-p 8501:8501
+
+Forwards the host’s TCP port 8501 to the container’s TCP port 8501. By default,
+TF Serving uses this port to serve the REST API.
+
+3 If you are not familiar with Docker, it allows you to easily download a set of applications packaged in a Docker
+image (including all their dependencies and usually some good default configuration) and then run them on
+your system using a Docker engine. When you run an image, the engine creates a Docker container that keeps
+the applications well isolated from your own system (but you can give it some limited access if you want). It is
+similar to a virtual machine, but much faster and more lightweight, as the container relies directly on the
+host’s kernel. This means that the image does not need to include or run its own kernel.
+
+672 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+-v "$ML_PATH/my_mnist_model:/models/my_mnist_model"
+
+Makes the host’s $ML_PATH/my_mnist_model directory available to the container
+at the path /models/mnist_model. On Windows, you may need to replace / with \
+in the host path (but not in the container path).
+
+-e MODEL_NAME=my_mnist_model
+
+Sets  the  container’s  MODEL_NAME  environment  variable,  so  TF  Serving  knows
+which model to serve. By default, it will look for models in the /models directory,
+and it will automatically serve the latest version it finds.
+
+tensorflow/serving
+
+This is the name of the image to run.
+
+Now let’s go back to Python and query this server, first using the REST API, then the
+gRPC API.
+
+Querying TF Serving through the REST API
+
+Let’s start by creating the query. It must contain the name of the function signature
+you want to call, and of course the input data:
+
+import json
+
+input_data_json = json.dumps({
+    "signature_name": "serving_default",
+    "instances": X_new.tolist(),
+})
+
+Note that the JSON format is 100% text-based, so the X_new NumPy array had to be
+converted to a Python list and then formatted as JSON:
+
+>>> input_data_json
+'{"signature_name": "serving_default", "instances": [[[0.0, 0.0, 0.0, [...]
+0.3294117647058824, 0.725490196078431, [...very long], 0.0, 0.0, 0.0, 0.0]]]}'
+
+Now let’s send the input data to TF Serving by sending an HTTP POST request. This
+can  be  done  easily  using  the  requests  library  (it  is  not  part  of  Python’s  standard
+library, so you will need to install it first, e.g., using pip):
+
+import requests
+
+SERVER_URL = 'http://localhost:8501/v1/models/my_mnist_model:predict'
+response = requests.post(SERVER_URL, data=input_data_json)
+response.raise_for_status() # raise an exception in case of error
+response = response.json()
+
+The response is a dictionary containing a single "predictions" key. The correspond‐
+ing  value  is  the  list  of  predictions.  This  list  is  a  Python  list,  so  let’s  convert  it  to  a
+NumPy array and round the floats it contains to the second decimal:
+
+Serving a TensorFlow Model 
+
+| 
+
+673
+
+>>> y_proba = np.array(response["predictions"])
+>>> y_proba.round(2)
+array([[0.  , 0.  , 0.  , 0.  , 0.  , 0.  , 0.  , 1.  , 0.  , 0.  ],
+       [0.  , 0.  , 0.99, 0.01, 0.  , 0.  , 0.  , 0.  , 0.  , 0.  ],
+       [0.  , 0.96, 0.01, 0.  , 0.  , 0.  , 0.  , 0.01, 0.01, 0.  ]])
+
+Hurray, we have the predictions! The model is close to 100% confident that the first
+image is a 7, 99% confident that the second image is a 2, and 96% confident that the
+third image is a 1.
+
+The REST API is nice and simple, and it works well when the input and output data
+are not too large. Moreover, just about any client application can make REST queries
+without  additional  dependencies,  whereas  other  protocols  are  not  always  so  readily
+available.  However,  it  is  based  on  JSON,  which  is  text-based  and  fairly  verbose.  For
+example, we had to convert the NumPy array to a Python list, and every float ended
+up  represented  as  a  string.  This  is  very  inefficient,  both  in  terms  of  serialization/
+deserialization time (to convert all the floats to strings and back) and in terms of pay‐
+load  size:  many  floats  end  up  being  represented  using  over  15  characters,  which
+translates to over 120 bits for 32-bit floats! This will result in high latency and band‐
+width usage when transferring large NumPy arrays.4 So let’s use gRPC instead.
+
+When transferring large amounts of data, it is much better to use
+the gRPC API (if the client supports it), as it is based on a compact
+binary format and an efficient communication protocol (based on
+HTTP/2 framing).
+
+Querying TF Serving through the gRPC API
+
+The gRPC API expects a serialized  PredictRequest protocol buffer as input, and it
+outputs a serialized PredictResponse protocol buffer. These protobufs are part of the
+tensorflow-serving-api library, which you must install (e.g., using pip). First, let’s
+create the request:
+
+from tensorflow_serving.apis.predict_pb2 import PredictRequest
+
+request = PredictRequest()
+request.model_spec.name = model_name
+request.model_spec.signature_name = "serving_default"
+input_name = model.input_names[0]
+request.inputs[input_name].CopyFrom(tf.make_tensor_proto(X_new))
+
+This  code  creates  a  PredictRequest  protocol  buffer  and  fills  in  the  required  fields,
+including  the  model  name  (defined  earlier),  the  signature  name  of  the  function  we
+
+4 To be fair, this can be mitigated by serializing the data first and encoding it to Base64 before creating the REST
+request. Moreover, REST requests can be compressed using gzip, which reduces the payload size significantly.
+
+674 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+want to call, and finally the input data, in the form of a Tensor protocol buffer. The
+tf.make_tensor_proto()  function  creates  a  Tensor  protocol  buffer  based  on  the
+given tensor or NumPy array, in this case X_new.
+
+Next, we’ll send the request to the server and get its response (for this you will need
+the grpcio library, which you can install using pip):
+
+import grpc
+from tensorflow_serving.apis import prediction_service_pb2_grpc
+
+channel = grpc.insecure_channel('localhost:8500')
+predict_service = prediction_service_pb2_grpc.PredictionServiceStub(channel)
+response = predict_service.Predict(request, timeout=10.0)
+
+The code is quite straightforward: after the imports, we create a gRPC communica‐
+tion channel to localhost on TCP port 8500, then we create a gRPC service over this
+channel  and  use  it  to  send  a  request,  with  a  10-second  timeout  (not  that  the  call  is
+synchronous:  it  will  block  until  it  receives  the  response  or  the  timeout  period
+expires). In this example the channel is insecure (no encryption, no authentication),
+but gRPC and TensorFlow Serving also support secure channels over SSL/TLS.
+
+Next, let’s convert the PredictResponse protocol buffer to a tensor:
+
+output_name = model.output_names[0]
+outputs_proto = response.outputs[output_name]
+y_proba = tf.make_ndarray(outputs_proto)
+
+If  you  run  this  code  and  print  y_proba.numpy().round(2),  you  will  get  the  exact
+same estimated class probabilities as earlier. And that’s all there is to it: in just a few
+lines  of  code,  you  can  now  access  your  TensorFlow  model  remotely,  using  either
+REST or gRPC.
+
+Deploying a new model version
+
+let’s  create  a  new  model  version  and  export  a  SavedModel  to  the
+
+Now 
+my_mnist_model/0002 directory, just like earlier:
+
+model = keras.models.Sequential([...])
+model.compile([...])
+history = model.fit([...])
+
+model_version = "0002"
+model_name = "my_mnist_model"
+model_path = os.path.join(model_name, model_version)
+tf.saved_model.save(model, model_path)
+
+At  regular  intervals  (the  delay  is  configurable),  TensorFlow  Serving  checks  for  new
+model versions. If it finds one, it will automatically handle the transition gracefully:
+by default, it will answer pending requests (if any) with the previous model version,
+
+Serving a TensorFlow Model 
+
+| 
+
+675
+
+while handling new requests with the new version.5 As soon as every pending request
+has been answered, the previous model version is unloaded. You can see this at work
+in the TensorFlow Serving logs:
+
+[...]
+reserved resources to load servable {name: my_mnist_model version: 2}
+[...]
+Reading SavedModel from: /models/my_mnist_model/0002
+Reading meta graph with tags { serve }
+Successfully loaded servable version {name: my_mnist_model version: 2}
+Quiescing servable version {name: my_mnist_model version: 1}
+Done quiescing servable version {name: my_mnist_model version: 1}
+Unloading servable version {name: my_mnist_model version: 1}
+
+This approach offers a smooth transition, but it may use too much RAM (especially
+GPU RAM, which is generally the most limited). In this case, you can configure TF
+Serving so that it handles all pending requests with the previous model version and
+unloads  it  before  loading  and  using  the  new  model  version.  This  configuration  will
+avoid  having  two  model  versions  loaded  at  the  same  time,  but  the  service  will  be
+unavailable for a short period.
+
+As you can see, TF Serving makes it quite simple to deploy new models. Moreover, if
+you discover that version 2 does not work as well as you expected, then rolling back
+to version 1 is as simple as removing the my_mnist_model/0002 directory.
+
+Another great feature of TF Serving is its automatic batching capa‐
+bility, which you can activate using the --enable_batching option
+upon startup. When TF Serving receives multiple requests within a
+short period of time (the delay is configurable), it will automatically
+batch  them  together  before  using  the  model.  This  offers  a  signifi‐
+cant performance boost by leveraging the power of the GPU. Once
+the model returns the predictions, TF Serving dispatches each pre‐
+diction  to  the  right  client.  You  can  trade  a  bit  of  latency  for  a
+greater  throughput  by  increasing  the  batching  delay  (see  the
+--batching_parameters_file option).
+
+If you expect to get many queries per second, you will want to deploy TF Serving on
+multiple  servers  and  load-balance  the  queries  (see  Figure  19-2).  This  will  require
+deploying and managing many TF Serving containers across these servers. One way
+to handle that is to use a tool such as Kubernetes, which is an open source system for
+simplifying container orchestration across many servers. If you do not want to pur‐
+
+5 If the SavedModel contains some example instances in the assets/extra directory, you can configure TF Serv‐
+ing to execute the model on these instances before starting to serve new requests with it. This is called model
+warmup: it will ensure that everything is properly loaded, avoiding long response times for the first requests.
+
+676 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+chase,  maintain,  and  upgrade  all  the  hardware  infrastructure,  you  will  want  to  use
+virtual machines on a cloud platform such as Amazon AWS, Microsoft Azure, Google
+Cloud Platform, IBM Cloud, Alibaba Cloud, Oracle Cloud, or some other Platform-
+as-a-Service (PaaS). Managing all the virtual machines, handling container orchestra‐
+tion  (even  with  the  help  of  Kubernetes),  taking  care  of  TF  Serving  configuration,
+tuning and monitoring—all of this can be a full-time job. Fortunately, some service
+providers can take care of all this for you. In this chapter we will use Google Cloud AI
+Platform because it’s the only platform with TPUs today, it supports TensorFlow 2, it
+offers a nice suite of AI services (e.g., AutoML, Vision API, Natural Language API),
+and it is the one I have the most experience with. But there are several other provid‐
+ers in this space, such as Amazon AWS SageMaker and Microsoft AI Platform, which
+are also capable of serving TensorFlow models.
+
+Figure 19-2. Scaling up TF Serving with load balancing
+
+Now let’s see how to serve our wonderful MNIST model on the cloud!
+
+Creating a Prediction Service on GCP AI Platform
+Before you can deploy a model, there’s a little bit of setup to take care of:
+
+1. Log in to your Google account, and then go to the Google Cloud Platform (GCP)
+console (see Figure 19-3). If you don’t have a Google account, you’ll have to cre‐
+ate one.
+
+2. If it is your first time using GCP, you will have to read and accept the terms and
+conditions. Click Tour Console if you want. At the time of this writing, new users
+are offered a free trial, including $300 worth of GCP credit that you can use over
+the course of 12 months. You will only need a small portion of that to pay for the
+services you will use in this chapter. Upon signing up for the free trial, you will
+still need to create a payment profile and enter your credit card number: it is used
+for  verification  purposes  (probably  to  avoid  people  using  the  free  trial  multiple
+times), but you will not be billed. Activate and upgrade your account if requested.
+
+Serving a TensorFlow Model 
+
+| 
+
+677
+
+Figure 19-3. Google Cloud Platform console
+
+3. If you have used GCP before and your free trial has expired, then the services you
+will  use  in  this  chapter  will  cost  you  some  money.  It  should  not  be  too  much,
+especially if you remember to turn off the services when you do not need them
+anymore. Make sure you understand and agree to the pricing conditions before
+you run any service. I hereby decline any responsibility if services end up costing
+more than you expected! Also make sure your billing account is active. To check,
+open the navigation menu on the left and click Billing, and make sure you have
+set up a payment method and that the billing account is active.
+
+4. Every  resource  in  GCP  belongs  to  a  project.  This  includes  all  the  virtual
+machines you may use, the files you store, and the training jobs you run. When
+you  create  an  account,  GCP  automatically  creates  a  project  for  you,  called  “My
+First  Project.”  If  you  want,  you  can  change  its  display  name  by  going  to  the
+project settings: in the navigation menu (on the left of the screen), select IAM &
+admin  →  Settings,  change  the  project’s  display  name,  and  click  Save.  Note  that
+the  project  also  has  a  unique  ID  and  number.  You  can  choose  the  project  ID
+when you create a project, but you cannot change it later. The project number is
+automatically  generated  and  cannot  be  changed.  If  you  want  to  create  a  new
+project, click the project name at the top of the page, then click New Project and
+enter the project ID. Make sure billing is active for this new project.
+
+678 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+Always  set  an  alarm  to  remind  yourself  to  turn  services  off
+when  you  know  you  will  only  need  them  for  a  few  hours,  or
+else you might leave them running for days or months, incur‐
+ring potentially significant costs.
+
+5. Now that you have a GCP account with billing activated, you can start using the
+services. The first 

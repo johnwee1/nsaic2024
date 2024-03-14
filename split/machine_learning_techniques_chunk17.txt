@@ -1,0 +1,413 @@
+| 
+
+139
+
+The Lasso cost function is not differentiable at θi = 0 (for i = 1, 2, ⋯, n), but Gradient
+Descent  still  works  fine  if  you  use  a  subgradient  vector  g13  instead  when  any  θi  =  0.
+Equation 4-11 shows a subgradient vector equation you can use for Gradient Descent
+with the Lasso cost function.
+
+Equation 4-11. Lasso Regression subgradient vector
+
+g θ, J = ∇θ MSE θ + α
+
+sign θ1
+sign θ2
+⋮
+sign θn
+
+   where  sign θi =
+
+−1 if θi < 0
+0 if θi = 0
++1 if θi > 0
+
+Here is a small Scikit-Learn example using the Lasso class:
+
+>>> from sklearn.linear_model import Lasso
+>>> lasso_reg = Lasso(alpha=0.1)
+>>> lasso_reg.fit(X, y)
+>>> lasso_reg.predict([[1.5]])
+array([1.53788174])
+
+Note that you could instead use SGDRegressor(penalty="l1").
+
+Elastic Net
+Elastic Net is a middle ground between Ridge Regression and Lasso Regression. The
+regularization  term  is  a  simple  mix  of  both  Ridge  and  Lasso’s  regularization  terms,
+and  you  can  control  the  mix  ratio  r.  When  r  =  0,  Elastic  Net  is  equivalent  to  Ridge
+Regression, and when r = 1, it is equivalent to Lasso Regression (see Equation 4-12).
+
+Equation 4-12. Elastic Net cost function
+
+J θ = MSE θ + rα∑i = 1
+
+n
+
+θi +
+
+1 − r
+n
+2 α∑i = 1
+
+2
+
+θi
+
+So  when  should  you  use  plain  Linear  Regression  (i.e.,  without  any  regularization),
+Ridge, Lasso, or Elastic Net? It is almost always preferable to have at least a little bit of
+regularization, so generally you should avoid plain Linear Regression. Ridge is a good
+default, but if you suspect that only a few features are useful, you should prefer Lasso
+or Elastic Net because they tend to reduce the useless features’ weights down to zero,
+as  we  have  discussed.  In  general,  Elastic  Net  is  preferred  over  Lasso  because  Lasso
+
+13 You can think of a subgradient vector at a nondifferentiable point as an intermediate vector between the gra‐
+
+dient vectors around that point.
+
+140 
+
+| 
+
+Chapter 4: Training Models
+
+may  behave  erratically  when  the  number  of  features  is  greater  than  the  number  of
+training instances or when several features are strongly correlated.
+
+Here is a short example that uses Scikit-Learn’s ElasticNet (l1_ratio corresponds to
+the mix ratio r):
+
+>>> from sklearn.linear_model import ElasticNet
+>>> elastic_net = ElasticNet(alpha=0.1, l1_ratio=0.5)
+>>> elastic_net.fit(X, y)
+>>> elastic_net.predict([[1.5]])
+array([1.54333232])
+
+Early Stopping
+A  very  different  way  to  regularize  iterative  learning  algorithms  such  as  Gradient
+Descent is to stop training as soon as the validation error reaches a minimum. This is
+called early stopping. Figure 4-20 shows a complex model (in this case, a high-degree
+Polynomial  Regression  model)  being  trained  with  Batch  Gradient  Descent.  As  the
+epochs go by the algorithm learns, and its prediction error (RMSE) on the training
+set  goes  down,  along  with  its  prediction  error  on  the  validation  set.  After  a  while
+though, the validation error stops decreasing and starts to go back up. This indicates
+that the model has started to overfit the training data. With early stopping you just
+stop training as soon as the validation error reaches the minimum. It is such a simple
+and efficient regularization technique that Geoffrey Hinton called it a “beautiful free
+lunch.”
+
+Figure 4-20. Early stopping regularization
+
+Regularized Linear Models 
+
+| 
+
+141
+
+With  Stochastic  and  Mini-batch  Gradient  Descent,  the  curves  are
+not  so  smooth,  and  it  may  be  hard  to  know  whether  you  have
+reached the minimum or not. One solution is to stop only after the
+validation error has been above the minimum for some time (when
+you are confident that the model will not do any better), then roll
+back the model parameters to the point where the validation error
+was at a minimum.
+
+Here is a basic implementation of early stopping:
+
+from sklearn.base import clone
+
+# prepare the data
+poly_scaler = Pipeline([
+        ("poly_features", PolynomialFeatures(degree=90, include_bias=False)),
+        ("std_scaler", StandardScaler())
+    ])
+X_train_poly_scaled = poly_scaler.fit_transform(X_train)
+X_val_poly_scaled = poly_scaler.transform(X_val)
+
+sgd_reg = SGDRegressor(max_iter=1, tol=-np.infty, warm_start=True,
+                       penalty=None, learning_rate="constant", eta0=0.0005)
+
+minimum_val_error = float("inf")
+best_epoch = None
+best_model = None
+for epoch in range(1000):
+    sgd_reg.fit(X_train_poly_scaled, y_train)  # continues where it left off
+    y_val_predict = sgd_reg.predict(X_val_poly_scaled)
+    val_error = mean_squared_error(y_val, y_val_predict)
+    if val_error < minimum_val_error:
+        minimum_val_error = val_error
+        best_epoch = epoch
+        best_model = clone(sgd_reg)
+
+Note that with warm_start=True, when the fit() method is called it continues train‐
+ing where it left off, instead of restarting from scratch.
+
+Logistic Regression
+As we discussed in Chapter 1, some regression algorithms can be used for classifica‐
+tion  (and  vice  versa).  Logistic  Regression  (also  called  Logit  Regression)  is  commonly
+used  to  estimate  the  probability  that  an  instance  belongs  to  a  particular  class  (e.g.,
+what is the probability that this email is spam?). If the estimated probability is greater
+than 50%, then the model predicts that the instance belongs to that class (called the
+positive class, labeled “1”), and otherwise it predicts that it does not (i.e., it belongs to
+the negative class, labeled “0”). This makes it a binary classifier.
+
+142 
+
+| 
+
+Chapter 4: Training Models
+
+Estimating Probabilities
+So how does Logistic Regression work? Just like a Linear Regression model, a Logistic
+Regression model computes a weighted sum of the input features (plus a bias term),
+but instead of outputting the result directly like the Linear Regression model does, it
+outputs the logistic of this result (see Equation 4-13).
+
+Equation 4-13. Logistic Regression model estimated probability (vectorized form)
+p = hθ x = σ x⊺θ
+
+The logistic—noted σ(·)—is a sigmoid function (i.e., S-shaped) that outputs a number
+between 0 and 1. It is defined as shown in Equation 4-14 and Figure 4-21.
+
+Equation 4-14. Logistic function
+
+σ t =
+
+1
+1 + exp − t
+
+Figure 4-21. Logistic function
+
+Once  the  Logistic  Regression  model  has  estimated  the  probability  p  =  hθ(x)  that  an
+instance x belongs to the positive class, it can make its prediction ŷ easily (see Equa‐
+tion 4-15).
+
+Equation 4-15. Logistic Regression model prediction
+
+y =
+
+0 if p < 0.5
+
+1 if p ≥ 0.5
+
+Notice that σ(t) < 0.5 when t < 0, and σ(t) ≥ 0.5 when t ≥ 0, so a Logistic Regression
+model predicts 1 if x⊺ θ is positive and 0 if it is negative.
+
+Logistic Regression 
+
+| 
+
+143
+
+The score t is often called the logit. The name comes from the fact
+that the logit function, defined as logit(p) = log(p / (1 – p)), is the
+inverse of the logistic function. Indeed, if you compute the logit of
+the  estimated  probability  p,  you  will  find  that  the  result  is  t.  The
+logit  is  also  called  the  log-odds,  since  it  is  the  log  of  the  ratio
+between  the  estimated  probability  for  the  positive  class  and  the
+estimated probability for the negative class.
+
+Training and Cost Function
+Now  you  know  how  a  Logistic  Regression  model  estimates  probabilities  and  makes
+predictions.  But  how  is  it  trained?  The  objective  of  training  is  to  set  the  parameter
+vector θ so that the model estimates high probabilities for positive instances (y = 1)
+and low probabilities for negative instances (y = 0). This idea is captured by the cost
+function shown in Equation 4-16 for a single training instance x.
+
+Equation 4-16. Cost function of a single training instance
+
+c θ =
+
+−log p
+
+if y = 1
+
+−log 1 − p if y = 0
+
+This cost function makes sense because –log(t) grows very large when t approaches 0,
+so the cost will be large if the model estimates a probability close to 0 for a positive
+instance, and it will also be very large if the model estimates a probability close to 1
+for a negative instance. On the other hand, –log(t) is close to 0 when t is close to 1, so
+the  cost  will  be  close  to  0  if  the  estimated  probability  is  close  to  0  for  a  negative
+instance or close to 1 for a positive instance, which is precisely what we want.
+
+The  cost  function  over  the  whole  training  set  is  the  average  cost  over  all  training
+instances. It can be written in a single expression called the log loss, shown in Equa‐
+tion 4-17.
+
+Equation 4-17. Logistic Regression cost function (log loss)
+
+J θ = −
+
+1
+m
+m ∑i = 1
+
+y i log p i + 1 − y i
+
+log 1 − p i
+
+The bad news is that there is no known closed-form equation to compute the value of
+θ that minimizes this cost function (there is no equivalent of the Normal Equation).
+The good news is that this cost function is convex, so Gradient Descent (or any other
+optimization  algorithm)  is  guaranteed  to  find  the  global  minimum  (if  the  learning
+
+144 
+
+| 
+
+Chapter 4: Training Models
+
+rate  is  not  too  large  and  you  wait  long  enough).  The  partial  derivatives  of  the  cost
+function with regard to the jth model parameter θj are given by Equation 4-18.
+
+Equation 4-18. Logistic cost function partial derivatives
+
+∂
+∂θ j
+
+J θ =
+
+m
+
+1
+m ∑
+
+i = 1
+
+σ θ⊺x i − y i x j
+
+i
+
+This equation looks very much like Equation 4-5: for each instance it computes the
+prediction  error  and  multiplies  it  by  the  jth  feature  value,  and  then  it  computes  the
+average over all training instances. Once you have the gradient vector containing all
+the partial derivatives, you can use it in the Batch Gradient Descent algorithm. That’s
+it: you now know how to train a Logistic Regression model. For Stochastic GD you
+would  take  one  instance  at  a  time,  and  for  Mini-batch  GD  you  would  use  a  mini-
+batch at a time.
+
+Decision Boundaries
+Let’s use the iris dataset to illustrate Logistic Regression. This is a famous dataset that
+contains  the  sepal  and  petal  length  and  width  of  150  iris  flowers  of  three  different
+species: Iris setosa, Iris versicolor, and Iris virginica (see Figure 4-22).
+
+Figure 4-22. Flowers of three iris plant species14
+
+14 Photos reproduced from the corresponding Wikipedia pages. Iris virginica photo by Frank Mayfield (Creative
+Commons BY-SA 2.0), Iris versicolor photo by D. Gordon E. Robertson (Creative Commons BY-SA 3.0), Iris
+setosa photo public domain.
+
+Logistic Regression 
+
+| 
+
+145
+
+Let’s  try  to  build  a  classifier  to  detect  the  Iris  virginica  type  based  only  on  the  petal
+width feature. First let’s load the data:
+
+>>> from sklearn import datasets
+>>> iris = datasets.load_iris()
+>>> list(iris.keys())
+['data', 'target', 'target_names', 'DESCR', 'feature_names', 'filename']
+>>> X = iris["data"][:, 3:]  # petal width
+>>> y = (iris["target"] == 2).astype(np.int)  # 1 if Iris virginica, else 0
+
+Now let’s train a Logistic Regression model:
+
+from sklearn.linear_model import LogisticRegression
+
+log_reg = LogisticRegression()
+log_reg.fit(X, y)
+
+Let’s look at the model’s estimated probabilities for flowers with petal widths varying
+from 0 cm to 3 cm (Figure 4-23):15
+
+X_new = np.linspace(0, 3, 1000).reshape(-1, 1)
+y_proba = log_reg.predict_proba(X_new)
+plt.plot(X_new, y_proba[:, 1], "g-", label="Iris virginica")
+plt.plot(X_new, y_proba[:, 0], "b--", label="Not Iris virginica")
+# + more Matplotlib code to make the image look pretty
+
+Figure 4-23. Estimated probabilities and decision boundary
+
+The petal width of Iris virginica flowers (represented by triangles) ranges from 1.4 cm
+to  2.5  cm,  while  the  other  iris  flowers  (represented  by  squares)  generally  have  a
+smaller petal width, ranging from 0.1 cm to 1.8 cm. Notice that there is a bit of over‐
+lap. Above about 2 cm the classifier is highly confident that the flower is an Iris virgin‐
+ica  (it  outputs  a  high  probability  for  that  class),  while  below  1  cm  it  is  highly
+confident that it is not an Iris virginica (high probability for the “Not Iris virginica”
+
+15 NumPy’s reshape() function allows one dimension to be –1, which means “unspecified”: the value is inferred
+
+from the length of the array and the remaining dimensions.
+
+146 
+
+| 
+
+Chapter 4: Training Models
+
+class).  In  between  these  extremes,  the  classifier  is  unsure.  However,  if  you  ask  it  to
+predict  the  class  (using  the  predict()  method  rather  than  the  predict_proba()
+method), it will return whichever class is the most likely. Therefore, there is a decision
+boundary  at  around  1.6  cm  where  both  probabilities  are  equal  to  50%:  if  the  petal
+width is higher than 1.6 cm, the classifier will predict that the flower is an Iris virgin‐
+ica, and otherwise it will predict that it is not (even if it is not very confident):
+
+>>> log_reg.predict([[1.7], [1.5]])
+array([1, 0])
+
+Figure 4-24 shows the same dataset, but this time displaying two features: petal width
+and  length.  Once  trained,  the  Logistic  Regression  classifier  can,  based  on  these  two
+features, estimate the probability that a new flower is an Iris virginica. The dashed line
+represents the points where the model estimates a 50% probability: this is the model’s
+decision boundary. Note that it is a linear boundary.16 Each parallel line represents the
+points where the model outputs a specific probability, from 15% (bottom left) to 90%
+(top  right).  All  the  flowers  beyond  the  top-right  line  have  an  over  90%  chance  of
+being Iris virginica, according to the model.
+
+Figure 4-24. Linear decision boundary
+
+Just like the other linear models, Logistic Regression models can be regularized using
+ℓ1 or ℓ2 penalties. Scikit-Learn actually adds an ℓ2 penalty by default.
+
+The  hyperparameter  controlling  the  regularization  strength  of  a
+Scikit-Learn LogisticRegression model is not alpha (as in other
+linear models), but its inverse: C. The higher the value of C, the less
+the model is regularized.
+
+16 It is the the set of points x such that θ0 + θ1x1 + θ2x2 = 0, which defines a straight line.
+
+Logistic Regression 
+
+| 
+
+147
+
+Softmax Regression
+The Logistic Regression model can be generalized to support multiple classes directly,
+without  having  to  train  and  combine  multiple  binary  classifiers  (as  discussed  in
+Chapter 3). This is called Softmax Regression, or Multinomial Logistic Regression.
+
+The  idea  is  simple:  when  given  an  instance  x,  the  Softmax  Regression  model  first
+computes a score sk(x) for each class k, then estimates the probability of each class by
+applying the softmax function (also called the normalized exponential) to the scores.
+The equation to compute sk(x) should look familiar, as it is just like the equation for
+Linear Regression prediction (see Equation 4-19).
+
+Equation 4-19. Softmax score for class k
+sk x = x⊺θ k
+
+Note that each class has its own dedicated parameter vector θ(k). All these vectors are
+typically stored as rows in a parameter matrix Θ.
+
+Once you have computed the score of every class for the instance x, you can estimate
+the probability  pk that the instance belongs to class k by running the scores through
+the  softmax  function  (Equation  4-20).  The  function  computes  the  exponential  of
+every score, then normalizes them (dividing by the sum of all the exponentials). The
+scores  are  generally  called  logits  or  log-odds  (although  they  are  actually  unnormal‐
+ized log-odds).
+
+Equation 4-20. Softma

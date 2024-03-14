@@ -1,0 +1,309 @@
+tputs, _, _ = decoder(
+    embedding_decoder, start_tokens=start_tokens, end_token=end_token,
+    initial_state=decoder_initial_state)
+
+We first create a BeamSearchDecoder, which wraps all the decoder clones (in this case
+10  clones).  Then  we  create  one  copy  of  the  encoder’s  final  state  for  each  decoder
+clone, and we pass these states to the decoder, along with the start and end tokens.
+
+With all this, you can get good translations for fairly short sentences (especially if you
+use  pretrained  word  embeddings).  Unfortunately,  this  model  will  be  really  bad  at
+translating  long  sentences.  Once  again,  the  problem  comes  from  the  limited  short-
+term memory of RNNs. Attention mechanisms are the game-changing innovation that
+addressed this problem.
+
+548 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+Attention Mechanisms
+Consider the path from the word “milk” to its translation “lait” in Figure 16-3: it is
+quite  long!  This  means  that  a  representation  of  this  word  (along  with  all  the  other
+words) needs to be carried over many steps before it is actually used. Can’t we make
+this path shorter?
+
+This was the core idea in a groundbreaking 2014 paper13 by Dzmitry Bahdanau et al.
+They  introduced  a  technique  that  allowed  the  decoder  to  focus  on  the  appropriate
+words  (as  encoded  by  the  encoder)  at  each  time  step.  For  example,  at  the  time  step
+where  the  decoder  needs  to  output  the  word  “lait,”  it  will  focus  its  attention  on  the
+word “milk.” This means that the path from an input word to its translation is now
+much shorter, so the short-term memory limitations of RNNs have much less impact.
+Attention mechanisms revolutionized neural machine translation (and NLP in gen‐
+eral),  allowing  a  significant  improvement  in  the  state  of  the  art,  especially  for  long
+sentences (over 30 words).14
+
+Figure 16-6 shows this model’s architecture (slightly simplified, as we will see). On the
+left, you have the encoder and the decoder. Instead of just sending the encoder’s final
+hidden state to the decoder (which is still done, although it is not shown in the fig‐
+ure), we now send all of its outputs to the decoder. At each time step, the decoder’s
+memory cell computes a weighted sum of all these encoder outputs: this determines
+which  words  it  will  focus  on  at  this  step.  The  weight  α(t,i)  is  the  weight  of  the  ith
+encoder output at the tth decoder time step. For example, if the weight α(3,2) is much
+larger than the weights α(3,0) and α(3,1), then the decoder will pay much more attention
+to word number 2 (“milk”) than to the other two words, at least at this time step. The
+rest of the decoder works just like earlier: at each time step the memory cell receives
+the inputs we just discussed, plus the hidden state from the previous time step, and
+finally (although it is not represented in the diagram) it receives the target word from
+the previous time step (or at inference time, the output from the previous time step).
+
+13 Dzmitry Bahdanau et al., “Neural Machine Translation by Jointly Learning to Align and Translate,” arXiv pre‐
+
+print arXiv:1409.0473 (2014).
+
+14 The most common metric used in NMT is the BiLingual Evaluation Understudy (BLEU) score, which com‐
+pares each translation produced by the model with several good translations produced by humans: it counts
+the number of n-grams (sequences of n words) that appear in any of the target translations and adjusts the
+score to take into account the frequency of the produced n-grams in the target translations.
+
+Attention Mechanisms 
+
+| 
+
+549
+
+Figure 16-6. Neural machine translation using an Encoder–Decoder network with an
+attention model
+
+But where do these α(t,i) weights come from? It’s actually pretty simple: they are gener‐
+ated  by  a  type  of  small  neural  network  called  an  alignment  model  (or  an  attention
+layer),  which  is  trained  jointly  with  the  rest  of  the  Encoder–Decoder  model.  This
+alignment  model  is  illustrated  on  the  righthand  side  of  Figure  16-6.  It  starts  with  a
+time-distributed  Dense  layer15  with  a  single  neuron,  which  receives  as  input  all  the
+encoder  outputs,  concatenated  with  the  decoder’s  previous  hidden  state  (e.g.,  h(2)).
+This layer outputs a score (or energy) for each encoder output (e.g., e(3, 2)): this score
+measures  how  well  each  output  is  aligned  with  the  decoder’s  previous  hidden  state.
+Finally, all the scores go through a softmax layer to get a final weight for each encoder
+output (e.g., α(3,2)). All the weights for a given decoder time step add up to 1 (since the
+softmax layer is not time-distributed). This particular attention mechanism is called
+Bahdanau  attention  (named  after  the  paper’s  first  author).  Since  it  concatenates  the
+encoder output with the decoder’s previous hidden state, it is sometimes called con‐
+catenative attention (or additive attention).
+
+15 Recall that a time-distributed Dense layer is equivalent to a regular Dense layer that you apply independently
+
+at each time step (only much faster).
+
+550 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+If the input sentence is n words long, and assuming the output sen‐
+tence is about as long, then this model will need to compute about
+n2 weights. Fortunately, this quadratic computational complexity is
+still tractable because even long sentences don’t have thousands of
+words.
+
+Another common attention mechanism was proposed shortly after, in a 2015 paper16
+by Minh-Thang Luong et al. Because the goal of the attention mechanism is to meas‐
+ure  the  similarity  between  one  of  the  encoder’s  outputs  and  the  decoder’s  previous
+hidden state, the authors proposed to simply compute the dot product (see Chapter 4)
+of  these  two  vectors,  as  this  is  often  a  fairly  good  similarity  measure,  and  modern
+hardware can compute it much faster. For this to be possible, both vectors must have
+the same dimensionality. This is called Luong attention (again, after the paper’s first
+author), or sometimes multiplicative attention. The dot product gives a score, and all
+the scores (at a given decoder time step) go through a softmax layer to give the final
+weights, just like in Bahdanau attention. Another simplification they proposed was to
+use the decoder’s hidden state at the current time step rather than at the previous time
+step  (i.e.,  h(t))  rather  than  h(t–1)),  then  to  use  the  output  of  the  attention  mechanism
+(noted   t )  directly  to  compute  the  decoder’s  predictions  (rather  than  using  it  to
+compute the decoder’s current hidden state). They also proposed a variant of the dot
+product mechanism where the encoder outputs first go through a linear transforma‐
+tion (i.e., a time-distributed Dense layer without a bias term) before the dot products
+are computed. This is called the “general” dot product approach. They compared both
+dot product approaches to the concatenative attention mechanism (adding a rescaling
+parameter vector v), and they observed that the dot product variants performed bet‐
+ter than concatenative attention. For this reason, concatenative attention is much less
+used  now.  The  equations  for  these  three  attention  mechanisms  are  summarized  in
+Equation 16-1.
+
+16 Minh-Thang Luong et al., “Effective Approaches to Attention-Based Neural Machine Translation,” Proceed‐
+
+ings of the 2015 Conference on Empirical Methods in Natural Language Processing (2015): 1412–1421.
+
+Attention Mechanisms 
+
+| 
+
+551
+
+Equation 16-1. Attention mechanisms
+
+ t = ∑
+i
+
+α t, i
+
+ i
+
+with α t, i =
+
+and e t, i =
+
+exp e t, i
+∑i′ exp e t, i′
+⊺  i
+⊺   i
+tanh   t ;  i
+
+ t
+ t
+⊺
+
+dot
+
+general
+
+concat
+
+Here is how you can add Luong attention to an Encoder–Decoder model using Ten‐
+sorFlow Addons:
+
+attention_mechanism = tfa.seq2seq.attention_wrapper.LuongAttention(
+    units, encoder_state, memory_sequence_length=encoder_sequence_length)
+attention_decoder_cell = tfa.seq2seq.attention_wrapper.AttentionWrapper(
+    decoder_cell, attention_mechanism, attention_layer_size=n_units)
+
+We simply wrap the decoder cell in an AttentionWrapper, and we provide the desired
+attention mechanism (Luong attention in this example).
+
+Visual Attention
+Attention mechanisms are now used for a variety of purposes. One of their first appli‐
+cations  beyond  NMT  was  in  generating  image  captions  using  visual  attention:17  a
+convolutional  neural  network  first  processes  the  image  and  outputs  some  feature
+maps, then a decoder RNN equipped with an attention mechanism generates the cap‐
+tion, one word at a time. At each decoder time step (each word), the decoder uses the
+attention  model  to  focus  on  just  the  right  part  of  the  image.  For  example,  in
+Figure  16-7,  the  model  generated  the  caption  “A  woman  is  throwing  a  frisbee  in  a
+park,” and you can see what part of the input image the decoder focused its attention
+on when it was about to output the word “frisbee”: clearly, most of its attention was
+focused on the frisbee.
+
+17 Kelvin Xu et al., “Show, Attend and Tell: Neural Image Caption Generation with Visual Attention,” Proceedings
+
+of the 32nd International Conference on Machine Learning (2015): 2048–2057.
+
+552 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+Figure 16-7. Visual attention: an input image (left) and the model’s focus before produc‐
+ing the word “frisbee” (right)18
+
+Explainability
+One extra benefit of attention mechanisms is that they make it easier to understand
+what led the model to produce its output. This is called explainability. It can be espe‐
+cially useful when the model makes a mistake: for example, if an image of a dog walk‐
+ing in the snow is labeled as “a wolf walking in the snow,” then you can go back and
+check what the model focused on when it output the word “wolf.” You may find that it
+was paying attention not only to the dog, but also to the snow, hinting at a possible
+explanation: perhaps the way the model learned to distinguish dogs from wolves is by
+checking whether or not there’s a lot of snow around. You can then fix this by training
+the model with more images of wolves without snow, and dogs with snow. This exam‐
+ple comes from a great 2016 paper19 by Marco Tulio Ribeiro et al. that uses a different
+approach  to  explainability:  learning  an  interpretable  model  locally  around  a  classi‐
+fier’s prediction.
+
+In  some  applications,  explainability  is  not  just  a  tool  to  debug  a  model;  it  can  be  a
+legal  requirement  (think  of  a  system  deciding  whether  or  not  it  should  grant  you  a
+loan).
+
+18 This is a part of figure 3 from the paper. It is reproduced with the kind authorization of the authors.
+
+19 Marco Tulio Ribeiro et al., “‘Why Should I Trust You?’: Explaining the Predictions of Any Classifier,” Proceed‐
+ings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (2016):
+1135–1144.
+
+Attention Mechanisms 
+
+| 
+
+553
+
+Attention  mechanisms  are  so  powerful  that  you  can  actually  build  state-of-the-art
+models using only attention mechanisms.
+
+Attention Is All You Need: The Transformer Architecture
+In  a  groundbreaking  2017  paper,20  a  team  of  Google  researchers  suggested  that
+“Attention Is All You Need.” They managed to create an architecture called the Trans‐
+former, which significantly improved the state of the art in NMT without using any
+recurrent or convolutional layers,21 just attention mechanisms (plus embedding lay‐
+ers, dense layers, normalization layers, and a few other bits and pieces). As an extra
+bonus, this architecture was also much faster to train and easier to parallelize, so they
+managed to train it at a fraction of the time and cost of the previous state-of-the-art
+models.
+
+The Transformer architecture is represented in Figure 16-8.
+
+20 Ashish Vaswani et al., “Attention Is All You Need,” Proceedings of the 31st International Conference on Neural
+
+Information Processing Systems (2017): 6000–6010.
+
+21 Since the Transformer uses time-distributed Dense layers, you could argue that it uses 1D convolutional layers
+
+with a kernel size of 1.
+
+554 
+
+| 
+
+Chapter 16: Natural Language Processing with RNNs and Attention
+
+Figure 16-8. The Transformer architecture22
+
+Let’s walk through this figure:
+
+• The lefthand part is the encoder. Just like earlier, it takes as input a batch of sen‐
+tences represented as sequences of word IDs (the input shape is [batch size, max
+input sentence length]), and it encodes each word into a 512-dimensional repre‐
+sentation (so the encoder’s output shape is [batch size, max input sentence length,
+512]).  Note  that  the  top  part  of  the  encoder  is  stacked  N  times  (in  the  paper,
+N = 6).
+
+22 This is figure 1 from the paper, reproduced with the kind authorization of the authors.
+
+Attention Mechanisms 
+
+| 
+
+555
+
+• The righthand part is the decoder. During training, it takes the target sentence as
+input (also represented as a sequence of word IDs), shifted one time step to the
+right (i.e., a start-of-sequence token is inserted at the beginning). It also receives
+the outputs of the encoder (i.e., the arrows coming from the left side). Note that
+the top part of the decoder is also stacked N times, and the encoder stack’s final
+outputs  are  fed  to  the  decoder  at  each  of  these  N  levels.  Just  like  earlier,  the
+decoder outputs a probability for each possible next word, at each time step (its
+output shape is [batch size, max output sentence length, vocabulary length]).
+
+• During inference, the decoder cannot be fed targets, so we feed it the previously
+output words (starting with a start-of-sequence token). So the model needs to be
+called repeatedly, predicting one more word at every round (which is fed to the
+decoder at the next round, until the end-of-sequence token is output).
+
+• Looking more closely, you can see that you are already familiar with most com‐
+ponents: there are two embedding layers, 5 × N skip connections, each of them
+followed by a layer normalization layer, 2 × N “Feed Forward” modules that are
+composed of two dense layers each (the first one using the ReLU activation func‐
+tion,  the  second  with  no  activation  function),  and  finally  the  output  layer  is  a
+dense  layer  using  the  softmax  activation  function.  All  of  these  layers  are  time-
+distributed, so each word is treated independently of all the others. But how can
+we translate a sentence by only looking at one word at a time? Well, that’s where
+the new components come in:
+
+— The  encoder’s  Multi-Head  Attention  layer  encodes  each  word’s  relationship
+with  every  other  word  in  the  same  sentence,  paying  more  attention  to  the
+most relevant ones. For example, the output of this layer for the word “Queen”
+in  the  sentence  “They  welcomed  the  Queen  of  the  United  Kingdom”  will
+depend on all the words in the sentence, but it will probably pay more atten‐
+tion to the words “United” and “Kingdom” than to the words “They” or “wel‐
+comed.”  This  attention  mechanism  is  called  self-attention  (the  sentence  is
+paying  attention  to  itself).  We  will  discuss  exactly  how  it  works  shortly.  The
+decoder’s  Masked  Multi-Head  Attention  layer  does  the  same  thing,  but  each
+word is only allowed to attend to words located before it. Finally, the decoder’s

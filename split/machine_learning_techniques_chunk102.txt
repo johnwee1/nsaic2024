@@ -1,0 +1,593 @@
+te: automate as much as possible so you can easily get fresh data.
+
+1. List the data you need and how much you need.
+
+2. Find and document where you can get that data.
+
+3. Check how much space it will take.
+
+4. Check legal obligations, and get authorization if necessary.
+
+5. Get access authorizations.
+
+6. Create a workspace (with enough storage space).
+
+7. Get the data.
+
+8. Convert  the  data  to  a  format  you  can  easily  manipulate  (without  changing  the
+
+data itself).
+
+9. Ensure sensitive information is deleted or protected (e.g., anonymized).
+
+10. Check the size and type of data (time series, sample, geographical, etc.).
+
+11. Sample a test set, put it aside, and never look at it (no data snooping!).
+
+Explore the Data
+Note: try to get insights from a field expert for these steps.
+
+1. Create a copy of the data for exploration (sampling it down to a manageable size
+
+if necessary).
+
+2. Create a Jupyter notebook to keep a record of your data exploration.
+
+3. Study each attribute and its characteristics:
+
+• Name
+
+• Type (categorical, int/float, bounded/unbounded, text, structured, etc.)
+
+756 
+
+|  Appendix B: Machine Learning Project Checklist
+
+• % of missing values
+
+• Noisiness and type of noise (stochastic, outliers, rounding errors, etc.)
+
+• Usefulness for the task
+
+• Type of distribution (Gaussian, uniform, logarithmic, etc.)
+
+4. For supervised learning tasks, identify the target attribute(s).
+
+5. Visualize the data.
+
+6. Study the correlations between attributes.
+
+7. Study how you would solve the problem manually.
+
+8. Identify the promising transformations you may want to apply.
+
+9. Identify extra data that would be useful (go back to “Get the Data” on page 756).
+
+10. Document what you have learned.
+
+Prepare the Data
+Notes:
+
+• Work on copies of the data (keep the original dataset intact).
+
+• Write functions for all data transformations you apply, for five reasons:
+
+— So you can easily prepare the data the next time you get a fresh dataset
+
+— So you can apply these transformations in future projects
+
+— To clean and prepare the test set
+
+— To clean and prepare new data instances once your solution is live
+
+— To make it easy to treat your preparation choices as hyperparameters
+
+1. Data cleaning:
+
+• Fix or remove outliers (optional).
+
+• Fill in missing values (e.g., with zero, mean, median…) or drop their rows (or
+
+columns).
+
+2. Feature selection (optional):
+
+• Drop the attributes that provide no useful information for the task.
+
+3. Feature engineering, where appropriate:
+
+• Discretize continuous features.
+
+Machine Learning Project Checklist 
+
+| 
+
+757
+
+• Decompose features (e.g., categorical, date/time, etc.).
+• Add promising transformations of features (e.g., log(x), sqrt(x), x2, etc.).
+
+• Aggregate features into promising new features.
+
+4. Feature scaling:
+
+• Standardize or normalize features.
+
+Shortlist Promising Models
+Notes:
+
+• If the data is huge, you may want to sample smaller training sets so you can train
+many different models in a reasonable time (be aware that this penalizes complex
+models such as large neural nets or Random Forests).
+
+• Once again, try to automate these steps as much as possible.
+
+1. Train many quick-and-dirty models from different categories (e.g., linear, naive
+
+Bayes, SVM, Random Forest, neural net, etc.) using standard parameters.
+
+2. Measure and compare their performance.
+
+• For each model, use N-fold cross-validation and compute the mean and stan‐
+
+dard deviation of the performance measure on the N folds.
+
+3. Analyze the most significant variables for each algorithm.
+
+4. Analyze the types of errors the models make.
+
+• What data would a human have used to avoid these errors?
+
+5. Perform a quick round of feature selection and engineering.
+
+6. Perform one or two more quick iterations of the five previous steps.
+
+7. Shortlist  the  top  three  to  five  most  promising  models,  preferring  models  that
+
+make different types of errors.
+
+Fine-Tune the System
+Notes:
+
+• You will want to use as much data as possible for this step, especially as you move
+
+toward the end of fine-tuning.
+
+758 
+
+|  Appendix B: Machine Learning Project Checklist
+
+• As always, automate what you can.
+
+1. Fine-tune the hyperparameters using cross-validation:
+
+• Treat  your  data  transformation  choices  as  hyperparameters,  especially  when
+you are not sure about them (e.g., if you’re not sure whether to replace missing
+values with zeros or with the median value, or to just drop the rows).
+
+• Unless  there  are  very  few  hyperparameter  values  to  explore,  prefer  random
+search  over  grid  search.  If  training  is  very  long,  you  may  prefer  a  Bayesian
+optimization  approach  (e.g.,  using  Gaussian  process  priors,  as  described  by
+Jasper Snoek et al.).1
+
+2. Try  Ensemble  methods.  Combining  your  best  models  will  often  produce  better
+
+performance than running them individually.
+
+3. Once you are confident about your final model, measure its performance on the
+
+test set to estimate the generalization error.
+
+Don’t  tweak  your  model  after  measuring  the  generalization  error:
+you would just start overfitting the test set.
+
+Present Your Solution
+
+1. Document what you have done.
+
+2. Create a nice presentation.
+
+• Make sure you highlight the big picture first.
+
+3. Explain why your solution achieves the business objective.
+
+4. Don’t forget to present interesting points you noticed along the way.
+
+• Describe what worked and what did not.
+
+• List your assumptions and your system’s limitations.
+
+1 Jasper Snoek et al., “Practical Bayesian Optimization of Machine Learning Algorithms,” Proceedings of the 25th
+
+International Conference on Neural Information Processing Systems 2 (2012): 2951–2959.
+
+Machine Learning Project Checklist 
+
+| 
+
+759
+
+5. Ensure your key findings are communicated through beautiful visualizations or
+easy-to-remember statements (e.g., “the median income is the number-one pre‐
+dictor of housing prices”).
+
+Launch!
+
+1. Get your solution ready for production (plug into production data inputs, write
+
+unit tests, etc.).
+
+2. Write monitoring code to check your system’s live performance at regular inter‐
+
+vals and trigger alerts when it drops.
+
+• Beware of slow degradation: models tend to “rot” as data evolves.
+
+• Measuring performance may require a human pipeline (e.g., via a crowdsourc‐
+
+ing service).
+
+• Also monitor your inputs’ quality (e.g., a malfunctioning sensor sending ran‐
+dom  values,  or  another  team’s  output  becoming  stale).  This  is  particularly
+important for online learning systems.
+
+3. Retrain  your  models  on  a  regular  basis  on  fresh  data  (automate  as  much  as
+
+possible).
+
+760 
+
+|  Appendix B: Machine Learning Project Checklist
+
+APPENDIX C
+SVM Dual Problem
+
+To understand duality, you first need to understand the Lagrange multipliers method.
+The general idea is to transform a constrained optimization objective into an uncon‐
+strained  one,  by  moving  the  constraints  into  the  objective  function.  Let’s  look  at  a
+simple  example.  Suppose  you  want  to  find  the  values  of  x  and  y  that  minimize  the
+function f(x, y) = x2 + 2y, subject to an equality constraint: 3x + 2y + 1 = 0. Using the
+Lagrange multipliers method, we start by defining a new function called the Lagran‐
+gian (or Lagrange function): g(x, y, α) = f(x, y) – α(3x + 2y + 1). Each constraint (in
+this case just one) is subtracted from the original objective, multiplied by a new vari‐
+able called a Lagrange multiplier.
+
+Joseph-Louis Lagrange showed that if  x, y  is a solution to the constrained optimiza‐
+tion problem, then there must exist an α such that  x, y, α  is a stationary point of the
+Lagrangian  (a  stationary  point  is  a  point  where  all  partial  derivatives  are  equal  to
+zero). In other words, we can compute the partial derivatives of g(x, y, α) with regard
+to x, y, and α; we can find the points where these derivatives are all equal to zero; and
+the solutions to the constrained optimization problem (if they exist) must be among
+these stationary points.
+
+In this example the partial derivatives are: 
+
+∂
+∂x g x, y, α = 2x − 3α
+∂
+∂y g x, y, α = 2 − 2α
+∂
+∂α g x, y, α = − 3x − 2y − 1
+
+all 
+
+these  partial  derivatives 
+
+that
+When 
+2x − 3α = 2 − 2α = −3x − 2y − 1 = 0,  from  which  we  can  easily  find  that  x = 3
+2 ,
+y = − 11
+4 ,  and  α = 1.  This  is  the  only  stationary  point,  and  as  it  respects  the  con‐
+straint, it must be the solution to the constrained optimization problem.
+
+to  0,  we 
+
+equal 
+
+find 
+
+are 
+
+761
+
+However,  this  method  applies  only  to  equality  constraints.  Fortunately,  under  some
+regularity conditions (which are respected by the SVM objectives), this method can
+be generalized to inequality constraints as well (e.g., 3x + 2y + 1 ≥ 0). The generalized
+Lagrangian for the hard margin problem is given by Equation C-1, where the α(i) vari‐
+ables are called the Karush–Kuhn–Tucker (KKT) multipliers, and they must be greater
+or equal to zero.
+
+Equation C-1. Generalized Lagrangian for the hard margin problem
+
+ℒ w, b, α =
+
+1
+2
+
+m
+
+w⊺w − ∑
+
+i = 1
+
+α i
+
+t i w⊺x i + b − 1
+
+with α i ≥ 0
+
+for i = 1, 2, ⋯, m
+
+Just like with the Lagrange multipliers method, you can compute the partial deriva‐
+tives  and  locate  the  stationary  points.  If  there  is  a  solution,  it  will  necessarily  be
+among the stationary points  w, b, α  that respect the KKT conditions:
+
+for i = 1, 2, ⋯, m.
+
+• Respect the problem’s constraints: t i w⊺x i + b ≥ 1   for i = 1, 2, …, m.
+• Verify α i ≥ 0
+• Either α i = 0 or the ith constraint must be an active constraint, meaning it must
+hold by equality: t i w⊺x i + b = 1. This condition is called the complementary
+slackness  condition.  It  implies  that  either  α i = 0  or  the  ith  instance  lies  on  the
+boundary (it is a support vector).
+
+Note that the KKT conditions are necessary conditions for a stationary point to be a
+solution of the constrained optimization problem. Under some conditions, they are
+also  sufficient  conditions.  Luckily,  the  SVM  optimization  problem  happens  to  meet
+these conditions, so any stationary point that meets the KKT conditions is guaranteed
+to be a solution to the constrained optimization problem.
+
+We can compute the partial derivatives of the generalized Lagrangian with regard to
+w and b with Equation C-2.
+
+Equation C-2. Partial derivatives of the generalized Lagrangian
+
+m
+∇wℒ w, b, α = w − ∑
+i = 1
+
+α i t i x i
+
+∂
+∂b
+
+m
+ℒ w, b, α = − ∑
+i = 1
+
+α i t i
+
+762 
+
+|  Appendix C: SVM Dual Problem
+
+When these partial derivatives are equal to zero, we have Equation C-3.
+
+Equation C-3. Properties of the stationary points
+
+m
+w = ∑
+i = 1
+
+α i t i x i
+
+m
+∑
+i = 1
+
+α i t i = 0
+
+If we plug these results into the definition of the generalized Lagrangian, some terms
+disappear and we find Equation C-4.
+
+Equation C-4. Dual form of the SVM problem
+
+ℒ w, b, α =
+
+m
+
+1
+2 ∑
+
+i = 1
+
+m
+∑
+j = 1
+
+α i α j t i t j x i ⊺
+
+x j
+
+−
+
+m
+∑
+i = 1
+
+α i
+
+with α i ≥ 0
+
+for i = 1, 2, ⋯, m
+
+The goal is now to find the vector α that minimizes this function, with α i ≥ 0 for all
+instances. This constrained optimization problem is the dual problem we were look‐
+ing for.
+
+Once you find the optimal α, you can compute w using the first line of Equation C-3.
+To compute b, you can use the fact that a support vector must verify t(i)(w⊺ x(i) + b) =
+1, so if the kth instance is a support vector (i.e., α k > 0), you can use it to compute
+b = t k − w⊺x k . However, it is often preferred to compute the average over all sup‐
+port vectors to get a more stable and precise value, as in Equation C-5.
+
+Equation C-5. Bias term estimation using the dual form
+
+b =
+
+1
+ns
+
+m
+∑
+i = 1
+i
+
+> 0
+
+α
+
+t i − w⊺x i
+
+SVM Dual Problem 
+
+| 
+
+763
+
+APPENDIX D
+Autodiff
+
+This  appendix  explains  how  TensorFlow’s  autodifferentiation  (autodiff)  feature
+works, and how it compares to other solutions.
+
+Suppose you define a function f(x, y) = x2y + y + 2, and you need its partial derivatives
+∂f/∂x and ∂f/∂y, typically to perform Gradient Descent (or some other optimization
+algorithm). Your main options are manual differentiation, finite difference approxi‐
+mation, forward-mode autodiff, and reverse-mode autodiff. TensorFlow implements
+reverse-mode  autodiff,  but  to  understand  it,  it’s  useful  to  look  at  the  other  options
+first. So let’s go through each of them, starting with manual differentiation.
+
+Manual Differentiation
+The first approach to compute derivatives is to pick up a pencil and a piece of paper
+and use your calculus knowledge to derive the appropriate equation. For the function
+f(x, y) just defined, it is not too hard; you just need to use five rules:
+
+• The derivative of a constant is 0.
+
+• The derivative of λx is λ (where λ is a constant).
+• The derivative of xλ is λxλ – 1, so the derivative of x2 is 2x.
+
+• The derivative of a sum of functions is the sum of these functions’ derivatives.
+
+• The derivative of λ times a function is λ times its derivative.
+
+765
+
+From these rules, you can derive Equation D-1.
+
+Equation D-1. Partial derivatives of f(x, y)
+
+∂ x2y
+∂x
+∂ x2y
+∂y
+
+=
+
+=
+
+∂ f
+∂x
+
+∂ f
+∂y
+
++
+
++
+
+∂y
+∂x
+
+∂y
+∂y
+
++
+
++
+
+∂2
+∂x
+
+∂2
+∂y
+
+∂ x2
+∂x
+
+= y
+
++ 0 + 0 = 2xy
+
+= x2 + 1 + 0 = x2 + 1
+
+This approach can become very tedious for more complex functions, and you run the
+risk of making mistakes. Fortunately, there are other options. Let’s look at finite dif‐
+ference approximation now.
+
+Finite Difference Approximation
+Recall that the derivative h′(x0) of a function h(x) at a point x0 is the slope of the func‐
+tion at that point. More precisely, the derivative is defined as the limit of the slope of a
+straight line going through this point x0 and another point x on the function, as x gets
+infinitely close to x0 (see Equation D-2).
+
+Equation D-2. Definition of the derivative of a function h(x) at point x0
+
+h′ x0 =
+
+lim
+
+x0
+
+x
+
+h x − h x0
+x − x0
+
+= lim
+ε
+0
+
+h x0 + ε − h x0
+ε
+
+So, if we wanted to calculate the partial derivative of f(x, y) with regard to x at x = 3
+and y = 4, we could compute f(3 + ε, 4) – f(3, 4) and divide the result by ε, using a
+very small value for ε. This type of numerical approximation of the derivative is called
+a  finite  difference  approximation,  and  this  specific  equation  is  called  Newton’s  differ‐
+ence quotient. That’s exactly what the following code does:
+
+def f(x, y):
+    return x**2*y + y + 2
+
+def derivative(f, x, y, x_eps, y_eps):
+    return (f(x + x_eps, y + y_eps) - f(x, y)) / (x_eps + y_eps)
+
+df_dx = derivative(f, 3, 4, 0.00001, 0)
+df_dy = derivative(f, 3, 4, 0, 0.00001)
+
+Unfortunately, the result is imprecise (and it gets worse for more complicated func‐
+tions). The correct results are respectively 24 and 10, but instead we get:
+
+766 
+
+|  Appendix D: Autodiff
+
+>>> print(df_dx)
+24.000039999805264
+>>> print(df_dy)
+10.000000000331966
+
+Notice that to compute both partial derivatives, we have to call f() at least three times
+(we  called  it  four  times  in  the  preceding  code,  but  it  could  be  optimized).  If  there
+were 1,000 parameters, we would need to call f() at least 1,001 times. When you are
+dealing  with  large  neural  networks,  this  makes  finite  difference  approximation  way
+too inefficient.
+
+However, this method is so simple to implement that it is a great tool to check that the
+other methods are implemented correctly. For example, if it disagrees with your man‐
+ually derived function, then your function probably contains a mistake.
+
+So far, we have considered two ways 

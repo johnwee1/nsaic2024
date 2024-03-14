@@ -1,0 +1,313 @@
+to Artificial Neural Networks with Keras
+
+You  will  typically  have  a  script  that  trains  a  model  and  saves  it,  and  one  or  more
+scripts (or web services) that load the model and use it to make predictions. Loading
+the model is just as easy:
+
+model = keras.models.load_model("my_keras_model.h5")
+
+This  will  work  when  using  the  Sequential  API  or  the  Functional
+API, but unfortunately not when using model subclassing. You can
+use  save_weights()  and  load_weights()  to  at  least  save  and
+restore the model parameters, but you will need to save and restore
+everything else yourself.
+
+But what if training lasts several hours? This is quite common, especially when train‐
+ing on large datasets. In this case, you should not only save your model at the end of
+training, but also save checkpoints at regular intervals during training, to avoid losing
+everything if your computer crashes. But how can you tell the fit() method to save
+checkpoints? Use callbacks.
+
+Using Callbacks
+The fit() method accepts a callbacks argument that lets you specify a list of objects
+that Keras will call at the start and end of training, at the start and end of each epoch,
+and even before and after processing each batch. For example, the ModelCheckpoint
+callback  saves  checkpoints  of  your  model  at  regular  intervals  during  training,  by
+default at the end of each epoch:
+
+[...] # build and compile the model
+checkpoint_cb = keras.callbacks.ModelCheckpoint("my_keras_model.h5")
+history = model.fit(X_train, y_train, epochs=10, callbacks=[checkpoint_cb])
+
+set  during 
+
+if  you  use  a  validation 
+
+Moreover, 
+set
+save_best_only=True when creating the ModelCheckpoint. In this case, it will only
+save  your  model  when  its  performance  on  the  validation  set  is  the  best  so  far.  This
+way, you do not need to worry about training for too long and overfitting the training
+set: simply restore the last model saved after training, and this will be the best model
+on the validation set. The following code is a simple way to implement early stopping
+(introduced in Chapter 4):
+
+training,  you  can 
+
+checkpoint_cb = keras.callbacks.ModelCheckpoint("my_keras_model.h5",
+                                                save_best_only=True)
+history = model.fit(X_train, y_train, epochs=10,
+                    validation_data=(X_valid, y_valid),
+                    callbacks=[checkpoint_cb])
+model = keras.models.load_model("my_keras_model.h5") # roll back to best model
+
+Another  way  to  implement  early  stopping  is  to  simply  use  the  EarlyStopping  call‐
+back. It will interrupt training when it measures no progress on the validation set for
+
+Implementing MLPs with Keras 
+
+| 
+
+315
+
+a number of epochs (defined by the  patience argument), and it will optionally roll
+back to the best model. You can combine both callbacks to save checkpoints of your
+model (in case your computer crashes) and interrupt training early when there is no
+more progress (to avoid wasting time and resources):
+
+early_stopping_cb = keras.callbacks.EarlyStopping(patience=10,
+                                                  restore_best_weights=True)
+history = model.fit(X_train, y_train, epochs=100,
+                    validation_data=(X_valid, y_valid),
+                    callbacks=[checkpoint_cb, early_stopping_cb])
+
+The number of epochs can be set to a large value since training will stop automati‐
+cally when there is no more progress. In this case, there is no need to restore the best
+model saved because the EarlyStopping callback will keep track of the best weights
+and restore them for you at the end of training.
+
+There  are  many  other  callbacks  available  in  the  keras.callbacks
+package.
+
+If  you  need  extra  control,  you  can  easily  write  your  own  custom  callbacks.  As  an
+example  of  how  to  do  that,  the  following  custom  callback  will  display  the  ratio
+between the validation loss and the training loss during training (e.g., to detect over‐
+fitting):
+
+class PrintValTrainRatioCallback(keras.callbacks.Callback):
+    def on_epoch_end(self, epoch, logs):
+        print("\nval/train: {:.2f}".format(logs["val_loss"] / logs["loss"]))
+
+As  you  might  expect,  you  can  implement  on_train_begin(),  on_train_end(),
+on_epoch_begin(), on_epoch_end(), on_batch_begin(), and on_batch_end(). Call‐
+backs can also be used during evaluation and predictions, should you ever need them
+(e.g.,  for  debugging).  For  evaluation,  you  should  implement  on_test_begin(),
+on_test_end(), on_test_batch_begin(), or on_test_batch_end() (called by evalu
+ate()),  and  for  prediction  you  should  implement  on_predict_begin(),  on_pre
+dict_end(),  on_predict_batch_begin(),  or  on_predict_batch_end()  (called  by
+predict()).
+
+Now  let’s  take  a  look  at  one  more  tool  you  should  definitely  have  in  your  toolbox
+when using tf.keras: TensorBoard.
+
+316 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+Using TensorBoard for Visualization
+TensorBoard  is  a  great  interactive  visualization  tool  that  you  can  use  to  view  the
+learning curves during training, compare learning curves between multiple runs, vis‐
+ualize  the  computation  graph,  analyze  training  statistics,  view  images  generated  by
+your  model,  visualize  complex  multidimensional  data  projected  down  to  3D  and
+automatically clustered for you, and more! This tool is installed automatically when
+you install TensorFlow, so you already have it.
+
+To use it, you must modify your program so that it outputs the data you want to visu‐
+alize  to  special  binary  log  files  called  event  files.  Each  binary  data  record  is  called  a
+summary. The TensorBoard server will monitor the log directory, and it will automat‐
+ically pick up the changes and update the visualizations: this allows you to visualize
+live data (with a short delay), such as the learning curves during training. In general,
+you want to point the TensorBoard server to a root log directory and configure your
+program so that it writes to a different subdirectory every time it runs. This way, the
+same TensorBoard server instance will allow you to visualize and compare data from
+multiple runs of your program, without getting everything mixed up.
+
+Let’s  start  by  defining  the  root  log  directory  we  will  use  for  our  TensorBoard  logs,
+plus a small function that will generate a subdirectory path based on the current date
+and time so that it’s different at every run. You may want to include extra information
+in  the  log  directory  name,  such  as  hyperparameter  values  that  you  are  testing,  to
+make it easier to know what you are looking at in TensorBoard:
+
+import os
+root_logdir = os.path.join(os.curdir, "my_logs")
+
+def get_run_logdir():
+    import time
+    run_id = time.strftime("run_%Y_%m_%d-%H_%M_%S")
+    return os.path.join(root_logdir, run_id)
+
+run_logdir = get_run_logdir() # e.g., './my_logs/run_2019_06_07-15_15_22'
+
+The good news is that Keras provides a nice TensorBoard() callback:
+
+[...] # Build and compile your model
+tensorboard_cb = keras.callbacks.TensorBoard(run_logdir)
+history = model.fit(X_train, y_train, epochs=30,
+                    validation_data=(X_valid, y_valid),
+                    callbacks=[tensorboard_cb])
+
+And that’s all there is to it! It could hardly be easier to use. If you run this code, the
+TensorBoard()  callback  will  take  care  of  creating  the  log  directory  for  you  (along
+with its parent directories if needed), and during training it will create event files and
+write  summaries  to  them.  After  running  the  program  a  second  time  (perhaps
+
+Implementing MLPs with Keras 
+
+| 
+
+317
+
+changing  some  hyperparameter  value),  you  will  end  up  with  a  directory  structure
+similar to this one:
+
+my_logs/
+├── run_2019_06_07-15_15_22
+│   ├── train
+│   │   ├── events.out.tfevents.1559891732.mycomputer.local.38511.694049.v2
+│   │   ├── events.out.tfevents.1559891732.mycomputer.local.profile-empty
+│   │   └── plugins/profile/2019-06-07_15-15-32
+│   │       └── local.trace
+│   └── validation
+│       └── events.out.tfevents.1559891733.mycomputer.local.38511.696430.v2
+└── run_2019_06_07-15_15_49
+    └── [...]
+
+There’s one directory per run, each containing one subdirectory for training logs and
+one  for  validation  logs.  Both  contain  event  files,  but  the  training  logs  also  include
+profiling  traces:  this  allows  TensorBoard  to  show  you  exactly  how  much  time  the
+model  spent  on  each  part  of  your  model,  across  all  your  devices,  which  is  great  for
+locating performance bottlenecks.
+
+Next  you  need  to  start  the  TensorBoard  server.  One  way  to  do  this  is  by  running  a
+command in a terminal. If you installed TensorFlow within a virtualenv, you should
+activate it. Next, run the following command at the root of the project (or from any‐
+where else, as long as you point to the appropriate log directory):
+
+$ tensorboard --logdir=./my_logs --port=6006
+TensorBoard 2.0.0 at http://mycomputer.local:6006/ (Press CTRL+C to quit)
+
+If your shell cannot find the tensorboard script, then you must update your PATH envi‐
+ronment  variable  so  that  it  contains  the  directory  in  which  the  script  was  installed
+(alternatively,  you  can  just  replace  tensorboard  in  the  command  line  with  python3
+-m tensorboard.main). Once the server is up, you can open a web browser and go to
+http://localhost:6006.
+
+Alternatively,  you  can  use  TensorBoard  directly  within  Jupyter,  by  running  the  fol‐
+lowing  commands.  The  first  line  loads  the  TensorBoard  extension,  and  the  second
+line starts a TensorBoard server on port 6006 (unless it is already started) and con‐
+nects to it:
+
+%load_ext tensorboard
+%tensorboard --logdir=./my_logs --port=6006
+
+Either  way,  you  should  see  TensorBoard’s  web  interface.  Click  the  SCALARS  tab  to
+view  the  learning  curves  (see  Figure  10-17).  At  the  bottom  left,  select  the  logs  you
+want to visualize (e.g., the training logs from the first and second run), and click the
+epoch_loss scalar. Notice that the training loss went down nicely during both runs,
+but the second run went down much faster. Indeed, we used a learning rate of 0.05
+(optimizer=keras.optimizers.SGD(lr=0.05)) instead of 0.001.
+
+318 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+Figure 10-17. Visualizing learning curves with TensorBoard
+
+You can also visualize the whole graph, the learned weights (projected to 3D), or the
+profiling traces. The TensorBoard() callback has options to log extra data too, such
+as embeddings (see Chapter 13).
+
+Additionally,  TensorFlow  offers  a  lower-level  API  in  the  tf.summary  package.  The
+following  code  creates  a  SummaryWriter  using  the  create_file_writer()  function,
+and it uses this writer as a context to log scalars, histograms, images, audio, and text,
+all of which can then be visualized using TensorBoard (give it a try!):
+
+test_logdir = get_run_logdir()
+writer = tf.summary.create_file_writer(test_logdir)
+with writer.as_default():
+    for step in range(1, 1000 + 1):
+        tf.summary.scalar("my_scalar", np.sin(step / 10), step=step)
+        data = (np.random.randn(100) + 2) * step / 100 # some random data
+        tf.summary.histogram("my_hist", data, buckets=50, step=step)
+        images = np.random.rand(2, 32, 32, 3) # random 32×32 RGB images
+        tf.summary.image("my_images", images * step / 1000, step=step)
+        texts = ["The step is " + str(step), "Its square is " + str(step**2)]
+        tf.summary.text("my_text", texts, step=step)
+        sine_wave = tf.math.sin(tf.range(12000) / 48000 * 2 * np.pi * step)
+        audio = tf.reshape(tf.cast(sine_wave, tf.float32), [1, -1, 1])
+        tf.summary.audio("my_audio", audio, sample_rate=48000, step=step)
+
+Implementing MLPs with Keras 
+
+| 
+
+319
+
+This is actually a useful visualization tool to have, even beyond TensorFlow or Deep
+Learning.
+
+Let’s summarize what you’ve learned so far in this chapter: we saw where neural nets
+came from, what an MLP is and how you can use it for classification and regression,
+how  to  use  tf.keras’s  Sequential  API  to  build  MLPs,  and  how  to  use  the  Functional
+API or the Subclassing API to build more complex model architectures. You learned
+how  to  save  and  restore  a  model  and  how  to  use  callbacks  for  checkpointing,  early
+stopping,  and  more.  Finally,  you  learned  how  to  use  TensorBoard  for  visualization.
+You can already go ahead and use neural networks to tackle many problems! How‐
+ever,  you  may  wonder  how  to  choose  the  number  of  hidden  layers,  the  number  of
+neurons in the network, and all the other hyperparameters. Let’s look at this now.
+
+Fine-Tuning Neural Network Hyperparameters
+The flexibility of neural networks is also one of their main drawbacks: there are many
+hyperparameters  to  tweak.  Not  only  can  you  use  any  imaginable  network  architec‐
+ture, but even in a simple MLP you can change the number of layers, the number of
+neurons per layer, the type of activation function to use in each layer, the weight initi‐
+alization logic, and much more. How do you know what combination of hyperpara‐
+meters is the best for your task?
+
+One  option  is  to  simply  try  many  combinations  of  hyperparameters  and  see  which
+one works best on the validation set (or use K-fold cross-validation). For example, we
+can use GridSearchCV or RandomizedSearchCV to explore the hyperparameter space,
+as we did in Chapter 2. To do this, we need to wrap our Keras models in objects that
+mimic regular Scikit-Learn regressors. The first step is to create a function that will
+build and compile a Keras model, given a set of hyperparameters:
+
+def build_model(n_hidden=1, n_neurons=30, learning_rate=3e-3, input_shape=[8]):
+    model = keras.models.Sequential()
+    model.add(keras.layers.InputLayer(input_shape=input_shape))
+    for layer in range(n_hidden):
+        model.add(keras.layers.Dense(n_neurons, activation="relu"))
+    model.add(keras.layers.Dense(1))
+    optimizer = keras.optimizers.SGD(lr=learning_rate)
+    model.compile(loss="mse", optimizer=optimizer)
+    return model
+
+This function creates a simple Sequential model for univariate regression (only one
+output  neuron),  with  the  given  input  shape  and  the  given  number  of  hidden  layers
+and neurons, and it compiles it using an SGD optimizer configured with the specified
+learning rate. It is good practice to provide reasonable defaults to as many hyperpara‐
+meters as you can, as Scikit-Learn does.
+
+Next, let’s create a KerasRegressor based on this build_model() function:
+
+320 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+keras_reg = keras.wrappers.scikit_learn.KerasRegressor(build_model)
+
+The  KerasRegressor  object  is  a  thin  wrapper  around  the  Keras  model  built  using
+build_model().  Since  we  did  not  specify  any  hyperparameters  when  creating  it,  it
+will use the default hyperparameters we defined in build_model(). Now we can use
+this  object  like  a  regular  Scikit-Learn  regressor:  we  can  train  it  using  its  fit()
+method,  then  evaluate  it  using  its  score()  method,  and  use  it  to  make  predictions
+using its predict() method, as you can see in the following code:
+
+keras_reg.fit(X_train, y_train, epochs=100,
+              validation_data=(X_valid, y_valid),
+       

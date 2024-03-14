@@ -1,0 +1,289 @@
+ge(200):
+        epsilon = max(1 - episode / 500, 0.01)
+        obs, reward, done, info = play_one_step(env, obs, epsilon)
+        if done:
+            break
+    if episode > 50:
+        training_step(batch_size)
+
+We run 600 episodes, each for a maximum of 200 steps. At each step, we first com‐
+pute the epsilon value for the ε-greedy policy: it will go from 1 down to 0.01, line‐
+arly, in a bit under 500 episodes. Then we call the play_one_step() function, which
+will use the ε-greedy policy to pick an action, then execute it and record the experi‐
+ence in the replay buffer. If the episode is done, we exit the loop. Finally, if we are past
+the  50th  episode,  we  call  the  training_step()  function  to  train  the  model  on  one
+batch sampled from the replay buffer. The reason we play 50 episodes without train‐
+ing  is  to  give  the  replay  buffer  some  time  to  fill  up  (if  we  don’t  wait  enough,  then
+there will not be enough diversity in the replay buffer). And that’s it, we just imple‐
+mented the Deep Q-Learning algorithm!
+
+Figure 18-10 shows the total rewards the agent got during each episode.
+
+Figure 18-10. Learning curve of the Deep Q-Learning algorithm
+
+As you can see, the algorithm made no apparent progress at all for almost 300 epi‐
+sodes (in part because ε was very high at the beginning), then its performance sud‐
+denly  skyrocketed  up  to  200  (which  is  the  maximum  possible  performance  in  this
+environment). That’s great news: the algorithm worked fine, and it actually ran much
+faster than the Policy Gradient algorithm! But wait… just a few episodes later, it for‐
+got  everything  it  knew,  and  its  performance  dropped  below  25!  This  is  called
+
+Implementing Deep Q-Learning 
+
+| 
+
+637
+
+catastrophic forgetting, and it is one of the big problems facing virtually all RL algo‐
+rithms: as the agent explores the environment, it updates its policy, but what it learns
+in one part of the environment may break what it learned earlier in other parts of the
+environment.  The  experiences  are  quite  correlated,  and  the  learning  environment
+keeps changing—this is not ideal for Gradient Descent! If you increase the size of the
+replay buffer, the algorithm will be less subject to this problem. Reducing the learning
+rate may also help. But the truth is, Reinforcement Learning is hard: training is often
+unstable,  and  you  may  need  to  try  many  hyperparameter  values  and  random  seeds
+before you find a combination that works well. For example, if you try changing the
+number of neurons per layer in the preceding from 32 to 30 or 34, the performance
+will never go above 100 (the DQN may be more stable with one hidden layer instead
+of two).
+
+Reinforcement Learning is notoriously difficult, largely because of
+the  training  instabilities  and  the  huge  sensitivity  to  the  choice  of
+hyperparameter  values  and  random  seeds.13  As  the  researcher
+Andrej Karpathy put it: “[Supervised learning] wants to work. […]
+RL must be forced to work.” You will need time, patience, persever‐
+ance, and perhaps a bit of luck too. This is a major reason RL is not
+as  widely  adopted  as  regular  Deep  Learning  (e.g.,  convolutional
+nets). But there are a few real-world applications, beyond AlphaGo
+and Atari games: for example, Google uses RL to optimize its data‐
+center costs, and it is used in some robotics applications, for hyper‐
+parameter tuning, and in recommender systems.
+
+You might wonder why we didn’t plot the loss. It turns out that loss is a poor indicator
+of  the  model’s  performance.  The  loss  might  go  down,  yet  the  agent  might  perform
+worse (e.g., this can happen when the agent gets stuck in one small region of the envi‐
+ronment, and the DQN starts overfitting this region). Conversely, the loss could go
+up, yet the agent might perform better (e.g., if the DQN was underestimating the Q-
+Values, and it starts correctly increasing its predictions, the agent will likely perform
+better, getting more rewards, but the loss might increase because the DQN also sets
+the targets, which will be larger too).
+
+The basic Deep Q-Learning algorithm we’ve been using so far would be too unstable
+to  learn  to  play  Atari  games.  So  how  did  DeepMind  do  it?  Well,  they  tweaked  the
+algorithm!
+
+13 A great 2018 post by Alex Irpan nicely lays out RL’s biggest difficulties and limitations.
+
+638 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+Deep Q-Learning Variants
+Let’s look at a few variants of the Deep Q-Learning algorithm that can stabilize and
+speed up training.
+
+Fixed Q-Value Targets
+In the basic Deep Q-Learning algorithm, the model is used both to make predictions
+and to set its own targets. This can lead to a situation analogous to a dog chasing its
+own tail. This feedback loop can make the network unstable: it can diverge, oscillate,
+freeze, and so on. To solve this problem, in their 2013 paper the DeepMind research‐
+ers used two DQNs instead of one: the first is the online model, which learns at each
+step and is used to move the agent around, and the other is the target model used only
+to define the targets. The target model is just a clone of the online model:
+
+target = keras.models.clone_model(model)
+target.set_weights(model.get_weights())
+
+Then, in the  training_step() function, we just need to change one line to use the
+target model instead of the online model when computing the Q-Values of the next
+states:
+
+next_Q_values = target.predict(next_states)
+
+Finally, in the training loop, we must copy the weights of the online model to the tar‐
+get model, at regular intervals (e.g., every 50 episodes):
+
+if episode % 50 == 0:
+    target.set_weights(model.get_weights())
+
+Since the target model is updated much less often than the online model, the Q-Value
+targets are more stable, the feedback loop we discussed earlier is dampened, and its
+effects  are  less  severe.  This  approach  was  one  of  the  DeepMind  researchers’  main
+contributions in their 2013 paper, allowing agents to learn to play Atari games from
+raw pixels. To stabilize training, they used a tiny learning rate of 0.00025, they upda‐
+ted the target model only every 10,000 steps (instead of the 50 in the previous code
+example),  and  they  used  a  very  large  replay  buffer  of  1  million  experiences.  They
+decreased epsilon very slowly, from 1 to 0.1 in 1 million steps, and they let the algo‐
+rithm run for 50 million steps.
+
+Later in this chapter, we will use the TF-Agents library to train a DQN agent to play
+Breakout  using  these  hyperparameters,  but  before  we  get  there,  let’s  take  a  look  at
+another DQN variant that managed to beat the state of the art once more.
+
+Deep Q-Learning Variants 
+
+| 
+
+639
+
+Double DQN
+In  a  2015  paper,14  DeepMind  researchers  tweaked  their  DQN  algorithm,  increasing
+its  performance  and  somewhat  stabilizing  training.  They  called  this  variant  Double
+DQN. The update was based on the observation that the target network is prone to
+overestimating Q-Values. Indeed, suppose all actions are equally good: the Q-Values
+estimated by the target model should be identical, but since they are approximations,
+some  may  be  slightly  greater  than  others,  by  pure  chance.  The  target  model  will
+always  select  the  largest  Q-Value,  which  will  be  slightly  greater  than  the  mean  Q-
+Value, most likely overestimating the true Q-Value (a bit like counting the height of
+the tallest random wave when measuring the depth of a pool). To fix this, they pro‐
+posed  using  the  online  model  instead  of  the  target  model  when  selecting  the  best
+actions for the next states, and using the target model only to estimate the Q-Values
+for these best actions. Here is the updated training_step() function:
+
+def training_step(batch_size):
+    experiences = sample_experiences(batch_size)
+    states, actions, rewards, next_states, dones = experiences
+    next_Q_values = model.predict(next_states)
+    best_next_actions = np.argmax(next_Q_values, axis=1)
+    next_mask = tf.one_hot(best_next_actions, n_outputs).numpy()
+    next_best_Q_values = (target.predict(next_states) * next_mask).sum(axis=1)
+    target_Q_values = (rewards +
+                       (1 - dones) * discount_factor * next_best_Q_values)
+    mask = tf.one_hot(actions, n_outputs)
+    [...] # the rest is the same as earlier
+
+Just a few months later, another improvement to the DQN algorithm was proposed.
+
+Prioritized Experience Replay
+Instead  of  sampling  experiences  uniformly  from  the  replay  buffer,  why  not  sample
+important experiences more frequently? This idea is called importance sampling (IS)
+or  prioritized  experience  replay  (PER),  and  it  was  introduced  in  a  2015  paper15  by
+DeepMind researchers (once again!).
+
+More specifically, experiences are considered “important” if they are likely to lead to
+fast learning progress. But how can we estimate this? One reasonable approach is to
+measure the magnitude of the TD error δ = r + γ·V(s′) – V(s). A large TD error indi‐
+cates  that  a  transition  (s,  r,  s′)  is  very  surprising,  and  thus  probably  worth  learning
+
+14 Hado van Hasselt et al., “Deep Reinforcement Learning with Double Q-Learning,” Proceedings of the 30th
+
+AAAI Conference on Artificial Intelligence (2015): 2094–2100.
+
+15 Tom Schaul et al., “Prioritized Experience Replay,” arXiv preprint arXiv:1511.05952 (2015).
+
+640 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+from.16 When an experience is recorded in the replay buffer, its priority is set to a very
+large value, to ensure that it gets sampled at least once. However, once it is sampled
+(and every time it is sampled), the TD error δ is computed, and this experience’s pri‐
+ority is set to p = |δ| (plus a small constant to ensure that every experience has a non-
+zero probability of being sampled). The probability P of sampling an experience with
+priority p is proportional to pζ, where ζ is a hyperparameter that controls how greedy
+we want importance sampling to be: when ζ = 0, we just get uniform sampling, and
+when ζ = 1, we get full-blown importance sampling. In the paper, the authors used ζ =
+0.6, but the optimal value will depend on the task.
+
+There’s one catch, though: since the samples will be biased toward important experi‐
+ences, we must compensate for this bias during training by downweighting the expe‐
+riences  according  to  their  importance,  or  else  the  model  will  just  overfit  the
+important  experiences.  To  be  clear,  we  want  important  experiences  to  be  sampled
+more often, but this also means we must give them a lower weight during training. To
+do  this,  we  define  each  experience’s  training  weight  as  w  =  (n  P)–β,  where  n  is  the
+number of experiences in the replay buffer, and β is a hyperparameter that controls
+how much we want to compensate for the importance sampling bias (0 means not at
+all, while 1 means entirely). In the paper, the authors used β = 0.4 at the beginning of
+training and linearly increased it to β = 1 by the end of training. Again, the optimal
+value  will  depend  on  the  task,  but  if  you  increase  one,  you  will  usually  want  to
+increase the other as well.
+
+Now let’s look at one last important variant of the DQN algorithm.
+
+Dueling DQN
+The  Dueling  DQN  algorithm  (DDQN,  not  to  be  confused  with  Double  DQN,
+although  both  techniques  can  easily  be  combined)  was  introduced  in  yet  another
+2015  paper17  by  DeepMind  researchers.  To  understand  how  it  works,  we  must  first
+note that the Q-Value of a state-action pair (s, a) can be expressed as Q(s, a) = V(s) +
+A(s,  a),  where  V(s)  is  the  value  of  state  s  and  A(s,  a)  is  the  advantage  of  taking  the
+action a in state s, compared to all other possible actions in that state. Moreover, the
+value  of  a  state  is  equal  to  the  Q-Value  of  the  best  action  a*  for  that  state  (since  we
+assume the optimal policy will pick the best action), so V(s) = Q(s, a*), which implies
+that A(s, a*) = 0. In a Dueling DQN, the model estimates both the value of the state
+and  the  advantage  of  each  possible  action.  Since  the  best  action  should  have  an
+advantage of 0, the model subtracts the maximum predicted advantage from all pre‐
+
+16 It could also just be that the rewards are noisy, in which case there are better methods for estimating an expe‐
+
+rience’s importance (see the paper for some examples).
+
+17 Ziyu Wang et al., “Dueling Network Architectures for Deep Reinforcement Learning,” arXiv preprint arXiv:
+
+1511.06581 (2015).
+
+Deep Q-Learning Variants 
+
+| 
+
+641
+
+dicted  advantages.  Here  is  a  simple  Dueling  DQN  model,  implemented  using  the
+Functional API:
+
+K = keras.backend
+input_states = keras.layers.Input(shape=[4])
+hidden1 = keras.layers.Dense(32, activation="elu")(input_states)
+hidden2 = keras.layers.Dense(32, activation="elu")(hidden1)
+state_values = keras.layers.Dense(1)(hidden2)
+raw_advantages = keras.layers.Dense(n_outputs)(hidden2)
+advantages = raw_advantages - K.max(raw_advantages, axis=1, keepdims=True)
+Q_values = state_values + advantages
+model = keras.Model(inputs=[input_states], outputs=[Q_values])
+
+The rest of the algorithm is just the same as earlier. In fact, you can build a Double
+Dueling  DQN  and  combine  it  with  prioritized  experience  replay!  More  generally,
+many RL techniques can be combined, as DeepMind demonstrated in a 2017 paper.18
+The paper’s authors combined six different techniques into an agent called Rainbow,
+which largely outperformed the state of the art.
+
+Unfortunately,  implementing  all  of  these  techniques,  debugging  them,  fine-tuning
+them,  and  of  course  training  the  models  can  require  a  huge  amount  of  work.  So
+instead of reinventing the wheel, it is often best to reuse scalable and well-tested libra‐
+ries, such as TF-Agents.
+
+The TF-Agents Library
+The  TF-Agents  library  is  a  Reinforcement  Learning  library  based  on  TensorFlow,
+developed  at  Google  and  open  sourced  in  2018.  Just  like  OpenAI  Gym,  it  provides
+many off-the-shelf environments (including wrappers for all OpenAI Gym environ‐
+ments), plus it supports the PyBullet library (for 3D physics simulation), DeepMind’s
+DM  Control  library  (based  on  MuJoCo’s  physics  engine),  and  Unity’s  ML-Agents
+library (simulating many 3D environments). It also implements many RL algorithms,
+including REINFORCE, DQN, and DDQN, as well as various RL components such
+as efficient replay buffers and metrics. It is fast, scalable, easy to use, and customiza‐
+ble: you can create your own environments and neural nets, and you can customize
+pretty much any component. In this section we will use TF-Agents to train an agent
+to  play  Breakout,  the  famous  Atari  game  (see  Figure  18-1119),  using  the  DQN  algo‐
+rithm (you can easily switch to another algorithm if you prefer).
+
+18 Matteo Hessel et al., “Rainbow: Combining Improvements in Deep Reinforcement Learning,” arXiv preprint
+
+arXiv:1710.02298 (2017): 3215–3222.
+
+19 If you don’t know this game, it’s simple: a ball bounces around and breaks bricks when it touches them. You
+control a paddle near the bottom of the screen. The paddle can go left or right, and you must get the ball to
+break every brick, while preventing it from touching the bottom of the screen.
+
+642 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+Figure 18-11. The famous Breakout game
+
+Installing TF-Agents
+Let’s start by installing TF-

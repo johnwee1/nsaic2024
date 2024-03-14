@@ -1,0 +1,376 @@
+αj.  The  predicted  class  is  the  one  that
+receives the majority of weighted votes (see Equation 7-4).
+
+Equation 7-4. AdaBoost predictions
+
+y x = argmax
+
+k
+
+N
+∑
+j = 1
+x = k
+
+y
+
+j
+
+α j where N is the number of predictors.
+
+15 The original AdaBoost algorithm does not use a learning rate hyperparameter.
+
+202 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+Scikit-Learn uses a multiclass version of AdaBoost called SAMME16 (which stands for
+Stagewise Additive Modeling using a Multiclass Exponential loss function). When there
+are just two classes, SAMME is equivalent to AdaBoost. If the predictors can estimate
+class probabilities (i.e., if they have a predict_proba() method), Scikit-Learn can use
+a variant of SAMME called SAMME.R (the R stands for “Real”), which relies on class
+probabilities rather than predictions and generally performs better.
+
+The following code trains an AdaBoost classifier based on 200 Decision Stumps using
+Scikit-Learn’s  AdaBoostClassifier  class  (as  you  might  expect,  there  is  also  an  Ada
+BoostRegressor class). A Decision Stump is a Decision Tree with max_depth=1—in
+other words, a tree composed of a single decision node plus two leaf nodes. This is
+the default base estimator for the AdaBoostClassifier class:
+
+from sklearn.ensemble import AdaBoostClassifier
+
+ada_clf = AdaBoostClassifier(
+    DecisionTreeClassifier(max_depth=1), n_estimators=200,
+    algorithm="SAMME.R", learning_rate=0.5)
+ada_clf.fit(X_train, y_train)
+
+If your AdaBoost ensemble is overfitting the training set, you can
+try reducing the number of estimators or more strongly regulariz‐
+ing the base estimator.
+
+Gradient Boosting
+Another very popular boosting algorithm is Gradient Boosting.17 Just like AdaBoost,
+Gradient Boosting works by sequentially adding predictors to an ensemble, each one
+correcting its predecessor. However, instead of tweaking the instance weights at every
+iteration like AdaBoost does, this method tries to fit the new predictor to the residual
+errors made by the previous predictor.
+
+Let’s go through a simple regression example, using Decision Trees as the base predic‐
+tors  (of  course,  Gradient  Boosting  also  works  great  with  regression  tasks).  This  is
+called Gradient Tree Boosting, or Gradient Boosted Regression Trees (GBRT). First, let’s
+fit a DecisionTreeRegressor to the training set (for example, a noisy quadratic train‐
+ing set):
+
+16 For more details, see Ji Zhu et al., “Multi-Class AdaBoost,” Statistics and Its Interface 2, no. 3 (2009): 349–360.
+
+17 Gradient Boosting was first introduced in Leo Breiman’s 1997 paper “Arcing the Edge” and was further devel‐
+oped in the 1999 paper “Greedy Function Approximation: A Gradient Boosting Machine” by Jerome H. Fried‐
+man.
+
+Boosting 
+
+| 
+
+203
+
+from sklearn.tree import DecisionTreeRegressor
+
+tree_reg1 = DecisionTreeRegressor(max_depth=2)
+tree_reg1.fit(X, y)
+
+Next, we’ll train a second DecisionTreeRegressor on the residual errors made by the
+first predictor:
+
+y2 = y - tree_reg1.predict(X)
+tree_reg2 = DecisionTreeRegressor(max_depth=2)
+tree_reg2.fit(X, y2)
+
+Then we train a third regressor on the residual errors made by the second predictor:
+
+y3 = y2 - tree_reg2.predict(X)
+tree_reg3 = DecisionTreeRegressor(max_depth=2)
+tree_reg3.fit(X, y3)
+
+Now we have an ensemble containing three trees. It can make predictions on a new
+instance simply by adding up the predictions of all the trees:
+
+y_pred = sum(tree.predict(X_new) for tree in (tree_reg1, tree_reg2, tree_reg3))
+
+Figure 7-9 represents the predictions of these three trees in the left column, and the
+ensemble’s predictions in the right column. In the first row, the ensemble has just one
+tree, so its predictions are exactly the same as the first tree’s predictions. In the second
+row, a new tree is trained on the residual errors of the first tree. On the right you can
+see that the ensemble’s predictions are equal to the sum of the predictions of the first
+two trees. Similarly, in the third row another tree is trained on the residual errors of
+the  second  tree.  You  can  see  that  the  ensemble’s  predictions  gradually  get  better  as
+trees are added to the ensemble.
+
+A simpler way to train GBRT ensembles is to use Scikit-Learn’s GradientBoostingRe
+gressor class. Much like the RandomForestRegressor class, it has hyperparameters to
+control the growth of Decision Trees (e.g., max_depth, min_samples_leaf), as well as
+hyperparameters  to  control  the  ensemble  training,  such  as  the  number  of  trees
+(n_estimators). The following code creates the same ensemble as the previous one:
+
+from sklearn.ensemble import GradientBoostingRegressor
+
+gbrt = GradientBoostingRegressor(max_depth=2, n_estimators=3, learning_rate=1.0)
+gbrt.fit(X, y)
+
+204 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+Figure 7-9. In this depiction of Gradient Boosting, the first predictor (top left) is trained
+normally, then each consecutive predictor (middle left and lower left) is trained on the
+previous predictor’s residuals; the right column shows the resulting ensemble’s predictions
+
+The learning_rate hyperparameter scales the contribution of each tree. If you set it
+to a low value, such as 0.1, you will need more trees in the ensemble to fit the train‐
+ing set, but the predictions will usually generalize better. This is a regularization tech‐
+nique  called  shrinkage.  Figure  7-10  shows  two  GBRT  ensembles  trained  with  a  low
+learning  rate:  the  one  on  the  left  does  not  have  enough  trees  to  fit  the  training  set,
+while the one on the right has too many trees and overfits the training set.
+
+Boosting 
+
+| 
+
+205
+
+Figure 7-10. GBRT ensembles with not enough predictors (left) and too many (right)
+
+In order to find the optimal number of trees, you can use early stopping (see Chap‐
+ter  4).  A  simple  way  to  implement  this  is  to  use  the  staged_predict()  method:  it
+returns an iterator over the predictions made by the ensemble at each stage of train‐
+ing (with one tree, two trees, etc.). The following code trains a GBRT ensemble with
+120 trees, then measures the validation error at each stage of training to find the opti‐
+mal  number  of  trees,  and  finally  trains  another  GBRT  ensemble  using  the  optimal
+number of trees:
+
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+
+X_train, X_val, y_train, y_val = train_test_split(X, y)
+
+gbrt = GradientBoostingRegressor(max_depth=2, n_estimators=120)
+gbrt.fit(X_train, y_train)
+
+errors = [mean_squared_error(y_val, y_pred)
+          for y_pred in gbrt.staged_predict(X_val)]
+bst_n_estimators = np.argmin(errors) + 1
+
+gbrt_best = GradientBoostingRegressor(max_depth=2,n_estimators=bst_n_estimators)
+gbrt_best.fit(X_train, y_train)
+
+The validation errors are represented on the left of Figure 7-11, and the best model’s
+predictions are represented on the right.
+
+206 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+Figure 7-11. Tuning the number of trees using early stopping
+
+It  is  also  possible  to  implement  early  stopping  by  actually  stopping  training  early
+(instead  of  training  a  large  number  of  trees  first  and  then  looking  back  to  find  the
+optimal  number).  You  can  do  so  by  setting  warm_start=True,  which  makes  Scikit-
+Learn  keep  existing  trees  when  the  fit()  method  is  called,  allowing  incremental
+training.  The  following  code  stops  training  when  the  validation  error  does  not
+improve for five iterations in a row:
+
+gbrt = GradientBoostingRegressor(max_depth=2, warm_start=True)
+
+min_val_error = float("inf")
+error_going_up = 0
+for n_estimators in range(1, 120):
+    gbrt.n_estimators = n_estimators
+    gbrt.fit(X_train, y_train)
+    y_pred = gbrt.predict(X_val)
+    val_error = mean_squared_error(y_val, y_pred)
+    if val_error < min_val_error:
+        min_val_error = val_error
+        error_going_up = 0
+    else:
+        error_going_up += 1
+        if error_going_up == 5:
+            break  # early stopping
+
+The  GradientBoostingRegressor  class  also  supports  a  subsample  hyperparameter,
+which specifies the fraction of training instances to be used for training each tree. For
+example, if subsample=0.25, then each tree is trained on 25% of the training instan‐
+ces,  selected  randomly.  As  you  can  probably  guess  by  now,  this  technique  trades  a
+higher bias for a lower variance. It also speeds up training considerably. This is called
+Stochastic Gradient Boosting.
+
+Boosting 
+
+| 
+
+207
+
+It  is  possible  to  use  Gradient  Boosting  with  other  cost  functions.
+This  is  controlled  by  the  loss  hyperparameter  (see  Scikit-Learn’s
+documentation for more details).
+
+It is worth noting that an optimized implementation of Gradient Boosting is available
+in the popular Python library XGBoost, which stands for Extreme Gradient Boosting.
+This package was initially developed by Tianqi Chen as part of the Distributed (Deep)
+Machine  Learning  Community  (DMLC),  and  it  aims  to  be  extremely  fast,  scalable,
+and  portable.  In  fact,  XGBoost  is  often  an  important  component  of  the  winning
+entries in ML competitions. XGBoost’s API is quite similar to Scikit-Learn’s:
+
+import xgboost
+
+xgb_reg = xgboost.XGBRegressor()
+xgb_reg.fit(X_train, y_train)
+y_pred = xgb_reg.predict(X_val)
+
+XGBoost  also  offers  several  nice  features,  such  as  automatically  taking  care  of  early
+stopping:
+
+xgb_reg.fit(X_train, y_train,
+            eval_set=[(X_val, y_val)], early_stopping_rounds=2)
+y_pred = xgb_reg.predict(X_val)
+
+You should definitely check it out!
+
+Stacking
+The last Ensemble method we will discuss in this chapter is called stacking (short for
+stacked generalization).18 It is based on a simple idea: instead of using trivial functions
+(such  as  hard  voting)  to  aggregate  the  predictions  of  all  predictors  in  an  ensemble,
+why don’t we train a model to perform this aggregation? Figure 7-12 shows such an
+ensemble performing a regression task on a new instance. Each of the bottom three
+predictors  predicts  a  different  value  (3.1,  2.7,  and  2.9),  and  then  the  final  predictor
+(called a blender, or a meta learner) takes these predictions as inputs and makes the
+final prediction (3.0).
+
+18 David H. Wolpert, “Stacked Generalization,” Neural Networks 5, no. 2 (1992): 241–259.
+
+208 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+Figure 7-12. Aggregating predictions using a blending predictor
+
+To train the blender, a common approach is to use a hold-out set.19 Let’s see how it
+works. First, the training set is split into two subsets. The first subset is used to train
+the predictors in the first layer (see Figure 7-13).
+
+Figure 7-13. Training the first layer
+
+Next,  the  first  layer’s  predictors  are  used  to  make  predictions  on  the  second  (held-
+out) set (see Figure 7-14). This ensures that the predictions are “clean,” since the pre‐
+dictors never saw these instances during training. For each instance in the hold-out
+
+19 Alternatively, it is possible to use out-of-fold predictions. In some contexts this is called stacking, while using a
+
+hold-out set is called blending. For many people these terms are synonymous.
+
+Stacking 
+
+| 
+
+209
+
+set, there are three predicted values. We can create a new training set using these pre‐
+dicted values as input features (which makes this new training set 3D), and keeping
+the target values. The blender is trained on this new training set, so it learns to pre‐
+dict the target value, given the first layer’s predictions.
+
+Figure 7-14. Training the blender
+
+It is actually possible to train several different blenders this way (e.g., one using Lin‐
+ear  Regression,  another  using  Random  Forest  Regression),  to  get  a  whole  layer  of
+blenders. The trick is to split the training set into three subsets: the first one is used to
+train the first layer, the second one is used to create the training set used to train the
+second  layer  (using  predictions  made  by  the  predictors  of  the  first  layer),  and  the
+third one is used to create the training set to train the third layer (using predictions
+made by the predictors of the second layer). Once this is done, we can make a predic‐
+tion  for  a  new  instance  by  going  through  each  layer  sequentially,  as  shown  in
+Figure 7-15.
+
+210 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+Figure 7-15. Predictions in a multilayer stacking ensemble
+
+Unfortunately, Scikit-Learn does not support stacking directly, but it is not too hard
+to roll out your own implementation (see the following exercises). Alternatively, you
+can use an open source implementation such as DESlib.
+
+Exercises
+
+1. If  you  have  trained  five  different  models  on  the  exact  same  training  data,  and
+they  all  achieve  95%  precision,  is  there  any  chance  that  you  can  combine  these
+models to get better results? If so, how? If not, why?
+
+2. What is the difference between hard and soft voting classifiers?
+
+3. Is it possible to speed up training of a bagging ensemble by distributing it across
+multiple  servers?  What  about  pasting  ensembles,  boosting  ensembles,  Random
+Forests, or stacking ensembles?
+
+4. What is the benefit of out-of-bag evaluation?
+
+5. What makes Extra-Trees more random than regular Random Forests? How can
+this extra randomness help? Are Extra-Trees slower or faster than regular Ran‐
+dom Forests?
+
+6. If  your  AdaBoost  ensemble  underfits  the  training  data,  which  hyperparameters
+
+should you tweak and how?
+
+Exercises 
+
+| 
+
+211
+
+7. If your Gradient Boosting ensemble overfits the training set, should you increase
+
+or decrease the learning rate?
+
+8. Load the MNIST data (introduced in Chapter 3), and split it into a training set, a
+validation set, and a test set (e.g., use 50,000 instances for training, 10,000 for val‐
+idation, and 10,000 for testing). Then train various classifiers, such as a Random
+Forest classifier, an Extra-Trees classifier, and an SVM classifier. Next, try to com‐
+bine  them  into  an  ensemble  that  outperforms  each  individual  classifier  on  the
+validation set, using soft or hard voting. Once you have found one, try it on the
+test set. How much better does it perform compared to the individual classifiers?
+
+9. Run the individual classifiers from the previous exercise to make predictions on
+the  validation  set,  and  create  a  new  training  set  with  the  resulting  predictions:
+each training instance is a vector containing the set of predictions from all your
+classifiers  for  an  image,  and  the  target  is  the  image’s  class.  Train  a  classifier  on
+this  new  training  set.  Congratulations,  you  have  just  trained  a  blender,  and
+together  with  the  classifiers  it  forms  a  stacking  ensemble!  Now  evaluate  the
+ensemble on the test set. For each image in the test set, make predictions with all
+your classifiers, then feed the predictions to the blender to get the ensemble’s pre‐
+dictions. How does it compare to the voting classifier you trained earlier?
+
+Solutions to these exercises are available in Appendix A.
+
+212 
+
+| 
+
+Chapter 7: Ensemble Learning and Random Forests
+
+CHAPTER 8
+Dimensionality Reduction
+
+Many Machine Learning problems involve thousands or even millions of features for
+each training instance. Not only do all these features make training extremely slow,
+but they can also make it much harder to find a good solution, as we will se

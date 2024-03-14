@@ -1,0 +1,274 @@
+ever, we first need to change the targets to be vectors containing the next 10 values:
+
+series = generate_time_series(10000, n_steps + 10)
+X_train, Y_train = series[:7000, :n_steps], series[:7000, -10:, 0]
+X_valid, Y_valid = series[7000:9000, :n_steps], series[7000:9000, -10:, 0]
+X_test, Y_test = series[9000:, :n_steps], series[9000:, -10:, 0]
+
+Now we just need the output layer to have 10 units instead of 1:
+
+model = keras.models.Sequential([
+    keras.layers.SimpleRNN(20, return_sequences=True, input_shape=[None, 1]),
+    keras.layers.SimpleRNN(20),
+    keras.layers.Dense(10)
+])
+
+After training this model, you can predict the next 10 values at once very easily:
+
+Y_pred = model.predict(X_new)
+
+This  model  works  nicely:  the  MSE  for  the  next  10  time  steps  is  about  0.008.  That’s
+much better than the linear model. But we can still do better: indeed, instead of train‐
+ing  the  model  to  forecast  the  next  10  values  only  at  the  very  last  time  step,  we  can
+train it to forecast the next 10 values at each and every time step. In other words, we
+can turn this sequence-to-vector RNN into a sequence-to-sequence RNN. The advan‐
+tage of this technique is that the loss will contain a term for the output of the RNN at
+each and every time step, not just the output at the last time step. This means there
+will be many more error gradients flowing through the model, and they won’t have to
+flow  only  through  time;  they  will  also  flow  from  the  output  of  each  time  step.  This
+will both stabilize and speed up training.
+
+Forecasting a Time Series 
+
+| 
+
+509
+
+To be clear, at time step 0 the model will output a vector containing the forecasts for
+time steps 1 to 10, then at time step 1 the model will forecast time steps 2 to 11, and
+so on. So each target must be a sequence of the same length as the input sequence,
+containing a 10-dimensional vector at each step. Let’s prepare these target sequences:
+
+Y = np.empty((10000, n_steps, 10)) # each target is a sequence of 10D vectors
+for step_ahead in range(1, 10 + 1):
+    Y[:, :, step_ahead - 1] = series[:, step_ahead:step_ahead + n_steps, 0]
+Y_train = Y[:7000]
+Y_valid = Y[7000:9000]
+Y_test = Y[9000:]
+
+It may be surprising that the targets will contain values that appear
+in  the  inputs  (there  is  a  lot  of  overlap  between  X_train  and
+Y_train).  Isn’t  that  cheating?  Fortunately,  not  at  all:  at  each  time
+step, the model only knows about past time steps, so it cannot look
+ahead. It is said to be a causal model.
+
+To turn the model into a sequence-to-sequence model, we must set  return_sequen
+ces=True  in  all  recurrent  layers  (even  the  last  one),  and  we  must  apply  the  output
+Dense layer at every time step. Keras offers a TimeDistributed layer for this very pur‐
+pose:  it  wraps  any  layer  (e.g.,  a  Dense  layer)  and  applies  it  at  every  time  step  of  its
+input sequence. It does this efficiently, by reshaping the inputs so that each time step
+is treated as a separate instance (i.e., it reshapes the inputs from [batch size, time steps,
+input dimensions] to [batch size × time steps, input dimensions]; in this example, the
+number of input dimensions is 20 because the previous SimpleRNN layer has 20 units),
+then it runs the Dense layer, and finally it reshapes the outputs back to sequences (i.e.,
+it reshapes the outputs from [batch size × time steps, output dimensions] to [batch size,
+time  steps,  output  dimensions];  in  this  example  the  number  of  output  dimensions  is
+10, since the Dense layer has 10 units).2 Here is the updated model:
+
+model = keras.models.Sequential([
+    keras.layers.SimpleRNN(20, return_sequences=True, input_shape=[None, 1]),
+    keras.layers.SimpleRNN(20, return_sequences=True),
+    keras.layers.TimeDistributed(keras.layers.Dense(10))
+])
+
+The Dense layer actually supports sequences as inputs (and even higher-dimensional
+inputs): it handles them just like TimeDistributed(Dense(…)), meaning it is applied
+to the last input dimension only (independently across all time steps). Thus, we could
+replace  the  last  layer  with  just  Dense(10).  For  the  sake  of  clarity,  however,  we  will
+keep  using  TimeDistributed(Dense(10))  because  it  makes  it  clear  that  the  Dense
+
+2 Note that a TimeDistributed(Dense(n)) layer is equivalent to a Conv1D(n, filter_size=1) layer.
+
+510 
+
+| 
+
+Chapter 15: Processing Sequences Using RNNs and CNNs
+
+layer  is  applied  independently  at  each  time  step  and  that  the  model  will  output  a
+sequence, not just a single vector.
+
+All  outputs  are  needed  during  training,  but  only  the  output  at  the  last  time  step  is
+useful for predictions and for evaluation. So although we will rely on the MSE over all
+the outputs for training, we will use a custom metric for evaluation, to only compute
+the MSE over the output at the last time step:
+
+def last_time_step_mse(Y_true, Y_pred):
+    return keras.metrics.mean_squared_error(Y_true[:, -1], Y_pred[:, -1])
+
+optimizer = keras.optimizers.Adam(lr=0.01)
+model.compile(loss="mse", optimizer=optimizer, metrics=[last_time_step_mse])
+
+We get a validation MSE of about 0.006, which is 25% better than the previous model.
+You  can  combine  this  approach  with  the  first  one:  just  predict  the  next  10  values
+using  this  RNN,  then  concatenate  these  values  to  the  input  time  series  and  use  the
+model  again  to  predict  the  next  10  values,  and  repeat  the  process  as  many  times  as
+needed. With this approach, you can generate arbitrarily long sequences. It may not
+be very accurate for long-term predictions, but it may be just fine if your goal is to
+generate original music or text, as we will see in Chapter 16.
+
+When forecasting time series, it is often useful to have some error
+bars along with your predictions. For this, an efficient technique is
+MC Dropout, introduced in Chapter 11: add an MC Dropout layer
+within each memory cell, dropping part of the inputs and hidden
+states.  After  training,  to  forecast  a  new  time  series,  use  the  model
+many times and compute the mean and standard deviation of the
+predictions at each time step.
+
+Simple RNNs can be quite good at forecasting time series or handling other kinds of
+sequences, but they do not perform as well on long time series or sequences. Let’s dis‐
+cuss why and see what we can do about it.
+
+Handling Long Sequences
+To train an RNN on long sequences, we must run it over many time steps, making the
+unrolled RNN a very deep network. Just like any deep neural network it may suffer
+from the unstable gradients problem, discussed in Chapter 11: it may take forever to
+train,  or  training  may  be  unstable.  Moreover,  when  an  RNN  processes  a  long
+sequence,  it  will  gradually  forget  the  first  inputs  in  the  sequence.  Let’s  look  at  both
+these problems, starting with the unstable gradients problem.
+
+Handling Long Sequences 
+
+| 
+
+511
+
+Fighting the Unstable Gradients Problem
+Many of the tricks we used in deep nets to alleviate the unstable gradients problem
+can also be used for RNNs: good parameter initialization, faster optimizers, dropout,
+and so on. However, nonsaturating activation functions (e.g., ReLU) may not help as
+much here; in fact, they may actually lead the RNN to be even more unstable during
+training.  Why?  Well,  suppose  Gradient  Descent  updates  the  weights  in  a  way  that
+increases the outputs slightly at the first time step. Because the same weights are used
+at every time step, the outputs at the second time step may also be slightly increased,
+and those at the third, and so on until the outputs explode—and a nonsaturating acti‐
+vation  function  does  not  prevent  that.  You  can  reduce  this  risk  by  using  a  smaller
+learning  rate,  but  you  can  also  simply  use  a  saturating  activation  function  like  the
+hyperbolic  tangent  (this  explains  why  it  is  the  default).  In  much  the  same  way,  the
+gradients  themselves  can  explode.  If  you  notice  that  training  is  unstable,  you  may
+want to monitor the size of the gradients (e.g., using TensorBoard) and perhaps use
+Gradient Clipping.
+
+Moreover, Batch Normalization cannot be used as efficiently with RNNs as with deep
+feedforward nets. In fact, you cannot use it between time steps, only between recur‐
+rent layers. To be more precise, it is technically possible to add a BN layer to a mem‐
+ory cell (as we will see shortly) so that it will be applied at each time step (both on the
+inputs for that time step and on the hidden state from the previous step). However,
+the same BN layer will be used at each time step, with the same parameters, regardless
+of the actual scale and offset of the inputs and hidden state. In practice, this does not
+yield good results, as was demonstrated by César Laurent et al. in a 2015 paper:3 the
+authors found that BN was slightly beneficial only when it was applied to the inputs,
+not  to  the  hidden  states.  In  other  words,  it  was  slightly  better  than  nothing  when
+applied between recurrent layers (i.e., vertically in Figure 15-7), but not within recur‐
+rent  layers  (i.e.,  horizontally).  In  Keras  this  can  be  done  simply  by  adding  a  Batch
+Normalization layer before each recurrent layer, but don’t expect too much from it.
+
+Another form of normalization often works better with RNNs: Layer Normalization.
+This idea was introduced by Jimmy Lei Ba et al. in a 2016 paper:4 it is very similar to
+Batch Normalization, but instead of normalizing across the batch dimension, it nor‐
+malizes  across  the  features  dimension.  One  advantage  is  that  it  can  compute  the
+required statistics on the fly, at each time step, independently for each instance. This
+also means that it behaves the same way during training and testing (as opposed to
+BN), and it does not need to use exponential moving averages to estimate the feature
+statistics across all instances in the training set. Like BN, Layer Normalization learns a
+
+3 César Laurent et al., “Batch Normalized Recurrent Neural Networks,” Proceedings of the IEEE International
+
+Conference on Acoustics, Speech, and Signal Processing (2016): 2657–2661.
+
+4 Jimmy Lei Ba et al., “Layer Normalization,” arXiv preprint arXiv:1607.06450 (2016).
+
+512 
+
+| 
+
+Chapter 15: Processing Sequences Using RNNs and CNNs
+
+scale and an offset parameter for each input. In an RNN, it is typically used right after
+the linear combination of the inputs and the hidden states.
+
+Let’s use tf.keras to implement Layer Normalization within a simple memory cell. For
+this, we need to define a custom memory cell. It is just like a regular layer, except its
+call() method takes two arguments: the inputs at the current time step and the hid‐
+den states from the previous time step. Note that the states argument is a list con‐
+taining  one  or  more  tensors.  In  the  case  of  a  simple  RNN  cell  it  contains  a  single
+tensor equal to the outputs of the previous time step, but other cells may have multi‐
+ple state tensors (e.g., an LSTMCell has a long-term state and a short-term state, as we
+will  see  shortly).  A  cell  must  also  have  a  state_size  attribute  and  an  output_size
+attribute. In a simple RNN, both are simply equal to the number of units. The follow‐
+ing code implements a custom memory cell which will behave like a SimpleRNNCell,
+except it will also apply Layer Normalization at each time step:
+
+class LNSimpleRNNCell(keras.layers.Layer):
+    def __init__(self, units, activation="tanh", **kwargs):
+        super().__init__(**kwargs)
+        self.state_size = units
+        self.output_size = units
+        self.simple_rnn_cell = keras.layers.SimpleRNNCell(units,
+                                                          activation=None)
+        self.layer_norm = keras.layers.LayerNormalization()
+        self.activation = keras.activations.get(activation)
+    def call(self, inputs, states):
+        outputs, new_states = self.simple_rnn_cell(inputs, states)
+        norm_outputs = self.activation(self.layer_norm(outputs))
+        return norm_outputs, [norm_outputs]
+
+The  code  is  quite  straightforward.5  Our  LNSimpleRNNCell  class  inherits  from  the
+keras.layers.Layer class, just like any custom layer. The constructor takes the num‐
+ber  of  units  and  the  desired  activation  function,  and  it  sets  the  state_size  and
+output_size  attributes,  then  creates  a  SimpleRNNCell  with  no  activation  function
+(because  we  want  to  perform  Layer  Normalization  after  the  linear  operation  but
+before  the  activation  function).  Then  the  constructor  creates  the  LayerNormaliza
+tion layer, and finally it fetches the desired activation function. The call() method
+starts by applying the simple RNN cell, which computes a linear combination of the
+current inputs and the previous hidden states, and it returns the result twice (indeed,
+in a SimpleRNNCell, the outputs are just equal to the hidden states: in other words,
+new_states[0] is equal to outputs, so we can safely ignore new_states in the rest of
+the call() method). Next, the call() method applies Layer Normalization, followed
+
+5 It would have been simpler to inherit from SimpleRNNCell instead so that we wouldn’t have to create an inter‐
+nal SimpleRNNCell or handle the state_size and output_size attributes, but the goal here was to show how
+to create a custom cell from scratch.
+
+Handling Long Sequences 
+
+| 
+
+513
+
+by the activation function. Finally, it returns the outputs twice (once as the outputs,
+and once as the new hidden states). To use this custom cell, all we need to do is create
+a keras.layers.RNN layer, passing it a cell instance:
+
+model = keras.models.Sequential([
+    keras.layers.RNN(LNSimpleRNNCell(20), return_sequences=True,
+                     input_shape=[None, 1]),
+    keras.layers.RNN(LNSimpleRNNCell(20), return_sequences=True),
+    keras.layers.TimeDistributed(keras.layers.Dense(10))
+])
+
+Similarly, you could create a custom cell to apply dropout between each time step. But
+there’s a simpler way: all recurrent layers (except for keras.layers.RNN) and all cells
+provided by Keras have a dropout hyperparameter and a recurrent_dropout hyper‐
+parameter:  the  former  defines  the  dropout  rate  to  apply  to  the  inputs  (at  each  time
+step), and the latter defines the dropout rate for the hidden states (also at each time
+step). No need to create a custom cell to apply dropout at each time step in an RNN.
+
+With these techniques, you can alleviate the unstable gradients problem and train an
+RNN much more efficiently. Now let’s look at how to deal with the short-term mem‐
+ory problem.
+
+Tackling the Short-Term Memory Problem
+Due  to  the  transformations  that  the  data  goes  through  when  traversing  an  RNN,
+some information is lost at each time step. After a while, the RNN’s state contains vir‐
+tually no trace of the first inputs. This can be a showstopper. Imagine Dory the fish6
+trying  to  translate  a  long  sentence;  by  the  time  she’s  finished  reading  it,  she  has  no
+clue  how  it  started.  To  tackle  this  problem,  various  types  of  cells  with  long-term
+memory have been introduced. They have proven so successful that the basic cells are
+not used much anymore. Let’s first look at the most popular of these long-term mem‐
+ory cells: the LSTM cell.
+
+LSTM cells
+
+The Long Short-Term Memory (LSTM) cell was proposed in 19977 by Sepp Hochreiter
+and Jürgen Schmidhuber and gradua

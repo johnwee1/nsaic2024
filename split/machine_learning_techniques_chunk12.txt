@@ -1,0 +1,350 @@
+="Precision")
+    plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
+    [...] # highlight the threshold and add the legend, axis label, and grid
+
+plot_precision_recall_vs_threshold(precisions, recalls, thresholds)
+plt.show()
+
+Figure 3-4. Precision and recall versus the decision threshold
+
+You may wonder why the precision curve is bumpier than the recall
+curve in Figure 3-4. The reason is that precision may sometimes go
+down when you raise the threshold (although in general it will go
+up).  To  understand  why,  look  back  at  Figure  3-3  and  notice  what
+happens when you start from the central threshold and move it just
+one digit to the right: precision goes from 4/5 (80%) down to 3/4
+(75%). On the other hand, recall can only go down when the thres‐
+hold is increased, which explains why its curve looks smooth.
+
+Another  way  to  select  a  good  precision/recall  trade-off  is  to  plot  precision  directly
+against recall, as shown in Figure 3-5 (the same threshold as earlier is highlighted).
+
+Performance Measures 
+
+| 
+
+95
+
+Figure 3-5. Precision versus recall
+
+You  can  see  that  precision  really  starts  to  fall  sharply  around  80%  recall.  You  will
+probably want to select a precision/recall trade-off just before that drop—for exam‐
+ple, at around 60% recall. But of course, the choice depends on your project.
+
+Suppose you decide to aim for 90% precision. You look up the first plot and find that
+you need to use a threshold of about 8,000. To be more precise you can search for the
+lowest threshold that gives you at least 90% precision (np.argmax() will give you the
+first index of the maximum value, which in this case means the first True value):
+
+threshold_90_precision = thresholds[np.argmax(precisions >= 0.90)] # ~7816
+
+To  make  predictions  (on  the  training  set  for  now),  instead  of  calling  the  classifier’s
+predict() method, you can run this code:
+
+y_train_pred_90 = (y_scores >= threshold_90_precision)
+
+Let’s check these predictions’ precision and recall:
+
+>>> precision_score(y_train_5, y_train_pred_90)
+0.9000380083618396
+>>> recall_score(y_train_5, y_train_pred_90)
+0.4368197749492714
+
+Great, you have a 90% precision classifier! As you can see, it is fairly easy to create a
+classifier with virtually any precision you want: just set a high enough threshold, and
+you’re done. But wait, not so fast. A high-precision classifier is not very useful if its
+recall is too low!
+
+96 
+
+| 
+
+Chapter 3: Classification
+
+If  someone  says,  “Let’s  reach  99%  precision,”  you  should  ask,  “At
+what recall?”
+
+The ROC Curve
+The receiver operating characteristic (ROC) curve is another common tool used with
+binary classifiers. It is very similar to the precision/recall curve, but instead of plot‐
+ting precision versus recall, the ROC curve plots the true positive rate (another name
+for recall) against the false positive rate (FPR). The FPR is the ratio of negative instan‐
+ces  that  are  incorrectly  classified  as  positive.  It  is  equal  to  1  –  the  true  negative  rate
+(TNR), which is the ratio of negative instances that are correctly classified as negative.
+The TNR is also called specificity. Hence, the ROC curve plots sensitivity (recall) ver‐
+sus 1 – specificity.
+
+To plot the ROC curve, you first use the roc_curve() function to compute the TPR
+and FPR for various threshold values:
+
+from sklearn.metrics import roc_curve
+
+fpr, tpr, thresholds = roc_curve(y_train_5, y_scores)
+
+Then you can plot the FPR against the TPR using Matplotlib. This code produces the
+plot in Figure 3-6:
+
+def plot_roc_curve(fpr, tpr, label=None):
+    plt.plot(fpr, tpr, linewidth=2, label=label)
+    plt.plot([0, 1], [0, 1], 'k--') # Dashed diagonal
+    [...] # Add axis labels and grid
+
+plot_roc_curve(fpr, tpr)
+plt.show()
+
+Once again there is a trade-off: the higher the recall (TPR), the more false positives
+(FPR) the classifier produces. The dotted line represents the ROC curve of a purely
+random classifier; a good classifier stays as far away from that line as possible (toward
+the top-left corner).
+
+Performance Measures 
+
+| 
+
+97
+
+Figure 3-6. This ROC curve plots the false positive rate against the true positive rate for
+all possible thresholds; the red circle highlights the chosen ratio (at 43.68% recall)
+
+One way to compare classifiers is to measure the area under the curve (AUC). A per‐
+fect classifier will have a ROC AUC equal to 1, whereas a purely random classifier will
+have a ROC AUC equal to 0.5. Scikit-Learn provides a function to compute the ROC
+AUC:
+
+>>> from sklearn.metrics import roc_auc_score
+>>> roc_auc_score(y_train_5, y_scores)
+0.9611778893101814
+
+Since  the  ROC  curve  is  so  similar  to  the  precision/recall  (PR)
+curve, you may wonder how to decide which one to use. As a rule
+of  thumb,  you  should  prefer  the  PR  curve  whenever  the  positive
+class is rare or when you care more about the false positives than
+the  false  negatives.  Otherwise,  use  the  ROC  curve.  For  example,
+looking at the previous ROC curve (and the ROC AUC score), you
+may  think  that  the  classifier  is  really  good.  But  this  is  mostly
+because  there  are  few  positives  (5s)  compared  to  the  negatives
+(non-5s). In contrast, the PR curve makes it clear that the classifier
+has  room  for  improvement  (the  curve  could  be  closer  to  the  top-
+left corner).
+
+Let’s  now  train  a  RandomForestClassifier  and  compare  its  ROC  curve  and  ROC
+AUC  score  to  those  of  the  SGDClassifier.  First,  you  need  to  get  scores  for  each
+instance in the training set. But due to the way it works (see Chapter 7), the Random
+ForestClassifier  class  does  not  have  a  decision_function()  method.  Instead,  it
+
+98 
+
+| 
+
+Chapter 3: Classification
+
+has  a  predict_proba()  method.  Scikit-Learn  classifiers  generally  have  one  or  the
+other, or both. The predict_proba() method returns an array containing a row per
+instance  and  a  column  per  class,  each  containing  the  probability  that  the  given
+instance belongs to the given class (e.g., 70% chance that the image represents a 5):
+
+from sklearn.ensemble import RandomForestClassifier
+
+forest_clf = RandomForestClassifier(random_state=42)
+y_probas_forest = cross_val_predict(forest_clf, X_train, y_train_5, cv=3,
+                                    method="predict_proba")
+
+The  roc_curve()  function  expects  labels  and  scores,  but  instead  of  scores  you  can
+give it class probabilities. Let’s use the positive class’s probability as the score:
+
+y_scores_forest = y_probas_forest[:, 1]   # score = proba of positive class
+fpr_forest, tpr_forest, thresholds_forest = roc_curve(y_train_5,y_scores_forest)
+
+Now you are ready to plot the ROC curve. It is useful to plot the first ROC curve as
+well to see how they compare (Figure 3-7):
+
+plt.plot(fpr, tpr, "b:", label="SGD")
+plot_roc_curve(fpr_forest, tpr_forest, "Random Forest")
+plt.legend(loc="lower right")
+plt.show()
+
+Figure 3-7. Comparing ROC curves: the Random Forest classifier is superior to the SGD
+classifier because its ROC curve is much closer to the top-left corner, and it has a greater
+AUC
+
+Performance Measures 
+
+| 
+
+99
+
+As you can see in Figure 3-7, the RandomForestClassifier’s ROC curve looks much
+better  than  the  SGDClassifier’s:  it  comes  much  closer  to  the  top-left  corner.  As  a
+result, its ROC AUC score is also significantly better:
+
+>>> roc_auc_score(y_train_5, y_scores_forest)
+0.9983436731328145
+
+Try measuring the precision and recall scores: you should find 99.0% precision and
+86.6% recall. Not too bad!
+
+You now know how to train binary classifiers, choose the appropriate metric for your
+task, evaluate your classifiers using cross-validation, select the precision/recall trade-
+off that fits your needs, and use ROC curves and ROC AUC scores to compare vari‐
+ous models. Now let’s try to detect more than just the 5s.
+
+Multiclass Classification
+Whereas binary classifiers distinguish between two classes, multiclass classifiers (also
+called multinomial classifiers) can distinguish between more than two classes.
+
+Some algorithms (such as SGD classifiers, Random Forest classifiers, and naive Bayes
+classifiers) are capable of handling multiple classes natively. Others (such as Logistic
+Regression or Support Vector Machine classifiers) are strictly binary classifiers. How‐
+ever, there are various strategies that you can use to perform multiclass classification
+with multiple binary classifiers.
+
+One way to create a system that can classify the digit images into 10 classes (from 0 to
+9) is to train 10 binary classifiers, one for each digit (a 0-detector, a 1-detector, a 2-
+detector, and so on). Then when you want to classify an image, you get the decision
+score from each classifier for that image and you select the class whose classifier out‐
+puts the highest score. This is called the one-versus-the-rest (OvR) strategy (also called
+one-versus-all).
+
+Another strategy is to train a binary classifier for every pair of digits: one to distin‐
+guish 0s and 1s, another to distinguish 0s and 2s, another for 1s and 2s, and so on.
+This  is  called  the  one-versus-one  (OvO)  strategy.  If  there  are  N  classes,  you  need  to
+train  N  ×  (N  –  1)  /  2  classifiers.  For  the  MNIST  problem,  this  means  training  45
+binary  classifiers!  When  you  want  to  classify  an  image,  you  have  to  run  the  image
+through all 45 classifiers and see which class wins the most duels. The main advan‐
+tage of OvO is that each classifier only needs to be trained on the part of the training
+set for the two classes that it must distinguish.
+
+Some algorithms (such as Support Vector Machine classifiers) scale poorly with the
+size of the training set. For these algorithms OvO is preferred because it is faster to
+train many classifiers on small training sets than to train few classifiers on large train‐
+ing sets. For most binary classification algorithms, however, OvR is preferred.
+
+100 
+
+| 
+
+Chapter 3: Classification
+
+Scikit-Learn detects when you try to use a binary classification algorithm for a multi‐
+class  classification  task,  and  it  automatically  runs  OvR  or  OvO,  depending  on  the
+algorithm.  Let’s  try  this  with  a  Support  Vector  Machine  classifier  (see  Chapter  5),
+using the sklearn.svm.SVC class:
+
+>>> from sklearn.svm import SVC
+>>> svm_clf = SVC()
+>>> svm_clf.fit(X_train, y_train) # y_train, not y_train_5
+>>> svm_clf.predict([some_digit])
+array([5], dtype=uint8)
+
+That was easy! This code trains the SVC on the training set using the original target
+classes  from  0  to  9  (y_train),  instead  of  the  5-versus-the-rest  target  classes
+(y_train_5). Then it makes a prediction (a correct one in this case). Under the hood,
+Scikit-Learn actually used the OvO strategy: it trained 45 binary classifiers, got their
+decision scores for the image, and selected the class that won the most duels.
+
+If  you  call  the  decision_function()  method,  you  will  see  that  it  returns  10  scores
+per instance (instead of just 1). That’s one score per class:
+
+>>> some_digit_scores = svm_clf.decision_function([some_digit])
+>>> some_digit_scores
+array([[ 2.92492871,  7.02307409,  3.93648529,  0.90117363,  5.96945908,
+         9.5       ,  1.90718593,  8.02755089, -0.13202708,  4.94216947]])
+
+The highest score is indeed the one corresponding to class 5:
+
+>>> np.argmax(some_digit_scores)
+5
+>>> svm_clf.classes_
+array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype=uint8)
+>>> svm_clf.classes_[5]
+5
+
+When a classifier is trained, it stores the list of target classes in its
+classes_ attribute, ordered by value. In this case, the index of each
+class  in  the  classes_  array  conveniently  matches  the  class  itself
+(e.g., the class at index 5 happens to be class 5), but in general you
+won’t be so lucky.
+
+If  you  want  to  force  Scikit-Learn  to  use  one-versus-one  or  one-versus-the-rest,  you
+can use the OneVsOneClassifier or OneVsRestClassifier classes. Simply create an
+instance and pass a classifier to its constructor (it does not even have to be a binary
+classifier). For example, this code creates a multiclass classifier using the OvR strat‐
+egy, based on an SVC:
+
+>>> from sklearn.multiclass import OneVsRestClassifier
+>>> ovr_clf = OneVsRestClassifier(SVC())
+>>> ovr_clf.fit(X_train, y_train)
+
+Multiclass Classification 
+
+| 
+
+101
+
+>>> ovr_clf.predict([some_digit])
+array([5], dtype=uint8)
+>>> len(ovr_clf.estimators_)
+10
+
+Training an SGDClassifier (or a RandomForestClassifier) is just as easy:
+
+>>> sgd_clf.fit(X_train, y_train)
+>>> sgd_clf.predict([some_digit])
+array([5], dtype=uint8)
+
+This time Scikit-Learn did not have to run OvR or OvO because SGD classifiers can
+directly  classify  instances  into  multiple  classes.  The  decision_function()  method
+now returns one value per class. Let’s look at the score that the SGD classifier assigned
+to each class:
+
+>>> sgd_clf.decision_function([some_digit])
+array([[-15955.22628, -38080.96296, -13326.66695,   573.52692, -17680.68466,
+          2412.53175, -25526.86498, -12290.15705, -7946.05205, -10631.35889]])
+
+You can see that the classifier is fairly confident about its prediction: almost all scores
+are largely negative, while class 5 has a score of 2412.5. The model has a slight doubt
+regarding class 3, which gets a score of 573.5. Now of course you want to evaluate this
+classifier.  As  usual,  you  can  use  cross-validation.  Use  the  cross_val_score()  func‐
+tion to evaluate the SGDClassifier’s accuracy:
+
+>>> cross_val_score(sgd_clf, X_train, y_train, cv=3, scoring="accuracy")
+array([0.8489802 , 0.87129356, 0.86988048])
+
+It gets over 84% on all test folds. If you used a random classifier, you would get 10%
+accuracy, so this is not such a bad score, but you can still do much better. Simply scal‐
+ing the inputs (as discussed in Chapter 2) increases accuracy above 89%:
+
+>>> from sklearn.preprocessing import StandardScaler
+>>> scaler = StandardScaler()
+>>> X_train_scaled = scaler.fit_transform(X_train.astype(np.float64))
+>>> cross_val_score(sgd_clf, X_train_scaled, y_train, cv=3, scoring="accuracy")
+array([0.89707059, 0.8960948 , 0.90693604])
+
+Error Analysis
+If this were a real project, you would now follow the steps in your Machine Learning
+project  checklist  (see  Appendix  B).  You’d  explore  data  preparation  options,  try  out
+multiple  models  (shortlisting  the  best  ones  and  fine-tuning  their  hyperparameters
+using  GridSearchCV),  and  automate  as  much  as  possible.  Here,  we  will  assume  that
+you have found a promising model and you want to find ways to improve it. One way
+to do this is to analyze the types of errors it makes.
+
+102 
+
+| 
+
+Chapter 3: Classification
+
+First,  look  at  the  confusion  matrix.  You  need  to  make  predictions  using  the
+cross_val_predict() function, then call the confusion_matrix() function, just like
+you did earlier:
+
+>>> y_train_pred = cross_val_predict(sgd_clf, X_train_scaled, y_train, cv=3)
+>>> conf_mx = confusion_matrix(y_train, y_train_pred)
+>>> conf_mx
+array([[5578,    0,   22,    7,    8,   45,   35,    5,  222,    1],
+       [   0, 6410,   35,   26,    4,   44,    4,    8,  198,   13],
+       [  28,   27, 5232,  100,   74,   27,   68,   37,  354,   11],
+       [  23,   18,  115, 5254,    2,  209,   26,   38,  373,   73],
+       [  11,   14,   45,   12, 5219,   11,   33,   26,  299,  172],
+       [  26,   16,   31,  173,   54, 4484,   76,   14,  482,   65],
+       [  31,   17,   45,    2,   42,   98,

@@ -1,0 +1,600 @@
+he same as image A, but
+
+9 Other kernels we’ve discussed so far had weights, but pooling kernels do not: they are just stateless sliding
+
+windows.
+
+Pooling Layers 
+
+| 
+
+457
+
+shifted  by  one  and  two  pixels  to  the  right.  As  you  can  see,  the  outputs  of  the  max
+pooling  layer  for  images  A  and  B  are  identical.  This  is  what  translation  invariance
+means.  For  image  C,  the  output  is  different:  it  is  shifted  one  pixel  to  the  right  (but
+there is still 75% invariance). By inserting a max pooling layer every few layers in a
+CNN, it is possible to get some level of translation invariance at a larger scale. More‐
+over,  max  pooling  offers  a  small  amount  of  rotational  invariance  and  a  slight  scale
+invariance. Such invariance (even if it is limited) can be useful in cases where the pre‐
+diction should not depend on these details, such as in classification tasks.
+
+Figure 14-9. Invariance to small translations
+
+However, max pooling has some downsides too. Firstly, it is obviously very destruc‐
+tive:  even  with  a  tiny  2  ×  2  kernel  and  a  stride  of  2,  the  output  will  be  two  times
+smaller  in  both  directions  (so  its  area  will  be  four  times  smaller),  simply  dropping
+75% of the input values. And in some applications, invariance is not desirable. Take
+semantic segmentation (the task of classifying each pixel in an image according to the
+object that pixel belongs to, which we’ll explore later in this chapter): obviously, if the
+input  image  is  translated  by  one  pixel  to  the  right,  the  output  should  also  be  trans‐
+lated by one pixel to the right. The goal in this case is equivariance, not invariance: a
+small change to the inputs should lead to a corresponding small change in the output.
+
+TensorFlow Implementation
+Implementing  a  max  pooling  layer  in  TensorFlow  is  quite  easy.  The  following  code
+creates a max pooling layer using a 2 × 2 kernel. The strides default to the kernel size,
+so this layer will use a stride of 2 (both horizontally and vertically). By default, it uses
+"valid" padding (i.e., no padding at all):
+
+458 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+max_pool = keras.layers.MaxPool2D(pool_size=2)
+
+To create an average pooling layer, just use AvgPool2D instead of MaxPool2D. As you
+might expect, it works exactly like a max pooling layer, except it computes the mean
+rather  than  the  max.  Average  pooling  layers  used  to  be  very  popular,  but  people
+mostly use max pooling layers now, as they generally perform better. This may seem
+surprising, since computing the mean generally loses less information than comput‐
+ing  the  max.  But  on  the  other  hand,  max  pooling  preserves  only  the  strongest  fea‐
+tures, getting rid of all the meaningless ones, so the next layers get a cleaner signal to
+work with. Moreover, max pooling offers stronger translation invariance than average
+pooling, and it requires slightly less compute.
+
+Note that max pooling and average pooling can be performed along the depth dimen‐
+sion  rather  than  the  spatial  dimensions,  although  this  is  not  as  common.  This  can
+allow the CNN to learn to be invariant to various features. For example, it could learn
+multiple filters, each detecting a different rotation of the same pattern (such as hand-
+written digits; see Figure 14-10), and the depthwise max pooling layer would ensure
+that the output is the same regardless of the rotation. The CNN could similarly learn
+to be invariant to anything else: thickness, brightness, skew, color, and so on.
+
+Figure 14-10. Depthwise max pooling can help the CNN learn any invariance
+
+Pooling Layers 
+
+| 
+
+459
+
+Keras  does  not  include  a  depthwise  max  pooling  layer,  but  TensorFlow’s  low-level
+Deep  Learning  API  does:  just  use  the  tf.nn.max_pool()  function,  and  specify  the
+kernel size and strides as 4-tuples (i.e., tuples of size 4). The first three values of each
+should be 1: this indicates that the kernel size and stride along the batch, height, and
+width  dimensions  should  be  1.  The  last  value  should  be  whatever  kernel  size  and
+stride you want along the depth dimension—for example, 3 (this must be a divisor of
+the input depth; it will not work if the previous layer outputs 20 feature maps, since
+20 is not a multiple of 3):
+
+output = tf.nn.max_pool(images,
+                        ksize=(1, 1, 1, 3),
+                        strides=(1, 1, 1, 3),
+                        padding="valid")
+
+If you want to include this as a layer in your Keras models, wrap it in a Lambda layer
+(or create a custom Keras layer):
+
+depth_pool = keras.layers.Lambda(
+    lambda X: tf.nn.max_pool(X, ksize=(1, 1, 1, 3), strides=(1, 1, 1, 3),
+                             padding="valid"))
+
+One last type of pooling layer that you will often see in modern architectures is the
+global average pooling layer. It works very differently: all it does is compute the mean
+of  each  entire  feature  map  (it’s  like  an  average  pooling  layer  using  a  pooling  kernel
+with the same spatial dimensions as the inputs). This means that it just outputs a sin‐
+gle  number  per  feature  map  and  per  instance.  Although  this  is  of  course  extremely
+destructive (most of the information in the feature map is lost), it can be useful as the
+output layer, as we will see later in this chapter. To create such a layer, simply use the
+keras.layers.GlobalAvgPool2D class:
+
+global_avg_pool = keras.layers.GlobalAvgPool2D()
+
+It’s equivalent to this simple Lambda layer, which computes the mean over the spatial
+dimensions (height and width):
+
+global_avg_pool = keras.layers.Lambda(lambda X: tf.reduce_mean(X, axis=[1, 2]))
+
+Now you know all the building blocks to create convolutional neural networks. Let’s
+see how to assemble them.
+
+CNN Architectures
+Typical  CNN  architectures  stack  a  few  convolutional  layers  (each  one  generally  fol‐
+lowed by a ReLU layer), then a pooling layer, then another few convolutional layers
+(+ReLU), then another pooling layer, and so on. The image gets smaller and smaller
+as it progresses through the network, but it also typically gets deeper and deeper (i.e.,
+with more feature maps), thanks to the convolutional layers (see Figure 14-11). At the
+top of the stack, a regular feedforward neural network is added, composed of a few
+
+460 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+fully  connected  layers  (+ReLUs),  and  the  final  layer  outputs  the  prediction  (e.g.,  a
+softmax layer that outputs estimated class probabilities).
+
+Figure 14-11. Typical CNN architecture
+
+A common mistake is to use convolution kernels that are too large.
+For  example,  instead  of  using  a  convolutional  layer  with  a  5  ×  5
+kernel, stack two layers with 3 × 3 kernels: it will use fewer parame‐
+ters  and  require  fewer  computations,  and  it  will  usually  perform
+better. One exception is for the first convolutional layer: it can typi‐
+cally have a large kernel (e.g., 5 × 5), usually with a stride of 2 or
+more: this will reduce the spatial dimension of the image without
+losing  too  much  information,  and  since  the  input  image  only  has
+three channels in general, it will not be too costly.
+
+Here is how you can implement a simple CNN to tackle the Fashion MNIST dataset
+(introduced in Chapter 10):
+
+model = keras.models.Sequential([
+    keras.layers.Conv2D(64, 7, activation="relu", padding="same",
+                        input_shape=[28, 28, 1]),
+    keras.layers.MaxPooling2D(2),
+    keras.layers.Conv2D(128, 3, activation="relu", padding="same"),
+    keras.layers.Conv2D(128, 3, activation="relu", padding="same"),
+    keras.layers.MaxPooling2D(2),
+    keras.layers.Conv2D(256, 3, activation="relu", padding="same"),
+    keras.layers.Conv2D(256, 3, activation="relu", padding="same"),
+    keras.layers.MaxPooling2D(2),
+    keras.layers.Flatten(),
+    keras.layers.Dense(128, activation="relu"),
+    keras.layers.Dropout(0.5),
+    keras.layers.Dense(64, activation="relu"),
+    keras.layers.Dropout(0.5),
+    keras.layers.Dense(10, activation="softmax")
+])
+
+CNN Architectures 
+
+| 
+
+461
+
+Let’s go through this model:
+
+• The first layer uses 64 fairly large filters (7 × 7) but no stride because the input
+images  are  not  very  large.  It  also  sets  input_shape=[28,  28,  1],  because  the
+images are 28 × 28 pixels, with a single color channel (i.e., grayscale).
+
+• Next we have a max pooling layer which uses a pool size of 2, so it divides each
+
+spatial dimension by a factor of 2.
+
+• Then we repeat the same structure twice: two convolutional layers followed by a
+max pooling layer. For larger images, we could repeat this structure several more
+times (the number of repetitions is a hyperparameter you can tune).
+
+• Note that the number of filters grows as we climb up the CNN toward the output
+layer (it is initially 64, then 128, then 256): it makes sense for it to grow, since the
+number  of  low-level  features  is  often  fairly  low  (e.g.,  small  circles,  horizontal
+lines), but there are many different ways to combine them into higher-level fea‐
+tures. It is a common practice to double the number of filters after each pooling
+layer: since a pooling layer divides each spatial dimension by a factor of 2, we can
+afford  to  double  the  number  of  feature  maps  in  the  next  layer  without  fear  of
+exploding the number of parameters, memory usage, or computational load.
+
+• Next is the fully connected network, composed of two hidden dense layers and a
+dense  output  layer.  Note  that  we  must  flatten  its  inputs,  since  a  dense  network
+expects a 1D array of features for each instance. We also add two dropout layers,
+with a dropout rate of 50% each, to reduce overfitting.
+
+This CNN reaches over 92% accuracy on the test set. It’s not state of the art, but it is
+pretty good, and clearly much better than what we achieved with dense networks in
+Chapter 10.
+
+Over the years, variants of this fundamental architecture have been developed, lead‐
+ing to amazing advances in the field. A good measure of this progress is the error rate
+in competitions such as the ILSVRC ImageNet challenge. In this competition the top-
+five error rate for image classification fell from over 26% to less than 2.3% in just six
+years. The top-five error rate is the number of test images for which the system’s top
+five predictions did not include the correct answer. The images are large (256 pixels
+high) and there are 1,000 classes, some of which are really subtle (try distinguishing
+120  dog  breeds).  Looking  at  the  evolution  of  the  winning  entries  is  a  good  way  to
+understand how CNNs work.
+
+We will first look at the classical LeNet-5 architecture (1998), then three of the win‐
+ners  of  the  ILSVRC  challenge:  AlexNet  (2012),  GoogLeNet  (2014),  and  ResNet
+(2015).
+
+462 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+LeNet-5
+The LeNet-5 architecture10 is perhaps the most widely known CNN architecture. As
+mentioned earlier, it was created by Yann LeCun in 1998 and has been widely used
+for  handwritten  digit  recognition  (MNIST).  It  is  composed  of  the  layers  shown  in
+Table 14-1.
+
+Table 14-1. LeNet-5 architecture
+
+Kernel size
+–
+
+Stride Activation
+RBF
+–
+
+Layer
+Out
+
+Type
+Fully connected –
+
+Maps
+
+F6
+
+C5
+
+S4
+
+C3
+
+S2
+
+C1
+
+In
+
+Fully connected –
+
+Convolution
+
+Avg pooling
+
+Convolution
+
+Avg pooling
+
+Convolution
+
+Input
+
+120
+
+16
+
+16
+
+6
+
+6
+
+1
+
+Size
+10
+
+84
+
+1 × 1
+
+5 × 5
+
+–
+
+5 × 5
+
+2 × 2
+
+10 × 10
+
+5 × 5
+
+14 × 14
+
+2 × 2
+
+28 × 28
+
+5 × 5
+
+32 × 32 –
+
+–
+
+1
+
+2
+
+1
+
+2
+
+1
+
+–
+
+tanh
+
+tanh
+
+tanh
+
+tanh
+
+tanh
+
+tanh
+
+–
+
+There are a few extra details to be noted:
+
+• MNIST images are 28 × 28 pixels, but they are zero-padded to 32 × 32 pixels and
+normalized before being fed to the network. The rest of the network does not use
+any  padding,  which  is  why  the  size  keeps  shrinking  as  the  image  progresses
+through the network.
+
+• The  average  pooling  layers  are  slightly  more  complex  than  usual:  each  neuron
+computes the mean of its inputs, then multiplies the result by a learnable coeffi‐
+cient  (one  per  map)  and  adds  a  learnable  bias  term  (again,  one  per  map),  then
+finally applies the activation function.
+
+• Most  neurons  in  C3  maps  are  connected  to  neurons  in  only  three  or  four  S2
+maps (instead of all six S2 maps). See table 1 (page 8) in the original paper10 for
+details.
+
+• The output layer is a bit special: instead of computing the matrix multiplication
+of the inputs and the weight vector, each neuron outputs the square of the Eucli‐
+dian distance between its input vector and its weight vector. Each output meas‐
+ures how much the image belongs to a particular digit class. The cross-entropy
+
+10 Yann LeCun et al., “Gradient-Based Learning Applied to Document Recognition,” Proceedings of the IEEE 86,
+
+no. 11 (1998): 2278–2324.
+
+CNN Architectures 
+
+| 
+
+463
+
+cost function is now preferred, as it penalizes bad predictions much more, pro‐
+ducing larger gradients and converging faster.
+
+Yann LeCun’s website features great demos of LeNet-5 classifying digits.
+
+AlexNet
+The  AlexNet  CNN  architecture11  won  the  2012  ImageNet  ILSVRC  challenge  by  a
+large margin: it achieved a top-five error rate of 17%, while the second best achieved
+only 26%! It was developed by Alex Krizhevsky (hence the name), Ilya Sutskever, and
+Geoffrey Hinton. It is similar to LeNet-5, only much larger and deeper, and it was the
+first to stack convolutional layers directly on top of one another, instead of stacking a
+pooling layer on top of each convolutional layer. Table 14-2 presents this architecture.
+
+Table 14-2. AlexNet architecture
+
+Layer
+Out
+
+Type
+Fully connected –
+
+Maps
+
+F10
+
+Fully connected –
+
+Fully connected –
+
+Max pooling
+
+Convolution
+
+Convolution
+
+Convolution
+
+Max pooling
+
+Convolution
+
+Max pooling
+
+Convolution
+
+256
+
+256
+
+384
+
+384
+
+256
+
+256
+
+96
+
+96
+
+F9
+
+S8
+
+C7
+
+C6
+
+C5
+
+S4
+
+C3
+
+S2
+
+C1
+
+In
+
+Size
+1,000
+
+4,096
+
+4,096
+
+6 × 6
+
+13 × 13
+
+13 × 13
+
+13 × 13
+
+13 × 13
+
+27 × 27
+
+27 × 27
+
+55 × 55
+
+Kernel size
+–
+
+–
+
+–
+
+3 × 3
+
+3 × 3
+
+3 × 3
+
+3 × 3
+
+3 × 3
+
+5 × 5
+
+3 × 3
+
+11 × 11
+
+Stride Padding Activation
+–
+
+Softmax
+
+–
+
+–
+
+–
+
+2
+
+1
+
+1
+
+1
+
+2
+
+1
+
+2
+
+4
+
+–
+
+–
+
+–
+
+ReLU
+
+ReLU
+
+valid
+
+–
+
+same
+
+same
+
+same
+
+ReLU
+
+ReLU
+
+ReLU
+
+valid
+
+–
+
+same
+
+ReLU
+
+valid
+
+–
+
+valid
+
+ReLU
+
+–
+
+–
+
+Input
+
+3 (RGB)
+
+227 × 227 –
+
+To  reduce  overfitting,  the  authors  used  two  regularization  techniques.  First,  they
+applied dropout (introduced in Chapter 11) with a 50% dropout rate during training
+to  the  outputs  of  layers  F9  and  F10.  Second,  they  performed  data  augmentation  by
+randomly shifting the training images by various offsets, flipping them horizontally,
+and changing the lighting conditions.
+
+11 Alex Krizhevsky et al., “ImageNet Classification with Deep Convolutional Neural Networks,” _Proceedings of
+
+the 25th International Conference on Neural Information Processing Systems 1 (2012): 1097–1105.
+
+464 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+Data Augmentation
+Data  augmentation  artificially  increases  the  size  of  the  training  set  by  generating
+many realistic variants of each training instance. This reduces overfitting, making this
+a regularization technique. The generated instances should be as realistic as possible:
+ideally, given an image from the augmented training set, a human should not be able
+to tell whether it w

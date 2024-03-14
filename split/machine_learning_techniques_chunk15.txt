@@ -1,0 +1,451 @@
+uation 4-5. Partial derivatives of the cost function
+
+∂
+∂θ j
+
+MSE θ =
+
+m
+
+2
+m ∑
+
+i = 1
+
+θ⊺x i − y i x j
+
+i
+
+Instead of computing these partial derivatives individually, you can use Equation 4-6
+to compute them all in one go. The gradient vector, noted ∇θMSE(θ), contains all the
+partial derivatives of the cost function (one for each model parameter).
+
+Gradient Descent 
+
+| 
+
+121
+
+Equation 4-6. Gradient vector of the cost function
+
+∇θ MSE θ =
+
+∂
+∂θ0
+∂
+∂θ1
+
+∂
+∂θn
+
+MSE θ
+
+MSE θ
+
+⋮
+
+MSE θ
+
+=
+
+2
+m
+
+X⊺ Xθ − y
+
+Notice that this formula involves calculations over the full training
+set X, at each Gradient Descent step! This is why the algorithm is
+called  Batch  Gradient  Descent:  it  uses  the  whole  batch  of  training
+data  at  every  step  (actually,  Full  Gradient  Descent  would  probably
+be a better name). As a result it is terribly slow on very large train‐
+ing sets (but we will see much faster Gradient Descent algorithms
+shortly). However, Gradient Descent scales well with the number of
+features;  training  a  Linear  Regression  model  when  there  are  hun‐
+dreds  of  thousands  of  features  is  much  faster  using  Gradient
+Descent than using the Normal Equation or SVD decomposition.
+
+Once you have the gradient vector, which points uphill, just go in the opposite direc‐
+tion  to  go  downhill.  This  means  subtracting  ∇θMSE(θ)  from  θ.  This  is  where  the
+learning rate η comes into play:5 multiply the gradient vector by η to determine the
+size of the downhill step (Equation 4-7).
+
+Equation 4-7. Gradient Descent step
+θ next step = θ − η ∇θ MSE θ
+
+Let’s look at a quick implementation of this algorithm:
+
+eta = 0.1  # learning rate
+n_iterations = 1000
+m = 100
+
+theta = np.random.randn(2,1)  # random initialization
+
+for iteration in range(n_iterations):
+    gradients = 2/m * X_b.T.dot(X_b.dot(theta) - y)
+    theta = theta - eta * gradients
+
+5 Eta (η) is the seventh letter of the Greek alphabet.
+
+122 
+
+| 
+
+Chapter 4: Training Models
+
+That wasn’t too hard! Let’s look at the resulting theta:
+
+>>> theta
+array([[4.21509616],
+       [2.77011339]])
+
+Hey, that’s exactly what the Normal Equation found! Gradient Descent worked per‐
+fectly.  But  what  if  you  had  used  a  different  learning  rate  eta?  Figure  4-8  shows  the
+first 10 steps of Gradient Descent using three different learning rates (the dashed line
+represents the starting point).
+
+Figure 4-8. Gradient Descent with various learning rates
+
+On the left, the learning rate is too low: the algorithm will eventually reach the solu‐
+tion, but it will take a long time. In the middle, the learning rate looks pretty good: in
+just a few iterations, it has already converged to the solution. On the right, the learn‐
+ing  rate  is  too  high:  the  algorithm  diverges,  jumping  all  over  the  place  and  actually
+getting further and further away from the solution at every step.
+
+To find a good learning rate, you can use grid search (see Chapter 2). However, you
+may want to limit the number of iterations so that grid search can eliminate models
+that take too long to converge.
+
+You may wonder how to set the number of iterations. If it is too low, you will still be
+far away from the optimal solution when the algorithm stops; but if it is too high, you
+will waste time while the model parameters do not change anymore. A simple solu‐
+tion is to set a very large number of iterations but to interrupt the algorithm when the
+gradient  vector  becomes  tiny—that  is,  when  its  norm  becomes  smaller  than  a  tiny
+number ϵ  (called  the  tolerance)—because  this  happens  when  Gradient  Descent  has
+(almost) reached the minimum.
+
+Gradient Descent 
+
+| 
+
+123
+
+Convergence Rate
+When  the  cost  function  is  convex  and  its  slope  does  not  change  abruptly  (as  is  the
+case  for  the  MSE  cost  function),  Batch  Gradient  Descent  with  a  fixed  learning  rate
+will eventually converge to the optimal solution, but you may have to wait a while: it
+can take O(1/ϵ) iterations to reach the optimum within a range of ϵ, depending on the
+shape of the cost function. If you divide the tolerance by 10 to have a more precise
+solution, then the algorithm may have to run about 10 times longer.
+
+Stochastic Gradient Descent
+The  main  problem  with  Batch  Gradient  Descent  is  the  fact  that  it  uses  the  whole
+training  set  to  compute  the  gradients  at  every  step,  which  makes  it  very  slow  when
+the training set is large. At the opposite extreme, Stochastic Gradient Descent picks a
+random instance in the training set at every step and computes the gradients based
+only on that single instance. Obviously, working on a single instance at a time makes
+the algorithm much faster because it has very little data to manipulate at every itera‐
+tion. It also makes it possible to train on huge training sets, since only one instance
+needs  to  be  in  memory  at  each  iteration  (Stochastic  GD  can  be  implemented  as  an
+out-of-core algorithm; see Chapter 1).
+
+On the other hand, due to its stochastic (i.e., random) nature, this algorithm is much
+less regular than Batch Gradient Descent: instead of gently decreasing until it reaches
+the minimum, the cost function will bounce up and down, decreasing only on aver‐
+age. Over time it will end up very close to the minimum, but once it gets there it will
+continue to bounce around, never settling down (see Figure 4-9). So once the algo‐
+rithm stops, the final parameter values are good, but not optimal.
+
+Figure 4-9. With Stochastic Gradient Descent, each training step is much faster but also
+much more stochastic than when using Batch Gradient Descent
+
+124 
+
+| 
+
+Chapter 4: Training Models
+
+When the cost function is very irregular (as in Figure 4-6), this can actually help the
+algorithm  jump  out  of  local  minima,  so  Stochastic  Gradient  Descent  has  a  better
+chance of finding the global minimum than Batch Gradient Descent does.
+
+Therefore, randomness is good to escape from local optima, but bad because it means
+that the algorithm can never settle at the minimum. One solution to this dilemma is
+to  gradually  reduce  the  learning  rate.  The  steps  start  out  large  (which  helps  make
+quick progress and escape local minima), then get smaller and smaller, allowing the
+algorithm to settle at the global minimum. This process is akin to simulated anneal‐
+ing, an algorithm inspired from the process in metallurgy of annealing, where molten
+metal is slowly cooled down. The function that determines the learning rate at each
+iteration is called the learning schedule. If the learning rate is reduced too quickly, you
+may get stuck in a local minimum, or even end up frozen halfway to the minimum. If
+the  learning  rate  is  reduced  too  slowly,  you  may  jump  around  the  minimum  for  a
+long time and end up with a suboptimal solution if you halt training too early.
+
+This code implements Stochastic Gradient Descent using a simple learning schedule:
+
+n_epochs = 50
+t0, t1 = 5, 50  # learning schedule hyperparameters
+
+def learning_schedule(t):
+    return t0 / (t + t1)
+
+theta = np.random.randn(2,1)  # random initialization
+
+for epoch in range(n_epochs):
+    for i in range(m):
+        random_index = np.random.randint(m)
+        xi = X_b[random_index:random_index+1]
+        yi = y[random_index:random_index+1]
+        gradients = 2 * xi.T.dot(xi.dot(theta) - yi)
+        eta = learning_schedule(epoch * m + i)
+        theta = theta - eta * gradients
+
+By  convention  we  iterate  by  rounds  of  m  iterations;  each  round  is  called  an  epoch.
+While the Batch Gradient Descent code iterated 1,000 times through the whole train‐
+ing  set,  this  code  goes  through  the  training  set  only  50  times  and  reaches  a  pretty
+good solution:
+
+>>> theta
+array([[4.21076011],
+       [2.74856079]])
+
+Figure 4-10 shows the first 20 steps of training (notice how irregular the steps are).
+
+Gradient Descent 
+
+| 
+
+125
+
+Figure 4-10. The first 20 steps of Stochastic Gradient Descent
+
+Note that since instances are picked randomly, some instances may be picked several
+times per epoch, while others may not be picked at all. If you want to be sure that the
+algorithm goes through every instance at each epoch, another approach is to shuffle
+the training set (making sure to shuffle the input features and the labels jointly), then
+go  through  it  instance  by  instance,  then  shuffle  it  again,  and  so  on.  However,  this
+approach generally converges more slowly.
+
+When  using  Stochastic  Gradient  Descent,  the  training  instances
+must  be  independent  and  identically  distributed  (IID)  to  ensure
+that the parameters get pulled toward the global optimum, on aver‐
+age. A simple way to ensure this is to shuffle the instances during
+training (e.g., pick each instance randomly, or shuffle the training
+set  at  the  beginning  of  each  epoch).  If  you  do  not  shuffle  the
+instances—for  example,  if  the  instances  are  sorted  by  label—then
+SGD will start by optimizing for one label, then the next, and so on,
+and it will not settle close to the global minimum.
+
+To perform Linear Regression using Stochastic GD with Scikit-Learn, you can use the
+SGDRegressor  class,  which  defaults  to  optimizing  the  squared  error  cost  function.
+The  following  code  runs  for  maximum  1,000  epochs  or  until  the  loss  drops  by  less
+than 0.001 during one epoch (max_iter=1000, tol=1e-3). It starts with a learning rate
+of 0.1 (eta0=0.1), using the default learning schedule (different from the preceding
+one).  Lastly,  it  does  not  use  any  regularization  (penalty=None;  more  details  on  this
+shortly):
+
+126 
+
+| 
+
+Chapter 4: Training Models
+
+from sklearn.linear_model import SGDRegressor
+sgd_reg = SGDRegressor(max_iter=1000, tol=1e-3, penalty=None, eta0=0.1)
+sgd_reg.fit(X, y.ravel())
+
+Once  again,  you  find  a  solution  quite  close  to  the  one  returned  by  the  Normal
+Equation:
+
+>>> sgd_reg.intercept_, sgd_reg.coef_
+(array([4.24365286]), array([2.8250878]))
+
+Mini-batch Gradient Descent
+The  last  Gradient  Descent  algorithm  we  will  look  at  is  called  Mini-batch  Gradient
+Descent.  It  is  simple  to  understand  once  you  know  Batch  and  Stochastic  Gradient
+Descent: at each step, instead of computing the gradients based on the full training set
+(as in Batch GD) or based on just one instance (as in Stochastic GD), Mini-batch GD
+computes  the  gradients  on  small  random  sets  of  instances  called  mini-batches.  The
+main advantage of Mini-batch GD over Stochastic GD is that you can get a perfor‐
+mance boost from hardware optimization of matrix operations, especially when using
+GPUs.
+
+The algorithm’s progress in parameter space is less erratic than with Stochastic GD,
+especially with fairly large mini-batches. As a result, Mini-batch GD will end up walk‐
+ing around a bit closer to the minimum than Stochastic GD—but it may be harder for
+it to escape from local minima (in the case of problems that suffer from local minima,
+unlike Linear Regression). Figure 4-11 shows the paths taken by the three Gradient
+Descent  algorithms  in  parameter  space  during  training.  They  all  end  up  near  the
+minimum, but Batch GD’s path actually stops at the minimum, while both Stochastic
+GD  and  Mini-batch  GD  continue  to  walk  around.  However,  don’t  forget  that  Batch
+GD  takes  a  lot  of  time  to  take  each  step,  and  Stochastic  GD  and  Mini-batch  GD
+would also reach the minimum if you used a good learning schedule.
+
+Figure 4-11. Gradient Descent paths in parameter space
+
+Gradient Descent 
+
+| 
+
+127
+
+Let’s compare the algorithms we’ve discussed so far for Linear Regression6 (recall that
+m is the number of training instances and n is the number of features); see Table 4-1.
+
+Table 4-1. Comparison of algorithms for Linear Regression
+
+Large m Out-of-core support
+
+Algorithm
+Normal Equation Fast
+
+SVD
+
+Batch GD
+
+Stochastic GD
+
+Mini-batch GD
+
+Fast
+
+Slow
+
+Fast
+
+Fast
+
+No
+
+No
+
+No
+
+Yes
+
+Yes
+
+Large n Hyperparams
+0
+Slow
+
+Scaling required Scikit-Learn
+No
+
+N/A
+
+Slow
+
+Fast
+
+Fast
+
+Fast
+
+0
+
+2
+
+≥2
+
+≥2
+
+No
+
+Yes
+
+Yes
+
+Yes
+
+LinearRegression
+
+SGDRegressor
+
+SGDRegressor
+
+SGDRegressor
+
+There  is  almost  no  difference  after  training:  all  these  algorithms
+end  up  with  very  similar  models  and  make  predictions  in  exactly
+the same way.
+
+Polynomial Regression
+What if your data is more complex than a straight line? Surprisingly, you can use a
+linear model to fit nonlinear data. A simple way to do this is to add powers of each
+feature as new features, then train a linear model on this extended set of features. This
+technique is called Polynomial Regression.
+
+Let’s look at an example. First, let’s generate some nonlinear data, based on a simple
+quadratic equation7 (plus some noise; see Figure 4-12):
+
+m = 100
+X = 6 * np.random.rand(m, 1) - 3
+y = 0.5 * X**2 + X + 2 + np.random.randn(m, 1)
+
+6 While the Normal Equation can only perform Linear Regression, the Gradient Descent algorithms can be
+
+used to train many other models, as we will see.
+7 A quadratic equation is of the form y = ax2 + bx + c.
+
+128 
+
+| 
+
+Chapter 4: Training Models
+
+Figure 4-12. Generated nonlinear and noisy dataset
+
+Clearly, a straight line will never fit this data properly. So let’s use Scikit-Learn’s Poly
+nomialFeatures  class  to  transform  our  training  data,  adding  the  square  (second-
+degree  polynomial)  of  each  feature  in  the  training  set  as  a  new  feature  (in  this  case
+there is just one feature):
+
+>>> from sklearn.preprocessing import PolynomialFeatures
+>>> poly_features = PolynomialFeatures(degree=2, include_bias=False)
+>>> X_poly = poly_features.fit_transform(X)
+>>> X[0]
+array([-0.75275929])
+>>> X_poly[0]
+array([-0.75275929, 0.56664654])
+
+X_poly now contains the original feature of X plus the square of this feature. Now you
+can fit a LinearRegression model to this extended training data (Figure 4-13):
+
+>>> lin_reg = LinearRegression()
+>>> lin_reg.fit(X_poly, y)
+>>> lin_reg.intercept_, lin_reg.coef_
+(array([1.78134581]), array([[0.93366893, 0.56456263]]))
+
+Polynomial Regression 
+
+| 
+
+129
+
+Figure 4-13. Polynomial Regression model predictions
+
+Not  bad:  the  model  estimates  y = 0.56x1
+function was y = 0.5x1
+
+2 + 1.0x1 + 2.0 + Gaussian noise.
+
+2 + 0.93x1 + 1.78  when  in  fact  the  original
+
+Note that when there are multiple features, Polynomial Regression is capable of find‐
+ing  relationships  between  features  (which  is  something  a  plain  Linear  Regression
+model  cannot  do).  This  is  made  possible  by  the  fact  that  PolynomialFeatures  also
+adds all combinations of features up to the given degree. For example, if there were
+two  features  a  and  b,  PolynomialFeatures  with  degree=3  would  not  only  add  the
+features a2, a3, b2, and b3, but also the combinations ab, a2b, and ab2.
+
+PolynomialFeatures(degree=d) transforms an array containing n
+features into an array containing (n + d)! / d!n! features, where n! is
+the factorial of n, equal to 1 × 2 × 3 × ⋯ × n. Beware of the combi‐
+natorial explosion of the number of features!
+
+Learning Curves
+If  you  perform  high-degree  Polynomial  Regression,  you  will  likely  fit  the  training
+data much better than with plain Linear Regression. For example, Figure 4-14 applies
+a  300-degree  polynomial  model  to  the  preceding  training  data,  and  compares  the
+result with a pure linear model and a quadratic model (second-degree polynomial).
+Notice how the 300-degree polynomial model 

@@ -1,0 +1,373 @@
+ttributes that seem most correlated with the median housing value (Figure 2-15):
+
+from pandas.plotting import scatter_matrix
+
+attributes = ["median_house_value", "median_income", "total_rooms",
+              "housing_median_age"]
+scatter_matrix(housing[attributes], figsize=(12, 8))
+
+Figure 2-15. This scatter matrix plots every numerical attribute against every other
+numerical attribute, plus a histogram of each numerical attribute
+
+The main diagonal (top left to bottom right) would be full of straight lines if pandas
+plotted each variable against itself, which would not be very useful. So instead pandas
+displays  a  histogram  of  each  attribute  (other  options  are  available;  see  the  pandas
+documentation for more details).
+
+The  most  promising  attribute  to  predict  the  median  house  value  is  the  median
+income, so let’s zoom in on their correlation scatterplot (Figure 2-16):
+
+housing.plot(kind="scatter", x="median_income", y="median_house_value",
+             alpha=0.1)
+
+60 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+Figure 2-16. Median income versus median house value
+
+This  plot  reveals  a  few  things.  First,  the  correlation  is  indeed  very  strong;  you  can
+clearly see the upward trend, and the points are not too dispersed. Second, the price
+cap that we noticed earlier is clearly visible as a horizontal line at $500,000. But this
+plot  reveals  other  less  obvious  straight  lines:  a  horizontal  line  around  $450,000,
+another around $350,000, perhaps one around $280,000, and a few more below that.
+You may want to try removing the corresponding districts to prevent your algorithms
+from learning to reproduce these data quirks.
+
+Experimenting with Attribute Combinations
+Hopefully the previous sections gave you an idea of a few ways you can explore the
+data and gain insights. You identified a few data quirks that you may want to clean up
+before feeding the data to a Machine Learning algorithm, and you found interesting
+correlations  between  attributes,  in  particular  with  the  target  attribute.  You  also
+noticed that some attributes have a tail-heavy distribution, so you may want to trans‐
+form  them  (e.g.,  by  computing  their  logarithm).  Of  course,  your  mileage  will  vary
+considerably with each project, but the general ideas are similar.
+
+One last thing you may want to do before preparing the data for Machine Learning
+algorithms is to try out various attribute combinations. For example, the total num‐
+ber of rooms in a district is not very useful if you don’t know how many households
+there are. What you really want is the number of rooms per household. Similarly, the
+total number of bedrooms by itself is not very useful: you probably want to compare
+it  to  the  number  of  rooms.  And  the  population  per  household  also  seems  like  an
+interesting attribute combination to look at. Let’s create these new attributes:
+
+Discover and Visualize the Data to Gain Insights 
+
+| 
+
+61
+
+housing["rooms_per_household"] = housing["total_rooms"]/housing["households"]
+housing["bedrooms_per_room"] = housing["total_bedrooms"]/housing["total_rooms"]
+housing["population_per_household"]=housing["population"]/housing["households"]
+
+And now let’s look at the correlation matrix again:
+
+>>> corr_matrix = housing.corr()
+>>> corr_matrix["median_house_value"].sort_values(ascending=False)
+median_house_value          1.000000
+median_income               0.687160
+rooms_per_household         0.146285
+total_rooms                 0.135097
+housing_median_age          0.114110
+households                  0.064506
+total_bedrooms              0.047689
+population_per_household   -0.021985
+population                 -0.026920
+longitude                  -0.047432
+latitude                   -0.142724
+bedrooms_per_room          -0.259984
+Name: median_house_value, dtype: float64
+
+Hey,  not  bad!  The  new  bedrooms_per_room  attribute  is  much  more  correlated  with
+the  median  house  value  than  the  total  number  of  rooms  or  bedrooms.  Apparently
+houses with a lower bedroom/room ratio tend to be more expensive. The number of
+rooms per household is also more informative than the total number of rooms in a
+district—obviously the larger the houses, the more expensive they are.
+
+This  round  of  exploration  does  not  have  to  be  absolutely  thorough;  the  point  is  to
+start off on the right foot and quickly gain insights that will help you get a first rea‐
+sonably good prototype. But this is an iterative process: once you get a prototype up
+and running, you can analyze its output to gain more insights and come back to this
+exploration step.
+
+Prepare the Data for Machine Learning Algorithms
+It’s time to prepare the data for your Machine Learning algorithms. Instead of doing
+this manually, you should write functions for this purpose, for several good reasons:
+
+• This will allow you to reproduce these transformations easily on any dataset (e.g.,
+
+the next time you get a fresh dataset).
+
+• You will gradually build a library of transformation functions that you can reuse
+
+in future projects.
+
+• You can use these functions in your live system to transform the new data before
+
+feeding it to your algorithms.
+
+62 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+• This  will  make  it  possible  for  you  to  easily  try  various  transformations  and  see
+
+which combination of transformations works best.
+
+But first let’s revert to a clean training set (by copying strat_train_set once again).
+Let’s  also  separate  the  predictors  and  the  labels,  since  we  don’t  necessarily  want  to
+apply  the  same  transformations  to  the  predictors  and  the  target  values  (note  that
+drop() creates a copy of the data and does not affect strat_train_set):
+
+housing = strat_train_set.drop("median_house_value", axis=1)
+housing_labels = strat_train_set["median_house_value"].copy()
+
+Data Cleaning
+Most Machine Learning algorithms cannot work with missing features, so let’s create
+a  few  functions  to  take  care  of  them.  We  saw  earlier  that  the  total_bedrooms
+attribute has some missing values, so let’s fix this. You have three options:
+
+1. Get rid of the corresponding districts.
+
+2. Get rid of the whole attribute.
+
+3. Set the values to some value (zero, the mean, the median, etc.).
+
+You can accomplish these easily using DataFrame’s dropna(), drop(), and fillna()
+methods:
+
+housing.dropna(subset=["total_bedrooms"])    # option 1
+housing.drop("total_bedrooms", axis=1)       # option 2
+median = housing["total_bedrooms"].median()  # option 3
+housing["total_bedrooms"].fillna(median, inplace=True)
+
+If you choose option 3, you should compute the median value on the training set and
+use  it  to  fill  the  missing  values  in  the  training  set.  Don’t  forget  to  save  the  median
+value that you have computed. You will need it later to replace missing values in the
+test set when you want to evaluate your system, and also once the system goes live to
+replace missing values in new data.
+
+Scikit-Learn  provides  a  handy  class  to  take  care  of  missing  values:  SimpleImputer.
+Here is how to use it. First, you need to create a SimpleImputer instance, specifying
+that  you  want  to  replace  each  attribute’s  missing  values  with  the  median  of  that
+attribute:
+
+from sklearn.impute import SimpleImputer
+
+imputer = SimpleImputer(strategy="median")
+
+Since the median can only be computed on numerical attributes, you need to create a
+copy of the data without the text attribute ocean_proximity:
+
+housing_num = housing.drop("ocean_proximity", axis=1)
+
+Prepare the Data for Machine Learning Algorithms 
+
+| 
+
+63
+
+Now you can fit the imputer instance to the training data using the fit() method:
+
+imputer.fit(housing_num)
+
+The imputer has simply computed the median of each attribute and stored the result
+in its statistics_ instance variable. Only the total_bedrooms attribute had missing
+values, but we cannot be sure that there won’t be any missing values in new data after
+the system goes live, so it is safer to apply the imputer to all the numerical attributes:
+
+>>> imputer.statistics_
+array([ -118.51 , 34.26 , 29. , 2119.5 , 433. , 1164. , 408. , 3.5409])
+>>> housing_num.median().values
+array([ -118.51 , 34.26 , 29. , 2119.5 , 433. , 1164. , 408. , 3.5409])
+
+Now  you  can  use  this  “trained”  imputer  to  transform  the  training  set  by  replacing
+missing values with the learned medians:
+
+X = imputer.transform(housing_num)
+
+The result is a plain NumPy array containing the transformed features. If you want to
+put it back into a pandas DataFrame, it’s simple:
+
+housing_tr = pd.DataFrame(X, columns=housing_num.columns,
+                          index=housing_num.index)
+
+Scikit-Learn Design
+Scikit-Learn’s API is remarkably well designed. These are the main design principles:17
+
+Consistency
+
+All objects share a consistent and simple interface:
+
+Estimators
+
+Any object that can estimate some parameters based on a dataset is called an
+estimator  (e.g.,  an  imputer  is  an  estimator).  The  estimation  itself  is  per‐
+formed by the fit() method, and it takes only a dataset as a parameter (or
+two  for  supervised  learning  algorithms;  the  second  dataset  contains  the
+labels). Any other parameter needed to guide the estimation process is con‐
+sidered  a  hyperparameter  (such  as  an  imputer’s  strategy),  and  it  must  be
+set as an instance variable (generally via a constructor parameter).
+
+Transformers
+
+Some estimators (such as an imputer) can also transform a dataset; these are
+called  transformers.  Once  again,  the  API  is  simple:  the  transformation  is
+performed  by  the  transform()  method  with  the  dataset  to  transform  as  a
+
+17 For more details on the design principles, see Lars Buitinck et al., “API Design for Machine Learning Software:
+
+Experiences from the Scikit-Learn Project” ,” arXiv preprint arXiv:1309.0238 (2013).
+
+64 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+parameter. It returns the transformed dataset. This transformation generally
+relies on the learned parameters, as is the case for an imputer. All transform‐
+ers also have a convenience method called fit_transform() that is equiva‐
+sometimes
+lent 
+fit_transform() is optimized and runs much faster).
+
+then  transform() 
+
+calling  fit() 
+
+(but 
+
+and 
+
+to 
+
+Predictors
+
+Finally, some estimators, given a dataset, are capable of making predictions;
+they are called predictors. For example, the LinearRegression model in the
+previous  chapter  was  a  predictor:  given  a  country’s  GDP  per  capita,  it  pre‐
+dicted  life  satisfaction.  A  predictor  has  a  predict()  method  that  takes  a
+dataset of new instances and returns a dataset of corresponding predictions.
+It  also  has  a  score()  method  that  measures  the  quality  of  the  predictions,
+given a test set (and the corresponding labels, in the case of supervised learn‐
+ing algorithms).18
+
+Inspection
+
+All  the  estimator’s  hyperparameters  are  accessible  directly  via  public  instance
+variables (e.g., imputer.strategy), and all the estimator’s learned parameters are
+accessible  via  public  instance  variables  with  an  underscore  suffix  (e.g.,
+imputer.statistics_).
+
+Nonproliferation of classes
+
+Datasets  are  represented  as  NumPy  arrays  or  SciPy  sparse  matrices,  instead  of
+homemade classes. Hyperparameters are just regular Python strings or numbers.
+
+Composition
+
+Existing building blocks are reused as much as possible. For example, it is easy to
+create a Pipeline estimator from an arbitrary sequence of transformers followed
+by a final estimator, as we will see.
+
+Sensible defaults
+
+Scikit-Learn  provides  reasonable  default  values  for  most  parameters,  making  it
+easy to quickly create a baseline working system.
+
+Handling Text and Categorical Attributes
+So  far  we  have  only  dealt  with  numerical  attributes,  but  now  let’s  look  at  text
+attributes. In this dataset, there is just one: the ocean_proximity attribute. Let’s look
+at its value for the first 10 instances:
+
+18 Some predictors also provide methods to measure the confidence of their predictions.
+
+Prepare the Data for Machine Learning Algorithms 
+
+| 
+
+65
+
+>>> housing_cat = housing[["ocean_proximity"]]
+>>> housing_cat.head(10)
+      ocean_proximity
+17606       <1H OCEAN
+18632       <1H OCEAN
+14650      NEAR OCEAN
+3230           INLAND
+3555        <1H OCEAN
+19480          INLAND
+8879        <1H OCEAN
+13685          INLAND
+4937        <1H OCEAN
+4861        <1H OCEAN
+
+It’s  not  arbitrary  text:  there  are  a  limited  number  of  possible  values,  each  of  which
+represents a category. So this attribute is a categorical attribute. Most Machine Learn‐
+ing  algorithms  prefer  to  work  with  numbers,  so  let’s  convert  these  categories  from
+text to numbers. For this, we can use Scikit-Learn’s OrdinalEncoder class:19
+
+>>> from sklearn.preprocessing import OrdinalEncoder
+>>> ordinal_encoder = OrdinalEncoder()
+>>> housing_cat_encoded = ordinal_encoder.fit_transform(housing_cat)
+>>> housing_cat_encoded[:10]
+array([[0.],
+       [0.],
+       [4.],
+       [1.],
+       [0.],
+       [1.],
+       [0.],
+       [1.],
+       [0.],
+       [0.]])
+
+You can get the list of categories using the categories_ instance variable. It is a list
+containing  a  1D  array  of  categories  for  each  categorical  attribute  (in  this  case,  a  list
+containing a single array since there is just one categorical attribute):
+
+>>> ordinal_encoder.categories_
+[array(['<1H OCEAN', 'INLAND', 'ISLAND', 'NEAR BAY', 'NEAR OCEAN'],
+       dtype=object)]
+
+One issue with this representation is that ML algorithms will assume that two nearby
+values are more similar than two distant values. This may be fine in some cases (e.g.,
+for ordered categories such as “bad,” “average,” “good,” and “excellent”), but it is obvi‐
+ously not the case for the ocean_proximity column (for example, categories 0 and 4
+are clearly more similar than categories 0 and 1). To fix this issue, a common solution
+
+19 This class is available in Scikit-Learn 0.20 and later. If you use an earlier version, please consider upgrading, or
+
+use the pandas Series.factorize() method.
+
+66 
+
+| 
+
+Chapter 2: End-to-End Machine Learning Project
+
+is to create one binary attribute per category: one attribute equal to 1 when the cate‐
+gory is “<1H OCEAN” (and 0 otherwise), another attribute equal to 1 when the cate‐
+gory  is  “INLAND”  (and  0  otherwise),  and  so  on.  This  is  called  one-hot  encoding,
+because only one attribute will be equal to 1 (hot), while the others will be 0 (cold).
+The  new  attributes  are  sometimes  called  dummy  attributes.  Scikit-Learn  provides  a
+OneHotEncoder class to convert categorical values into one-hot vectors:20
+
+>>> from sklearn.preprocessing import OneHotEncoder
+>>> cat_encoder = OneHotEncoder()
+>>> housing_cat_1hot = cat_encoder.fit_transform(housing_cat)
+>>> housing_cat_1hot
+<16512x5 sparse matrix of type '<class 'numpy.float64'>'
+  with 16512 stored elements in Compressed Sparse Row format>
+
+Notice that the output is a SciPy sparse matrix, instead of a NumPy array. This is very
+useful when you have categorical attributes with thousands of categories. After one-
+hot encoding, we get a matrix with thousands of columns, and the matrix is full of 0s
+except for a single 1 per row. Using up tons of memory mostly to store zeros would
+be  very  wasteful,  so  instead  a  sparse  matrix  only  stores  the  locati

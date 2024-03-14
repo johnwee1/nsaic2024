@@ -1,0 +1,362 @@
+mated probabil‐
+ity of the positive class. The estimated probability of the negative class is equal to one
+minus that number.
+
+MLPs can also easily handle multilabel binary classification tasks (see Chapter 3). For
+example,  you  could  have  an  email  classification  system  that  predicts  whether  each
+incoming email is ham or spam, and simultaneously predicts whether it is an urgent
+or nonurgent email. In this case, you would need two output neurons, both using the
+logistic  activation  function:  the  first  would  output  the  probability  that  the  email  is
+spam, and the second would output the probability that it is urgent. More generally,
+you would dedicate one output neuron for each positive class. Note that the output
+probabilities do not necessarily add up to 1. This lets the model output any combina‐
+tion of labels: you can have nonurgent ham, urgent ham, nonurgent spam, and per‐
+haps even urgent spam (although that would probably be an error).
+
+If each instance can belong only to a single class, out of three or more possible classes
+(e.g.,  classes  0  through  9  for  digit  image  classification),  then  you  need  to  have  one
+output neuron per class, and you should use the softmax activation function for the
+whole output layer (see Figure 10-9). The softmax function (introduced in Chapter 4)
+will ensure that all the estimated probabilities are between 0 and 1 and that they add
+up  to  1  (which  is  required  if  the  classes  are  exclusive).  This  is  called  multiclass
+classification.
+
+Figure 10-9. A modern MLP (including ReLU and softmax) for classification
+
+294 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+Regarding  the  loss  function,  since  we  are  predicting  probability  distributions,  the
+cross-entropy loss (also called the log loss, see Chapter 4) is generally a good choice.
+
+Table 10-2 summarizes the typical architecture of a classification MLP.
+
+Table 10-2. Typical classification MLP architecture
+
+Hyperparameter
+Input and hidden layers
+
+Binary classification Multilabel binary classification Multiclass classification
+Same as regression
+
+Same as regression
+
+Same as regression
+
+# output neurons
+
+1
+
+Output layer activation
+
+Logistic
+
+1 per label
+
+Logistic
+
+Loss function
+
+Cross entropy
+
+Cross entropy
+
+1 per class
+
+Softmax
+
+Cross entropy
+
+Before  we  go  on,  I  recommend  you  go  through  exercise  1  at  the
+end  of  this  chapter.  You  will  play  with  various  neural  network
+architectures and visualize their outputs using the TensorFlow Play‐
+ground. This will be very useful to better understand MLPs, includ‐
+ing  the  effects  of  all  the  hyperparameters  (number  of  layers  and
+neurons, activation functions, and more).
+
+Now you have all the concepts you need to start implementing MLPs with Keras!
+
+Implementing MLPs with Keras
+Keras is a high-level Deep Learning API that allows you to easily build, train, evalu‐
+ate, and execute all sorts of neural networks. Its documentation (or specification) is
+available  at  https://keras.io/.  The  reference  implementation,  also  called  Keras,  was
+developed by François Chollet as part of a research project13 and was released as an
+open source project in March 2015. It quickly gained popularity, owing to its ease of
+use, flexibility, and beautiful design. To perform the heavy computations required by
+neural networks, this reference implementation relies on a computation backend. At
+present,  you  can  choose  from  three  popular  open  source  Deep  Learning  libraries:
+TensorFlow,  Microsoft  Cognitive  Toolkit  (CNTK),  and  Theano.  Therefore,  to  avoid
+any confusion, we will refer to this reference implementation as multibackend Keras.
+
+Since late 2016, other implementations have been released. You can now run Keras on
+Apache  MXNet,  Apple’s  Core  ML,  JavaScript  or  TypeScript  (to  run  Keras  code  in  a
+web browser), and PlaidML (which can run on all sorts of GPU devices, not just Nvi‐
+dia). Moreover, TensorFlow itself now comes bundled with its own Keras implemen‐
+tation, tf.keras. It only supports TensorFlow as the backend, but it has the advantage
+of offering some very useful extra features (see Figure 10-10): for example, it supports
+
+13 Project ONEIROS (Open-ended Neuro-Electronic Intelligent Robot Operating System).
+
+Implementing MLPs with Keras 
+
+| 
+
+295
+
+TensorFlow’s  Data  API,  which  makes  it  easy  to  load  and  preprocess  data  efficiently.
+For this reason, we will use tf.keras in this book. However, in this chapter we will not
+use  any  of  the  TensorFlow-specific  features,  so  the  code  should  run  fine  on  other
+Keras  implementations  as  well  (at  least  in  Python),  with  only  minor  modifications,
+such as changing the imports.
+
+Figure 10-10. Two implementations of the Keras API: multibackend Keras (left) and
+tf.keras (right)
+
+The  most  popular  Deep  Learning  library,  after  Keras  and  TensorFlow,  is  Facebook’s
+PyTorch  library.  The  good  news  is  that  its  API  is  quite  similar  to  Keras’s  (in  part
+because  both  APIs  were  inspired  by  Scikit-Learn  and  Chainer),  so  once  you  know
+Keras, it is not difficult to switch to PyTorch, if you ever want to. PyTorch’s popularity
+grew exponentially in 2018, largely thanks to its simplicity and excellent documenta‐
+tion,  which  were  not  TensorFlow  1.x’s  main  strengths.  However,  TensorFlow  2  is
+arguably  just  as  simple  as  PyTorch,  as  it  has  adopted  Keras  as  its  official  high-level
+API and its developers have greatly simplified and cleaned up the rest of the API. The
+documentation  has  also  been  completely  reorganized,  and  it  is  much  easier  to  find
+what  you  need  now.  Similarly,  PyTorch’s  main  weaknesses  (e.g.,  limited  portability
+and  no  computation  graph  analysis)  have  been  largely  addressed  in  PyTorch  1.0.
+Healthy competition is beneficial to everyone.
+
+All right, it’s time to code! As tf.keras is bundled with TensorFlow, let’s start by instal‐
+ling TensorFlow.
+
+Installing TensorFlow 2
+Assuming you installed Jupyter and Scikit-Learn by following the installation instruc‐
+tions in Chapter 2, use pip to install TensorFlow. If you created an isolated environ‐
+ment using virtualenv, you first need to activate it:
+
+296 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+$ cd $ML_PATH                 # Your ML working directory (e.g., $HOME/ml)
+$ source my_env/bin/activate  # on Linux or macOS
+$ .\my_env\Scripts\activate   # on Windows
+
+Next, install TensorFlow 2 (if you are not using a virtualenv, you will need adminis‐
+trator rights, or to add the --user option):
+
+$ python3 -m pip install -U tensorflow
+
+For  GPU  support,  at  the  time  of  this  writing  you  need  to  install
+tensorflow-gpu  instead  of  tensorflow,  but  the  TensorFlow  team
+is working on having a single library that will support both CPU-
+only and GPU-equipped systems. You will still need to install extra
+libraries  for  GPU  support  (see  https://tensorflow.org/install  for
+more details). We will look at GPUs in more depth in Chapter 19.
+
+To  test  your  installation,  open  a  Python  shell  or  a  Jupyter  notebook,  then  import
+TensorFlow and tf.keras and print their versions:
+
+>>> import tensorflow as tf
+>>> from tensorflow import keras
+>>> tf.__version__
+'2.0.0'
+>>> keras.__version__
+'2.2.4-tf'
+
+The second version is the version of the Keras API implemented by tf.keras. Note that
+it  ends  with  -tf,  highlighting  the  fact  that  tf.keras  implements  the  Keras  API,  plus
+some extra TensorFlow-specific features.
+
+Now let’s use tf.keras! We’ll start by building a simple image classifier.
+
+Building an Image Classifier Using the Sequential API
+First, we need to load a dataset. In this chapter we will tackle Fashion MNIST, which
+is a drop-in replacement of MNIST (introduced in Chapter 3). It has the exact same
+format  as  MNIST  (70,000  grayscale  images  of  28  ×  28  pixels  each,  with  10  classes),
+but the images represent fashion items rather than handwritten digits, so each class is
+more  diverse,  and  the  problem  turns  out  to  be  significantly  more  challenging  than
+MNIST. For example, a simple linear model reaches about 92% accuracy on MNIST,
+but only about 83% on Fashion MNIST.
+
+Using Keras to load the dataset
+
+Keras provides some utility functions to fetch and load common datasets, including
+MNIST,  Fashion  MNIST,  and  the  California  housing  dataset  we  used  in  Chapter  2.
+Let’s load Fashion MNIST:
+
+Implementing MLPs with Keras 
+
+| 
+
+297
+
+fashion_mnist = keras.datasets.fashion_mnist
+(X_train_full, y_train_full), (X_test, y_test) = fashion_mnist.load_data()
+
+When loading MNIST or Fashion MNIST using Keras rather than Scikit-Learn, one
+important difference is that every image is represented as a 28 × 28 array rather than
+a  1D  array  of  size  784.  Moreover,  the  pixel  intensities  are  represented  as  integers
+(from 0 to 255) rather than floats (from 0.0 to 255.0). Let’s take a look at the shape
+and data type of the training set:
+
+>>> X_train_full.shape
+(60000, 28, 28)
+>>> X_train_full.dtype
+dtype('uint8')
+
+Note that the dataset is already split into a training set and a test set, but there is no
+validation  set,  so  we’ll  create  one  now.  Additionally,  since  we  are  going  to  train  the
+neural network using Gradient Descent, we must scale the input features. For simplic‐
+ity, we’ll scale the pixel intensities down to the 0–1 range by dividing them by 255.0
+(this also converts them to floats):
+
+X_valid, X_train = X_train_full[:5000] / 255.0, X_train_full[5000:] / 255.0
+y_valid, y_train = y_train_full[:5000], y_train_full[5000:]
+
+With  MNIST,  when  the  label  is  equal  to  5,  it  means  that  the  image  represents  the
+handwritten  digit  5.  Easy.  For  Fashion  MNIST,  however,  we  need  the  list  of  class
+names to know what we are dealing with:
+
+class_names = ["T-shirt/top", "Trouser", "Pullover", "Dress", "Coat",
+               "Sandal", "Shirt", "Sneaker", "Bag", "Ankle boot"]
+
+For example, the first image in the training set represents a coat:
+
+>>> class_names[y_train[0]]
+'Coat'
+
+Figure 10-11 shows some samples from the Fashion MNIST dataset.
+
+Figure 10-11. Samples from Fashion MNIST
+
+298 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+Creating the model using the Sequential API
+
+Now  let’s  build  the  neural  network!  Here  is  a  classification  MLP  with  two  hidden
+layers:
+
+model = keras.models.Sequential()
+model.add(keras.layers.Flatten(input_shape=[28, 28]))
+model.add(keras.layers.Dense(300, activation="relu"))
+model.add(keras.layers.Dense(100, activation="relu"))
+model.add(keras.layers.Dense(10, activation="softmax"))
+
+Let’s go through this code line by line:
+
+• The  first  line  creates  a  Sequential  model.  This  is  the  simplest  kind  of  Keras
+model for neural networks that are just composed of a single stack of layers con‐
+nected sequentially. This is called the Sequential API.
+
+• Next, we build the first layer and add it to the model. It is a Flatten layer whose
+role is to convert each input image into a 1D array: if it receives input data X, it
+computes X.reshape(-1, 1). This layer does not have any parameters; it is just
+there to do some simple preprocessing. Since it is the first layer in the model, you
+should  specify  the  input_shape,  which  doesn’t  include  the  batch  size,  only  the
+shape of the instances. Alternatively, you could add a keras.layers.InputLayer
+as the first layer, setting input_shape=[28,28].
+
+• Next we add a Dense hidden layer with 300 neurons. It will use the ReLU activa‐
+tion function. Each Dense layer manages its own weight matrix, containing all the
+connection weights between the neurons and their inputs. It also manages a vec‐
+tor of bias terms (one per neuron). When it receives some input data, it computes
+Equation 10-2.
+
+• Then we add a second Dense hidden layer with 100 neurons, also using the ReLU
+
+activation function.
+
+• Finally, we add a  Dense output layer with 10 neurons (one per class), using the
+
+softmax activation function (because the classes are exclusive).
+
+Specifying  activation="relu"  is  equivalent  to  specifying  activa
+tion=keras.activations.relu.  Other  activation  functions  are
+available  in  the  keras.activations  package,  we  will  use  many  of
+them in this book. See https://keras.io/activations/ for the full list.
+
+Instead  of  adding  the  layers  one  by  one  as  we  just  did,  you  can  pass  a  list  of  layers
+when creating the Sequential model:
+
+Implementing MLPs with Keras 
+
+| 
+
+299
+
+model = keras.models.Sequential([
+    keras.layers.Flatten(input_shape=[28, 28]),
+    keras.layers.Dense(300, activation="relu"),
+    keras.layers.Dense(100, activation="relu"),
+    keras.layers.Dense(10, activation="softmax")
+])
+
+Using Code Examples from keras.io
+Code examples documented on keras.io will work fine with tf.keras, but you need to
+change the imports. For example, consider this keras.io code:
+
+from keras.layers import Dense
+output_layer = Dense(10)
+
+You must change the imports like this:
+
+from tensorflow.keras.layers import Dense
+output_layer = Dense(10)
+
+Or simply use full paths, if you prefer:
+
+from tensorflow import keras
+output_layer = keras.layers.Dense(10)
+
+This approach is more verbose, but I use it in this book so you can easily see which
+packages to use, and to avoid confusion between standard classes and custom classes.
+In production code, I prefer the previous approach. Many people also use from ten
+sorflow.keras import layers followed by layers.Dense(10).
+
+The model’s summary() method displays all the model’s layers,14 including each layer’s
+name (which is automatically generated unless you set it when creating the layer), its
+output shape (None means the batch size can be anything), and its number of parame‐
+ters. The summary ends with the total number of parameters, including trainable and
+non-trainable parameters. Here we only have trainable parameters (we will see exam‐
+ples of non-trainable parameters in Chapter 11):
+
+>>> model.summary()
+Model: "sequential"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #
+=================================================================
+flatten (Flatten)            (None, 784)               0
+_________________________________________________________________
+dense (Dense)                (None, 300)               235500
+_________________________________________________________________
+
+14 You can use keras.utils.plot_model() to generate an image of your model.
+
+300 
+
+| 
+
+Chapter 10: Introduction to Artificial Neural Networks with Keras
+
+dense_1 (Dense)              (None, 100)               30100
+_________________________________________________________________
+dense_2 (Dense)              (None, 10)                1010
+=================================================================
+Total params: 266,610
+Trainable params: 266,610
+Non-trainable params: 0
+_________________________________________________________________
+
+Note that  Dense layers often have a lot of parameters. For example, the first hidden
+layer  has  784  ×  300  connection  weights,  plus  300  bias  terms,  which  adds  up  to
+235,500 parameters! This gives the model quite a lot of flexibility to fit the training
+data, but it also means that the model runs the risk of overfi

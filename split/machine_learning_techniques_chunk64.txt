@@ -1,0 +1,322 @@
+2d()
+
+Can be used to create a depthwise convolutional layer (but you need to create the
+variables yourself). It applies every filter to every individual input channel inde‐
+pendently. Thus, if there are fn filters and fn′ input channels, then this will output
+fn × fn′ feature maps.
+
+This solution is OK, but still too imprecise. To do better, the authors added skip con‐
+nections from lower layers: for example, they upsampled the output image by a factor
+of 2 (instead of 32), and they added the output of a lower layer that had this double
+resolution. Then they upsampled the result by a factor of 16, leading to a total upsam‐
+pling  factor  of  32  (see  Figure  14-28).  This  recovered  some  of  the  spatial  resolution
+that was lost in earlier pooling layers. In their best architecture, they used a second
+similar  skip  connection  to  recover  even  finer  details  from  an  even  lower  layer.  In
+short, the output of the original CNN goes through the following extra steps: upscale
+×2, add the output of a lower layer (of the appropriate scale), upscale ×2, add the out‐
+put  of  an  even  lower  layer,  and  finally  upscale  ×8.  It  is  even  possible  to  scale  up
+beyond the size of the original image: this can be used to increase the resolution of an
+image, which is a technique called super-resolution.
+
+494 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+Figure 14-28. Skip layers recover some spatial resolution from lower layers
+
+Once  again,  many  GitHub  repositories  provide  TensorFlow  implementations  of
+semantic  segmentation  (TensorFlow  1  for  now),  and  you  will  even  find  pretrained
+instance segmentation models in the TensorFlow Models project. Instance segmenta‐
+tion  is  similar  to  semantic  segmentation,  but  instead  of  merging  all  objects  of  the
+same  class  into  one  big  lump,  each  object  is  distinguished  from  the  others  (e.g.,  it
+identifies  each  individual  bicycle).  At  present,  the  instance  segmentation  models
+available in the TensorFlow Models project are based on the Mask R-CNN architec‐
+ture,  which  was  proposed  in  a  2017  paper:34  it  extends  the  Faster  R-CNN  model  by
+additionally producing a pixel mask for each bounding box. So not only do you get a
+bounding box around each object, with a set of estimated class probabilities, but you
+also get a pixel mask that locates pixels in the bounding box that belong to the object.
+
+As you can see, the field of Deep Computer Vision is vast and moving fast, with all
+sorts of architectures popping out every year, all based on convolutional neural net‐
+works. The progress made in just a few years has been astounding, and researchers
+are now focusing on harder and harder problems, such as adversarial learning (which
+attempts to make the network more resistant to images designed to fool it), explaina‐
+bility (understanding why the network makes a specific classification), realistic image
+generation (which we will come back to in Chapter 17), and single-shot learning (a sys‐
+tem  that  can  recognize  an  object  after  it  has  seen  it  just  once).  Some  even  explore
+completely  novel  architectures,  such  as  Geoffrey  Hinton’s  capsule  networks35  (I  pre‐
+sented them in a couple of videos, with the corresponding code in a notebook). Now
+on to the next chapter, where we will look at how to process sequential data such as
+time series using recurrent neural networks and convolutional neural networks.
+
+34 Kaiming He et al., “Mask R-CNN,” arXiv preprint arXiv:1703.06870 (2017).
+
+35 Geoffrey Hinton et al., “Matrix Capsules with EM Routing,” Proceedings of the International Conference on
+
+Learning Representations (2018).
+
+Semantic Segmentation 
+
+| 
+
+495
+
+Exercises
+
+1. What are the advantages of a CNN over a fully connected DNN for image classi‐
+
+fication?
+
+2. Consider a CNN composed of three convolutional layers, each with 3 × 3 kernels,
+a stride of 2, and "same" padding. The lowest layer outputs 100 feature maps, the
+middle one outputs 200, and the top one outputs 400. The input images are RGB
+images of 200 × 300 pixels.
+
+What is the total number of parameters in the CNN? If we are using 32-bit floats,
+at least how much RAM will this network require when making a prediction for a
+single instance? What about when training on a mini-batch of 50 images?
+
+3. If your GPU runs out of memory while training a CNN, what are five things you
+
+could try to solve the problem?
+
+4. Why  would  you  want  to  add  a  max  pooling  layer  rather  than  a  convolutional
+
+layer with the same stride?
+
+5. When would you want to add a local response normalization layer?
+
+6. Can  you  name  the  main  innovations  in  AlexNet,  compared  to  LeNet-5?  What
+
+about the main innovations in GoogLeNet, ResNet, SENet, and Xception?
+
+7. What is a fully convolutional network? How can you convert a dense layer into a
+
+convolutional layer?
+
+8. What is the main technical difficulty of semantic segmentation?
+
+9. Build your own CNN from scratch and try to achieve the highest possible accu‐
+
+racy on MNIST.
+
+10. Use transfer learning for large image classification, going through these steps:
+
+a. Create a training set containing at least 100 images per class. For example, you
+could classify your own pictures based on the location (beach, mountain, city,
+etc.),  or  alternatively  you  can  use  an  existing  dataset  (e.g.,  from  TensorFlow
+Datasets).
+
+b. Split it into a training set, a validation set, and a test set.
+
+c. Build the input pipeline, including the appropriate preprocessing operations,
+
+and optionally add data augmentation.
+
+d. Fine-tune a pretrained model on this dataset.
+
+11. Go  through  TensorFlow’s  Style  Transfer  tutorial.  It  is  a  fun  way  to  generate  art
+
+using Deep Learning.
+
+Solutions to these exercises are available in Appendix A.
+
+496 
+
+| 
+
+Chapter 14: Deep Computer Vision Using Convolutional Neural Networks
+
+CHAPTER 15
+Processing Sequences Using
+RNNs and CNNs
+
+The  batter  hits  the  ball.  The  outfielder  immediately  starts  running,  anticipating  the
+ball’s  trajectory.  He  tracks  it,  adapts  his  movements,  and  finally  catches  it  (under  a
+thunder of applause). Predicting the future is something you do all the time, whether
+you are finishing a friend’s sentence or anticipating the smell of coffee at breakfast. In
+this chapter we will discuss recurrent neural networks (RNNs), a class of nets that can
+predict the future (well, up to a point, of course). They can analyze time series data
+such as stock prices, and tell you when to buy or sell. In autonomous driving systems,
+they can anticipate car trajectories and help avoid accidents. More generally, they can
+work on sequences of arbitrary lengths, rather than on fixed-sized inputs like all the
+nets we have considered so far. For example, they can take sentences, documents, or
+audio samples as input, making them extremely useful for natural language process‐
+ing applications such as automatic translation or speech-to-text.
+
+In this chapter we will first look at the fundamental concepts underlying RNNs and
+how  to  train  them  using  backpropagation  through  time,  then  we  will  use  them  to
+forecast  a  time  series.  After  that  we’ll  explore  the  two  main  difficulties  that  RNNs
+face:
+
+• Unstable gradients (discussed in Chapter 11), which can be alleviated using vari‐
+ous techniques, including recurrent dropout and recurrent layer normalization
+
+• A  (very)  limited  short-term  memory,  which  can  be  extended  using  LSTM  and
+
+GRU cells
+
+RNNs are not the only types of neural networks capable of handling sequential data:
+for  small  sequences,  a  regular  dense  network  can  do  the  trick;  and  for  very  long
+sequences, such as audio samples or text, convolutional neural networks can actually
+
+497
+
+work quite well too. We will discuss both of these possibilities, and we will finish this
+chapter by implementing a WaveNet: this is a CNN architecture capable of handling
+sequences  of  tens  of  thousands  of  time  steps.  In  Chapter  16,  we  will  continue  to
+explore RNNs and see how to use them for natural language processing, along with
+more recent architectures based on attention mechanisms. Let’s get started!
+
+Recurrent Neurons and Layers
+Up  to  now  we  have  focused  on  feedforward  neural  networks,  where  the  activations
+flow only in one direction, from the input layer to the output layer (a few exceptions
+are  discussed  in  Appendix  E).  A  recurrent  neural  network  looks  very  much  like  a
+feedforward neural network, except it also has connections pointing backward. Let’s
+look  at  the  simplest  possible  RNN,  composed  of  one  neuron  receiving  inputs,  pro‐
+ducing  an  output,  and  sending  that  output  back  to  itself,  as  shown  in  Figure  15-1
+(left). At each time step t (also called a frame), this recurrent neuron receives the inputs
+x(t) as well as its own output from the previous time step, y(t–1). Since there is no previ‐
+ous output at the first time step, it is generally set to 0. We can represent this tiny net‐
+work against the time axis, as shown in Figure 15-1 (right). This is called unrolling the
+network through time (it’s the same recurrent neuron represented once per time step).
+
+Figure 15-1. A recurrent neuron (left) unrolled through time (right)
+
+You can easily create a layer of recurrent neurons. At each time step t, every neuron
+receives both the input vector x(t) and the output vector from the previous time step
+y(t–1), as shown in Figure 15-2. Note that both the inputs and outputs are vectors now
+(when there was just a single neuron, the output was a scalar).
+
+498 
+
+| 
+
+Chapter 15: Processing Sequences Using RNNs and CNNs
+
+Figure 15-2. A layer of recurrent neurons (left) unrolled through time (right)
+
+Each recurrent neuron has two sets of weights: one for the inputs x(t) and the other for
+the outputs of the previous time step, y(t–1). Let’s call these weight vectors wx and wy. If
+we  consider  the  whole  recurrent  layer  instead  of  just  one  recurrent  neuron,  we  can
+place all the weight vectors in two weight matrices, Wx and Wy. The output vector of
+the whole recurrent layer can then be computed pretty much as you might expect, as
+shown in Equation 15-1 (b is the bias vector and ϕ(·) is the activation function (e.g.,
+ReLU1).
+
+Equation 15-1. Output of a recurrent layer for a single instance
+
+y t = ϕ Wx
+
+⊺x t + Wy
+
+⊺y t − 1 + b
+
+Just as with feedforward neural networks, we can compute a recurrent layer’s output
+in one shot for a whole mini-batch by placing all the inputs at time step t in an input
+matrix X(t) (see Equation 15-2).
+
+Equation 15-2. Outputs of a layer of recurrent neurons for all instances in a mini-
+batch
+
+Y t = ϕ X t Wx + Y t − 1 Wy + b
+
+= ϕ X t Y t − 1 W + b with W =
+
+Wx
+Wy
+
+1 Note that many researchers prefer to use the hyperbolic tangent (tanh) activation function in RNNs rather
+
+than the ReLU activation function. For example, take a look at Vu Pham et al.’s 2013 paper “Dropout Improves
+Recurrent Neural Networks for Handwriting Recognition”. ReLU-based RNNs are also possible, as shown in
+Quoc V. Le et al.’s 2015 paper “A Simple Way to Initialize Recurrent Networks of Rectified Linear Units”.
+
+Recurrent Neurons and Layers 
+
+| 
+
+499
+
+In this equation:
+
+• Y(t) is an m × nneurons matrix containing the layer’s outputs at time step t for each
+instance in the mini-batch (m is the number of instances in the mini-batch and
+nneurons is the number of neurons).
+
+• X(t)  is  an  m  ×  ninputs  matrix  containing  the  inputs  for  all  instances  (ninputs  is  the
+
+number of input features).
+
+• Wx is an ninputs × nneurons matrix containing the connection weights for the inputs
+
+of the current time step.
+
+• Wy is an nneurons × nneurons matrix containing the connection weights for the out‐
+
+puts of the previous time step.
+
+• b is a vector of size nneurons containing each neuron’s bias term.
+• The  weight  matrices  Wx  and  Wy  are  often  concatenated  vertically  into  a  single
+weight matrix W of shape (ninputs + nneurons) × nneurons (see the second line of Equa‐
+tion 15-2).
+
+• The notation [X(t) Y(t–1)] represents the horizontal concatenation of the matrices
+
+X(t) and Y(t–1).
+
+Notice that Y(t) is a function of X(t) and Y(t–1), which is a function of X(t–1) and Y(t–2),
+which is a function of X(t–2) and Y(t–3), and so on. This makes Y(t) a function of all the
+inputs since time t = 0 (that is, X(0), X(1), …, X(t)). At the first time step, t = 0, there are
+no previous outputs, so they are typically assumed to be all zeros.
+
+Memory Cells
+Since  the  output  of  a  recurrent  neuron  at  time  step  t  is  a  function  of  all  the  inputs
+from previous time steps, you could say it has a form of memory. A part of a neural
+network that preserves some state across time steps is called a memory cell (or simply
+a cell). A single recurrent neuron, or a layer of recurrent neurons, is a very basic cell,
+capable of learning only short patterns (typically about 10 steps long, but this varies
+depending on the task). Later in this chapter, we will look at some more complex and
+powerful types of cells capable of learning longer patterns (roughly 10 times longer,
+but again, this depends on the task).
+
+In general a cell’s state at time step t, denoted h(t) (the “h” stands for “hidden”), is a
+function of some inputs at that time step and its state at the previous time step: h(t) =
+f(h(t–1),  x(t)).  Its  output  at  time  step  t,  denoted  y(t),  is  also  a  function  of  the  previous
+state and the current inputs. In the case of the basic cells we have discussed so far, the
+output is simply equal to the state, but in more complex cells this is not always the
+case, as shown in Figure 15-3.
+
+500 
+
+| 
+
+Chapter 15: Processing Sequences Using RNNs and CNNs
+
+Figure 15-3. A cell’s hidden state and its output may be different
+
+Input and Output Sequences
+An  RNN  can  simultaneously  take  a  sequence  of  inputs  and  produce  a  sequence  of
+outputs  (see  the  top-left  network  in  Figure  15-4).  This  type  of  sequence-to-sequence
+network is useful for predicting time series such as stock prices: you feed it the prices
+over the last N days, and it must output the prices shifted by one day into the future
+(i.e., from N – 1 days ago to tomorrow).
+
+Alternatively, you could feed the network a sequence of inputs and ignore all outputs
+except for the last one (see the top-right network in Figure 15-4). In other words, this
+is a sequence-to-vector network. For example, you could feed the network a sequence
+of  words  corresponding  to  a  movie  review,  and  the  network  would  output  a  senti‐
+ment score (e.g., from –1 [hate] to +1 [love]).
+
+Conversely, you could feed the network the same input vector over and over again at
+each  time  step  and  let  it  output  a  sequence  (see  the  bottom-left  network  of
+Figure 15-4). This is a vector-to-sequence network. For example, the input could be an
+image (or the output of a CNN), and the output could be a caption for that image.
+
+Lastly, you could have a sequence-to-vector network, called an encoder, followed by a
+vector-to-sequence  network,  called  a  decoder  (see  the  bottom-right  network  of
+Figure 15-4). For example, this could be used for translating a sentence from one lan‐
+guage  to  another.  You  would  feed  the  network  a  sentence  in  one  language,  the
+encoder would convert th

@@ -1,0 +1,304 @@
+ying TensorFlow Models at Scale
+
+JupyterLab (this is an alternative web interface to run Jupyter notebooks). Once the
+VM is created, scroll down the navigation menu to the Artificial Intelligence section,
+then click AI Platform → Notebooks. Once the Notebook instance appears in the list
+(this may take a few minutes, so click Refresh once in a while until it appears), click
+its  Open  JupyterLab  link.  This  will  run  JupyterLab  on  the  VM  and  connect  your
+browser to it. You can create notebooks and run any code you want on this VM, and
+benefit from its GPUs!
+
+But if you just want to run some quick tests or easily share notebooks with your col‐
+leagues, then you should try Colaboratory.
+
+Colaboratory
+The simplest and cheapest way to access a GPU VM is to use Colaboratory (or Colab,
+for  short).  It’s  free!  Just  go  to  https://colab.research.google.com/  and  create  a  new
+Python 3 notebook: this will create a Jupyter notebook, stored on your Google Drive
+(alternatively, you can open any notebook on GitHub, or on Google Drive, or you can
+even upload your own notebooks). Colab’s user interface is similar to Jupyter’s, except
+you can share and use the notebooks like regular Google Docs, and there are a few
+other minor differences (e.g., you can create handy widgets using special comments
+in your code).
+
+When  you  open  a  Colab  notebook,  it  runs  on  a  free  Google  VM  dedicated  to  that
+notebook, called a Colab Runtime (see Figure 19-11). By default the Runtime is CPU-
+only, but you can change this by going to Runtime → “Change runtime type,” select‐
+ing GPU in the “Hardware accelerator” drop-down menu, then clicking Save. In fact,
+you  could  even  select  TPU!  (Yes,  you  can  actually  use  a  TPU  for  free;  we  will  talk
+about TPUs later in this chapter, though, so for now just select GPU.)
+
+Using GPUs to Speed Up Computations 
+
+| 
+
+693
+
+Figure 19-11. Colab Runtimes and notebooks
+
+Colab does have some restrictions: first, there is a limit to the number of Colab note‐
+books you can run simultaneously (currently 5 per Runtime type). Moreover, as the
+FAQ states, “Colaboratory is intended for interactive use. Long-running background
+computations, particularly on GPUs, may be stopped. Please do not use Colaboratory
+for  cryptocurrency  mining.”  Also,  the  web  interface  will  automatically  disconnect
+from the Colab Runtime if you leave it unattended for a while (~30 minutes). When
+you reconnect to the Colab Runtime, it may have been reset, so make sure you always
+export any data you care about (e.g., download it or save it to Google Drive). Even if
+you  never  disconnect,  the  Colab  Runtime  will  automatically  shut  down  after  12
+hours, as it is not meant for long-running computations. Despite these limitations, it’s
+a  fantastic  tool  to  run  tests  easily,  get  quick  results,  and  collaborate  with  your
+colleagues.
+
+Managing the GPU RAM
+By default TensorFlow automatically grabs all the RAM in all available GPUs the first
+time  you  run  a  computation.  It  does  this  to  limit  GPU  RAM  fragmentation.  This
+means  that  if  you  try  to  start  a  second  TensorFlow  program  (or  any  program  that
+requires the GPU), it will quickly run out of RAM. This does not happen as often as
+you might think, as you will most often have a single TensorFlow program running
+on a machine: usually a training script, a TF Serving node, or a Jupyter notebook. If
+you need to run multiple programs for some reason (e.g., to train two different mod‐
+els  in  parallel  on  the  same  machine),  then  you  will  need  to  split  the  GPU  RAM
+between these processes more evenly.
+
+If you have multiple GPU cards on your machine, a simple solution is to assign each
+of  them  to  a  single  process.  To  do  this,  you  can  set  the  CUDA_VISIBLE_DEVICES
+environment  variable  so  that  each  process  only  sees  the  appropriate  GPU  card(s).
+Also set the CUDA_DEVICE_ORDER environment variable to PCI_BUS_ID to ensure that
+
+694 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+each  ID  always  refers  to  the  same  GPU  card.  For  example,  if  you  have  four  GPU
+cards, you could start two programs, assigning two GPUs to each of them, by execut‐
+ing commands like the following in two separate terminal windows:
+
+$ CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=0,1 python3 program_1.py
+# and in another terminal:
+$ CUDA_DEVICE_ORDER=PCI_BUS_ID CUDA_VISIBLE_DEVICES=3,2 python3 program_2.py
+
+Program 1 will then only see GPU cards 0 and 1, named /gpu:0 and /gpu:1 respec‐
+tively,  and  program  2  will  only  see  GPU  cards  2  and  3,  named  /gpu:1  and  /gpu:0
+respectively (note the order). Everything will work fine (see Figure 19-12). Of course,
+you  can  also  define  these  environment  variables  in  Python  by  setting  os.envi
+ron["CUDA_DEVICE_ORDER"] and os.environ["CUDA_VISIBLE_DEVICES"], as long as
+you do so before using TensorFlow.
+
+Figure 19-12. Each program gets two GPUs
+
+Another  option  is  to  tell  TensorFlow  to  grab  only  a  specific  amount  of  GPU  RAM.
+This  must  be  done  immediately  after  importing  TensorFlow.  For  example,  to  make
+TensorFlow  grab  only  2  GiB  of  RAM  on  each  GPU,  you  must  create  a  virtual  GPU
+device  (also  called  a  logical  GPU  device)  for  each  physical  GPU  device  and  set  its
+memory limit to 2 GiB (i.e., 2,048 MiB):
+
+for gpu in tf.config.experimental.list_physical_devices("GPU"):
+    tf.config.experimental.set_virtual_device_configuration(
+        gpu,
+        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2048)])
+
+Now (supposing you have four GPUs, each with at least 4 GiB of RAM) two programs
+like this one can run in parallel, each using all four GPU cards (see Figure 19-13).
+
+Using GPUs to Speed Up Computations 
+
+| 
+
+695
+
+Figure 19-13. Each program gets all four GPUs, but with only 2 GiB of RAM on each
+GPU
+
+If you run the nvidia-smi command while both programs are running, you should
+see that each process holds 2 GiB of RAM on each card:
+
+$ nvidia-smi
+[...]
++-----------------------------------------------------------------------------+
+| Processes:                                                       GPU Memory |
+|  GPU       PID   Type   Process name                             Usage      |
+|=============================================================================|
+|    0      2373      C   /usr/bin/python3                            2241MiB |
+|    0      2533      C   /usr/bin/python3                            2241MiB |
+|    1      2373      C   /usr/bin/python3                            2241MiB |
+|    1      2533      C   /usr/bin/python3                            2241MiB |
+[...]
+
+Yet another option is to tell TensorFlow to grab memory only when it needs it (this
+also must be done immediately after importing TensorFlow):
+
+for gpu in tf.config.experimental.list_physical_devices("GPU"):
+    tf.config.experimental.set_memory_growth(gpu, True)
+
+Another way to do this is to set the TF_FORCE_GPU_ALLOW_GROWTH environment vari‐
+able  to  true.  With  this  option,  TensorFlow  will  never  release  memory  once  it  has
+grabbed it (again, to avoid memory fragmentation), except of course when the pro‐
+gram  ends.  It  can  be  harder  to  guarantee  deterministic  behavior  using  this  option
+(e.g., one program may crash because another program’s memory usage went through
+the  roof),  so  in  production  you’ll  probably  want  to  stick  with  one  of  the  previous
+options. However, there are some cases where it is very useful: for example, when you
+use  a  machine  to  run  multiple  Jupyter  notebooks,  several  of  which  use  TensorFlow.
+This is why the TF_FORCE_GPU_ALLOW_GROWTH environment variable is set to true in
+Colab Runtimes.
+
+Lastly, in some cases you may want to split a GPU into two or more virtual GPUs—
+for example, if you want to test a distribution algorithm (this is a handy way to try
+out the code examples in the rest of this chapter even if you have a single GPU, such
+
+696 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+as in a Colab Runtime). The following code splits the first GPU into two virtual devi‐
+ces, with 2 GiB of RAM each (again, this must be done immediately after importing
+TensorFlow):
+
+physical_gpus = tf.config.experimental.list_physical_devices("GPU")
+tf.config.experimental.set_virtual_device_configuration(
+    physical_gpus[0],
+    [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2048),
+     tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2048)])
+
+These two virtual devices will then be called /gpu:0 and /gpu:1, and you can place
+operations  and  variables  on  each  of  them  as  if  they  were  really  two  independent
+GPUs. Now let’s see how TensorFlow decides which devices it should place variables
+and execute operations on.
+
+Placing Operations and Variables on Devices
+The TensorFlow whitepaper13 presents a friendly dynamic placer algorithm that auto‐
+magically  distributes  operations  across  all  available  devices,  taking  into  account
+things like the measured computation time in previous runs of the graph, estimations
+of the size of the input and output tensors for each operation, the amount of RAM
+available in each device, communication delay when transferring data into and out of
+devices, and hints and constraints from the user. In practice this algorithm turned out
+to be less efficient than a small set of placement rules specified by the user, so the Ten‐
+sorFlow team ended up dropping the dynamic placer.
+
+That said, tf.keras and tf.data generally do a good job of placing operations and vari‐
+ables where they belong (e.g., heavy computations on the GPU, and data preprocess‐
+ing on the CPU). But you can also place operations and variables manually on each
+device, if you want more control:
+
+• As just mentioned, you generally want to place the data preprocessing operations
+
+on the CPU, and place the neural network operations on the GPUs.
+
+• GPUs usually have a fairly limited communication bandwidth, so it is important
+
+to avoid unnecessary data transfers in and out of the GPUs.
+
+• Adding more CPU RAM to a machine is simple and fairly cheap, so there’s usu‐
+ally plenty of it, whereas the GPU RAM is baked into the GPU: it is an expensive
+and thus limited resource, so if a variable is not needed in the next few training
+steps, it should probably be placed on the CPU (e.g., datasets generally belong on
+the CPU).
+
+13 Martín Abadi et al., “TensorFlow: Large-Scale Machine Learning on Heterogeneous Distributed Systems”
+
+Google Research whitepaper (2015).
+
+Using GPUs to Speed Up Computations 
+
+| 
+
+697
+
+By  default,  all  variables  and  all  operations  will  be  placed  on  the  first  GPU
+(named /gpu:0), except for variables and operations that don’t have a GPU kernel:14
+these are placed on the CPU (named /cpu:0). A tensor or variable’s device attribute
+tells you which device it was placed on:15
+
+>>> a = tf.Variable(42.0)
+>>> a.device
+'/job:localhost/replica:0/task:0/device:GPU:0'
+>>> b = tf.Variable(42)
+>>> b.device
+'/job:localhost/replica:0/task:0/device:CPU:0'
+
+You  can  safely  ignore  the  prefix  /job:localhost/replica:0/task:0  for  now  (it
+allows you to place operations on other machines when using a TensorFlow cluster;
+we will talk about jobs, replicas, and tasks later in this chapter). As you can see, the
+first variable was placed on GPU 0, which is the default device. However, the second
+variable was placed on the CPU: this is because there are no GPU kernels for integer
+variables (or for operations involving integer tensors), so TensorFlow fell back to the
+CPU.
+
+If  you  want  to  place  an  operation  on  a  different  device  than  the  default  one,  use  a
+tf.device() context:
+
+>>> with tf.device("/cpu:0"):
+...     c = tf.Variable(42.0)
+...
+>>> c.device
+'/job:localhost/replica:0/task:0/device:CPU:0'
+
+The CPU is always treated as a single device (/cpu:0), even if your
+machine  has  multiple  CPU  cores.  Any  operation  placed  on  the
+CPU  may  run  in  parallel  across  multiple  cores  if  it  has  a  multi‐
+threaded kernel.
+
+If you explicitly try to place an operation or variable on a device that does not exist or
+for which there is no kernel, then you will get an exception. However, in some cases
+you may prefer to fall back to the CPU; for example, if your program may run both
+on CPU-only machines and on GPU machines, you may want TensorFlow to ignore
+your tf.device("/gpu:*") on CPU-only machines. To do this, you can call tf.con
+fig.set_soft_device_placement(True)  just  after  importing  TensorFlow:  when  a
+
+14 As we saw in Chapter 12, a kernel is a variable or operation’s implementation for a specific data type and
+
+device type. For example, there is a GPU kernel for the float32 tf.matmul() operation, but there is no GPU
+kernel for int32 tf.matmul() (only a CPU kernel).
+
+15 You can also use tf.debugging.set_log_device_placement(True) to log all device placements.
+
+698 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+placement request fails, TensorFlow will fall back to its default placement rules (i.e.,
+GPU 0 by default if it exists and there is a GPU kernel, and CPU 0 otherwise).
+
+Now  how  exactly  will  TensorFlow  execute  all  these  operations  across  multiple
+devices?
+
+Parallel Execution Across Multiple Devices
+As  we  saw  in  Chapter  12,  one  of  the  benefits  of  using  TF  Functions  is  parallelism.
+Let’s look at this a bit more closely. When TensorFlow runs a TF Function, it starts by
+analyzing  its  graph  to  find  the  list  of  operations  that  need  to  be  evaluated,  and  it
+counts how many dependencies each of them has. TensorFlow then adds each opera‐
+tion with zero dependencies (i.e., each source operation) to the evaluation queue of
+this operation’s device (see Figure 19-14). Once an operation has been evaluated, the
+dependency  counter  of  each  operation  that  depends  on  it  is  decremented.  Once  an
+operation’s dependency counter reaches zero, it is pushed to the evaluation queue of
+its  device.  And  once  all  the  nodes  that  TensorFlow  needs  have  been  evaluated,  it
+returns their outputs.
+
+Figure 19-14. Parallelized execution of a TensorFlow graph
+
+Operations in the CPU’s evaluation queue are dispatched to a thread pool called the
+inter-op thread pool. If the CPU has multiple cores, then these operations will effec‐
+tively  be  evaluated  in  parallel.  Some  operations  have  multithreaded  CPU  kernels:
+these  kernels  split  their  tasks  into  multiple  suboperations,  which  are  placed  in
+another evaluation queue and dispatched to a second thread pool called the intra-op
+
+Using GPUs to Speed Up Computations 
+
+| 
+
+699
+
+thread pool (shared by all multithreaded CPU kernels). In short, multiple operations
+and suboperations may be evaluated in parallel on different CPU cores.
+
+For  the  GPU,  things  are  a  bit  simpler.  Operations  in  a  GPU’s  evaluation  queue  are
+evaluated  sequentially.  However,  most  operations  have  multithreaded  GPU  kernels,
+typically implemented by libraries that TensorFlow depends on, such as CUDA and
+cuDNN.  These  implementations  have  their  own  thread  pools,  and  they  typically
+exploit as many GPU threads as they can (which is the reason why there is no need
+for  an  inter-op  thread  pool  in  GPUs:  each  operation  already  floods  most  GPU

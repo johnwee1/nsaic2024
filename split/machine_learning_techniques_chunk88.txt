@@ -1,0 +1,331 @@
+t the agent notices that it has no control
+over it, it also gets bored after a while. With only curiosity, the authors succeeded
+in training an agent at many video games: even though the agent gets no penalty
+for losing, the game starts over, which is boring so it learns to avoid it.
+
+We  covered  many  topics  in  this  chapter:  Policy  Gradients,  Markov  chains,  Markov
+decision processes, Q-Learning, Approximate Q-Learning, and Deep Q-Learning and
+its main variants (fixed Q-Value targets, Double DQN, Dueling DQN, and prioritized
+experience replay). We discussed how to use TF-Agents to train agents at scale, and
+finally we took a quick look at a few other popular algorithms. Reinforcement Learn‐
+ing is a huge and exciting field, with new ideas and algorithms popping out every day,
+so I hope this chapter sparked your curiosity: there is a whole world to explore!
+
+Exercises
+
+1. How would you define Reinforcement Learning? How is it different from regular
+
+supervised or unsupervised learning?
+
+2. Can  you  think  of  three  possible  applications  of  RL  that  were  not  mentioned  in
+this  chapter?  For  each  of  them,  what  is  the  environment?  What  is  the  agent?
+What are some possible actions? What are the rewards?
+
+3. What is the discount factor? Can the optimal policy change if you modify the dis‐
+
+count factor?
+
+4. How do you measure the performance of a Reinforcement Learning agent?
+
+5. What is the credit assignment problem? When does it occur? How can you allevi‐
+
+ate it?
+
+6. What is the point of using a replay buffer?
+
+27 Deepak Pathak et al., “Curiosity-Driven Exploration by Self-Supervised Prediction,” Proceedings of the 34th
+
+International Conference on Machine Learning (2017): 2778–2787.
+
+664 
+
+| 
+
+Chapter 18: Reinforcement Learning
+
+7. What is an off-policy RL algorithm?
+
+8. Use  policy  gradients  to  solve  OpenAI  Gym’s  LunarLander-v2  environment.  You
+will  need  to  install  the  Box2D  dependencies  (python3  -m  pip  install  -U
+gym[box2d]).
+
+9. Use  TF-Agents  to  train  an  agent  that  can  achieve  a  superhuman  level  at
+
+SpaceInvaders-v4 using any of the available algorithms.
+
+10. If  you  have  about  $100  to  spare,  you  can  purchase  a  Raspberry  Pi  3  plus  some
+cheap  robotics  components,  install  TensorFlow  on  the  Pi,  and  go  wild!  For  an
+example, check out this fun post by Lukas Biewald, or take a look at GoPiGo or
+BrickPi.  Start  with  simple  goals,  like  making  the  robot  turn  around  to  find  the
+brightest angle (if it has a light sensor) or the closest object (if it has a sonar sen‐
+sor),  and  move  in  that  direction.  Then  you  can  start  using  Deep  Learning:  for
+example, if the robot has a camera, you can try to implement an object detection
+algorithm so it detects people and moves toward them. You can also try to use RL
+to make the agent learn on its own how to use the motors to achieve that goal.
+Have fun!
+
+Solutions to these exercises are available in Appendix A.
+
+Exercises 
+
+| 
+
+665
+
+CHAPTER 19
+Training and Deploying TensorFlow
+Models at Scale
+
+Once  you  have  a  beautiful  model  that  makes  amazing  predictions,  what  do  you  do
+with it? Well, you need to put it in production! This could be as simple as running the
+model  on  a  batch  of  data  and  perhaps  writing  a  script  that  runs  this  model  every
+night. However, it is often much more involved. Various parts of your infrastructure
+may  need  to  use  this  model  on  live  data,  in  which  case  you  probably  want  to  wrap
+your model in a web service: this way, any part of your infrastructure can query your
+model at any time using a simple REST API (or some other protocol), as we discussed
+in Chapter 2. But as time passes, you need to regularly retrain your model on fresh
+data and push the updated version to production. You must handle model versioning,
+gracefully  transition  from  one  model  to  the  next,  possibly  roll  back  to  the  previous
+model in case of problems, and perhaps run multiple different models in parallel to
+perform A/B experiments.1 If your product becomes successful, your service may start
+to get plenty of queries per second (QPS), and it must scale up to support the load. A
+great solution to scale up your service, as we will see in this chapter, is to use TF Serv‐
+ing, either on your own hardware infrastructure or via a cloud service such as Google
+Cloud AI Platform. It will take care of efficiently serving your model, handle graceful
+model  transitions,  and  more.  If  you  use  the  cloud  platform,  you  will  also  get  many
+extra features, such as powerful monitoring tools.
+
+Moreover,  if  you  have  a  lot  of  training  data,  and  compute-intensive  models,  then
+training  time  may  be  prohibitively  long.  If  your  product  needs  to  adapt  to  changes
+quickly,  then  a  long  training  time  can  be  a  showstopper  (e.g.,  think  of  a  news
+
+1 An A/B experiment consists in testing two different versions of your product on different subsets of users in
+
+order to check which version works best and get other insights.
+
+667
+
+recommendation system promoting news from last week). Perhaps even more impor‐
+tantly, a long training time will prevent you from experimenting with new ideas. In
+Machine Learning (as in many other fields), it is hard to know in advance which ideas
+will work, so you should try out as many as possible, as fast as possible. One way to
+speed up training is to use hardware accelerators such as GPUs or TPUs. To go even
+faster, you can train a model across multiple machines, each equipped with multiple
+hardware accelerators. TensorFlow’s simple yet powerful Distribution Strategies API
+makes this easy, as we will see.
+
+In this chapter we will look at how to deploy models, first to TF Serving, then to Goo‐
+gle Cloud AI Platform. We will also take a quick look at deploying models to mobile
+apps, embedded devices, and web apps. Lastly, we will discuss how to speed up com‐
+putations  using  GPUs  and  how  to  train  models  across  multiple  devices  and  servers
+using  the  Distribution  Strategies  API.  That’s  a  lot  of  topics  to  discuss,  so  let’s  get
+started!
+
+Serving a TensorFlow Model
+Once you have trained a TensorFlow model, you can easily use it in any Python code:
+if  it’s  a  tf.keras  model,  just  call  its  predict()  method!  But  as  your  infrastructure
+grows, there comes a point where it is preferable to wrap your model in a small ser‐
+vice  whose  sole  role  is  to  make  predictions  and  have  the  rest  of  the  infrastructure
+query it (e.g., via a REST or gRPC API).2 This decouples your model from the rest of
+the infrastructure, making it possible to easily switch model versions or scale the ser‐
+vice up as needed (independently from the rest of your infrastructure), perform A/B
+experiments, and ensure that all your software components rely on the same model
+versions. It also simplifies testing and development, and more. You could create your
+own microservice using any technology you want (e.g., using the Flask library), but
+why reinvent the wheel when you can just use TF Serving?
+
+Using TensorFlow Serving
+TF Serving is a very efficient, battle-tested model server that’s written in C++. It can
+sustain a high load, serve multiple versions of your models and watch a model reposi‐
+tory to automatically deploy the latest versions, and more (see Figure 19-1).
+
+2 A REST (or RESTful) API is an API that uses standard HTTP verbs, such as GET, POST, PUT, and DELETE,
+
+and uses JSON inputs and outputs. The gRPC protocol is more complex but more efficient. Data is exchanged
+using protocol buffers (see Chapter 13).
+
+668 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+Figure 19-1. TF Serving can serve multiple models and automatically deploy the latest
+version of each model
+
+So  let’s  suppose  you  have  trained  an  MNIST  model  using  tf.keras,  and  you  want  to
+deploy it to TF Serving. The first thing you have to do is export this model to Tensor‐
+Flow’s SavedModel format.
+
+Exporting SavedModels
+
+TensorFlow provides a simple tf.saved_model.save() function to export models to
+the SavedModel format. All you need to do is give it the model, specifying its name
+and version number, and the function will save the model’s computation graph and its
+weights:
+
+model = keras.models.Sequential([...])
+model.compile([...])
+history = model.fit([...])
+
+model_version = "0001"
+model_name = "my_mnist_model"
+model_path = os.path.join(model_name, model_version)
+tf.saved_model.save(model, model_path)
+
+Alternatively,  you  can  just  use  the  model’s  save()  method  (model.save(model_
+path)):  as  long  as  the  file’s  extension  is  not  .h5,  the  model  will  be  saved  using  the
+SavedModel format instead of the HDF5 format.
+
+It’s usually a good idea to include all the preprocessing layers in the final model you
+export so that it can ingest data in its natural form once it is deployed to production.
+This avoids having to take care of preprocessing separately within the application that
+uses the model. Bundling the preprocessing steps within the model also makes it sim‐
+pler to update them later on and limits the risk of mismatch between a model and the
+preprocessing steps it requires.
+
+Serving a TensorFlow Model 
+
+| 
+
+669
+
+Since  a  SavedModel  saves  the  computation  graph,  it  can  only  be
+used with models that are based exclusively on TensorFlow opera‐
+tions,  excluding  the  tf.py_function()  operation  (which  wraps
+arbitrary  Python  code).  It  also  excludes  dynamic  tf.keras  models
+(see Appendix G), since these models cannot be converted to com‐
+putation  graphs.  Dynamic  models  need  to  be  served  using  other
+tools (e.g., Flask).
+
+A SavedModel represents a version of your model. It is stored as a directory contain‐
+ing a saved_model.pb file, which defines the computation graph (represented as a seri‐
+alized  protocol  buffer),  and  a  variables  subdirectory  containing  the  variable  values.
+For models containing a large number of weights, these variable values may be split
+across multiple files. A SavedModel also includes an assets subdirectory that may con‐
+tain additional data, such as vocabulary files, class names, or some example instances
+for  this  model.  The  directory  structure  is  as  follows  (in  this  example,  we  don’t  use
+assets):
+
+my_mnist_model
+└── 0001
+    ├── assets
+    ├── saved_model.pb
+    └── variables
+        ├── variables.data-00000-of-00001
+        └── variables.index
+
+As you might expect, you can load a SavedModel using the tf.saved_model.load()
+function. However, the returned object is not a Keras model: it represents the Saved‐
+Model,  including  its  computation  graph  and  variable  values.  You  can  use  it  like  a
+function, and it will make predictions (make sure to pass the inputs as tensors of the
+appropriate type):
+
+saved_model = tf.saved_model.load(model_path)
+y_pred = saved_model(tf.constant(X_new, dtype=tf.float32))
+
+Alternatively,  you  can  load  this  SavedModel  directly  to  a  Keras  model  using  the
+keras.models.load_model() function:
+
+model = keras.models.load_model(model_path)
+y_pred = model.predict(tf.constant(X_new, dtype=tf.float32))
+
+TensorFlow also comes with a small saved_model_cli command-line tool to inspect
+SavedModels:
+
+$ export ML_PATH="$HOME/ml" # point to this project, wherever it is
+$ cd $ML_PATH
+$ saved_model_cli show --dir my_mnist_model/0001 --all
+MetaGraphDef with tag-set: 'serve' contains the following SignatureDefs:
+signature_def['__saved_model_init_op']:
+  [...]
+
+670 
+
+| 
+
+Chapter 19: Training and Deploying TensorFlow Models at Scale
+
+signature_def['serving_default']:
+  The given SavedModel SignatureDef contains the following input(s):
+    inputs['flatten_input'] tensor_info:
+        dtype: DT_FLOAT
+        shape: (-1, 28, 28)
+        name: serving_default_flatten_input:0
+  The given SavedModel SignatureDef contains the following output(s):
+    outputs['dense_1'] tensor_info:
+        dtype: DT_FLOAT
+        shape: (-1, 10)
+        name: StatefulPartitionedCall:0
+  Method name is: tensorflow/serving/predict
+
+A  SavedModel  contains  one  or  more  metagraphs.  A  metagraph  is  a  computation
+graph  plus  some  function  signature  definitions  (including  their  input  and  output
+names, types, and shapes). Each metagraph is identified by a set of tags. For example,
+you may want to have a metagraph containing the full computation graph, including
+the training operations (this one may be tagged "train", for example), and another
+metagraph containing a pruned computation graph with only the prediction opera‐
+tions,  including  some  GPU-specific  operations  (this  metagraph  may  be  tagged
+"serve",  "gpu").  However,  when  you  pass  a 
+the
+tf.saved_model.save()  function,  by  default  the  function  saves  a  much  simpler
+SavedModel: it saves a single metagraph tagged "serve", which contains two signa‐
+ture  definitions,  an  initialization  function  (called  __saved_model_init_op,  which
+you  do  not  need  to  worry  about)  and  a  default  serving  function  (called  serv
+ing_default).  When  saving  a  tf.keras  model,  the  default  serving  function  corre‐
+sponds to the model’s call() function, which of course makes predictions.
+
+tf.keras  model 
+
+to 
+
+The  saved_model_cli  tool  can  also  be  used  to  make  predictions  (for  testing,  not
+really  for  production).  Suppose  you  have  a  NumPy  array  (X_new)  containing  three
+images of handwritten digits that you want to make predictions for. You first need to
+export them to NumPy’s npy format:
+
+np.save("my_mnist_tests.npy", X_new)
+
+Next, use the saved_model_cli command like this:
+
+$ saved_model_cli run --dir my_mnist_model/0001 --tag_set serve \
+                      --signature_def serving_default \
+                      --inputs flatten_input=my_mnist_tests.npy
+[...] Result for output key dense_1:
+[[1.1739199e-04 1.1239604e-07 6.0210604e-04 [...] 3.9471846e-04]
+ [1.2294615e-03 2.9207937e-05 9.8599273e-01 [...] 1.1113169e-07]
+ [6.4066830e-05 9.6359509e-01 9.0598064e-03 [...] 4.2495009e-04]]
+
+The tool’s output contains the 10 class probabilities of each of the 3 instances. Great!
+Now that you have a working SavedModel, the next step is to install TF Serving.
+
+Serving a TensorFlow Model 
+
+| 
+
+671
+
+Installing TensorFlow Serving
+
+There are many ways to install TF Serving: using a Docker image,3 using the system’s
+package  manager,  installing  from  source,  and  more.  Let’s  use  the  Docker  option,
+which is highly recommended by the TensorFlow team as it is simple to install, it will
+not mess with your system, and it offers high performance. You first need to install
+Docker. Then download the official TF Serving Docker image:
+
+$ docker pull tensorflow/serving
+
+Now you can create a Docker container to run this image:
+
+$ docker run -it --rm -p 8500:8500 -p 8501:8501 \
+             -v "$ML_PATH/my_mnist_model:/models/my_mnist_model" \
+             -e MODEL_NAME=my_mnist_model \
+             tensorflow/serving
+[...]
+2019-06-01 [...] loaded servable version {name: my_mnist_model version: 1}
+2019-06-01 [...] Running gRPC ModelServer at 0.0.0.0:8500 ...
+2019-06-01 [...] Exporting HTTP/REST API at:localhost:8501 ...
+[evhttp_server.cc : 237] RAW: Entering the event loop ...
+
+That’s  it!  TF  Serving  is  running.  It  loaded  our  MNIST  model  (version  1),  and  it  is
+serving it through both gRPC (on port 

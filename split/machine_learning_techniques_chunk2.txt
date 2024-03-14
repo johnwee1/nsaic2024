@@ -1,0 +1,374 @@
+e people happier?
+
+GDP per capita (USD)
+12,240
+
+Life satisfaction
+4.9
+
+Country
+Hungary
+
+Korea
+
+France
+
+Australia
+
+27,195
+
+37,675
+
+50,962
+
+United States
+
+55,805
+
+5.8
+
+6.5
+
+7.3
+
+7.2
+
+Let’s plot the data for these countries (Figure 1-17).
+
+Figure 1-17. Do you see a trend here?
+
+There does seem to be a trend here! Although the data is noisy (i.e., partly random), it
+looks like life satisfaction goes up more or less linearly as the country’s GDP per cap‐
+ita increases. So you decide to model life satisfaction as a linear function of GDP per
+capita. This step is called model selection: you selected a linear model of life satisfac‐
+tion with just one attribute, GDP per capita (Equation 1-1).
+
+Equation 1-1. A simple linear model
+
+life_satisfaction = θ0 + θ1 × GDP_per_capita
+
+Types of Machine Learning Systems 
+
+| 
+
+19
+
+This model has two model parameters, θ0 and θ1.5 By tweaking these parameters, you
+can make your model represent any linear function, as shown in Figure 1-18.
+
+Figure 1-18. A few possible linear models
+
+Before  you  can  use  your  model,  you  need  to  define  the  parameter  values  θ0  and  θ1.
+How can you know which values will make your model perform best? To answer this
+question, you need to specify a performance measure. You can either define a utility
+function (or fitness function) that measures how good your model is, or you can define
+a cost function that measures how bad it is. For Linear Regression problems, people
+typically  use  a  cost  function  that  measures  the  distance  between  the  linear  model’s
+predictions and the training examples; the objective is to minimize this distance.
+
+This  is  where  the  Linear  Regression  algorithm  comes  in:  you  feed  it  your  training
+examples, and it finds the parameters that make the linear model fit best to your data.
+This  is  called  training  the  model.  In  our  case,  the  algorithm  finds  that  the  optimal
+parameter values are θ0 = 4.85 and θ1 = 4.91 × 10–5.
+
+Confusingly,  the  same  word  “model”  can  refer  to  a  type  of  model
+(e.g., Linear Regression), to a fully specified model architecture (e.g.,
+Linear Regression with one input and one output), or to the final
+trained model ready to be used for predictions (e.g., Linear Regres‐
+sion with one input and one output, using θ0 = 4.85 and θ1 = 4.91 ×
+10–5).  Model  selection  consists  in  choosing  the  type  of  model  and
+fully  specifying  its  architecture.  Training  a  model  means  running
+an algorithm to find the model parameters that will make it best fit
+the  training  data  (and  hopefully  make  good  predictions  on  new
+data).
+
+5 By convention, the Greek letter θ (theta) is frequently used to represent model parameters.
+
+20 
+
+| 
+
+Chapter 1: The Machine Learning Landscape
+
+Now the model fits the training data as closely as possible (for a linear model), as you
+can see in Figure 1-19.
+
+Figure 1-19. The linear model that fits the training data best
+
+You  are  finally  ready  to  run  the  model  to  make  predictions.  For  example,  say  you
+want to know how happy Cypriots are, and the OECD data does not have the answer.
+Fortunately, you can use your model to make a good prediction: you look up Cyprus’s
+GDP per capita, find $22,587, and then apply your model and find that life satisfac‐
+tion is likely to be somewhere around 4.85 + 22,587 × 4.91 × 10-5 = 5.96.
+
+To whet your appetite, Example 1-1 shows the Python code that loads the data, pre‐
+pares  it,6  creates  a  scatterplot  for  visualization,  and  then  trains  a  linear  model  and
+makes a prediction.7
+
+Example 1-1. Training and running a linear model using Scikit-Learn
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import sklearn.linear_model
+
+# Load the data
+oecd_bli = pd.read_csv("oecd_bli_2015.csv", thousands=',')
+gdp_per_capita = pd.read_csv("gdp_per_capita.csv",thousands=',',delimiter='\t',
+                             encoding='latin1', na_values="n/a")
+
+6 The prepare_country_stats() function’s definition is not shown here (see this chapter’s Jupyter notebook if
+you want all the gory details). It’s just boring pandas code that joins the life satisfaction data from the OECD
+with the GDP per capita data from the IMF.
+
+7 It’s OK if you don’t understand all the code yet; we will present Scikit-Learn in the following chapters.
+
+Types of Machine Learning Systems 
+
+| 
+
+21
+
+# Prepare the data
+country_stats = prepare_country_stats(oecd_bli, gdp_per_capita)
+X = np.c_[country_stats["GDP per capita"]]
+y = np.c_[country_stats["Life satisfaction"]]
+
+# Visualize the data
+country_stats.plot(kind='scatter', x="GDP per capita", y='Life satisfaction')
+plt.show()
+
+# Select a linear model
+model = sklearn.linear_model.LinearRegression()
+
+# Train the model
+model.fit(X, y)
+
+# Make a prediction for Cyprus
+X_new = [[22587]]  # Cyprus's GDP per capita
+print(model.predict(X_new)) # outputs [[ 5.96242338]]
+
+If you had used an instance-based learning algorithm instead, you
+would have found that Slovenia has the closest GDP per capita to
+that  of  Cyprus  ($20,732),  and  since  the  OECD  data  tells  us  that
+Slovenians’  life  satisfaction  is  5.7,  you  would  have  predicted  a  life
+satisfaction of 5.7 for Cyprus. If you zoom out a bit and look at the
+two  next-closest  countries,  you  will  find  Portugal  and  Spain  with
+life satisfactions of 5.1 and 6.5, respectively. Averaging these three
+values, you get 5.77, which is pretty close to your model-based pre‐
+diction. This simple algorithm is called k-Nearest Neighbors regres‐
+sion (in this example, k = 3).
+
+Replacing  the  Linear  Regression  model  with  k-Nearest  Neighbors
+regression in the previous code is as simple as replacing these two
+lines:
+
+import sklearn.linear_model
+model = sklearn.linear_model.LinearRegression()
+
+with these two:
+
+import sklearn.neighbors
+model = sklearn.neighbors.KNeighborsRegressor(
+    n_neighbors=3)
+
+If all went well, your model will make good predictions. If not, you may need to use
+more  attributes  (employment  rate,  health,  air  pollution,  etc.),  get  more  or  better-
+quality  training  data,  or  perhaps  select  a  more  powerful  model  (e.g.,  a  Polynomial
+Regression model).
+
+22 
+
+| 
+
+Chapter 1: The Machine Learning Landscape
+
+In summary:
+
+• You studied the data.
+
+• You selected a model.
+
+• You trained it on the training data (i.e., the learning algorithm searched for the
+
+model parameter values that minimize a cost function).
+
+• Finally,  you  applied  the  model  to  make  predictions  on  new  cases  (this  is  called
+
+inference), hoping that this model will generalize well.
+
+This  is  what  a  typical  Machine  Learning  project  looks  like.  In  Chapter  2  you  will
+experience this firsthand by going through a project end to end.
+
+We  have  covered  a  lot  of  ground  so  far:  you  now  know  what  Machine  Learning  is
+really about, why it is useful, what some of the most common categories of ML sys‐
+tems are, and what a typical project workflow looks like. Now let’s look at what can go
+wrong in learning and prevent you from making accurate predictions.
+
+Main Challenges of Machine Learning
+In short, since your main task is to select a learning algorithm and train it on some
+data, the two things that can go wrong are “bad algorithm” and “bad data.” Let’s start
+with examples of bad data.
+
+Insufficient Quantity of Training Data
+For a toddler to learn what an apple is, all it takes is for you to point to an apple and
+say “apple” (possibly repeating this procedure a few times). Now the child is able to
+recognize apples in all sorts of colors and shapes. Genius.
+
+Machine Learning is not quite there yet; it takes a lot of data for most Machine Learn‐
+ing  algorithms  to  work  properly.  Even  for  very  simple  problems  you  typically  need
+thousands of examples, and for complex problems such as image or speech recogni‐
+tion  you  may  need  millions  of  examples  (unless  you  can  reuse  parts  of  an  existing
+model).
+
+Main Challenges of Machine Learning 
+
+| 
+
+23
+
+The Unreasonable Effectiveness of Data
+In a famous paper published in 2001, Microsoft researchers Michele Banko and Eric
+Brill showed that very different Machine Learning algorithms, including fairly simple
+ones,  performed  almost  identically  well  on  a  complex  problem  of  natural  language
+disambiguation8 once they were given enough data (as you can see in Figure 1-20).
+
+Figure 1-20. The importance of data versus algorithms9
+
+As the authors put it, “these results suggest that we may want to reconsider the trade-
+off between spending time and money on algorithm development versus spending it
+on corpus development.”
+
+The idea that data matters more than algorithms for complex problems was further
+popularized by Peter Norvig et al. in a paper titled “The Unreasonable Effectiveness
+of Data”, published in 2009.10 It should be noted, however, that small- and medium-
+sized  datasets  are  still  very  common,  and  it  is  not  always  easy  or  cheap  to  get  extra
+training data—so don’t abandon algorithms just yet.
+
+8 For example, knowing whether to write “to,” “two,” or “too,” depending on the context.
+
+9 Figure reproduced with permission from Michele Banko and Eric Brill, “Scaling to Very Very Large Corpora
+for Natural Language Disambiguation,” Proceedings of the 39th Annual Meeting of the Association for Compu‐
+tational Linguistics (2001): 26–33.
+
+10 Peter Norvig et al., “The Unreasonable Effectiveness of Data,” IEEE Intelligent Systems 24, no. 2 (2009): 8–12.
+
+24 
+
+| 
+
+Chapter 1: The Machine Learning Landscape
+
+Nonrepresentative Training Data
+In order to generalize well, it is crucial that your training data be representative of the
+new  cases  you  want  to  generalize  to.  This  is  true  whether  you  use  instance-based
+learning or model-based learning.
+
+For example, the set of countries we used earlier for training the linear model was not
+perfectly  representative;  a  few  countries  were  missing.  Figure  1-21  shows  what  the
+data looks like when you add the missing countries.
+
+Figure 1-21. A more representative training sample
+
+If you train a linear model on this data, you get the solid line, while the old model is
+represented  by  the  dotted  line.  As  you  can  see,  not  only  does  adding  a  few  missing
+countries significantly alter the model, but it makes it clear that such a simple linear
+model is probably never going to work well. It seems that very rich countries are not
+happier  than  moderately  rich  countries  (in  fact,  they  seem  unhappier),  and  con‐
+versely some poor countries seem happier than many rich countries.
+
+By using a nonrepresentative training set, we trained a model that is unlikely to make
+accurate predictions, especially for very poor and very rich countries.
+
+It is crucial to use a training set that is representative of the cases you want to general‐
+ize  to.  This  is  often  harder  than  it  sounds:  if  the  sample  is  too  small,  you  will  have
+sampling noise (i.e., nonrepresentative data as a result of chance), but even very large
+samples  can  be  nonrepresentative  if  the  sampling  method  is  flawed.  This  is  called
+sampling bias.
+
+Main Challenges of Machine Learning 
+
+| 
+
+25
+
+Examples of Sampling Bias
+Perhaps  the  most  famous  example  of  sampling  bias  happened  during  the  US  presi‐
+dential  election  in  1936,  which  pitted  Landon  against  Roosevelt:  the  Literary  Digest
+conducted a very large poll, sending mail to about 10 million people. It got 2.4 million
+answers, and predicted with high confidence that Landon would get 57% of the votes.
+Instead,  Roosevelt  won  with  62%  of  the  votes.  The  flaw  was  in  the  Literary  Digest’s
+sampling method:
+
+• First,  to  obtain  the  addresses  to  send  the  polls  to,  the  Literary  Digest  used  tele‐
+phone directories, lists of magazine subscribers, club membership lists, and the
+like. All of these lists tended to favor wealthier people, who were more likely to
+vote Republican (hence Landon).
+
+• Second, less than 25% of the people who were polled answered. Again this intro‐
+duced  a  sampling  bias,  by  potentially  ruling  out  people  who  didn’t  care  much
+about  politics,  people  who  didn’t  like  the  Literary  Digest,  and  other  key  groups.
+This is a special type of sampling bias called nonresponse bias.
+
+Here is another example: say you want to build a system to recognize funk music vid‐
+eos. One way to build your training set is to search for “funk music” on YouTube and
+use the resulting videos. But this assumes that YouTube’s search engine returns a set of
+videos that are representative of all the funk music videos on YouTube. In reality, the
+search results are likely to be biased toward popular artists (and if you live in Brazil
+you will get a lot of “funk carioca” videos, which sound nothing like James Brown).
+On the other hand, how else can you get a large training set?
+
+Poor-Quality Data
+Obviously, if your training data is full of errors, outliers, and noise (e.g., due to poor-
+quality measurements), it will make it harder for the system to detect the underlying
+patterns, so your system is less likely to perform well. It is often well worth the effort
+to spend time cleaning up your training data. The truth is, most data scientists spend
+a significant part of their time doing just that. The following are a couple of examples
+of when you’d want to clean up training data:
+
+• If some instances are clearly outliers, it may help to simply discard them or try to
+
+fix the errors manually.
+
+• If some instances are missing a few features (e.g., 5% of your customers did not
+specify their age), you must decide whether you want to ignore this attribute alto‐
+gether,  ignore  these  instances,  fill  in  the  missing  values  (e.g.,  with  the  median
+age), or train one model with the feature and one model without it.
+
+26 
+
+| 
+
+Chapter 1: The Machine Learning Landscape
+
+Irrelevant Features
+As the saying goes: garbage in, garbage out. Your system will only be capable of learn‐
+ing if the training data contains enough relevant features and not too many irrelevant
+ones. A critical part of the success of a Machine Learning project is coming up with a
+good set of features to train on. This process, called feature engineering, involves the
+following steps:
+
+• Feature  selection  (selecting  the  most  useful  features  to  train  on  among  existing
+
+features)
+
+• Feature extraction (combining existing features to produce a more useful one—as
+
+we saw earlier, dimensionality reduction algorithms can help)
+
+• Creating new features by gathering new data
+
+Now that we have looked at many examples of bad data, let’s look at a couple of exam‐
+ples of bad algorithms.
+
+Overfitting the Training Data
+Say you are visiting a foreign country and the taxi driver rips you off. You might be
+tempted  to  say  that  all  taxi  drivers  in  that  country  are  thieves.  Overgeneralizing  is
+something that we humans do all too often, and unfortunately machines can fall into
+the same trap if we are not careful. In Machine Learning this is called overfitting: it
+means that the model performs well on the training data, but it does not generalize
+well.
+
+Figure  1-22  shows  an  example  of  a  high-degree  polynomial  life  satisfaction  model
+that strongly overfits the training data. Even though it performs much better on the
+training data than the simple linear model, would you really trust its predictio
