@@ -2,7 +2,7 @@ import re
 
 # run this file to run a simple pattern matching to detect errors file and appends erroneouis inpits t error_qns.jsonl which we can clean up at a further date or completely regenerate
 
-with open("sample_d2l_qns.jsonl", "r") as f:
+with open("presorted_gpt_answers.jsonl", "r") as f:
     x = f.readlines()
 
 
